@@ -50,6 +50,82 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Missing constant Z'):
             catalog.gd_const(text, 'Z')
 
+    def count(self, prefix):
+        return len([e for e in self.c['entities'] if e['id'].startswith(prefix)])
+
+    def test_gear_counts_match_loot_json(self):
+        L = json.loads((catalog.ROOT / 'chapter1/data/loot.json').read_text(encoding='utf-8'))
+        self.assertEqual(L['schema_version'], 2)
+        self.assertEqual(self.count('gear:base:'), len(L['bases']))
+        self.assertEqual(self.count('gear:affix:'), len(L['affixes']))
+        self.assertEqual(self.count('gear:legendary:'), len(L['legendaries']))
+        self.assertEqual(self.count('gear:unique:'), len(L['uniques']))
+        self.assertEqual(self.count('gear:treasure:'), len(L['treasure_classes']))
+        slots = next(e for e in self.c['entities'] if e['id'] == 'gear:slots')
+        self.assertEqual(len(slots['sections'][0]['rows']), len(L['equip_slots']))
+        self.assertEqual(len(slots['sections'][1]['rows']), len(L['qualities']))
+        self.assertFalse(any('chapter_items' in (e.get('source') or {}).get('path', '') for e in self.c['entities']))
+
+    def test_combat_counts_match_tuning_json(self):
+        T = json.loads((catalog.ROOT / 'chapter1/data/combat_tuning.json').read_text(encoding='utf-8'))
+        self.assertEqual(self.count('combat:enemy:'), len(T['enemies']))
+        self.assertEqual(self.count('combat:champion:'), len(T['champions']))
+        walker = next(e for e in self.c['entities'] if e['id'] == 'combat:enemy:walker')
+        self.assertEqual([r[1] for r in walker['sections'][0]['rows']], [str(v) for v in T['enemies']['walker']['hp']])
+        potion = next(e for e in self.c['entities'] if e['id'] == 'combat:potion')
+        self.assertIn(str(T['potion']['start']), potion['summary'])
+        xp = next(e for e in self.c['entities'] if e['id'] == 'combat:xp')
+        self.assertEqual(len(xp['sections'][0]['rows']), len(T['xp_thresholds']))
+        self.assertEqual(self.count('world:zone:'), len(T['seal_kills']))
+
+    def test_permanent_growth_counts_match_json(self):
+        D = catalog.ROOT / 'chapter1/data'
+        trees = json.loads((D / 'skill_trees.json').read_text(encoding='utf-8'))['trees']
+        prog = json.loads((D / 'character_progression.json').read_text(encoding='utf-8'))
+        self.assertEqual(self.count('perm:tree:'), len(trees))
+        self.assertEqual(self.count('perm:node:'), sum(len(t['nodes']) for t in trees))
+        lv = next(e for e in self.c['entities'] if e['id'] == 'perm:levels')
+        self.assertEqual(len(lv['sections'][0]['rows']), len(prog['xp_thresholds']))
+
+    def test_agents_listed_from_definition_files(self):
+        files = sorted((catalog.ROOT / '.claude/agents').glob('*.md'))
+        agents = [e for e in self.c['entities'] if e['category'] == 'agents' and e['type'] == '에이전트 정의']
+        self.assertEqual(sorted(e['id'] for e in agents), sorted('agents:' + f.stem for f in files))
+        for e in agents:
+            self.assertIn(dict(e['sections'][0]['rows']).get('모델'), ('opus', 'sonnet', 'haiku', '(지정 없음)'), e['id'])
+
+    def test_frontmatter_parser(self):
+        meta = catalog.parse_frontmatter('---\nname: x\ndescription: 가. 나.\nmodel: opus\n---\n본문: 아님\n')
+        self.assertEqual(meta, {'name': 'x', 'description': '가. 나.', 'model': 'opus'})
+        with self.assertRaises(ValueError):
+            catalog.parse_frontmatter('본문만')
+
+    def test_docs_and_agents_with_temp_root(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for sub in ('docs/story', 'docs/reviews', '.claude/agents'):
+                (root / sub).mkdir(parents=True)
+            body = '# 제목\n\n본문\n'
+            for rel in ('docs/SEASON1_WORLD_STORY_MASTER.md', 'docs/story/LAW.ko.md', 'docs/reviews/R.ko.md'):
+                (root / rel).write_text(body, encoding='utf-8')
+            (root / '.claude/agents/a.md').write_text('---\nname: a\ndescription: 첫 문장. 둘째.\nmodel: sonnet\n---\n', encoding='utf-8')
+            (root / '.claude/agents/bad.md').write_text('머리글 없음', encoding='utf-8')
+            old, catalog.ROOT = catalog.ROOT, root
+            try:
+                c = catalog.Catalog()
+                catalog.doc_entities(c)
+                catalog.agent_entities(c)
+            finally:
+                catalog.ROOT = old
+            kinds = {e['id']: e['type'] for e in c.entities}
+            self.assertEqual(kinds['doc:docs/SEASON1_WORLD_STORY_MASTER.md'], '세계관·스토리')
+            self.assertEqual(kinds['doc:docs/story/LAW.ko.md'], '세계관·스토리')
+            self.assertEqual(kinds['doc:docs/reviews/R.ko.md'], '검수')
+            self.assertIn('agents:a', kinds)
+            self.assertNotIn('agents:bad', kinds)
+            self.assertEqual(len(c.warnings), 1)
+            self.assertIn('첫 문장.', next(e for e in c.entities if e['id'] == 'agents:a')['summary'])
+
     def test_hundredths_matches_game(self):
         self.assertEqual([catalog.hundredths(v) for v in (500, 1050, 1005, 0)], ['5', '10.5', '10.05', '0'])
 

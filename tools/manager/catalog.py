@@ -15,7 +15,7 @@ CATEGORIES = [
     ('run', '한 판의 기술과 은총'), ('perm', '영구 성장'), ('combat', '전투 수치'), ('gear', '장비'),
     ('world', '구역과 의식'), ('characters', '주인공 원화'), ('models', '3D 모델'),
     ('images', '그림·아이콘'), ('sounds', '소리'), ('code', '코드 구성'),
-    ('docs', '문서'), ('quality', '품질 목표'),
+    ('agents', '에이전트'), ('docs', '문서'), ('quality', '품질 목표'),
 ]
 USAGE_LABELS = {
     'direct': '코드가 파일을 직접 가리킴',
@@ -754,6 +754,43 @@ def code_entities(c):
     return reached
 
 
+# ------------------------------------------------------------------ agents
+def parse_frontmatter(text):
+    """Minimal `key: value` reader for the leading --- block (no YAML library, no eval)."""
+    rows = text.replace('\r\n', '\n').split('\n')
+    if not rows or rows[0].strip() != '---':
+        raise ValueError('머리글(---)이 없습니다')
+    out = {}
+    for ln in rows[1:]:
+        if ln.strip() == '---':
+            return out
+        if ':' in ln and not ln.startswith((' ', '\t')):
+            k, v = ln.split(':', 1)
+            out[k.strip()] = v.strip()
+    raise ValueError('머리글이 닫히지 않았습니다')
+
+
+def agent_entities(c):
+    rows = []
+    for f in sorted((ROOT / '.claude/agents').glob('*.md')):
+        rel = f.relative_to(ROOT).as_posix()
+        try:
+            meta = parse_frontmatter(f.read_text(encoding='utf-8'))
+        except ValueError as e:
+            c.warnings.append('에이전트 정의를 읽지 못했습니다: %s (%s)' % (e, rel))
+            continue
+        desc = meta.get('description', '')
+        rows.append((meta.get('name') or f.stem, re.split(r'(?<=[.])\s', desc, 1)[0], meta.get('model', '(지정 없음)'),
+                     meta.get('tools', '(지정 없음)'), rel, desc))
+    c.add('agents:overview', 'agents', '표', '에이전트 한눈에', '정의 %d개' % len(rows),
+          [table('이름 · 모델 · 역할', ['이름', '모델', '역할'], [[n, m, r] for n, r, m, t, _, _ in rows]),
+           lines('읽는 법', ['`.claude/agents/`의 정의 파일 머리글을 읽은 값입니다. 역할은 설명의 첫 문장입니다.'])])
+    for n, r, m, t, rel, desc in rows:
+        c.add('agents:' + n, 'agents', '에이전트 정의', n, '%s · %s' % (m, r),
+              [pairs('정보', [('이름', n), ('모델', m), ('쓸 수 있는 도구', t), ('정의 파일', rel)]),
+               lines('설명 전문', [desc])], src(rel), links=[{'label': '정의 파일 열기', 'path': rel}])
+
+
 # ------------------------------------------------------------------ docs and quality
 def doc_entities(c):
     docs = ROOT / 'docs'
@@ -762,7 +799,9 @@ def doc_entities(c):
             continue
         rel = f.relative_to(ROOT).as_posix()
         parts = f.relative_to(docs).parts
-        kind = {'specs': '명세', 'reviews': '검수'}.get(parts[0], '옛 로드맵 문서' if parts[0].startswith('roadmap') else '문서')
+        kind = {'specs': '명세', 'reviews': '검수', 'story': '세계관·스토리'}.get(parts[0], '옛 로드맵 문서' if parts[0].startswith('roadmap') else '문서')
+        if len(parts) == 1 and 'STORY' in f.stem.upper():
+            kind = '세계관·스토리'
         title, body = f.stem, ''
         if f.suffix.lower() == '.md':
             for ln in f.read_text(encoding='utf-8', errors='replace').split('\n'):
@@ -822,7 +861,7 @@ def generate():
     c = Catalog()
     warnings = c.warnings
     steps = [('한 판의 기술', growth_entities), ('영구 성장', perm_entities), ('전투 수치', combat_entities), ('장비', gear_entities),
-             ('에셋', asset_entities), ('코드 구성', code_entities), ('문서', doc_entities)]
+             ('에셋', asset_entities), ('코드 구성', code_entities), ('에이전트', agent_entities), ('문서', doc_entities)]
     for label, fn in steps:
         try:
             fn(c)

@@ -5,15 +5,17 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
+    from . import drafts
 except ImportError:
     from catalog import ROOT, generate
+    import drafts
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
 LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
-STATIC = {'index.html', 'app.js', 'app.css', 'vendor/model-viewer.min.js'}
+STATIC = {'index.html', 'app.js', 'drafts.js', 'app.css', 'vendor/model-viewer.min.js'}
 FILE_TYPES = {'.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
               '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
               '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.gd': 'text/plain; charset=utf-8',
@@ -106,6 +108,35 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def send_bytes(self, mime, p, cache=None):
+        self.send_response(200)
+        self.send_header('Content-Type', mime)
+        self.send_header('Content-Length', str(p.stat().st_size))
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        if cache:
+            self.send_header('Cache-Control', cache)
+        self.end_headers()
+        self.wfile.write(p.read_bytes())
+
+    def send_draft(self, rest):
+        # /drafts/<thumb|full|prompt>/<id> ; only ids present in the current index are served
+        kind, _, raw_id = unquote(rest).partition('/')
+        if kind not in ('thumb', 'full', 'prompt') or not raw_id:
+            return self.send_json(404, {'error': 'Unknown draft route'})
+        entry = drafts.find(raw_id)
+        if entry is None:
+            return self.send_json(404, {'error': 'Not a registered draft'})
+        if kind == 'prompt':
+            if not entry['prompt_path']:
+                return self.send_json(404, {'error': 'No prompt'})
+            return self.send_bytes('text/plain; charset=utf-8', entry['prompt_path'], 'no-store')
+        if kind == 'thumb':
+            t = drafts.thumb_path(entry)
+            if t:
+                return self.send_bytes('image/jpeg', t, 'private, max-age=3600')
+        p = entry['path']
+        return self.send_bytes(drafts.IMAGE_TYPES[p.suffix.lower()], p, 'private, max-age=60')
+
     def do_GET(self):
         if not trusted_request(self.headers.get('Host'), None, self.server.server_port):
             return self.send_json(403, {'error': 'Untrusted Host'})
@@ -117,6 +148,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, self.server.catalog)
         if route == '/api/management':
             return self.send_json(200, load_state())
+        if route == '/api/drafts':
+            return self.send_json(200, drafts.gallery())
+        if route == '/api/drafts/state':
+            return self.send_json(200, drafts.load_store())
+        if route.startswith('/drafts/'):
+            return self.send_draft(route[len('/drafts/'):])
         if route.startswith('/files/'):
             p = permitted_file(route[len('/files/'):], self.server.allowed)
             mime = FILE_TYPES.get(p.suffix.lower()) if p else None
@@ -143,7 +180,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not trusted_request(self.headers.get('Host'), self.headers.get('Origin'), self.server.server_port):
             return self.send_json(403, {'error': 'Untrusted Host or Origin'})
-        if self.path != '/api/management':
+        if self.path not in ('/api/management', '/api/drafts/state'):
             return self.send_json(404, {'error': 'Unknown route'})
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
             return self.send_json(415, {'error': 'application/json required'})
@@ -152,7 +189,11 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= 65536:
                 raise ValueError('Invalid payload length')
             payload = json.loads(self.rfile.read(length))
-            status, value = update_state(payload, self.server.valid_ids)
+            if self.path == '/api/drafts/state':
+                entries, canonical, _ = drafts.read_index()
+                status, value = drafts.update_store(payload, {e['id'] for e in entries + canonical})
+            else:
+                status, value = update_state(payload, self.server.valid_ids)
             self.send_json(status, value)
         except (ValueError, UnicodeError) as e:
             self.send_json(400, {'error': str(e)})

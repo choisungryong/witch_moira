@@ -69,7 +69,7 @@ Python: `C:/Users/twins/AppData/Local/Programs/Python/Python310/python.exe`
 
 ### 알아 둘 흔적
 
-- `chapter1/view/` 바로 아래의 `cloister_*.gd`, `chapter_world_quality*.gd`는 평탄화한 파일들이 아직 밑바탕으로 상속하는 옛 층이다. 실행에 쓰이므로 지우면 안 된다. 새 기능은 여기가 아니라 `hud/`, `fx/`, `actors/`, `world/`의 파일에 넣는다.
+- `chapter1/view/` 바로 아래의 `cloister_*.gd`, `chapter_world_quality*.gd`는 옛 층이다. 평탄화한 파일들은 이것을 상속하지 않지만(모두 `extends RefCounted`), `app/chapter_one.gd`와 `view/world/chapter_world.gd`가 아직 `preload`로 불러와 실행 때 로드된다(2026-11-17 확인). 정리 지시서(`docs/specs/T1-tech-directives-20261116.ko.md` 4번)가 끝나기 전에는 지우면 안 된다. 새 기능은 여기가 아니라 `hud/`, `fx/`, `actors/`, `world/`의 파일에 넣는다.
 - 평탄화한 파일 안의 `sync__q40`처럼 `이름__층`으로 끝나는 메서드는 옛 체인의 앞선 층이고, 접미사 없는 것이 최종 진입점이다. 고치는 부분부터 정리한다.
 - 파일 이름의 `quality10`, `quality43` 같은 숫자는 옛 버전 번호다. 이름에 숫자가 붙어 있어도 이 저장소에 있으면 쓰이는 파일이다.
 - `core/chapter_items.gd`(장비 v1)는 옛 저장의 장비를 검증하려고 남아 있다. 지우면 안 된다.
@@ -98,6 +98,7 @@ Python: `C:/Users/twins/AppData/Local/Programs/Python/Python310/python.exe`
 
 - 총괄 디렉터: 주 세션. 목표·우선순위·사용자 소통·최종 판정.
 - 중간 관리(Opus, 구현 안 함): `tech-lead`, `design-lead`, `art-lead`. 작업 지시서 작성과 검수.
+- 세계관·스토리(Opus, 코드·데이터 수정 안 함): `narrative-lead`. 기준은 `docs/SEASON1_WORLD_STORY_MASTER.md`(기획자 원문)와 `docs/reviews/STORY-REVIEW-20261116.ko.md` 11절(결정 기록), 산출물은 `docs/story/`. 이름·대사·원화 프롬프트처럼 설정이 걸린 일은 이 문서들을 먼저 읽는다.
 - 개발(Sonnet): `gameplay-systems`, `refactor-architect`, `manager-tools`, `qa-perf`(기술) · `content-balance`(기획) · `vfx-feel`, `ui-hud`, `character-artist`, `environment-artist`, `asset-producer`(화면·아트).
 - 하위 에이전트는 다른 하위 에이전트를 부를 수 없다. 흐름은 디렉터 → 관리자(지시서) → 디렉터가 개발 에이전트에 배정 → 관리자(검수) → 디렉터.
 
