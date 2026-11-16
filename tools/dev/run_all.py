@@ -73,7 +73,7 @@ def run_godot(check):
 
 
 def run_manager(check):
-    command = [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools/game_manager', '-p', 'test_*.py']
+    command = [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools/manager', '-p', 'test_*.py']
     try:
         done = subprocess.run(command, cwd=ROOT, capture_output=True, timeout=check['timeout'])
     except subprocess.TimeoutExpired:
