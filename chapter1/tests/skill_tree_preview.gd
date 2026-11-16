@@ -15,6 +15,7 @@ var panel: Control
 var tree: Dictionary = {}
 var shots_dir := ""
 var use_real := true
+var portrait := "frost"   # --portrait=ember|storm shows another witch's face crop in the header
 var frame := 0
 var step := 0
 var wait_until := 0
@@ -26,6 +27,7 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="): shots_dir = arg.trim_prefix("--shots=")
 		elif arg == "--fixture": use_real = false
+		elif arg.begins_with("--portrait="): portrait = arg.trim_prefix("--portrait=")
 	var path := REAL_DATA if use_real and FileAccess.file_exists(REAL_DATA) else FIXTURE
 	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if typeof(doc) != TYPE_DICTIONARY or doc.get("trees",[]).is_empty():
@@ -58,7 +60,7 @@ func _sum(ranks: Dictionary) -> int:
 func _info(level: int, xp: int) -> Dictionary:
 	var floor_xp: int = XP_CURVE[level-1]
 	var next_xp: int = XP_CURVE[level] if level < XP_CURVE.size() else -1
-	return {"name":"서리의 마녀","xp":xp,"xp_floor":floor_xp,"xp_next":next_xp,"essence":31,"respec_cost":0}
+	return {"name":"서리의 마녀","xp":xp,"xp_floor":floor_xp,"xp_next":next_xp,"essence":31,"respec_cost":0,"portrait":portrait}
 
 func _show(level: int, xp: int, free: int, ranks: Dictionary, selected: String) -> void:
 	panel.set_data(tree,ranks,level,free,_info(level,xp))

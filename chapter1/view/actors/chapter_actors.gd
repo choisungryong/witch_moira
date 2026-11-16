@@ -498,7 +498,7 @@ func _setup_materials(node: Node) -> void:
 # Hero identity: element-coloured body tint, rim and ground disc. Presentation only.
 func _setup_hero_ground_ring() -> void:
 	var disc := MeshInstance3D.new();disc.name="HeroElementDisc"
-	var cyl := CylinderMesh.new();cyl.top_radius=.6;cyl.bottom_radius=.6;cyl.height=.01;cyl.radial_segments=48;cyl.rings=1
+	var cyl := CylinderMesh.new();cyl.top_radius=.68;cyl.bottom_radius=.68;cyl.height=.01;cyl.radial_segments=48;cyl.rings=1
 	disc.mesh=cyl;disc.position.y=.035;disc.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_hero_disc_material=StandardMaterial3D.new();_hero_disc_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;_hero_disc_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
 	_hero_disc_material.albedo_color=Color(.6,.9,1,.3);disc.material_override=_hero_disc_material;hero.add_child(disc)
@@ -516,13 +516,15 @@ func _apply_hero_element(primary: String) -> void:
 	var element: Color=HERO_ELEMENT_COLORS.get(primary,HERO_ELEMENT_COLORS["chapter1.skill.frost"])
 	# The robe texture stays as the dark base; the element colour leans into albedo,
 	# emission and a rim that follows the albedo tint (rim_tint=1).
-	var lean := Color(1.2,1.1,1.05).lerp(element*1.1,.4)
-	# The purple robe texture would survive a pale blue multiply, so arc cuts red harder.
-	if primary=="chapter1.skill.arc":lean=Color(.12,.5,1.35)
+	# Art review 20261116 (order 2): the body is NOT tinted by the element any more (it camouflaged
+	# the hero inside its own effects). Same dark base for all three; element colour stays in the rim.
+	# rim_tint=1 takes the rim colour from albedo, so a small lean (.22) is what lets the rim carry the element.
+	var lean := Color(1.15,1.12,1.08).lerp(element*1.3,.3)
 	for material in _hero_materials:
-		material.albedo_color=lean;material.rim_enabled=true;material.rim=.7;material.rim_tint=1.0
-		material.emission=element*.4;material.emission_energy_multiplier=.6
-	_hero_disc_material.albedo_color=Color(element.r,element.g,element.b,.32)
+		material.albedo_color=lean;material.rim_enabled=true;material.rim=1.0;material.rim_tint=1.0
+		material.emission=element*.15;material.emission_energy_multiplier=.6
+	# Disc: dark backing slightly wider than the ring (acts as the thin dark outline of the ring).
+	_hero_disc_material.albedo_color=Color(element.r*.12,element.g*.12,element.b*.12,.5)
 	_hero_ring_material.albedo_color=Color(element.r,element.g,element.b,.85)
 
 func sync__rigged(run: RefCounted,delta: float) -> void:
@@ -1114,24 +1116,21 @@ func _staff21(state: Dictionary) -> void:
 	var staff := Node3D.new();staff.name="CasterStaff21";staff.scale=state.model.scale;state.model.get_parent().add_child(staff);state.staff21=staff
 	if _staff21_mesh==null:_build_staff21()
 	var mesh := MeshInstance3D.new();mesh.name="StaffMesh";mesh.mesh=_staff21_mesh;mesh.layers=2;mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := _staff21_material.duplicate() as StandardMaterial3D;mat.set_meta("demon19_tint",Color.WHITE);mesh.material_override=mat;state.materials.append(mat);staff.add_child(mesh)
+	# D3: surface 0 (haft) uses the shared dark template as is; surface 1 (head) gets the per-actor clone with the crimson glow.
+	var mat := _staff21_material.duplicate() as StandardMaterial3D;mat.set_meta("demon19_tint",Color.WHITE)
+	mat.emission_enabled=true;mat.emission=Color("ff2f4f");mat.emission_energy_multiplier=.9
+	mesh.set_surface_override_material(0,_staff21_material);mesh.set_surface_override_material(1,mat);state.materials.append(mat);staff.add_child(mesh)
 func _build_staff21() -> void:
 	# A0-2: dark haft (2.0 long, was 3.2) + small crimson head (enemy threat color, ART-PLAN 2.1).
 	var cylinder := CylinderMesh.new();cylinder.top_radius=.06;cylinder.bottom_radius=.075;cylinder.height=2.0;cylinder.radial_segments=6
-	var prism := PrismMesh.new();prism.size=Vector3(.32,.5,.32)
-	var combined: Array=[]
-	for part in [{"mesh":cylinder,"y":.35,"color":Color(.16,.14,.12),"uv":Vector2(.25,.5)},{"mesh":prism,"y":1.65,"color":Color(1.0,.18,.31),"uv":Vector2(.75,.5)}]:
+	var prism := PrismMesh.new();prism.size=Vector3(.52,.80,.52)
+	_staff21_mesh=ArrayMesh.new()
+	for part in [{"mesh":cylinder,"y":.35,"color":Color(.16,.14,.12),"uv":Vector2(.25,.5)},{"mesh":prism,"y":1.75,"color":Color(.60,.10,.18),"uv":Vector2(.75,.5)}]:
 		var arrays: Array=part.mesh.surface_get_arrays(0).duplicate(true)
 		for i in arrays[Mesh.ARRAY_VERTEX].size():arrays[Mesh.ARRAY_VERTEX][i]+=Vector3(0,part.y,0)
 		var colors := PackedColorArray();colors.resize(arrays[Mesh.ARRAY_VERTEX].size());colors.fill(part.color);arrays[Mesh.ARRAY_COLOR]=colors
 		var uv := PackedVector2Array();uv.resize(colors.size());uv.fill(part.uv);arrays[Mesh.ARRAY_TEX_UV]=uv
-		if combined.is_empty():combined=arrays;continue
-		var offset: int=combined[Mesh.ARRAY_VERTEX].size()
-		for slot in Mesh.ARRAY_MAX:
-			if slot==Mesh.ARRAY_INDEX:
-				for value in arrays[slot]:combined[slot].append(value+offset)
-			elif arrays[slot]!=null:combined[slot].append_array(arrays[slot])
-	_staff21_mesh=ArrayMesh.new();_staff21_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,combined)
+		_staff21_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
 	# Cause of the white staff: the old 2x1 emission texture (black haft / teal head) did not gate the
 	# emission (red/blue test texels also rendered pure white), so emission = WHITE*.35 lit the whole mesh
 	# as a flat gray veil over the dark vertex colors. No emission now; color comes from vertex colors only.

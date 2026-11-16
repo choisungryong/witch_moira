@@ -355,6 +355,9 @@ func _ready() -> void:
 	hud.stash_equip.connect(func(id_: int):_sync_profile("다음 도전 장비 저장 완료" if profile.select_item(id_) else profile.error))
 	hud.stash_salvage.connect(func(id_: int):_sync_profile("장비 해체 저장 완료" if profile.salvage(id_) else profile.error))
 	hud.save_retry.connect(_save_terminal)
+	hud.skill_tree_open.connect(_open_skill_tree)
+	hud.skill_tree_commit.connect(_commit_skill_tree)
+	hud.skill_tree_respec.connect(_respec_skill_tree)
 	_ready__chapter()
 	DisplayServer.window_set_title("잿빛 회랑 · 제1장")
 	print("FULL_CHAPTER_READY ",JSON.stringify({"scene":"chapter1/ChapterOne.tscn","three_connected_zones":true,"scope":"Full chapter implementation candidate; quality/pacing/manual/audio gates open"}))
@@ -375,6 +378,7 @@ func start_run(id_: String) -> void:
 		if not build.is_empty() and not run.configure_build(build):
 			hud.notify("성장 빌드 오류 · "+str(run.errors));push_error("Build rejected: "+str(run.errors));return
 		view_before=profile.character_view(run_character_id) if not run_character_id.is_empty() else {}
+	hud.set_growth_result("",{},{},{})
 	# The signature unique is a first-clear reward, once per witch (her "boss" first-kill receipt); without a
 	# witch record it stays tied to the first completed run.
 	if profile.available and not run_character_id.is_empty():run.first_boss_kill=not "boss" in profile.character_entry(run_character_id).first_rewards
@@ -392,7 +396,53 @@ func _character_for(skill_id: String) -> String:
 	return ""
 
 func _sync_profile(note: String) -> void:
-	hud.profile_state=profile.state.duplicate(true);hud.profile_note=note;hud.invalidate()
+	hud.profile_state=profile.state.duplicate(true);hud.profile_note=note
+	var views := {}
+	for entry in ChapterProfile.progression_doc().get("characters",[]):
+		var view: Dictionary=profile.character_view(String(entry.id))
+		if not view.is_empty():views[String(entry.id)]=view
+	hud.character_views=views
+	hud.invalidate()
+
+# Skill-tree screen (G1 P4). The screen only asks; the profile's public functions decide and save.
+const WITCH_DISPLAY := {"chapter1.character.frost":["서리의 마녀","frost"],"chapter1.character.ember":["잿불의 마녀","ember"],"chapter1.character.arc":["뇌우의 마녀","storm"]}
+
+func _tree_info(character_id: String,view: Dictionary) -> Dictionary:
+	var shown: Array=WITCH_DISPLAY.get(character_id,["마녀","frost"])
+	return {"name":shown[0],"portrait":shown[1],"xp":int(view.xp),"xp_floor":int(view.xp_level_start),
+		"xp_next":-1 if int(view.xp_to_next)<=0 else int(view.xp_for_next),
+		"essence":int(profile.state.essence),"respec_cost":profile.respec_cost(character_id)}
+
+func _open_skill_tree(character_id: String) -> void:
+	if run.mode not in ["menu","victory","defeat"]:return
+	var view: Dictionary=profile.character_view(character_id)
+	if view.is_empty() or not bool(view.has_tree):hud.notify("이 마녀의 스킬 트리는 아직 열리지 않았습니다");return
+	var tree: Dictionary=ChapterProfile.trees().get(String(view.tree_id),{})
+	if tree.is_empty():hud.notify("스킬 트리 데이터를 읽지 못했습니다");return
+	hud.show_skill_tree(character_id,tree,view,_tree_info(character_id,view))
+	if bool(view.refunded_notice):
+		hud.update_skill_tree(view,_tree_info(character_id,view),"트리가 개정되어 투자한 포인트를 돌려받았습니다.")
+		profile.acknowledge_notice(character_id)
+
+func _after_tree_saved(character_id: String,note: String,notice: String) -> void:
+	var view: Dictionary=profile.character_view(character_id)
+	_sync_profile(note)
+	# The result screen shows this witch's points; keep it in step without replaying its gold-bar animation.
+	if character_id==run_character_id and not view_after.is_empty():
+		view_after=view
+		hud.set_growth_result(run_character_id,view_before,view_after,run_progress,false)
+	hud.update_skill_tree(view,_tree_info(character_id,view),notice)
+
+func _commit_skill_tree(character_id: String,ranks: Dictionary) -> void:
+	if profile.commit_tree(character_id,ranks):_after_tree_saved(character_id,"스킬 트리 저장 완료","투자를 확정했습니다 · 저장 완료")
+	else:hud.skill_tree_error(profile.error+" · 예정 투자는 화면에 남겨 두었습니다")
+
+func _respec_skill_tree(character_id: String) -> void:
+	if profile.respec(character_id):_after_tree_saved(character_id,"스킬 트리 초기화 저장 완료","전체 초기화 · 포인트를 모두 돌려받았습니다")
+	else:
+		var view: Dictionary=profile.character_view(character_id)
+		hud.update_skill_tree(view,_tree_info(character_id,view))
+		hud.skill_tree_error(profile.error)
 
 func _save_terminal() -> void:
 	if run.mode not in ["victory","defeat"]:return
@@ -403,8 +453,11 @@ func _save_terminal() -> void:
 	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress):
 		_saved_receipt=_receipt
 		if not run_character_id.is_empty():view_after=profile.character_view(run_character_id)
+		hud.set_growth_result(run_character_id,view_before,view_after,run_progress)
 		_sync_profile("이번 도전 보상 저장 완료 · 장비 %d개"%profile.state.items.size())
-	else:_sync_profile(profile.error+" · 현재 보상은 이 화면에 유지됩니다")
+	else:
+		hud.set_growth_result(run_character_id,view_before,{},run_progress)
+		_sync_profile(profile.error+" · 현재 보상은 이 화면에 유지됩니다")
 func _unhandled_key_input__chapterx(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key: int=event.keycode if event.keycode!=0 else event.physical_keycode

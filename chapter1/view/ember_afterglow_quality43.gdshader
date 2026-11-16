@@ -30,6 +30,6 @@ void fragment(){
  float embers=body*erosion*smoothstep(.10,.32,age)*(1.-smoothstep(.58,.98,age));
  vec3 coal=vec3(.15,.018,.003);
  ALBEDO=mix(coal,vec3(.92,.16,.012),clamp(flame*1.8,0.,1.));
- EMISSION=vec3(1.,.34,.025)*flame*2.0+vec3(1.,.82,.40)*ignition*support*2.2+vec3(.80,.065,.004)*embers*.75;
- ALPHA=clamp(body*(tongue*.29*pow(1.-age,1.8)+embers*.14)+ignition*support*.26,0.,.60);
+ EMISSION=vec3(1.,.34,.025)*flame*1.4+vec3(1.,.75,.36)*ignition*support*1.2+vec3(.80,.065,.004)*embers*.75;
+ ALPHA=clamp(body*(tongue*.29*pow(1.-age,1.8)+embers*.14)+ignition*support*.20,0.,.50);
 }

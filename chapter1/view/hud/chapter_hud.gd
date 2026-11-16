@@ -329,6 +329,11 @@ func reset__cloister() -> void:
 
 # ---- chapter1/view/chapter_hud.gd ----
 var boss_bar: ProgressBar
+var boss_name: Label
+## Champion bar (A2 3.5): top centre, all of it above y 180 (outside the central 60 percent of the field).
+const BOSS_BAR_WIDTH := 560.0
+const BOSS_BAR_HEIGHT := 14.0
+const BOSS_BAR_TOP := 100.0
 signal stash_show
 signal stash_equip(storage_id: int)
 signal stash_salvage(storage_id: int)
@@ -344,8 +349,15 @@ func _init() -> void:
 	victory_title="제1장 · 회랑의 파수왕을 처치했습니다"
 func setup__chapter(view: Node3D) -> void:
 	setup__cloister(view)
-	boss_bar=_bar(Color("943929"),9);boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	boss_bar.offset_left=-210;boss_bar.offset_right=210;boss_bar.offset_top=93;boss_bar.offset_bottom=102;boss_bar.visible=false;root.add_child(boss_bar)
+	boss_bar=_bar(Palette.THREAT_DEEP,BOSS_BAR_HEIGHT);boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_style_boss_bar()
+	boss_bar.offset_left=-BOSS_BAR_WIDTH*.5;boss_bar.offset_right=BOSS_BAR_WIDTH*.5;boss_bar.offset_top=BOSS_BAR_TOP;boss_bar.offset_bottom=BOSS_BAR_TOP+BOSS_BAR_HEIGHT;boss_bar.visible=false;root.add_child(boss_bar)
+	boss_name=_label("",18,Palette.INK);boss_name.autowrap_mode=TextServer.AUTOWRAP_OFF;boss_name.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	boss_name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;boss_name.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
+	boss_name.add_theme_constant_override("outline_size",4);boss_name.add_theme_color_override("font_outline_color",Color(0,0,0,.85))
+	boss_name.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	boss_name.offset_left=-BOSS_BAR_WIDTH*.5;boss_name.offset_right=BOSS_BAR_WIDTH*.5;boss_name.offset_top=BOSS_BAR_TOP-28;boss_name.offset_bottom=BOSS_BAR_TOP-3
+	boss_name.visible=false;root.add_child(boss_name)
 func sync__chapter(run: RefCounted,delta: float) -> void:
 	sync__cloister(run,delta)
 	if run.hero.is_empty():return
@@ -438,7 +450,7 @@ var _discovery_left := 0.0
 func setup__q17(view: Node3D) -> void:
 	setup__chapter(view)
 	_discovery=PanelContainer.new();_discovery.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_discovery.offset_left=-255;_discovery.offset_right=255;_discovery.offset_top=112
+	_place_notice(_discovery,104.0)
 	_discovery.add_theme_stylebox_override("panel",_style(Color(.07,.08,.08,.95),Color("c88b46")))
 	_discovery.mouse_filter=Control.MOUSE_FILTER_IGNORE;_discovery.visible=false;root.add_child(_discovery)
 func sync__q17(run: RefCounted,delta: float) -> void:
@@ -569,13 +581,13 @@ func _queue_discovery20(item: Dictionary) -> void:
 func _present_discovery20(item: Dictionary) -> void:
 	for child in _discovery.get_children():_discovery.remove_child(child);child.queue_free()
 	var color: Color=QUALITY_COLORS.get(item.quality,Color.WHITE)
-	_discovery.offset_bottom=_discovery.offset_top+104
-	_discovery.add_theme_stylebox_override("panel",_style(Color(.055,.06,.065,.97),color.darkened(.2)))
-	var row := HBoxContainer.new();row.add_theme_constant_override("separation",16);_discovery.add_child(row)
+	_place_notice(_discovery,104.0)
+	_discovery.add_theme_stylebox_override("panel",_notice_style(color.darkened(.2)))
+	var row := HBoxContainer.new();row.add_theme_constant_override("separation",12);_discovery.add_child(row)
 	row.add_child(_sigil(item));var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
 	var header := "고유 장비 획득" if item.quality=="unique" else ("전설 장비 획득" if item.quality=="legendary" else ("첫 희귀 장비" if item.quality=="rare" else "첫 마법 장비"))
 	var header_label := _label(header+" · "+SLOT_NAMES[item.slot],14,color);header_label.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header_label)
-	var name_label := _label(item.name,22,Color("eee4cf"));name_label.custom_minimum_size.x=410;name_label.autowrap_mode=TextServer.AUTOWRAP_OFF;name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.tooltip_text=item.name;column.add_child(name_label)
+	var name_label := _label(item.name,20,Palette.INK);name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.autowrap_mode=TextServer.AUTOWRAP_OFF;name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.tooltip_text=item.name;column.add_child(name_label)
 	var hint := _label("[I] 장비 능력 비교 · 장착",14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
 	_settle_discovery20(row)
 	_discovery_left=3.2;_discovery20_gap=4.4
@@ -585,7 +597,7 @@ func _settle_discovery20(row: Control) -> void:
 	# A temporary wrapped-label minimum can enlarge a PanelContainer; smaller
 	# children do not automatically shrink its previous rect after replacement.
 	for i in 2:await root.get_tree().process_frame
-	if is_instance_valid(row) and row.get_parent()==_discovery:_discovery.offset_bottom=_discovery.offset_top+104
+	if is_instance_valid(row) and row.get_parent()==_discovery:_place_notice(_discovery,104.0)
 func reset() -> void:
 	clear_upgrade()
 	reset__q17();_discovery20_seeded=false;_discovery20_magic=false;_discovery20_slots.clear();_discovery20_uids.clear();_discovery20_queue.clear();_discovery20_gap=0;_discovery20_name="";discovery20_history.clear()
@@ -639,7 +651,7 @@ func _card_description__q36(card: Dictionary,run: RefCounted) -> String:
 ## Presentation successor only: inherited signals, saves, rewards and scrolling.
 const LifeSeal38=preload("res://chapter1/view/ui38/life_seal.gd")
 const ElementSeal38=preload("res://chapter1/view/ui38/element_seal.gd")
-const BRASS38=Color("aa8d58")
+const BRASS38=Palette.BRASS
 var life_seal38: Control
 var level38: Label
 var _focus_return38: WeakRef
@@ -647,7 +659,7 @@ var _focus_return38: WeakRef
 func _style(color: Color, border: Color=BRASS38) -> StyleBoxFlat:
 	# Normalize the inherited warm surfaces to carbonized stone; rarity remains.
 	var surface := color
-	if color.r>color.b*1.12 and color.r<0.34:surface=Color("17191b")
+	if color.r>color.b*1.12 and color.r<0.34:surface=Palette.SURFACE
 	var s := StyleBoxFlat.new()
 	s.bg_color=surface;s.border_color=border;s.set_border_width_all(1)
 	s.set_content_margin_all(20)
@@ -658,12 +670,12 @@ func _style(color: Color, border: Color=BRASS38) -> StyleBoxFlat:
 func _button(text: String, action: Callable) -> Button:
 	var b := Button.new();b.text=text;b.custom_minimum_size.y=48
 	b.add_theme_font_size_override("font_size",18)
-	b.add_theme_color_override("font_color",Color("e7dfc9"))
+	b.add_theme_color_override("font_color",Palette.INK)
 	b.add_theme_color_override("font_disabled_color",Color("777a78"))
-	for entry in [["normal","202628","665c46"],["hover","303a3d","c8ae76"],["pressed","111719","e7dfc9"],["disabled","191d1f","3e4343"]]:
-		var s := _style(Color(entry[1]),Color(entry[2]));s.set_content_margin_all(12)
+	for entry in [["normal",Palette.SURFACE_RAISED,Palette.BRASS_DIM],["hover",Color("303a3d"),Palette.BRASS],["pressed",Color("111719"),Palette.INK],["disabled",Color("191d1f"),Color("3e4343")]]:
+		var s := _style(entry[1],entry[2]);s.set_content_margin_all(12)
 		b.add_theme_stylebox_override(entry[0],s)
-	var focus := StyleBoxFlat.new();focus.bg_color=Color(0,0,0,0);focus.border_color=Color("f1d6a1");focus.set_border_width_all(3)
+	var focus := StyleBoxFlat.new();focus.bg_color=Color(0,0,0,0);focus.border_color=Palette.BRASS_HI;focus.set_border_width_all(3)
 	b.add_theme_stylebox_override("focus",focus)
 	b.pressed.connect(action)
 	return b
@@ -679,7 +691,7 @@ func setup__q38(view: Node3D) -> void:
 	root.add_child(top)
 	var goal_plate := _backplate38();goal_plate.custom_minimum_size.x=460
 	top.add_child(goal_plate);objective.reparent(goal_plate);objective.custom_minimum_size.x=430
-	objective.add_theme_color_override("font_color",Color("f2ebd8"))
+	objective.add_theme_color_override("font_color",Palette.INK)
 	objective.add_theme_font_size_override("font_size",19)
 	var top_space := Control.new();top_space.size_flags_horizontal=Control.SIZE_EXPAND_FILL;top.add_child(top_space)
 	for child in old_top.get_child(0).get_children():
@@ -698,7 +710,7 @@ func setup__q38(view: Node3D) -> void:
 	var vital_plate := _backplate38();vital_plate.size_flags_vertical=Control.SIZE_SHRINK_CENTER;dock.add_child(vital_plate)
 	var vital := VBoxContainer.new();vital.custom_minimum_size.x=230;vital.alignment=BoxContainer.ALIGNMENT_CENTER;vital_plate.add_child(vital)
 	status.reparent(vital);status.add_theme_font_size_override("font_size",18)
-	status.add_theme_color_override("font_color",Color("f2ebd8"))
+	status.add_theme_color_override("font_color",Palette.INK)
 	hp.reparent(vital);hp.custom_minimum_size.y=8
 	level38=_label("",16,Color("d4cdbb"));vital.add_child(level38)
 	xp.reparent(vital);xp.custom_minimum_size.y=5
@@ -710,14 +722,14 @@ func setup__q38(view: Node3D) -> void:
 	for chip in sigils.get_children():
 		chip.custom_minimum_size=Vector2(160,58);chip.size_flags_horizontal=Control.SIZE_FILL
 		var slot := PanelContainer.new();slot.size_flags_vertical=Control.SIZE_SHRINK_CENTER
-		var frame := _style(Color(.045,.06,.065,.94),Color("665c46"));frame.set_content_margin_all(10);frame.border_width_bottom=3
+		var frame := _style(Color(.045,.06,.065,.94),Palette.BRASS_DIM);frame.set_content_margin_all(10);frame.border_width_bottom=3
 		slot.add_theme_stylebox_override("panel",frame);sigils.add_child(slot);chip.reparent(slot)
 		for child in chip.get_children():
 			if child is Label:child.custom_minimum_size.x=115;child.add_theme_font_size_override("font_size",17)
 	var right_space := Control.new();right_space.size_flags_horizontal=Control.SIZE_EXPAND_FILL;dock.add_child(right_space)
 	var dash_plate := _backplate38();dash_plate.size_flags_vertical=Control.SIZE_SHRINK_CENTER;dock.add_child(dash_plate)
 	dash.reparent(dash_plate);dash.custom_minimum_size.x=195;dash.add_theme_font_size_override("font_size",18)
-	dash.add_theme_color_override("font_color",Color("f2ebd8"))
+	dash.add_theme_color_override("font_color",Palette.INK)
 	toast.add_theme_color_override("font_color",Color("f3dfac"))
 	var toast_back := _plate_style38();toast_back.content_margin_left=16;toast_back.content_margin_right=16
 	toast.add_theme_stylebox_override("normal",toast_back)
@@ -725,7 +737,7 @@ func setup__q38(view: Node3D) -> void:
 	# Keep overlays above the replacement dock, and retain boss/toast layering.
 	root.move_child(overlay,root.get_child_count()-1)
 	modal.offset_left=90;modal.offset_right=-90;modal.offset_top=104;modal.offset_bottom=-76
-	modal.add_theme_stylebox_override("panel",_style(Color("17191b"),BRASS38))
+	modal.add_theme_stylebox_override("panel",_style(Palette.SURFACE,BRASS38))
 	overlay.color=Color(.025,.035,.045,.87)
 
 func _plate_style38() -> StyleBoxFlat:
@@ -785,8 +797,8 @@ func _growth_cards38__q38(run: RefCounted) -> void:
 		var panel := cards.get_child(i)
 		var card: Dictionary=offer.cards[i]
 		var element := String(card.get("skill_id","")).get_slice(".",2)
-		var tint: Color={"ember":Color("e8a05a"),"frost":Color("7cc9d9"),"arc":Color("abb8ec")}.get(element,BRASS38)
-		var frame := _style(Color("202628"),tint.darkened(.35));frame.border_width_top=4
+		var tint: Color={"ember":Palette.FIRE_TEXT,"frost":Palette.FROST_TEXT,"arc":Palette.ARC_TEXT}.get(element,BRASS38)
+		var frame := _style(Palette.SURFACE_RAISED,tint.darkened(.35));frame.border_width_top=4
 		panel.add_theme_stylebox_override("panel",frame)
 		var column := panel.get_child(0)
 		column.add_theme_constant_override("separation",8)
@@ -824,16 +836,16 @@ func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 	var target_slot: String=data.get("slot",candidate_item.slot)
 	var wearable: bool=data.get("can_equip",true)
 	title.add_child(_label(SLOT_NAMES[target_slot]+" · "+QUALITY_NAMES[candidate_item.quality],16,rarity))
-	title.add_child(_label(candidate_item.name,28,Color("e7dfc9")))
+	title.add_child(_label(candidate_item.name,28,Palette.INK))
 	if int(candidate_item.get("required_level",1))>1:
-		title.add_child(_label("요구 레벨 %d"%int(candidate_item.required_level)+("" if wearable else " · 아직 착용할 수 없습니다"),15,Color("b5b0a3") if wearable else Color("d9735f")))
+		title.add_child(_label("요구 레벨 %d"%int(candidate_item.required_level)+("" if wearable else " · 아직 착용할 수 없습니다"),15,Palette.INK_DIM if wearable else Color("d9735f")))
 	var current_line: String="현재 "+String(SLOT_NAMES[target_slot])+" 슬롯이 비어 있습니다" if current_item.is_empty() else "현재 장비  "+String(current_item.name)
-	details.add_child(_label(current_line,17,Color("b5b0a3")))
+	details.add_child(_label(current_line,17,Palette.INK_DIM))
 	var rule := HSeparator.new();details.add_child(rule)
 	var stats_row := HBoxContainer.new();stats_row.add_theme_constant_override("separation",32);details.add_child(stats_row)
 	var stats := VBoxContainer.new();stats.size_flags_horizontal=Control.SIZE_EXPAND_FILL;stats_row.add_child(stats)
 	stats.add_child(_label("선택 장비의 효과",18,rarity));stats.add_child(_label(_stats(candidate_item.stats),19))
-	if not candidate_item.get("description","").is_empty():stats.add_child(_label(candidate_item.description,17,Color("b5b0a3")))
+	if not candidate_item.get("description","").is_empty():stats.add_child(_label(candidate_item.description,17,Palette.INK_DIM))
 	if not current_item.is_empty():
 		var difference: Dictionary={}
 		var current: Dictionary=current_item.get("stats",{})
@@ -844,7 +856,7 @@ func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 		for key in current:
 			if not candidate.has(key) and int(current[key])!=0:difference[key]=-int(current[key])
 		var delta := VBoxContainer.new();delta.size_flags_horizontal=Control.SIZE_EXPAND_FILL;stats_row.add_child(delta)
-		delta.add_child(_label("현재 장비에서 변화",18,Color("b5b0a3")));delta.add_child(_label(_delta_text38(difference),19))
+		delta.add_child(_label("현재 장비에서 변화",18,Palette.INK_DIM));delta.add_child(_label(_delta_text38(difference),19))
 	var uid: int=candidate_item.uid
 	var active: bool=not run.equip_slot_of(uid).is_empty()
 	var equip_button := _button("장착 중" if active else ("레벨 부족" if not wearable else "이 장비 장착"),func():equip_item.emit(uid))
@@ -862,19 +874,29 @@ func _decorate38(node: Node) -> void:
 	# Inherited card/equipment structure and callbacks are retained verbatim.
 	for child in node.get_children():
 		if child is PanelContainer and child!=modal and not child.has_theme_stylebox_override("panel"):
-			child.add_theme_stylebox_override("panel",_style(Color("202628"),BRASS38))
+			child.add_theme_stylebox_override("panel",_style(Palette.SURFACE_RAISED,BRASS38))
 		_decorate38(child)
 
 func _focus_modal38() -> void:
 	if not overlay.visible:return
+	# The skill-tree screen owns the keyboard while it is open; a rebuild of the menu beneath it must not take focus.
+	if is_instance_valid(skill_panel) and skill_panel.visible:return
 	var buttons: Array[Control]=[]
 	_collect_focus38(modal,buttons)
 	if buttons.is_empty():return
+	# The menu's tree button sits left of the start buttons in the tree but should come after them in the focus chain.
+	if is_instance_valid(_menu_tree_button) and buttons[0]==_menu_tree_button and buttons.size()>3:
+		buttons.remove_at(0);buttons.insert(3,_menu_tree_button)
 	for i in buttons.size():
 		var b := buttons[i]
 		b.focus_next=b.get_path_to(buttons[(i+1)%buttons.size()])
 		b.focus_previous=b.get_path_to(buttons[(i+buttons.size()-1)%buttons.size()])
-	buttons[0].grab_focus()
+	var first: Control=buttons[0]
+	# A rebuilt menu keeps looking at the witch that was selected, not at the first one.
+	if _menu_witch>0 and _menu_witch<_menu_starts.size() and is_instance_valid(_menu_tree_button) and _menu_tree_button.is_inside_tree():
+		var wanted: Button=_menu_starts[_menu_witch]
+		if is_instance_valid(wanted) and not wanted.disabled:first=wanted
+	first.grab_focus()
 
 func _collect_focus38(node: Node,items: Array[Control]) -> void:
 	for child in node.get_children():
@@ -907,7 +929,7 @@ func setup__q40(view: Node3D) -> void:
 		var entry := _label("",15);entry.mouse_filter=Control.MOUSE_FILTER_IGNORE
 		entry.autowrap_mode=TextServer.AUTOWRAP_OFF
 		row.add_child(entry);_route_labels40.append(entry)
-	_route_hint40=_label("",14,Color("c4bcaa"));_route_hint40.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(_route_hint40)
+	_route_hint40=_label("",14,Palette.INK_DIM);_route_hint40.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(_route_hint40)
 	root.move_child(overlay,root.get_child_count()-1)
 
 func sync__q40(run: RefCounted,delta: float) -> void:
@@ -935,7 +957,7 @@ func _build_modal__q40(run: RefCounted) -> void:
 	if not stash_open and run.mode in ["victory","defeat"]:
 		_build_result40(run)
 		modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		modal.offset_left=-620;modal.offset_right=620;modal.offset_top=-260;modal.offset_bottom=260
+		modal.offset_left=-620;modal.offset_right=620;modal.offset_top=-310;modal.offset_bottom=310
 		_focus_modal38.call_deferred()
 
 func _clear_modal40() -> VBoxContainer:
@@ -946,11 +968,11 @@ func _clear_modal40() -> VBoxContainer:
 func _filter40(values: Array,names: Array,current: int,change: Callable) -> OptionButton:
 	var option := OptionButton.new();option.custom_minimum_size=Vector2(170,42)
 	for state in ["normal","hover","pressed","disabled"]:
-		var compact := _style(Color("202628"),Color("665c46"));compact.content_margin_top=8;compact.content_margin_bottom=8
+		var compact := _style(Palette.SURFACE_RAISED,Palette.BRASS_DIM);compact.content_margin_top=8;compact.content_margin_bottom=8
 		compact.content_margin_left=12;compact.content_margin_right=12
 		option.add_theme_stylebox_override(state,compact)
 	var focus := StyleBoxFlat.new();focus.bg_color=Color.TRANSPARENT
-	focus.border_color=Color("f1d6a1");focus.set_border_width_all(3)
+	focus.border_color=Palette.BRASS_HI;focus.set_border_width_all(3)
 	option.add_theme_stylebox_override("focus",focus)
 	for name_ in names:option.add_item(String(name_))
 	option.select(current)
@@ -979,8 +1001,8 @@ func _build_stash() -> void:
 	if is_instance_valid(_stash_scroll40) and not _stash_reset_scroll40:_stash_offset40=_stash_scroll40.scroll_vertical
 	_stash_reset_scroll40=false
 	var box := _clear_modal40();overlay.visible=true
-	box.add_child(_label("다음 도전의 장비",30,Color("e8d5a6")))
-	box.add_child(_label("보유 장비 %d개 · 슬롯마다 하나씩, 반지는 둘까지 장착합니다"%profile_state.get("items",[]).size(),17,Color("c4bcaa")))
+	box.add_child(_label("다음 도전의 장비",30,Palette.INK))
+	box.add_child(_label("보유 장비 %d개 · 슬롯마다 하나씩, 반지는 둘까지 장착합니다"%profile_state.get("items",[]).size(),17,Palette.INK_DIM))
 	var filters := HBoxContainer.new();filters.add_theme_constant_override("separation",10);box.add_child(filters)
 	var slots: Array=["","weapon","head","body","hands","feet","charm","ring"]
 	var qualities: Array=["","common","magic","rare","legendary","unique"]
@@ -991,7 +1013,7 @@ func _build_stash() -> void:
 	var order := _filter40([0,1,2],["최근 획득 순","등급 높은 순","이름 순"],_stash_sort40,func(value):_stash_sort40=int(value);_reset_stash_filter40())
 	order.tooltip_text="보관함 정렬";filters.add_child(order)
 	var records: Array[Dictionary]=_stash_records40()
-	var count_label := _label("표시 %d개"%records.size(),15,Color("c4bcaa"));count_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+	var count_label := _label("표시 %d개"%records.size(),15,Palette.INK_DIM);count_label.autowrap_mode=TextServer.AUTOWRAP_OFF
 	count_label.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;filters.add_child(count_label)
 	var row := HBoxContainer.new();row.size_flags_vertical=Control.SIZE_EXPAND_FILL;row.add_theme_constant_override("separation",20);box.add_child(row)
 	_stash_scroll40=ScrollContainer.new();_stash_scroll40.custom_minimum_size.x=390
@@ -1018,7 +1040,7 @@ func _build_stash() -> void:
 	var details := VBoxContainer.new();details.size_flags_horizontal=Control.SIZE_EXPAND_FILL;details.add_theme_constant_override("separation",14);detail_scroll.add_child(details)
 	if not selected.is_empty():_stash_detail40(details,selected)
 	else:details.add_child(_label("장비를 선택하면 효과와 장착 상태를 확인할 수 있습니다.",18))
-	box.add_child(_label("재 %d · 완료한 도전 %d\n%s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note if not profile_note.is_empty() else "저장 상태 확인 중"],15,Color("c4bcaa")))
+	box.add_child(_label("재 %d · 완료한 도전 %d\n%s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note if not profile_note.is_empty() else "저장 상태 확인 중"],15,Palette.INK_DIM))
 	box.add_child(_button("돌아가기 [Esc]",func():stash_open=false;invalidate()))
 	_restore_stash40.call_deferred(_stash_scroll40,_stash_offset40)
 
@@ -1029,11 +1051,11 @@ func _stash_detail40(details: VBoxContainer,record: Dictionary) -> void:
 	var heading := HBoxContainer.new();heading.add_theme_constant_override("separation",16);details.add_child(heading)
 	heading.add_child(_sigil(item));var title := VBoxContainer.new();title.size_flags_horizontal=Control.SIZE_EXPAND_FILL;heading.add_child(title)
 	title.add_child(_label(String(SLOT_NAMES[item.slot])+" · "+String(QUALITY_NAMES[item.quality]),16,rarity))
-	title.add_child(_label(item.name,25,Color("e8d5a6")))
-	details.add_child(_label("다음 도전에 장착 중" if active else "보관 중 · 다음 도전에 장착할 수 있습니다",17,Color("a8baaa") if active else Color("c4bcaa")))
+	title.add_child(_label(item.name,25,Palette.INK))
+	details.add_child(_label("다음 도전에 장착 중" if active else "보관 중 · 다음 도전에 장착할 수 있습니다",17,Color("a8baaa") if active else Palette.INK_DIM))
 	details.add_child(HSeparator.new());details.add_child(_label(_stats(item.get("stats",{})),18))
-	if not String(item.get("description","")).is_empty():details.add_child(_label(item.description,17,Color("c4bcaa")))
-	if int(item.get("required_level",1))>1:details.add_child(_label("요구 레벨 %d"%int(item.required_level),15,Color("c4bcaa")))
+	if not String(item.get("description","")).is_empty():details.add_child(_label(item.description,17,Palette.INK_DIM))
+	if int(item.get("required_level",1))>1:details.add_child(_label("요구 레벨 %d"%int(item.required_level),15,Palette.INK_DIM))
 	var equip_button := _button("장착 중" if active else "다음 도전에 장착",func():stash_equip.emit(id_));equip_button.disabled=active;details.add_child(equip_button)
 	details.add_child(_button("이 장비 해체",func():_storage_selection=-1;stash_salvage.emit(id_)))
 	details.add_child(_label("해체하면 장비가 사라지고 재로 전환됩니다.",14,Color("bca58f")))
@@ -1048,9 +1070,9 @@ func _reset_stash_filter40() -> void:
 func _build_result40__q40(run: RefCounted) -> void:
 	var box := _clear_modal40()
 	var victorious: bool=run.mode=="victory"
-	box.add_child(_label("회랑의 서약을 완수했습니다" if victorious else "이번 도전이 끝났습니다",32,Color("e8d5a6")))
+	box.add_child(_label("회랑의 서약을 완수했습니다" if victorious else "이번 도전이 끝났습니다",32,Palette.INK))
 	var growth: Dictionary=run.growth.snapshot()
-	box.add_child(_label("%02d:%02d  ·  %d 처치  ·  레벨 %d"%[run.tick/3600,(run.tick/60)%60,run.kills,growth.level],19,Color("c4bcaa")))
+	box.add_child(_label("%02d:%02d  ·  %d 처치  ·  레벨 %d"%[run.tick/3600,(run.tick/60)%60,run.kills,growth.level],19,Palette.INK_DIM))
 	var columns := HBoxContainer.new();columns.size_flags_vertical=Control.SIZE_EXPAND_FILL;columns.add_theme_constant_override("separation",22);box.add_child(columns)
 	var summary := VBoxContainer.new();summary.custom_minimum_size.x=350;summary.add_theme_constant_override("separation",12);columns.add_child(summary)
 	summary.add_child(_label("이번 도전 장비",20,BRASS38))
@@ -1067,10 +1089,10 @@ func _build_result40__q40(run: RefCounted) -> void:
 	for item in run.inventory:
 		if int(item.uid)==int(run._elite_reward_uid):elite_item=item;break
 	if not elite_item.is_empty():
-		var reward_frame := PanelContainer.new();reward_frame.add_theme_stylebox_override("panel",_style(Color("202628"),Color("b98140")));rewards.add_child(reward_frame)
+		var reward_frame := PanelContainer.new();reward_frame.add_theme_stylebox_override("panel",_style(Palette.SURFACE_RAISED,Color("b98140")));rewards.add_child(reward_frame)
 		var reward_row := HBoxContainer.new();reward_row.add_theme_constant_override("separation",12);reward_frame.add_child(reward_row)
 		reward_row.add_child(_sigil(elite_item));var names := VBoxContainer.new();names.size_flags_horizontal=Control.SIZE_EXPAND_FILL;reward_row.add_child(names)
-		names.add_child(_label("파수왕의 유산",15,Palette.QUALITY_UNIQUE));names.add_child(_label(elite_item.name,23,Color("e8d5a6")))
+		names.add_child(_label("파수왕의 유산",15,Palette.QUALITY_UNIQUE));names.add_child(_label(elite_item.name,23,Palette.INK))
 	else:rewards.add_child(_label("보유 장비는 보관함에서 확인하고 다음 도전에 장착할 수 있습니다.",18))
 	rewards.add_child(_label("저장 상태",17,Color("a8baaa")))
 	rewards.add_child(_label(profile_note if not profile_note.is_empty() else "저장 상태 확인 중",17))
@@ -1098,6 +1120,20 @@ func _build_modal__q41(run: RefCounted) -> void:
 	_build_menu41(original,inherited_starts)
 	_focus_modal38.call_deferred()
 
+## One start button, two inks: the skill name in its element's text colour, the summary line in the dim ink.
+## The button's own text is emptied (it would take one colour); the start callback stays on the button.
+func _two_line_choice(button: Button,name_text: String,summary: String,tint: Color) -> void:
+	button.text="";button.tooltip_text=name_text+" · "+summary
+	var holder := VBoxContainer.new();holder.name="ChoiceText";holder.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.offset_left=12;holder.offset_right=-12;holder.offset_top=6;holder.offset_bottom=-6
+	holder.alignment=BoxContainer.ALIGNMENT_CENTER;holder.add_theme_constant_override("separation",4)
+	for line in [[name_text,20,tint],[summary,17,Palette.INK_DIM]]:
+		var label := _label(line[0],line[1],line[2]);label.autowrap_mode=TextServer.AUTOWRAP_OFF
+		label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;label.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		holder.add_child(label)
+	button.add_child(holder)
+
 func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> void:
 	# Keep the exact three inherited skill-id closures and the real profile
 	# footer. Reparenting changes presentation, not the start/save contract.
@@ -1115,13 +1151,16 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 	modal.remove_child(original)
 	var row := HBoxContainer.new();row.name="OathMenu41"
 	row.add_theme_constant_override("separation",34);modal.add_child(row)
+	# Left column: the witch's portrait, then her permanent-growth summary and the skill-tree button (G1 P4).
+	var left := VBoxContainer.new();left.name="WitchColumn";left.add_theme_constant_override("separation",8)
+	left.size_flags_vertical=Control.SIZE_SHRINK_CENTER;row.add_child(left)
 	var portrait_frame := PanelContainer.new();portrait_frame.name="OathPortrait41"
 	portrait_frame.size_flags_vertical=Control.SIZE_SHRINK_CENTER
-	var portrait_style := _style(Color("111416"),Color("665c46"))
+	var portrait_style := _style(Color("111416"),Palette.BRASS_DIM)
 	portrait_style.set_content_margin_all(12);portrait_style.border_width_top=1
-	portrait_frame.add_theme_stylebox_override("panel",portrait_style);row.add_child(portrait_frame)
+	portrait_frame.add_theme_stylebox_override("panel",portrait_style);left.add_child(portrait_frame)
 	var portrait := TextureRect.new();portrait.name="PortraitTexture41"
-	portrait.texture=WitchPortraits[0];portrait.custom_minimum_size=Vector2(360,540)
+	portrait.texture=WitchPortraits[_menu_witch];portrait.custom_minimum_size=Vector2(280,420)
 	# Official4.5 TextureRect: IGNORE_SIZE permits the source1024x1536 to
 	# shrink; KEEP_ASPECT_CENTERED shows the whole portrait without distortion.
 	# https://docs.godotengine.org/en/4.5/classes/class_texturerect.html
@@ -1132,28 +1171,30 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 	body.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation",12);row.add_child(body)
 	title.reparent(body);title.add_theme_font_size_override("font_size",40)
-	title.add_theme_color_override("font_color",Color("e8d5a6"))
+	title.add_theme_color_override("font_color",Palette.INK)
 	description.reparent(body);description.add_theme_font_size_override("font_size",19)
 	description.add_theme_color_override("font_color",Color("d0c7b6"))
 	controls.reparent(body);controls.add_theme_font_size_override("font_size",15)
 	controls.add_theme_color_override("font_color",Color("aeb5ab"))
-	body.add_child(_label("첫 기술을 선택하세요",17,Color("aa8d58")))
+	body.add_child(_label("첫 기술을 선택하세요",17,Palette.INK_DIM))
 	var choices := VBoxContainer.new();choices.name="PrimarySkillChoices41"
 	choices.add_theme_constant_override("separation",8);body.add_child(choices)
-	var tints := [Color("e8a05a"),Color("7cc9d9"),Color("abb8ec")]
+	var tints := [Palette.FIRE_TEXT,Palette.FROST_TEXT,Palette.ARC_TEXT]
 	# Rank1 base definitions: growth_quality37.json. Gear can modify these
 	# later; rank1 frost slows but has freeze_stacks=0, so no freeze claim.
 	var summaries := ["기본 피해 12 · 화염탄 1발","기본 피해 10 · 관통 2회 · 적 이동 속도 -20%","기본 피해 9 · 3대상 연쇄 · 짧은 기절"]
 	for i in starts.size():
 		var button := starts[i] as Button
 		# The portrait follows whichever start the player is looking at.
-		button.focus_entered.connect(portrait.set_texture.bind(WitchPortraits[i]))
-		button.mouse_entered.connect(portrait.set_texture.bind(WitchPortraits[i]))
+		# Mouse-over and keyboard focus are one state: hovering takes the focus, and the focus selects the witch.
+		button.focus_entered.connect(menu_select_skill.bind(START_SKILLS[i]))
+		button.mouse_entered.connect(button.grab_focus)
 		button.reparent(choices);button.custom_minimum_size.y=88
-		button.text+="\n"+summaries[i]
+		_two_line_choice(button,String(button.text).replace("연쇄 전류으로 시작","연쇄 전류로 시작"),summaries[i],tints[i])
 		button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size",20)
-		button.add_theme_color_override("font_color",tints[i])
+	_menu_portrait=portrait;_menu_starts.clear()
+	for start_button in starts:_menu_starts.append(start_button as Button)
+	_build_witch_summary(left)
 	var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;body.add_child(space)
 	var preferences := HBoxContainer.new();preferences.add_theme_constant_override("separation",20)
 	body.add_child(preferences);motion.reparent(preferences)
@@ -1165,7 +1206,7 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 		if child in [title,description,controls,inherited_starts,old_spacer,motion,scope]:continue
 		child.reparent(body)
 	scope.reparent(body);scope.add_theme_font_size_override("font_size",14)
-	scope.add_theme_color_override("font_color",Color("97988e"))
+	scope.add_theme_color_override("font_color",Palette.INK_FAINT)
 	original.queue_free()
 	modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	modal.offset_left=-680;modal.offset_right=680
@@ -1200,8 +1241,8 @@ func _build_modal__q45(run: RefCounted) -> void:
 		modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 		modal.offset_left=-420;modal.offset_right=420
 		modal.offset_top=-220;modal.offset_bottom=220
-		var frame := _style(Color("171b1e"),Color("8c784f"));frame.border_width_top=4
-		modal.add_theme_stylebox_override("panel",frame)
+		# Same frame as every other window: brass 1px, top 2px (it was 4px here only).
+		modal.add_theme_stylebox_override("panel",_style(Palette.SURFACE,BRASS38))
 		box.add_theme_constant_override("separation",18)
 		var controls := _label("WASD / 좌클릭 이동 · Space 회피\nQ 회복약 · E 의식 · I 장비",18,Color("b9c3bb"))
 		box.add_child(controls);box.move_child(controls,2)
@@ -1231,6 +1272,7 @@ func setup(view: Node3D) -> void:
 	setup__q40(view)
 	_build_upgrade_panel()
 	_build_combat_bar()
+	_top_row=objective.get_parent().get_parent() as Control
 	_view46=weakref(view)
 	_locator46=HeroLocator46.new();_locator46.name="HeroLocator46"
 	_locator46.mouse_filter=Control.MOUSE_FILTER_IGNORE;_locator46.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1256,13 +1298,14 @@ func sync__q46(run: RefCounted,delta: float) -> void:
 	var low: bool= run.hero.hp_raw>0 and float(run.hero.hp_raw)/maxf(1,float(run.hero.max_hp_raw))<=0.35
 	_sync_locator46(run,low)
 	status.text=("위험 · " if low else "")+status.text
-	status.add_theme_color_override("font_color",Color("ffb3a3") if low else Color("f2ebd8"))
+	status.add_theme_color_override("font_color",Color("ffb3a3") if low else Palette.INK)
 	if run.potions==0:dash.text+=" · 회복약 없음"
 	elif low:dash.text+=" · Q로 회복"
-	dash.add_theme_color_override("font_color",Color("ffcc9e") if low or run.potions==0 else Color("f2ebd8"))
+	dash.add_theme_color_override("font_color",Color("ffcc9e") if low or run.potions==0 else Palette.INK)
 
 func _build_result40(run: RefCounted) -> void:
 	_build_result40__q40(run)
+	_add_growth_box(run)
 	if profile_note!="검증 실행 · 저장 비활성":return
 	var controls: Array[Control]=[];_collect_focus38(modal,controls)
 	for control in controls:
@@ -1318,12 +1361,32 @@ func _label(text: String,size: int=18,color: Color=Color("e0d8c7")) -> Label:
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
 func sync(run: RefCounted,delta: float) -> void:
 	sync__q47(run,delta)
+	if is_instance_valid(skill_panel) and skill_panel.visible and run.mode not in ["menu","victory","defeat"]:skill_panel.visible=false
 	_sync_upgrade(run,delta)
 	if is_instance_valid(combat_bar):combat_bar.sync(run,delta)
+	_sync_chrome(run)
 	if run.hero.is_empty() or run.mode!="playing" or run.objective().entered:return
 	var waypoint_: Dictionary=Route51.waypoint(run)
 	var target: Vector2=waypoint_.position
 	_route_hint40.text="%s까지 %.0fm · 금빛 방향 표시를 따라 이동"%[waypoint_.stage,run.hero.position.distance_to(target)]
+
+## Screen furniture that depends on the mode: the in-play plates are hidden on the title menu and the stash, the champion bar
+## carries its name, and the toast keeps below the champion bar.
+func _sync_chrome(run: RefCounted) -> void:
+	if is_instance_valid(_top_row):_top_row.visible=not (run.mode=="menu" or stash_open)
+	if is_instance_valid(boss_name):
+		boss_name.visible=boss_bar.visible and run.mode=="playing"
+		if boss_name.visible and run._champion_id>0 and run.enemies.has(run._champion_id):
+			boss_name.text=String(run.enemies[run._champion_id].get("title","봉인 수호자"))
+	if is_instance_valid(boss_bar) and is_instance_valid(toast):
+		toast.position.y=maxf(80.0,boss_bar.get_rect().end.y+10.0) if boss_bar.visible else 80.0
+
+func _style_boss_bar() -> void:
+	var fill := StyleBoxFlat.new();fill.bg_color=Palette.THREAT_DEEP
+	fill.border_color=Palette.THREAT;fill.border_width_top=1
+	var back := StyleBoxFlat.new();back.bg_color=Color(.03,.035,.04,.92)
+	back.border_color=Palette.BRASS_DIM;back.set_border_width_all(1);back.set_content_margin_all(1)
+	boss_bar.add_theme_stylebox_override("fill",fill);boss_bar.add_theme_stylebox_override("background",back)
 
 # ---- loot grammar v2: stash helper and the better-item prompt ----
 ## True when any equip slot of the saved profile holds this stored item.
@@ -1333,15 +1396,34 @@ func _stash_worn(storage_id: int) -> bool:
 	return false
 
 const UPGRADE_SECONDS := 9.0
+## Notice slot (A2 3.5): bottom right, right of the combat bar (its right edge is x 1230 of 1600) and below y 720, so no
+## notice ever covers the central 60 percent of the field. The first-gear notice and the better-gear prompt share it.
+const NOTICE_WIDTH := 336.0
+const NOTICE_HEIGHT := 152.0
+const NOTICE_MARGIN := 24.0
+const NOTICE_BOTTOM := 20.0
+## Text column inside a notice: slot width - margins (14+14) - sigil (56) - gap (12).
+const NOTICE_TEXT_WIDTH := 240.0
 var upgrade_uid := -1
+var _top_row: Control
 var _upgrade_panel: PanelContainer
 var _upgrade_left := 0.0
+
+## Pins a notice panel to the slot; it grows up and left if its content is larger than the slot.
+func _place_notice(panel: Control,height: float) -> void:
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	panel.grow_horizontal=Control.GROW_DIRECTION_BEGIN;panel.grow_vertical=Control.GROW_DIRECTION_BEGIN
+	panel.offset_right=-NOTICE_MARGIN;panel.offset_left=-NOTICE_MARGIN-NOTICE_WIDTH
+	panel.offset_bottom=-NOTICE_BOTTOM;panel.offset_top=-NOTICE_BOTTOM-height
+
+func _notice_style(border: Color) -> StyleBoxFlat:
+	var frame := _style(Color(.055,.06,.065,.97),border);frame.set_content_margin_all(14)
+	return frame
 
 func _build_upgrade_panel() -> void:
 	_upgrade_panel=PanelContainer.new();_upgrade_panel.name="UpgradePrompt"
 	_upgrade_panel.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	_upgrade_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_upgrade_panel.offset_left=-500;_upgrade_panel.offset_right=-34;_upgrade_panel.offset_top=-292;_upgrade_panel.offset_bottom=-178
+	_place_notice(_upgrade_panel,NOTICE_HEIGHT)
 	_upgrade_panel.visible=false
 	root.add_child(_upgrade_panel);root.move_child(overlay,root.get_child_count()-1)
 
@@ -1350,17 +1432,18 @@ func offer_upgrade(candidate: Dictionary,current: Dictionary,slot: String) -> vo
 	if not is_instance_valid(_upgrade_panel):return
 	for child in _upgrade_panel.get_children():_upgrade_panel.remove_child(child);child.queue_free()
 	var color: Color=QUALITY_COLORS.get(candidate.get("quality","common"),Color.WHITE)
-	_upgrade_panel.add_theme_stylebox_override("panel",_style(Color(.055,.06,.065,.96),color.darkened(.15)))
-	var row := HBoxContainer.new();row.add_theme_constant_override("separation",14);_upgrade_panel.add_child(row)
+	_upgrade_panel.add_theme_stylebox_override("panel",_notice_style(color.darkened(.15)))
+	var row := HBoxContainer.new();row.add_theme_constant_override("separation",12);_upgrade_panel.add_child(row)
 	row.add_child(_sigil(candidate))
 	var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
 	var header := _label("더 좋은 장비 · "+String(SLOT_NAMES.get(slot,slot))+" · "+String(QUALITY_NAMES.get(candidate.quality,"")),14,color)
 	header.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header)
-	var name_label := _label(String(candidate.name),20,Color("eee4cf"));name_label.autowrap_mode=TextServer.AUTOWRAP_OFF
-	name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.custom_minimum_size.x=360;column.add_child(name_label)
+	var name_label := _label(String(candidate.name),20,Palette.INK);name_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+	name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.tooltip_text=String(candidate.name);column.add_child(name_label)
 	var summary := "빈 슬롯에 착용" if current.is_empty() else _upgrade_delta(candidate,current)
-	var change := _label(summary,14,Color("b9d4b0"));change.autowrap_mode=TextServer.AUTOWRAP_OFF
-	change.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;change.custom_minimum_size.x=360;column.add_child(change)
+	# Gains and losses both stay on screen: the line wraps instead of cutting the loss off (the slot grows upward, still below y 720 up to three lines).
+	var change := _label(summary,14,Color("b9d4b0"));change.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	change.custom_minimum_size.x=NOTICE_TEXT_WIDTH;change.tooltip_text=summary;column.add_child(change)
 	var hint := _label("[F] 바로 착용  ·  [I] 비교",14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
 	upgrade_uid=int(candidate.uid);_upgrade_left=UPGRADE_SECONDS;_upgrade_panel.visible=true
 
@@ -1381,11 +1464,13 @@ func clear_upgrade() -> void:
 
 func _sync_upgrade(run: RefCounted,delta: float) -> void:
 	if upgrade_uid<0:return
-	if run.mode=="playing":_upgrade_left-=delta
+	# One notice slot: while the first-gear notice is up, the better-gear prompt waits (its 9 s do not run down).
+	var slot_busy: bool=is_instance_valid(_discovery) and _discovery.visible
+	if run.mode=="playing" and not slot_busy:_upgrade_left-=delta
 	# The prompt goes away once the item is worn, lost, or the offer has aged out.
 	if _upgrade_left<=0 or not run.equip_slot_of(upgrade_uid).is_empty() or run.mode in ["menu","victory","defeat"]:
 		clear_upgrade();return
-	_upgrade_panel.visible=run.mode=="playing"
+	_upgrade_panel.visible=run.mode=="playing" and not slot_busy
 	_upgrade_panel.modulate.a=clampf(_upgrade_left/.5,0,1)
 
 # ---- layout A: bottom-centre combat bar ----
@@ -1400,8 +1485,6 @@ func _build_combat_bar() -> void:
 	combat_bar=CombatBar.new();combat_bar.name="CombatBar"
 	root.add_child(combat_bar)
 	# Prompts sit above the bar, and modal screens above everything.
-	if is_instance_valid(_upgrade_panel):
-		_upgrade_panel.offset_top=-330;_upgrade_panel.offset_bottom=-216
 	# Top: a compact place-and-time plate on the left, the route and the current
 	# goal under the buttons on the right, so the left half of the field stays open.
 	var goal_plate: Control=objective.get_parent()
@@ -1418,3 +1501,230 @@ func _build_combat_bar() -> void:
 	_route40.grow_horizontal=Control.GROW_DIRECTION_BEGIN
 	_route40.offset_right=-28;_route40.offset_left=-28;_route40.offset_top=70;_route40.offset_bottom=70
 	root.move_child(overlay,root.get_child_count()-1)
+
+# ---- G1 permanent growth (P4): menu summary, skill-tree screen host, result growth box ----
+## Read-only toward the core. The screen asks through signals; chapter_one.gd answers with the profile's public
+## functions (commit_tree, respec) and pushes the fresh data back with show_skill_tree / update_skill_tree.
+const SkillTreePanel=preload("res://chapter1/view/hud/skill_tree_panel.gd")
+const ProfileData=preload("res://chapter1/core/chapter_profile.gd")
+const START_SKILLS=["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
+const WITCH_NAMES=["잿불의 마녀","서리의 마녀","뇌우의 마녀"]
+const PORTRAIT_KEYS=["ember","frost","storm"]
+const GROWTH_FILL_SECONDS := 1.2
+signal skill_tree_open(character_id: String)
+signal skill_tree_commit(character_id: String,ranks: Dictionary)
+signal skill_tree_respec(character_id: String)
+## {character_id: profile.character_view(id)}; {} entries when the profile is off or not ready. Set by the app.
+var character_views: Dictionary={}
+var growth_result: Dictionary={}
+var skill_panel: Control
+var _skill_character := ""
+var _menu_witch := 0
+var _menu_starts: Array[Button]=[]
+var _menu_portrait: TextureRect
+var _menu_tree_button: Button
+var _menu_badge: Label
+var _menu_name: Label
+var _menu_xp: Label
+var _menu_bar: ProgressBar
+var _menu_points: Label
+var _growth_played := false
+
+func _character_for_skill(skill_id: String) -> String:
+	for entry in ProfileData.progression_doc().get("characters",[]):
+		if String(entry.signature_skill_id)==skill_id:return String(entry.id)
+	return ""
+
+func _commas(n: int) -> String:
+	var text := str(absi(n));var out := ""
+	for i in text.length():
+		if i>0 and (text.length()-i)%3==0:out+=","
+		out+=text[i]
+	return ("-" if n<0 else "")+out
+
+## The witch the menu is looking at follows the start button that has focus or the mouse (same as the portrait).
+func menu_select_skill(skill_id: String) -> void:
+	var index := START_SKILLS.find(skill_id)
+	if index<0:return
+	_menu_witch=index
+	if is_instance_valid(_menu_portrait):_menu_portrait.texture=WitchPortraits[index]
+	_refresh_witch_summary()
+
+func _build_witch_summary(column: VBoxContainer) -> void:
+	var panel := PanelContainer.new();panel.name="WitchGrowth";panel.size_flags_horizontal=Control.SIZE_FILL
+	var frame := _style(Color("111416"),Palette.BRASS_DIM);frame.set_content_margin_all(10);frame.border_width_top=1
+	panel.add_theme_stylebox_override("panel",frame);column.add_child(panel)
+	var box := VBoxContainer.new();box.add_theme_constant_override("separation",3);panel.add_child(box)
+	_menu_name=_label("",18,Palette.INK);_menu_name.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_name)
+	_menu_xp=_label("",14,Palette.INK_DIM);_menu_xp.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_xp)
+	_menu_bar=_bar(Palette.GROWTH,6);_menu_bar.max_value=1;box.add_child(_menu_bar)
+	_menu_points=_label("",15,Palette.GROWTH);_menu_points.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_points)
+	_menu_tree_button=_button("스킬 트리",func():_request_tree(_character_for_skill(START_SKILLS[_menu_witch])))
+	_menu_tree_button.name="SkillTreeButton";_menu_tree_button.custom_minimum_size.y=44
+	column.add_child(_menu_tree_button)
+	_menu_badge=_label("",18,Palette.GROWTH);_menu_badge.autowrap_mode=TextServer.AUTOWRAP_OFF
+	_menu_badge.mouse_filter=Control.MOUSE_FILTER_IGNORE;_menu_badge.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
+	_menu_badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);_menu_badge.offset_right=-14;_menu_badge.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	_menu_tree_button.add_child(_menu_badge)
+	_refresh_witch_summary()
+
+## Fills the summary and the tree button from character_views. Disabled states say why, in words.
+func _refresh_witch_summary() -> void:
+	if not is_instance_valid(_menu_tree_button):return
+	var view: Dictionary=character_views.get(_character_for_skill(START_SKILLS[_menu_witch]),{})
+	_menu_name.text=WITCH_NAMES[_menu_witch]
+	_menu_badge.text=""
+	if view.is_empty():
+		# Nothing to show: one line, no empty bar, no empty points row, no dead button.
+		_menu_xp.text="영구 성장 · 저장 비활성";_menu_bar.visible=false;_menu_points.text="";_menu_points.visible=false
+		_menu_tree_button.text="스킬 트리 · 저장 비활성";_menu_tree_button.disabled=true;_menu_tree_button.visible=false
+		return
+	_menu_points.visible=true;_menu_tree_button.visible=true
+	_menu_name.text="%s  Lv %d"%[WITCH_NAMES[_menu_witch],int(view.level)]
+	var capped := int(view.xp_to_next)<=0
+	_menu_xp.text="최대 레벨" if capped else "경험치 %s / %s"%[_commas(int(view.xp)),_commas(int(view.xp_for_next))]
+	_menu_bar.visible=true;_menu_bar.max_value=1.0
+	_menu_bar.value=1.0 if capped else clampf(float(int(view.xp)-int(view.xp_level_start))/maxf(1.0,float(int(view.xp_for_next)-int(view.xp_level_start))),0,1)
+	var free := int(view.points_free)
+	_menu_points.text="◆ 남은 포인트 %d"%free if free>0 else "남은 포인트 0"
+	_menu_points.add_theme_color_override("font_color",Palette.GROWTH if free>0 else Palette.INK_DIM)
+	if bool(view.has_tree):
+		_menu_tree_button.text="스킬 트리";_menu_tree_button.disabled=false
+		_menu_badge.text="◆ %d"%free if free>0 else ""
+	else:
+		_menu_tree_button.text="스킬 트리 · 준비 중";_menu_tree_button.disabled=true
+
+func _request_tree(character_id: String) -> void:
+	if not character_id.is_empty():skill_tree_open.emit(character_id)
+
+func _ensure_skill_panel() -> void:
+	if is_instance_valid(skill_panel):return
+	skill_panel=SkillTreePanel.new();skill_panel.name="SkillTreePanel";skill_panel.visible=false
+	root.add_child(skill_panel)
+	skill_panel.commit_requested.connect(func(ranks: Dictionary):skill_tree_commit.emit(_skill_character,ranks))
+	skill_panel.respec_requested.connect(func():skill_tree_respec.emit(_skill_character))
+	skill_panel.closed.connect(func(_lost: int):_close_skill_tree())
+
+## Opens the screen for one witch. tree = the tree document, view = profile.character_view(id), info = display data
+## (name, portrait, xp, xp_floor, xp_next, essence, respec_cost).
+func show_skill_tree(character_id: String,tree: Dictionary,view: Dictionary,info: Dictionary) -> void:
+	_ensure_skill_panel()
+	_skill_character=character_id
+	skill_panel.set_data(tree,view.ranks,int(view.level),int(view.points_free),info)
+	skill_panel.open()
+
+## After a confirmed investment or a reset: fresh committed state, staged state cleared.
+func update_skill_tree(view: Dictionary,info: Dictionary,notice: String="") -> void:
+	if not is_instance_valid(skill_panel):return
+	skill_panel.set_data(skill_panel.tree,view.ranks,int(view.level),int(view.points_free),info)
+	if not notice.is_empty():skill_panel.show_notice(notice)
+
+func skill_tree_error(text: String) -> void:
+	if is_instance_valid(skill_panel):skill_panel.show_error(text)
+
+func skill_tree_is_open() -> bool:
+	return is_instance_valid(skill_panel) and skill_panel.visible
+
+func _close_skill_tree() -> void:
+	if not is_instance_valid(skill_panel):return
+	skill_panel.visible=false
+	# Back to the button that opened it (menu or result window); the modal may have been rebuilt meanwhile.
+	var back := modal.find_child("SkillTreeButton",true,false) as Button
+	if back!=null and not back.disabled:back.grab_focus.call_deferred()
+	else:_focus_modal38.call_deferred()
+
+## The app hands over what the finished run did to the witch: profile views before and after the save, and the
+## core's progress_summary. after is {} when the save failed (the box then says the experience is not counted).
+func set_growth_result(character_id: String,before: Dictionary,after: Dictionary,progress: Dictionary,replay: bool=true) -> void:
+	growth_result={} if character_id.is_empty() else {"character_id":character_id,"before":before,"after":after,"progress":progress}
+	if replay:_growth_played=false
+
+func _amount(n: int) -> String:
+	return "+%d"%n if n>0 else "—"
+
+func _add_growth_box(run: RefCounted) -> void:
+	var box := modal.get_child(0) as VBoxContainer
+	if box==null or box.get_child_count()<3 or not box.get_child(2) is HBoxContainer:return
+	var columns := box.get_child(2) as HBoxContainer
+	if growth_result.is_empty() or growth_result.before.is_empty():
+		# Nothing was recorded: one line instead of an empty box (the reason is spelled out).
+		var why: String=profile_note if not profile_note.is_empty() else "영구 성장은 저장된 프로필에서만 기록됩니다."
+		if profile_note=="검증 실행 · 저장 비활성":why="검증 실행에서는 경험치와 포인트가 기록되지 않습니다."
+		var note := _label("영구 성장 · "+why,16,Palette.INK_DIM);note.name="GrowthNote"
+		box.add_child(note);box.move_child(note,columns.get_index()+1)
+		return
+	var panel := PanelContainer.new();panel.name="GrowthBox";panel.custom_minimum_size.x=400
+	var frame := _style(Color("141719"),Palette.BRASS_DIM);frame.border_width_top=3;frame.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel",frame);columns.add_child(panel)
+	var column := VBoxContainer.new();column.add_theme_constant_override("separation",7);panel.add_child(column)
+	var data: Dictionary=growth_result
+	var index := -1
+	if not data.is_empty():
+		for i in START_SKILLS.size():
+			if _character_for_skill(START_SKILLS[i])==String(data.character_id):index=i
+	column.add_child(_label("영구 성장" if index<0 else "영구 성장 · "+WITCH_NAMES[index],20,Palette.GROWTH))
+	var before: Dictionary=data.before
+	var after: Dictionary=data.after
+	var progress: Dictionary=data.progress
+	var saved := not after.is_empty()
+	var shown: Dictionary=after if saved else before
+	var gained := int(progress.get("xp_gained",0))
+	var level_before := int(before.level)
+	var level_after := int(shown.level) if saved else int(progress.get("level_after",level_before))
+	var head := "Lv %d"%level_before if level_after==level_before else "Lv %d → Lv %d"%[level_before,level_after]
+	var title_row := HBoxContainer.new();title_row.add_theme_constant_override("separation",12);column.add_child(title_row)
+	var level_label := _label(head,26,Palette.INK);level_label.autowrap_mode=TextServer.AUTOWRAP_OFF;title_row.add_child(level_label)
+	if level_after>level_before:
+		var up := _label("▲ 레벨업 +%d"%(level_after-level_before),17,Palette.GROWTH);up.autowrap_mode=TextServer.AUTOWRAP_OFF;up.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;title_row.add_child(up)
+	var bar := _bar(Palette.GROWTH,14);bar.max_value=1.0;column.add_child(bar)
+	var capped := int(shown.xp_to_next)<=0 if saved else false
+	var start_x := int(shown.xp_level_start)
+	var next_x := int(shown.xp_for_next)
+	var shown_xp := int(shown.xp)
+	var target := 1.0 if capped else clampf(float(shown_xp-start_x)/maxf(1.0,float(next_x-start_x)),0,1)
+	var from := target
+	if saved:
+		var level_start_before := int(before.xp_level_start)
+		from=0.0 if level_after>level_before else clampf(float(int(before.xp)-level_start_before)/maxf(1.0,float(int(before.xp_for_next)-level_start_before)),0,1)
+	var xp_text := "최대 레벨" if capped else "%s / %s"%[_commas(shown_xp),_commas(next_x)]
+	column.add_child(_label("경험치 %s · 이번 판 +%d"%[xp_text,gained],16,Color("d4cdbb")))
+	var sources: Dictionary=progress.get("sources",{})
+	var seals: Array=sources.get("seal",[0,0,0]);var champions: Array=sources.get("champion",[0,0])
+	var champion_sum := 0
+	for value in champions:champion_sum+=int(value)
+	var seal_line := "봉인 1 %s   봉인 2 %s   봉인 3 %s"%[_amount(int(seals[0])),_amount(int(seals[1])),_amount(int(seals[2]))]
+	column.add_child(_label(seal_line,15,Palette.INK_DIM))
+	column.add_child(_label("수호자 %s   우두머리 %s   완주 %s"%[_amount(champion_sum),_amount(int(sources.get("boss",0))),_amount(int(sources.get("victory",0)))],15,Palette.INK_DIM))
+	if saved:
+		var per_level := int(ProfileData.progression_doc().get("points_per_level",1))
+		var total_points := int(after.points_earned)-int(before.points_earned)
+		var from_levels := (level_after-level_before)*per_level
+		var line := "얻은 포인트 +%d"%total_points
+		if total_points>0:line+=" (레벨 +%d · 첫 처치 +%d)"%[from_levels,total_points-from_levels]
+		column.add_child(_label(line,16,Palette.INK))
+		var free := int(after.points_free)
+		column.add_child(_label("◆ 남은 포인트 %d"%free if free>0 else "남은 포인트 0",17,Palette.GROWTH if free>0 else Palette.INK_DIM))
+	else:
+		column.add_child(_label("▲ 경험치 미반영 · 보상 저장 다시 확인",16,Palette.WARN))
+	var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;column.add_child(space)
+	var character_id := String(data.character_id)
+	var tree_button := _button("스킬 트리",func():_request_tree(character_id))
+	tree_button.name="SkillTreeButton"
+	if not bool(before.has_tree):tree_button.text="스킬 트리 · 준비 중";tree_button.disabled=true
+	elif not saved:tree_button.disabled=true
+	elif int(after.points_free)>0:
+		var badge := _label("◆ %d"%int(after.points_free),18,Palette.GROWTH);badge.autowrap_mode=TextServer.AUTOWRAP_OFF;badge.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		badge.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;badge.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+		badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);badge.offset_right=-14;tree_button.add_child(badge)
+	column.add_child(tree_button)
+	# The gold bar fills from the old value to the new one (1.2 s) once the window is on screen; reduced motion or a
+	# rebuild of the same result shows the final value at once.
+	if _growth_played or not motion_enabled or from>=target:
+		bar.value=target
+	else:
+		bar.value=from
+		var wait := (maxf(0.0,1.3-_victory_age)+.15) if run.mode=="victory" else .25
+		var tween := bar.create_tween()
+		tween.tween_interval(wait)
+		tween.tween_property(bar,"value",target,GROWTH_FILL_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_growth_played=true

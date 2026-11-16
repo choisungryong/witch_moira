@@ -25,24 +25,30 @@ signal staged_changed(staged: Dictionary, spent_delta: int)
 ## Flip to true once chapter1/core/skill_tree.gd (spec 9, P1) exists; the _api_* functions then call it.
 const USE_CORE_MODULE := true
 const CORE_PATH := "res://chapter1/core/skill_tree.gd"
-const PORTRAIT_PATH := "res://chapter1/art/characters/frost_witch_v02.png"
-const PORTRAIT_FACE := Rect2(330,10,300,300)
+## Per-witch source art and face crop (original 1024x1536 pixels). info.portrait picks one; frost is the default.
+## Derived face crops (art/characters/derived/) do not exist yet, so the face is cut from the original here.
+const PORTRAITS := {
+	"frost":{"path":"res://chapter1/art/characters/frost_witch_v02.png","face":Rect2(295,5,300,300)},
+	"ember":{"path":"res://chapter1/art/characters/ember_witch_v02.png","face":Rect2(350,0,300,300)},
+	"storm":{"path":"res://chapter1/art/characters/storm_witch_v02.png","face":Rect2(355,35,300,300)}}
 
 const DESIGN := Vector2(1280,720)
-const BRASS := Color("aa8d58")
-const BRASS_DIM := Color("665343")
-const BRASS_HI := Color("ffd27a")
-const PLATE := Color(.035,.045,.05,.92)
-const SLOT := Color(.075,.095,.105,1)
-const INK := Color("f2ebd8")
-const INK_DIM := Color("b9b2a1")
-const FROST := Color("9ce7ef")
-const GOLD := Color("e6c36a")
-const WARN := Color("ffb08a")
-const BRANCH_COLORS := {"frost":Color("9ce7ef"),"brass":Color("aa8d58")}
+const Palette := preload("res://chapter1/view/hud/palette.gd")
+const BRASS := Palette.BRASS
+const BRASS_DIM := Palette.BRASS_DIM
+const BRASS_HI := Palette.BRASS_HI
+const PLATE := Palette.PLATE
+const SLOT := Palette.SLOT
+const INK := Palette.INK
+const INK_DIM := Palette.INK_DIM
+const FROST := Palette.FROST
+## Permanent growth (Lv, points, staged +n, staged pips). Fill, glyph and text only; the bright gold edge is selection.
+const GOLD := Palette.GROWTH
+const WARN := Palette.WARN
+const BRANCH_COLORS := {"frost":Palette.FROST,"brass":Palette.BRASS}
 const FRAME := Rect2(20,12,1240,696)
 const GRID_X := 122.0
-const COL_W := [170.0,170.0,170.0,250.0]
+const COL_W := [160.0,160.0,160.0,280.0]
 const COL_GAP := 6.0
 const ROW_Y := 132.0
 const ROW_PITCH := 130.0
@@ -74,6 +80,7 @@ var _btn_on: Dictionary = {}
 var _hover := ""
 var _opened_ms := 0
 var _portrait: Texture2D
+var _portrait_key := ""
 var _art: Texture2D
 var _core: GDScript
 
@@ -82,8 +89,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	focus_mode = Control.FOCUS_ALL
-	_art = _load_texture(PORTRAIT_PATH)
-	_portrait = _art
+	_apply_portrait(String(info.get("portrait","frost")))
 	resized.connect(queue_redraw)
 	_opened_ms = Time.get_ticks_msec()
 
@@ -97,6 +103,13 @@ static func _ensure_fonts() -> void:
 	_bold.font_weight = 700
 	_head = SystemFont.new()
 	_head.font_names = PackedStringArray(["Batang","바탕","Georgia"])
+
+func _apply_portrait(key: String) -> void:
+	if not PORTRAITS.has(key): key = "frost"
+	if key == _portrait_key and _art != null: return
+	_portrait_key = key
+	_art = _load_texture(String(PORTRAITS[key].path))
+	_portrait = _art
 
 func _load_texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path): return load(path) as Texture2D
@@ -113,6 +126,7 @@ func set_data(new_tree: Dictionary, ranks: Dictionary, new_level: int, free_poin
 	level = new_level
 	points_free = free_points
 	info = new_info.duplicate()
+	_apply_portrait(String(info.get("portrait","frost")))
 	if not keep_staged: staged = committed.duplicate()
 	confirm = ""
 	if not _nodes_by_id().has(selected):
@@ -319,6 +333,11 @@ func _branch_index(branch_id: String) -> int:
 		if String(branches[i].id) == branch_id: return i
 	return 0
 
+func _is_brass(node: Dictionary) -> bool:
+	for branch in tree.get("branches",[]):
+		if String(branch.id) == String(node.branch): return String(branch.get("color","frost")) == "brass"
+	return false
+
 func _branch_color(node: Dictionary) -> Color:
 	for branch in tree.get("branches",[]):
 		if String(branch.id) == String(node.branch): return BRANCH_COLORS.get(String(branch.get("color","frost")),FROST)
@@ -490,7 +509,7 @@ func _draw_header() -> void:
 	var box := Rect2(32,22,64,64)
 	draw_rect(_ur(box),SLOT)
 	if _portrait != null:
-		draw_texture_rect_region(_portrait,_ur(box),PORTRAIT_FACE)
+		draw_texture_rect_region(_portrait,_ur(box),PORTRAITS[_portrait_key].face)
 	_rect_line(box,BRASS,2.0)
 	_text(Vector2(110,52),String(info.get("name","서리의 마녀")),24,INK,_head)
 	_text(Vector2(110,76),"스킬 트리 · 영구 성장",13,INK_DIM)
@@ -545,8 +564,8 @@ func _draw_tier_stripes() -> void:
 	for i in tiers.size():
 		var y := ROW_Y+float(i)*ROW_PITCH
 		var t := float(i)/3.0
-		# Deeper tiers lean darker and slightly warmer: the patron's debt grows (spec 3.1).
-		var tint := Color(.04,.05,.057,.9).lerp(Color(.082,.036,.04,.95),t)
+		# Deeper tiers only get a little darker. A red tint reads as enemy threat, so the plate stays neutral (art review 5.4).
+		var tint := Color(.04,.05,.057,.9).lerp(Color(.028,.036,.042,.95),t)
 		var stripe := Rect2(34,y-8,872,TILE_H+16)
 		draw_rect(_ur(stripe),tint)
 		_line(Vector2(34,y-8),Vector2(906,y-8),Color(BRASS_DIM,.55+.3*t),1.0)
@@ -555,7 +574,7 @@ func _draw_tier_stripes() -> void:
 		_wrapped(Vector2(42,y+34),String(tier.name),13,INK,72.0,2)
 		var gate := "Lv %d" % int(tier.level)
 		if i == 3: gate += " · 15포인트"
-		_text_fit(Vector2(42,y+TILE_H-6),gate,13,INK if level >= int(tier.level) else WARN,72.0)
+		_text_fit(Vector2(42,y+TILE_H-6),gate,13,INK if level >= int(tier.level) else INK_DIM,72.0)
 		if level < int(tier.level): _lock_icon(Vector2(106,y+6),INK_DIM)
 
 func _draw_edges() -> void:
@@ -595,6 +614,7 @@ func _draw_tile(node: Dictionary) -> void:
 	var rank := int(staged.get(id,0))
 	var base := int(committed.get(id,0))
 	var col := _branch_color(node)
+	var edge := BRASS_DIM if _is_brass(node) else col
 	var locked := state == "locked"
 	var plate := SLOT if not locked else Color(.05,.058,.064,1)
 	if _hover == id and not locked: plate = plate.lightened(.08)
@@ -605,22 +625,23 @@ func _draw_tile(node: Dictionary) -> void:
 	if locked:
 		_rect_dashed(r,Color(INK_DIM,.6),1.5)
 	else:
-		_rect_line(r,col if rank == base else INK,2.0)
-		if state == "max": _rect_line(r.grow(-4),Color(col,.8),1.5)
-	if rank > base:
-		_rect_line(r.grow(-2),INK,1.0)
+		# One solid border colour for open, invested and staged alike (staged shows in the +n tag and the pip dots).
+		# The oath column keeps its brass only in the header band and glyph; its tiles use the dim frame brass.
+		_rect_line(r,edge,2.0)
+		if state == "max": _rect_line(r.grow(-4),Color(edge,.8),1.5)
 	# Glyph, name.
 	_glyph(String(node.branch) if int(node.tier) < 4 else "deep",Rect2(r.position+Vector2(8,8),Vector2(28,28)),Color(col,dim),locked)
 	var narrow := r.size.x < 150.0
-	var text_x := r.position.x+(40.0 if narrow else 42.0)
-	var avail := r.size.x-(40.0+24.0 if narrow else 42.0+26.0)
-	var name_size := 14.0 if not narrow else 12.0
+	var text_x := r.position.x+42.0
+	var avail := r.size.x-42.0-38.0
+	var name_size := 13.0
 	_wrapped(Vector2(text_x,r.position.y+22),String(node.name),name_size,Color(INK,dim+(.3 if locked else 0.0)),avail,2,_bold)
 	# Corner mark: lock = locked, plus = can invest, +n tag = staged.
 	var corner := Vector2(r.end.x-20,r.position.y+6)
 	if rank > base:
 		var tag := Rect2(r.end.x-34,r.position.y+6,28,18)
 		draw_rect(_ur(tag),GOLD)
+		_rect_line(tag,BRASS_DIM,1.5)
 		_text(Vector2(tag.position.x,tag.position.y+14),"+%d" % (rank-base),13,Color(.05,.04,.02),_bold,28.0,HORIZONTAL_ALIGNMENT_CENTER)
 	elif locked: _lock_icon(corner,INK_DIM)
 	elif state == "available" or state == "invested_open": _plus_icon(corner+Vector2(7,7),col)
@@ -640,7 +661,9 @@ func _draw_tile(node: Dictionary) -> void:
 		"locked": status = _short_reason(node)
 		"available": status = "투자 가능"
 		"invested_open": status = "예정 +%d" % (rank-base) if rank > base else "투자 가능"
-		"invested": status = "예정 +%d · %s" % [rank-base,_short_reason(node)] if rank > base else _short_reason(node)
+		"invested":
+			if rank > base: status = "+%d 예정" % (rank-base) if narrow else "예정 +%d · %s" % [rank-base,_short_reason(node)]
+			else: status = _short_reason(node)
 	_text_fit(Vector2(r.position.x+8,r.end.y-8),status,13,Color(INK,.85) if not locked else INK_DIM,r.size.x-16.0)
 	if id == selected:
 		_rect_line(r.grow(4),BRASS_HI,3.0)
@@ -719,9 +742,9 @@ func _draw_detail() -> void:
 	_text(Vector2(x,y),"%s · 단 %d %s" % [branch_name,int(node.tier),String(tier.name)],13,INK_DIM)
 	if node.get("new_rule") != null:
 		var tag := Rect2(x+width-84,y-14,84,19)
-		_rect_line(tag,BRASS_HI,1.5)
-		_diamond(Vector2(tag.position.x+11,tag.position.y+9.5),5.0,BRASS_HI,true)
-		_text(Vector2(tag.position.x+20,tag.position.y+14),"새 효과",13,BRASS_HI,_bold)
+		_rect_line(tag,BRASS_DIM,1.5)
+		_diamond(Vector2(tag.position.x+11,tag.position.y+9.5),5.0,GOLD,true)
+		_text(Vector2(tag.position.x+20,tag.position.y+14),"새 효과",13,GOLD,_bold)
 	y += 10
 	_line(Vector2(x,y),Vector2(x+width,y),Color(BRASS_DIM,.8),1.0)
 	y += 20
@@ -798,7 +821,7 @@ func _draw_confirm() -> void:
 	draw_rect(Rect2(Vector2.ZERO,size),Color(0,0,0,.6))
 	var box := Rect2(390,250,500,220)
 	draw_rect(_ur(box),Color(.04,.05,.056,1))
-	_rect_line(box,BRASS_HI,3.0)
+	_rect_line(box,BRASS,2.0)
 	var title := ""; var body := ""; var yes := ""; var no := ""
 	if confirm == "discard":
 		title = "확정하지 않은 투자가 있습니다"

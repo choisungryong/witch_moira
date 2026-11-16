@@ -68,11 +68,13 @@ func setup__cloister(owner_view: Node3D) -> void:
 	telegraph=MeshInstance3D.new()
 	var line_mat := _glow(Color.WHITE,0)
 	line_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	# D3: threat shapes draw after (above) additive effects and ignore depth, so bursts cannot hide them.
+	line_mat.no_depth_test=true;line_mat.render_priority=11
 	telegraph.material_override=line_mat
 	view.add_child(telegraph)
 	telegraph_fill=MeshInstance3D.new()
 	var warning := _glow(Color.WHITE,0)
-	warning.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;warning.no_depth_test=false
+	warning.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;warning.no_depth_test=true;warning.render_priority=10
 	telegraph_fill.material_override=warning
 	view.add_child(telegraph_fill)
 	beams=MeshInstance3D.new()
@@ -218,9 +220,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var center := Vector3(e.position.x,.05,e.position.y)
 		var direction: Vector2=e.telegraph.direction
 		var imminent := 1.0-clampf(float(e.telegraph.get("remaining_ticks",40))/48.0,0,1)
-		var danger_color := Color(THREAT_COLOR,.78 if e.elite else .28+imminent*.28)
+		var danger_color := Color(THREAT_COLOR,.95 if e.elite else .50+imminent*.35)
 		lines.surface_set_color(danger_color)
-		fill.surface_set_color(Color(THREAT_COLOR,.060 if e.elite else .017+imminent*.010))
+		fill.surface_set_color(Color(THREAT_COLOR,.030 if e.elite else .022+imminent*.018))
 		if e.telegraph.shape=="fan":
 			# Fill the convex hull of the paid projectile capsules. It conservatively
 			# shows the volley region without a bright wireframe for every ray.
@@ -472,7 +474,9 @@ func reset__q10() -> void:
 const ARC_CAP := 64
 ## Hero-to-first-target joint width multiplier, and how long a stripe stays (seconds, read from
 ## run.tuning.presentation.arc_stripe_ticks in sync so the picture and the measurement agree).
-const ARC_FIRST_WIDTH := 2.2
+const ARC_FIRST_WIDTH := 1.3
+## The first joint starts this far from the hero (staff tip) so it no longer crosses the body.
+const ARC_FIRST_OFFSET := .6
 var _arc_duration := .20
 const ICE_TARGET_CAP := 24
 const ICE_STATE_CAP := 48
@@ -875,7 +879,11 @@ func consume__q36(events: Array) -> void:
 			if arc_links.size()>=ARC_CAP:break
 			# The first joint of a branch starts at the hero: drawn thicker so the bolt reads as the hero's own.
 			var from_hero: bool=segment.from.distance_squared_to(event.position)<.0001
-			arc_links.append({"from":segment.from,"to":segment.to,"age":0.0,"duration":_arc_duration,"evolved":bool(event.get("evolved",false)),"first":from_hero,"seed":int(event.seq)*17+arc_links.size()*13})
+			var link_from: Vector2=segment.from
+			if from_hero:
+				var span: Vector2=segment.to-segment.from
+				link_from+=span.normalized()*minf(ARC_FIRST_OFFSET,span.length()*.5)
+			arc_links.append({"from":link_from,"to":segment.to,"age":0.0,"duration":_arc_duration,"evolved":bool(event.get("evolved",false)),"first":from_hero,"seed":int(event.seq)*17+arc_links.size()*13})
 
 # ---- chapter1/view/chapter_elements_quality39.gd ----
 ## Frost presentation only. Paid positions, frozen_until and inherited lifetimes

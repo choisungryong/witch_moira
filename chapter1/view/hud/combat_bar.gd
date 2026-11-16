@@ -2,12 +2,17 @@ extends Control
 ## Bottom-centre combat bar (layout A): life orb, skill slots, the reserved
 ## ultimate slot, dash and potion, soul orb. It only reads run state.
 const ElementSeal = preload("res://chapter1/view/ui38/element_seal.gd")
-const SKILLS := [["chapter1.skill.ember","ember",Color("ff943d")],["chapter1.skill.frost","frost",Color("9ce7ef")],["chapter1.skill.arc","arc",Color("b9caff")]]
-const BRASS := Color("aa8d58")
-const BRASS_DIM := Color("665343")
-const PLATE := Color(.035,.045,.05,.92)
-const SLOT := Color(.075,.095,.105,1)
-const INK := Color("f2ebd8")
+const Palette = preload("res://chapter1/view/hud/palette.gd")
+const SKILLS := [["chapter1.skill.ember","ember",Palette.FIRE],["chapter1.skill.frost","frost",Palette.FROST],["chapter1.skill.arc","arc",Palette.ARC]]
+const BRASS := Palette.BRASS
+const BRASS_DIM := Palette.BRASS_DIM
+const BRASS_HI := Palette.BRASS_HI
+const PLATE := Palette.PLATE
+const SLOT := Palette.SLOT
+const INK := Palette.INK
+const INK_DIM := Palette.INK_DIM
+## Level badge on the soul orb's lower rim (A2 3.5): centre = SOUL_CENTER + (0, ORB_RADIUS-2).
+const BADGE_RADIUS := 16.0
 const BAR_SIZE := Vector2(860,160)
 const LIFE_CENTER := Vector2(66,90)
 const SOUL_CENTER := Vector2(794,90)
@@ -22,7 +27,7 @@ var _rects: Array[Rect2] = []
 var _life := 1.0
 var _life_text := ""
 var _soul := 0.0
-const SOUL_DEFAULT := Color("9ce7ef")
+const SOUL_DEFAULT := Palette.FROST
 var _soul_color := SOUL_DEFAULT
 var _level := 1
 var _skill_state: Array[Dictionary] = []
@@ -32,8 +37,11 @@ var _potions := 0
 var _potion_left := 0.0
 var _clock := 0.0
 var _playing := false
+var _pill := StyleBoxFlat.new()
 
 func _ready() -> void:
+	_pill.bg_color = Color(0,0,0,.35)
+	_pill.set_corner_radius_all(14)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = BAR_SIZE
 	anchor_left = .5; anchor_right = .5; anchor_top = 1.0; anchor_bottom = 1.0
@@ -94,9 +102,9 @@ func sync(run: RefCounted, delta: float) -> void:
 	_potion_left = maxf(0.0,float(int(run.get("_next_potion"))-int(run.tick))/60.0)
 	queue_redraw()
 
-func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0) -> void:
+func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0, outline: int = 4) -> void:
 	var font := get_theme_default_font()
-	draw_string_outline(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,4,Color(0,0,0,.85))
+	draw_string_outline(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,outline,Color(0,0,0,.85))
 	draw_string(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,color)
 
 func _orb(center: Vector2, fraction: float, top: Color, bottom: Color, rim: Color) -> void:
@@ -134,12 +142,19 @@ func _draw() -> void:
 	# Life: the rim pulses once life is low, so the state is readable without the number.
 	var low := _life < LOW_LIFE
 	var pulse := .5+.5*sin(_clock*9.0)
-	var life_rim := BRASS if not low else BRASS.lerp(Color("ff5a48"),pulse)
-	_orb(LIFE_CENTER,_life,Color("d04a5c") if not low else Color("ff5a48").lerp(Color("d04a5c"),pulse),Color("571c2b"),life_rim)
-	_text(LIFE_CENTER+Vector2(0,7),_life_text,19,INK,130)
+	var life_rim := BRASS if not low else BRASS.lerp(Palette.LIFE_LOW,pulse)
+	_orb(LIFE_CENTER,_life,Palette.LIFE if not low else Palette.LIFE_LOW.lerp(Palette.LIFE,pulse),Palette.LIFE_DEEP,life_rim)
+	# The life number sits on a translucent pill so it reads on any liquid level (contrast target 4.5:1).
+	var life_font := get_theme_default_font()
+	var life_width := life_font.get_string_size(_life_text,HORIZONTAL_ALIGNMENT_LEFT,-1,19).x+18.0
+	draw_style_box(_pill,Rect2(LIFE_CENTER+Vector2(-life_width*.5,-12),Vector2(life_width,28)))
+	_text(LIFE_CENTER+Vector2(0,7),_life_text,19,INK,130,5)
 	_orb(SOUL_CENTER,_soul,_soul_color,_soul_color.darkened(.72),BRASS)
-	_text(SOUL_CENTER+Vector2(0,-4),"레벨",14,Color("d4cdbb"))
-	_text(SOUL_CENTER+Vector2(0,18),str(_level),24,INK)
+	# Level: a small plate over the lower rim, number only. Nothing is written inside the orb.
+	var badge := SOUL_CENTER+Vector2(0,ORB_RADIUS-2)
+	draw_circle(badge,BADGE_RADIUS,Palette.SURFACE)
+	draw_arc(badge,BADGE_RADIUS,0,TAU,48,BRASS,1.5,true)
+	_text(badge+Vector2(0,7),str(_level),20,INK,40,3)
 	for i in SKILLS.size():
 		var state: Dictionary = _skill_state[i]
 		var color: Color = SKILLS[i][2]
@@ -147,7 +162,7 @@ func _draw() -> void:
 		_slot(_rects[i],color if learned else BRASS_DIM,float(state.wait))
 		var base: Vector2 = _rects[i].position+Vector2(0,_rects[i].size.y+7)
 		if bool(state.evolved):
-			draw_rect(Rect2(base+Vector2(6,0),Vector2(_rects[i].size.x-12,4)),Color("ffd27a"))
+			draw_rect(Rect2(base+Vector2(6,0),Vector2(_rects[i].size.x-12,4)),BRASS_HI)
 		else:
 			for pip in 4:
 				var lit: bool = pip < int(state.rank)
@@ -166,16 +181,16 @@ func _draw() -> void:
 	var d := dash.get_center()
 	for step in 3:
 		var x := d.x-14+float(step)*11
-		draw_polyline(PackedVector2Array([Vector2(x,d.y-11),Vector2(x+9,d.y),Vector2(x,d.y+11)]),Color(INK,1.0 if dash_ready else .35),2.5,true)
-	if not dash_ready: _text(d+Vector2(0,7),"%.1f" % _dash_left,17,INK,60)
-	_text(Vector2(d.x,dash.end.y+17),"Space",13,Color("b9b2a1"),70)
+		draw_polyline(PackedVector2Array([Vector2(x,d.y-11),Vector2(x+9,d.y),Vector2(x,d.y+11)]),Color(INK,1.0 if dash_ready else .25),2.5,true)
+	if not dash_ready: _text(Vector2(d.x,dash.end.y-14),"%.1f" % _dash_left,17,INK,60)
+	_text(Vector2(d.x,dash.end.y+17),"Space",14,INK_DIM,70)
 	# Potion.
 	var potion: Rect2 = _rects[5]
 	var urgent := low and _potions > 0 and _potion_left <= 0.0
-	_slot(potion,Color("ff5a48").lerp(BRASS,1.0-pulse) if urgent else (BRASS if _potions > 0 else BRASS_DIM),clampf(_potion_left/4.0,0,1))
+	_slot(potion,Palette.LIFE_LOW.lerp(BRASS,1.0-pulse) if urgent else (BRASS if _potions > 0 else BRASS_DIM),clampf(_potion_left/4.0,0,1))
 	var p := potion.get_center()
 	var flask := PackedVector2Array([p+Vector2(-5,-18),p+Vector2(5,-18),p+Vector2(5,-8),p+Vector2(14,10),p+Vector2(9,18),p+Vector2(-9,18),p+Vector2(-14,10),p+Vector2(-5,-8)])
 	draw_colored_polygon(flask,Color("b83f51") if _potions > 0 else Color(1,1,1,.12))
 	draw_polyline(flask+PackedVector2Array([flask[0]]),Color(INK,.8),1.5,true)
 	_text(Vector2(potion.end.x-11,potion.end.y-6),str(_potions),17,INK,30)
-	_text(Vector2(p.x,potion.end.y+17),"Q",13,Color("b9b2a1"),70)
+	_text(Vector2(p.x,potion.end.y+17),"Q",14,INK_DIM,70)
