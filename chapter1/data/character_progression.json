@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "balance_status": "hypothesis",
+  "level_cap": 20,
+  "xp_thresholds": [0, 250, 600, 1000, 1500, 2100, 2800, 3600, 4500, 5500, 6700, 8000, 9500, 11100, 12900, 14900, 17100, 19500, 22100, 25000],
+  "points_per_level": 1,
+  "sources": {
+    "seal_xp": [150, 220, 280],
+    "champion_xp": [50, 80],
+    "boss_xp": 120,
+    "victory_xp": 100
+  },
+  "first_rewards": {"champion:0": 1, "champion:1": 1, "boss": 1},
+  "respec": {"essence_per_point": 0},
+  "migration": {"xp_per_completed_run": 1000, "max_runs": 5},
+  "characters": [
+    {"id": "chapter1.character.frost", "signature_skill_id": "chapter1.skill.frost", "tree_id": "witch.frost"},
+    {"id": "chapter1.character.ember", "signature_skill_id": "chapter1.skill.ember", "tree_id": null},
+    {"id": "chapter1.character.arc", "signature_skill_id": "chapter1.skill.arc", "tree_id": null}
+  ]
+}

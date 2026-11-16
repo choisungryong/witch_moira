@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "balance_status": "hypothesis",
+  "trees": [
+    {
+      "tree_id": "witch.frost",
+      "revision": 1,
+      "character_id": "chapter1.character.frost",
+      "signature_skill_id": "chapter1.skill.frost",
+      "node_prefixes": ["witch.frost.", "witch.common."],
+      "tiers": [
+        {"level": 1, "name": "수녀의 기도"},
+        {"level": 6, "name": "빌린 한기"},
+        {"level": 12, "name": "서약의 대가"},
+        {"level": 18, "name": "깊은 서약"}
+      ],
+      "branches": [
+        {"id": "lance", "name": "관통", "color": "frost"},
+        {"id": "field", "name": "얼음 지대", "color": "frost"},
+        {"id": "shatter", "name": "파쇄", "color": "frost"},
+        {"id": "oath", "name": "서약", "color": "brass"}
+      ],
+      "nodes": [
+        {
+          "id": "witch.frost.needle",
+          "branch": "lance",
+          "tier": 1,
+          "name": "얼음 바늘",
+          "lore": "수도원의 겨울은 바늘처럼 스며들었다.",
+          "max_rank": 5,
+          "requires": {},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"skill": {"add": {"pierce": 1, "hit_budget": 4}, "mul_bps": {"damage_raw": 10000}}},
+            {"skill": {"add": {"pierce": 1, "hit_budget": 4}, "mul_bps": {"damage_raw": 10500}}},
+            {"skill": {"add": {"pierce": 2, "hit_budget": 8}, "mul_bps": {"damage_raw": 10500}}},
+            {"skill": {"add": {"pierce": 2, "hit_budget": 8}, "mul_bps": {"damage_raw": 11000}}},
+            {"skill": {"add": {"pierce": 3, "hit_budget": 12}, "mul_bps": {"damage_raw": 11000}}}
+          ]
+        },
+        {
+          "id": "witch.frost.volley",
+          "branch": "lance",
+          "tier": 2,
+          "name": "겹창",
+          "lore": "\"하나로 모자라면 더 빌려라.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.needle": 2},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"skill": {"add": {"projectiles": 1, "hit_budget": 6}, "cooldown_bps": 10000}},
+            {"skill": {"add": {"projectiles": 1, "hit_budget": 6}, "cooldown_bps": 9600}},
+            {"skill": {"add": {"projectiles": 2, "hit_budget": 12}, "cooldown_bps": 9200}}
+          ]
+        },
+        {
+          "id": "witch.frost.oath_lance",
+          "branch": "lance",
+          "tier": 3,
+          "name": "꿰뚫는 서약",
+          "lore": "\"큰 것일수록 깊이 찔러라. 대가는 나중에.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.volley": 2},
+          "min_spent": 0,
+          "new_rule": "R1",
+          "ranks": [
+            {"rules": {"elite_damage_bps": 1500}},
+            {"rules": {"elite_damage_bps": 3000}},
+            {"rules": {"elite_damage_bps": 4500}}
+          ]
+        },
+        {
+          "id": "witch.frost.rime",
+          "branch": "field",
+          "tier": 1,
+          "name": "서리 입김",
+          "lore": "숨을 고르면 발밑의 시간이 느려진다.",
+          "max_rank": 5,
+          "requires": {},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"skill": {"add": {"slow_bps": 500}}},
+            {"skill": {"add": {"slow_bps": 1000}}},
+            {"skill": {"add": {"slow_bps": 1500}}},
+            {"skill": {"add": {"slow_bps": 2000}}},
+            {"skill": {"add": {"slow_bps": 2500}}}
+          ]
+        },
+        {
+          "id": "witch.frost.field",
+          "branch": "field",
+          "tier": 2,
+          "name": "서리 지대",
+          "lore": "\"땅을 얼려 두렴. 그들이 오는 길을.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.rime": 2},
+          "min_spent": 0,
+          "new_rule": "R2",
+          "ranks": [
+            {"rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 300, "duration_ticks": 120, "slow_bps": 4500, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 0, "pulse_damage_bps": 0}}},
+            {"rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 350, "duration_ticks": 150, "slow_bps": 4500, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 0, "pulse_damage_bps": 0}}},
+            {"rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 400, "duration_ticks": 180, "slow_bps": 4500, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 0, "pulse_damage_bps": 0}}}
+          ]
+        },
+        {
+          "id": "witch.frost.dominion",
+          "branch": "field",
+          "tier": 3,
+          "name": "한기의 영역",
+          "lore": "\"이 땅은 이제 겨울이다. 내가 그렇게 정했다.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.field": 2},
+          "min_spent": 0,
+          "new_rule": "R2",
+          "ranks": [
+            {"rules": {"frost_field_add": {"radius_cm": 50, "max_fields": 0, "pulse_damage_bps": 2500, "slow_bps_at_least": 6500}}},
+            {"rules": {"frost_field_add": {"radius_cm": 100, "max_fields": 1, "pulse_damage_bps": 3500, "slow_bps_at_least": 6500}}},
+            {"rules": {"frost_field_add": {"radius_cm": 150, "max_fields": 1, "pulse_damage_bps": 4500, "slow_bps_at_least": 6500}}}
+          ]
+        },
+        {
+          "id": "witch.frost.chill",
+          "branch": "shatter",
+          "tier": 1,
+          "name": "냉각 누적",
+          "lore": "얼음은 한 번에 오지 않는다. 쌓여서 온다.",
+          "max_rank": 3,
+          "requires": {},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"skill": {"at_most": {"freeze_stacks": 4}}},
+            {"skill": {"at_most": {"freeze_stacks": 3}}},
+            {"skill": {"at_most": {"freeze_stacks": 2}}}
+          ]
+        },
+        {
+          "id": "witch.frost.shatter",
+          "branch": "shatter",
+          "tier": 2,
+          "name": "빙결 파쇄",
+          "lore": "\"언 것은 부서진다. 아름답게.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.chill": 2},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"skill": {"add": {"shatter_count": 0}, "at_least": {"shatter_count": 2, "proc_depth": 1, "hit_budget": 16}}},
+            {"skill": {"add": {"shatter_count": 1}, "at_least": {"shatter_count": 3, "proc_depth": 1, "hit_budget": 16}}},
+            {"skill": {"add": {"shatter_count": 2}, "at_least": {"shatter_count": 4, "proc_depth": 1, "hit_budget": 16}}}
+          ]
+        },
+        {
+          "id": "witch.frost.cascade",
+          "branch": "shatter",
+          "tier": 3,
+          "name": "파편 연쇄",
+          "lore": "\"부서진 조각마다 내 이름이 새겨져 있다.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.frost.shatter": 2},
+          "min_spent": 0,
+          "new_rule": "R3",
+          "ranks": [
+            {"skill": {"add": {"shatter_count": 1}}, "rules": {"shatter_radius_cm": 50}},
+            {"skill": {"add": {"shatter_count": 2}}, "rules": {"shatter_radius_cm": 100}},
+            {"skill": {"add": {"shatter_count": 3}}, "rules": {"shatter_radius_cm": 150}}
+          ]
+        },
+        {
+          "id": "witch.common.vigor",
+          "branch": "oath",
+          "tier": 1,
+          "name": "질긴 숨",
+          "lore": "마지막 수녀는 쉽게 쓰러지지 않았다.",
+          "max_rank": 5,
+          "requires": {},
+          "min_spent": 0,
+          "new_rule": null,
+          "ranks": [
+            {"hero": {"max_hp": 8}},
+            {"hero": {"max_hp": 16}},
+            {"hero": {"max_hp": 24}},
+            {"hero": {"max_hp": 32}},
+            {"hero": {"max_hp": 40}}
+          ]
+        },
+        {
+          "id": "witch.common.ward",
+          "branch": "oath",
+          "tier": 2,
+          "name": "서약의 가호",
+          "lore": "\"네 몸은 이제 내 것이기도 하니, 지켜 주마.\" — 후원자",
+          "max_rank": 3,
+          "requires": {"witch.common.vigor": 2},
+          "min_spent": 0,
+          "new_rule": "R4",
+          "ranks": [
+            {"hero": {"damage_reduction_bps": 300, "potion_start": 0}},
+            {"hero": {"damage_reduction_bps": 600, "potion_start": 0}},
+            {"hero": {"damage_reduction_bps": 900, "potion_start": 1}}
+          ]
+        },
+        {
+          "id": "witch.common.favor",
+          "branch": "oath",
+          "tier": 2,
+          "name": "후원자의 총애",
+          "lore": "\"마음에 안 들면 다시 골라도 된단다.\" — 후원자",
+          "max_rank": 2,
+          "requires": {},
+          "min_spent": 0,
+          "new_rule": "R5",
+          "ranks": [
+            {"rules": {"grace_rerolls": 1}},
+            {"rules": {"grace_rerolls": 2}}
+          ]
+        },
+        {
+          "id": "witch.frost.deep_oath",
+          "branch": "oath",
+          "tier": 4,
+          "name": "깊은 서약",
+          "lore": "그녀는 더 깊이 빌렸다. 갚을 날을 세지 않고.",
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 15,
+          "new_rule": "R6",
+          "ranks": [
+            {"rules": {"start_rank": 2, "evolve_without_passive": true}}
+          ]
+        }
+      ],
+      "synergies": [
+        {"target": "witch.frost.oath_lance", "source": "witch.frost.needle", "per_rank": {"rules": {"elite_damage_bps": 300}}},
+        {"target": "witch.frost.dominion", "source": "witch.frost.rime", "per_rank": {"rules": {"frost_field_add": {"radius_cm": 20}}}}
+      ],
+      "balance_status": "hypothesis"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Godot cache
+.godot/
+# Local work: captures, measurements, test fixtures. Safe to delete at any time.
+_local/*
+!_local/.gdignore
+__pycache__/
+*.pyc
+*.tmp
+*.log

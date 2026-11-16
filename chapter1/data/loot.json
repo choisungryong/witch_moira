@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "provenance": "independent_design; structure informed by Diablo II treasure-class and affix tables, no names, numbers or items copied",
+  "balance_status": "starting_hypothesis_tuned_by_simulation",
+  "slots": ["weapon", "head", "body", "hands", "feet", "charm", "ring"],
+  "equip_slots": ["weapon", "head", "body", "hands", "feet", "charm", "ring", "ring2"],
+  "jewelry_slots": ["charm", "ring"],
+  "slot_names": {"weapon": "무기", "head": "머리", "body": "몸통", "hands": "장갑", "feet": "신발", "charm": "목걸이", "ring": "반지"},
+  "qualities": ["common", "magic", "rare", "legendary", "unique"],
+  "max_item_level": 30,
+  "limits": {
+    "damage_bps": [-5000, 30000], "cooldown_bps": [-5000, 10000], "max_hp_raw": [-12800, 76800],
+    "damage_reduction_bps": [0, 6000], "pickup_radius_cm": [0, 800], "projectiles": [0, 4], "pierce": [0, 4],
+    "chain_targets": [0, 8], "shatter_count": [0, 8], "radius_cm": [0, 250], "slow_bps": [0, 5000],
+    "fire_damage_bps": [0, 10000], "fire_burst": [0, 1], "frost_threshold": [0, 1], "arc_branches": [0, 1],
+    "arc_damage_bps": [-5000, 10000], "move_speed_bps": [0, 3000], "dash_cooldown_bps": [0, 4000], "soul_gain_bps": [0, 5000]
+  },
+  "bases": [
+    {"id": "cinder_staff", "name": "잿불 지팡이", "slot": "weapon", "level": 1, "stats": {"damage_bps": 800, "projectiles": 1}},
+    {"id": "swift_wand", "name": "박동의 마법봉", "slot": "weapon", "level": 1, "stats": {"damage_bps": 500, "cooldown_bps": 1200}},
+    {"id": "piercing_sceptre", "name": "관통의 홀", "slot": "weapon", "level": 3, "stats": {"damage_bps": 1400, "pierce": 1}},
+    {"id": "linen_robe", "name": "순례자의 로브", "slot": "body", "level": 1, "stats": {"max_hp_raw": 5120, "damage_reduction_bps": 300}},
+    {"id": "iron_vest", "name": "쇠실 흉의", "slot": "body", "level": 2, "stats": {"max_hp_raw": 8960, "damage_reduction_bps": 600, "cooldown_bps": -500}},
+    {"id": "warden_mantle", "name": "수문장의 외투", "slot": "body", "level": 3, "stats": {"max_hp_raw": 3840, "damage_reduction_bps": 700, "pickup_radius_cm": 40}},
+    {"id": "winter_shard", "name": "겨울 파편", "slot": "charm", "level": 1, "stats": {"slow_bps": 1200, "max_hp_raw": 2560}},
+    {"id": "ember_lens", "name": "잿불 렌즈", "slot": "charm", "level": 2, "stats": {"radius_cm": 40, "fire_damage_bps": 1000}},
+    {"id": "chain_knot", "name": "연쇄 매듭", "slot": "charm", "level": 3, "stats": {"chain_targets": 1, "damage_bps": -300}},
+    {"id": "quick_loop", "name": "은빛 고리", "slot": "ring", "level": 1, "stats": {"cooldown_bps": 500, "pickup_radius_cm": 40}},
+    {"id": "glass_ring", "name": "유리 반지", "slot": "ring", "level": 2, "stats": {"damage_bps": 1200, "max_hp_raw": -2560}},
+    {"id": "ward_ring", "name": "봉인의 반지", "slot": "ring", "level": 3, "stats": {"damage_reduction_bps": 500, "max_hp_raw": 3072}},
+    {"id": "ash_hood", "name": "재의 두건", "slot": "head", "level": 1, "stats": {"cooldown_bps": 300}},
+    {"id": "iron_circlet", "name": "쇠 머리테", "slot": "head", "level": 4, "stats": {"cooldown_bps": 400, "max_hp_raw": 2560}},
+    {"id": "seer_veil", "name": "예언자의 베일", "slot": "head", "level": 8, "stats": {"cooldown_bps": 500, "soul_gain_bps": 800}},
+    {"id": "linen_wraps", "name": "순례자의 붕대", "slot": "hands", "level": 1, "stats": {"damage_bps": 300}},
+    {"id": "ember_gloves", "name": "잿불 장갑", "slot": "hands", "level": 4, "stats": {"damage_bps": 600}},
+    {"id": "storm_gauntlets", "name": "뇌전 건틀릿", "slot": "hands", "level": 8, "stats": {"damage_bps": 400, "cooldown_bps": 600}},
+    {"id": "worn_sandals", "name": "낡은 샌들", "slot": "feet", "level": 1, "stats": {"move_speed_bps": 300}},
+    {"id": "pilgrim_boots", "name": "순례자의 장화", "slot": "feet", "level": 4, "stats": {"move_speed_bps": 500, "max_hp_raw": 1280}},
+    {"id": "ash_striders", "name": "재밟이 장화", "slot": "feet", "level": 8, "stats": {"move_speed_bps": 700, "dash_cooldown_bps": 800}}
+  ],
+  "affixes": [
+    {"id": "wrath", "name": "격노", "kind": "prefix", "group": "damage", "slots": ["weapon", "ring", "charm", "hands"], "level": 1, "max_level": 9, "stat": "damage_bps", "low": 800, "high": 1800, "weight": 100},
+    {"id": "wrath2", "name": "분노", "kind": "prefix", "group": "damage", "slots": ["weapon", "ring", "charm", "hands"], "level": 7, "max_level": 30, "stat": "damage_bps", "low": 1800, "high": 3000, "weight": 80},
+    {"id": "wrath3", "name": "진노", "kind": "prefix", "group": "damage", "slots": ["weapon", "ring", "charm", "hands"], "level": 13, "max_level": 30, "stat": "damage_bps", "low": 3000, "high": 4500, "weight": 50},
+    {"id": "flame", "name": "불꽃", "kind": "prefix", "group": "damage", "slots": ["weapon", "ring", "charm"], "level": 2, "max_level": 30, "stat": "fire_damage_bps", "low": 500, "high": 1500, "weight": 85},
+    {"id": "haste", "name": "신속", "kind": "prefix", "group": "haste", "slots": ["weapon", "ring", "charm", "head", "hands"], "level": 1, "max_level": 9, "stat": "cooldown_bps", "low": 500, "high": 1200, "weight": 100},
+    {"id": "haste2", "name": "질풍", "kind": "prefix", "group": "haste", "slots": ["weapon", "ring", "charm", "head", "hands"], "level": 8, "max_level": 30, "stat": "cooldown_bps", "low": 1200, "high": 2000, "weight": 70},
+    {"id": "volley", "name": "다중", "kind": "prefix", "group": "shape", "slots": ["weapon"], "level": 2, "max_level": 30, "stat": "projectiles", "low": 1, "high": 1, "weight": 35},
+    {"id": "pierce", "name": "꿰뚫음", "kind": "prefix", "group": "shape", "slots": ["weapon", "ring"], "level": 3, "max_level": 30, "stat": "pierce", "low": 1, "high": 1, "weight": 55},
+    {"id": "conductor", "name": "도체", "kind": "prefix", "group": "chain", "slots": ["weapon", "ring", "charm"], "level": 3, "max_level": 30, "stat": "chain_targets", "low": 1, "high": 2, "weight": 60},
+    {"id": "shatter", "name": "파쇄", "kind": "prefix", "group": "shatter", "slots": ["weapon", "ring", "charm"], "level": 4, "max_level": 30, "stat": "shatter_count", "low": 1, "high": 2, "weight": 60},
+    {"id": "expanse", "name": "확장", "kind": "prefix", "group": "area", "slots": ["weapon", "charm"], "level": 3, "max_level": 30, "stat": "radius_cm", "low": 30, "high": 70, "weight": 65},
+    {"id": "vigor", "name": "활력", "kind": "suffix", "group": "health", "slots": ["body", "ring", "charm", "head", "hands", "feet"], "level": 1, "max_level": 9, "stat": "max_hp_raw", "low": 3072, "high": 6656, "weight": 100},
+    {"id": "vigor2", "name": "생명", "kind": "suffix", "group": "health", "slots": ["body", "ring", "charm", "head", "hands", "feet"], "level": 7, "max_level": 30, "stat": "max_hp_raw", "low": 6656, "high": 11520, "weight": 80},
+    {"id": "ward", "name": "보호", "kind": "suffix", "group": "ward", "slots": ["body", "ring", "head", "feet"], "level": 1, "max_level": 9, "stat": "damage_reduction_bps", "low": 300, "high": 700, "weight": 100},
+    {"id": "ward2", "name": "수호", "kind": "suffix", "group": "ward", "slots": ["body", "ring", "head", "feet"], "level": 8, "max_level": 30, "stat": "damage_reduction_bps", "low": 700, "high": 1200, "weight": 70},
+    {"id": "harvest", "name": "수확", "kind": "suffix", "group": "harvest", "slots": ["body", "ring", "charm", "feet"], "level": 1, "max_level": 30, "stat": "pickup_radius_cm", "low": 40, "high": 100, "weight": 100},
+    {"id": "binding", "name": "결박", "kind": "suffix", "group": "slow", "slots": ["weapon", "charm", "body"], "level": 3, "max_level": 30, "stat": "slow_bps", "low": 600, "high": 1400, "weight": 65},
+    {"id": "fleet", "name": "질주", "kind": "suffix", "group": "move", "slots": ["feet"], "level": 1, "max_level": 30, "stat": "move_speed_bps", "low": 300, "high": 800, "weight": 90},
+    {"id": "blink", "name": "도약", "kind": "suffix", "group": "dash", "slots": ["feet", "ring"], "level": 4, "max_level": 30, "stat": "dash_cooldown_bps", "low": 500, "high": 1500, "weight": 60},
+    {"id": "gleaning", "name": "이삭", "kind": "suffix", "group": "soul", "slots": ["head", "charm", "ring"], "level": 2, "max_level": 30, "stat": "soul_gain_bps", "low": 500, "high": 1500, "weight": 70}
+  ],
+  "legendaries": [
+    {"id": "splitting", "name": "갈라지는", "slots": ["weapon", "hands"], "level": 4, "stats": {"projectiles": 2, "damage_bps": -1500}, "description": "발사체 +2 · 피해 -15%"},
+    {"id": "impaling", "name": "꿰뚫는", "slots": ["weapon", "hands", "ring"], "level": 4, "stats": {"pierce": 2, "radius_cm": 30}, "description": "관통 +2 · 범위 +0.3m"},
+    {"id": "galvanic", "name": "전도하는", "slots": ["weapon", "charm", "ring"], "level": 4, "stats": {"chain_targets": 3, "arc_damage_bps": -1000}, "description": "연쇄 +3 · 번개 피해 -10%"}
+  ],
+  "uniques": [
+    {"id": "ash_bloom", "name": "잿꽃의 유언", "slot": "weapon", "level": 3, "element": "chapter1.skill.ember", "stats": {"damage_bps": -1000, "projectiles": 1, "fire_burst": 1}, "description": "화염 처치 폭발 · 피해 -10% · 발사체 +1"},
+    {"id": "winter_heart", "name": "겨울의 심장", "slot": "charm", "level": 3, "element": "chapter1.skill.frost", "stats": {"cooldown_bps": -500, "frost_threshold": 1, "shatter_count": 2}, "description": "서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가"},
+    {"id": "forked_covenant", "name": "갈림길의 서약", "slot": "ring", "level": 3, "element": "chapter1.skill.arc", "stats": {"arc_branches": 1, "arc_damage_bps": -1200, "chain_targets": 1}, "description": "번개 분기 +1 · 연쇄 +1 · 번개 피해 -12%"}
+  ],
+  "rare_names": {
+    "first": ["서리", "재의", "뇌우", "침묵", "서약", "황혼", "순례", "잿빛", "새벽", "폐허"],
+    "second": ["맹세", "손길", "숨결", "파편", "기도", "눈물", "사슬", "불씨", "그림자", "종소리"]
+  },
+  "slot_weights": {"weapon": 22, "head": 20, "body": 20, "hands": 20, "feet": 20, "charm": 1, "ring": 1},
+  "treasure_classes": {
+    "normal": {"picks": 1, "no_drop": 9945, "drop": 55, "level_bonus": 0, "quality": {"common": 3000, "magic": 6830, "rare": 120, "legendary": 30, "unique": 20}},
+    "elite": {"picks": 1, "no_drop": 2000, "drop": 8000, "level_bonus": 2, "quality": {"common": 0, "magic": 9250, "rare": 600, "legendary": 110, "unique": 40}},
+    "carrier": {"picks": 2, "no_drop": 0, "drop": 10000, "level_bonus": 2, "quality": {"common": 0, "magic": 7700, "rare": 2000, "legendary": 220, "unique": 80}, "slot_weights": {"weapon": 14, "head": 14, "body": 14, "hands": 14, "feet": 14, "charm": 6, "ring": 10}},
+    "champion": {"picks": 3, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8970, "rare": 800, "legendary": 150, "unique": 80}},
+    "boss": {"picks": 5, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}},
+    "boss_first_kill": {"picks": 1, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["unique_primary"], "quality": {"common": 0, "magic": 0, "rare": 0, "legendary": 0, "unique": 10000}}
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "alive_cap": 100,
+  "friendly_projectile_cap": 160,
+  "spawn": {
+    "ring_min_m": 7.5, "ring_max_m": 10.5,
+    "opening": [{"until_s": 10, "amount": 1}, {"until_s": 30, "amount": 3}],
+    "zones": [{"amount": 9, "interval_ticks": 40}, {"amount": 12, "interval_ticks": 36}, {"amount": 14, "interval_ticks": 36}],
+    "boss_phase": {"amount": 4, "interval_ticks": 60},
+    "mix": {"charger_from_s": 12, "charger_roll": 94, "ranged_from_s": 10, "ranged_roll": 82, "zone_step": 3}
+  },
+  "seal_kills": [1000, 1350, 1350],
+  "enemies": {
+    "walker":  {"hp": [14, 20, 26], "opening_hp": 9, "opening_until_s": 30, "damage": [5, 9, 15], "speed": [2.25, 2.4, 2.5]},
+    "ranged":  {"hp": [20, 28, 36], "damage": [5, 8, 12], "speed": [2.0, 2.15, 2.3]},
+    "charger": {"hp": [36, 48, 60], "damage": [8, 14, 22], "speed": [2.7, 2.85, 3.0]}
+  },
+  "hp_time_bps_per_s": 160,
+  "hp_time_from_s": 30,
+  "champions": [
+    {"hp": 1400, "damage": 55, "windup": 54, "recover": 96, "xp": 20},
+    {"hp": 2200, "damage": 70, "windup": 48, "recover": 84, "xp": 30},
+    {"hp": 4500, "damage": 85, "windup": 54, "recover": 90, "xp": 60}
+  ],
+  "boss_ward": {"damage": 65},
+  "potion": {"drop_one_in": 420, "seal_drops": 2, "start": 3, "carry_max": 5, "heal_bps": 3500, "cooldown_ticks": 240},
+  "orbs": {"overflow": "nearest", "vacuum_on_seal": true},
+  "xp_thresholds": [0, 10, 23, 71, 186, 444, 740, 1167, 1772, 2552, 3898, 12000],
+  "primary_bonus": {
+    "chapter1.skill.ember": {
+      "r1": {"add": {"projectiles": 1, "hit_budget": 1}, "cooldown_bps": 6700, "mul_bps": {"damage_raw": 8000}},
+      "r2": {"add": {"projectiles": 2}, "cooldown_bps": 5500, "mul_bps": {"damage_raw": 6000}},
+      "r3": {"add": {"projectiles": 3}, "cooldown_bps": 5000, "mul_bps": {"damage_raw": 5000}},
+      "r4": {"add": {"projectiles": 4, "hit_budget": -12}, "cooldown_bps": 4500, "mul_bps": {"damage_raw": 4500}},
+      "evo": {"add": {"projectiles": 6, "hit_budget": -32, "radius_cm": -120}, "cooldown_bps": 5000, "mul_bps": {"damage_raw": 3200}}
+    },
+    "chapter1.skill.frost": {
+      "r1": {"add": {"projectiles": 1, "hit_budget": 1}, "cooldown_bps": 6500, "mul_bps": {"damage_raw": 8500}},
+      "r2": {"add": {"projectiles": 1, "hit_budget": 4}, "cooldown_bps": 5500, "mul_bps": {"damage_raw": 6500}},
+      "r3": {"add": {"projectiles": 2, "hit_budget": 8}, "cooldown_bps": 5000, "mul_bps": {"damage_raw": 5500}},
+      "r4": {"add": {"projectiles": 3}, "cooldown_bps": 4500, "mul_bps": {"damage_raw": 5000}},
+      "evo": {"add": {"projectiles": 5, "pierce": 1}, "cooldown_bps": 4500, "mul_bps": {"damage_raw": 4800}}
+    },
+    "chapter1.skill.arc": {
+      "r2": {"cooldown_bps": 7000},
+      "r3": {"cooldown_bps": 6000},
+      "r4": {"add": {"chain_targets": 1, "hit_budget": 40, "branches": 1}, "cooldown_bps": 3500, "mul_bps": {"damage_raw": 4500}},
+      "evo": {"add": {"chain_targets": 4, "branches": 1, "hit_budget": 80}, "cooldown_bps": 2500, "mul_bps": {"damage_raw": 2800}}
+    }
+  },
+  "secondary": {"damage_bps": 10000, "hit_budget_bps": 10000, "cooldown_bps": 10000, "max_chain_targets": 4, "max_branches": 2},
+  "children": {
+    "chapter1.skill.ember": {"count": 3, "life_ticks": 20, "speed": 7.0, "per_cast": 12, "evolved_only": true},
+    "chapter1.skill.frost": {"count": 4, "life_ticks": 24, "speed": 8.0, "per_cast": 16, "evolved_only": true},
+    "chapter1.skill.arc":   {"count": 0, "life_ticks": 1, "speed": 1.0, "per_cast": 0, "evolved_only": true}
+  },
+  "presentation": {"arc_stripe_ticks": 24},
+  "marks": {"mark_bps": 9000, "mark_ticks": 360},
+  "heavy_hit": {"heavy_bps": 2000, "gap_ticks": 120, "iframe_ticks": 45, "graze_bps": 1000, "ward_gap_ticks": 60},
+  "final_level_on_boss_spawn": true,
+  "hero_shot": {"spread_mrad": 160}
+}

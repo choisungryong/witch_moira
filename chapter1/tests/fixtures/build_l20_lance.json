@@ -1,0 +1,16 @@
+{
+  "character_id": "chapter1.character.frost",
+  "tree_id": "witch.frost",
+  "tree_revision": 1,
+  "ranks": {
+    "witch.frost.needle": 5,
+    "witch.frost.volley": 3,
+    "witch.frost.oath_lance": 3,
+    "witch.common.vigor": 5,
+    "witch.common.ward": 3,
+    "witch.common.favor": 2,
+    "witch.frost.deep_oath": 1
+  },
+  "character_level": 20,
+  "character_xp": 25000
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "alive_cap": 178,
+  "friendly_projectile_cap": 192,
+  "spawn": {
+    "ring_min_m": 9.0, "ring_max_m": 12.0,
+    "opening": [{"until_s": 10, "amount": 1}, {"until_s": 30, "amount": 3}],
+    "zones": [{"amount": 6, "interval_ticks": 48}, {"amount": 8, "interval_ticks": 42}, {"amount": 10, "interval_ticks": 42}],
+    "boss_phase": {"amount": 4, "interval_ticks": 60},
+    "mix": {"charger_from_s": 12, "charger_roll": 94, "ranged_from_s": 10, "ranged_roll": 82, "zone_step": 3}
+  },
+  "seal_kills": [600, 900, 900],
+  "enemies": {
+    "walker":  {"hp": [12, 15, 18], "opening_hp": 9, "opening_until_s": 30, "damage": [5, 5, 5], "speed": [1.60, 1.60, 1.60]},
+    "ranged":  {"hp": [18, 24, 30], "damage": [5, 5, 5], "speed": [1.45, 1.45, 1.45]},
+    "charger": {"hp": [32, 40, 48], "damage": [8, 8, 8], "speed": [1.95, 1.95, 1.95]}
+  },
+  "hp_time_bps_per_s": 0,
+  "hp_time_from_s": 30,
+  "champions": [
+    {"hp": 1400, "damage": 12, "windup": 54, "recover": 96, "xp": 20},
+    {"hp": 2200, "damage": 14, "windup": 48, "recover": 84, "xp": 30},
+    {"hp": 4500, "damage": 18, "windup": 54, "recover": 90, "xp": 60}
+  ],
+  "boss_ward": {"damage": 20},
+  "potion": {"drop_one_in": 90, "seal_drops": 2, "start": 3, "carry_max": 5, "heal_bps": 3500, "cooldown_ticks": 240},
+  "orbs": {"overflow": "last", "vacuum_on_seal": false},
+  "xp_thresholds": [0, 12, 36, 72, 120, 180, 260, 380, 560, 820, 1180, 1640],
+  "primary_bonus": {},
+  "secondary": {"damage_bps": 10000, "hit_budget_bps": 10000, "cooldown_bps": 10000, "max_chain_targets": 32, "max_branches": 4},
+  "children": {},
+  "presentation": {"arc_stripe_ticks": 12},
+  "marks": {"mark_bps": 0, "mark_ticks": 180},
+  "heavy_hit": {"heavy_bps": 0, "gap_ticks": 120, "iframe_ticks": 45, "graze_bps": 1000, "ward_gap_ticks": 0},
+  "final_level_on_boss_spawn": false,
+  "hero_shot": {"spread_mrad": 160}
+}
