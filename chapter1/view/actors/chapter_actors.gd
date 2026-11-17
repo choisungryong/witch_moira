@@ -622,7 +622,7 @@ var _warden_event := -1
 var _warden_phase := 1
 
 func _create__q12(kind: String) -> Node3D:
-	if kind!="elite" or view.run.zone!=2:return _create__rigged(kind)
+	if kind!="elite" or _create_zone()!=2:return _create__rigged(kind)
 	var actor := Node3D.new();actor.set_meta("kind",kind)
 	var model=load(WARDEN).instantiate();model.scale=Vector3.ONE*1.15;actor.add_child(model)
 	var player: AnimationPlayer=model.find_child("AnimationPlayer",true,false)
@@ -668,6 +668,11 @@ func sync__q12(run: RefCounted,delta: float) -> void:
 # Per-frame enemy table, filled once at the top of sync(): enemy id -> "generation:id".
 # Presentation-owned; nothing is written into the core dictionaries.
 var frame_keys: Dictionary={}
+# Zone used when an elite presenter is created: the Warden rig only for the final zone. Pre-building
+# sets it explicitly; -1 reads the live run (the zone at the moment of creation, as before).
+var _zone_override := -1
+func _create_zone() -> int:
+	return _zone_override if _zone_override>=0 else int(view.run.zone)
 # Enemy whose pose is being updated by sync__cloister (same dictionary as _entities[key]).
 var _cur_actor: Node3D=null
 var _cur_entity: Dictionary={}
@@ -837,7 +842,7 @@ var _demon19_attacks: Dictionary={}
 var _demon19_event := -1
 var motion19_samples := 0
 func _create__chapterx(kind: String) -> Node3D:
-	if kind not in ["walker","elite"] or (kind=="elite" and view.run.zone==2):return _create__q12(kind)
+	if kind not in ["walker","elite"] or (kind=="elite" and _create_zone()==2):return _create__q12(kind)
 	var actor := Node3D.new();actor.set_meta("kind",kind)
 	var model: Node3D=load(WARDEN).instantiate();model.scale=Vector3.ONE*(.80 if kind=="elite" else .52);actor.add_child(model)
 	var player: AnimationPlayer=model.find_child("AnimationPlayer",true,false)
@@ -845,7 +850,7 @@ func _create__chapterx(kind: String) -> Node3D:
 	player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var materials: Array[StandardMaterial3D]=[]
 	_demon19_materials(model,materials,kind)
-	actor.set_meta("minion19",{"model":model,"player":player,"skeleton":rig,"materials":materials,"fade":1.0,"death_age":0.0,"clip":"","bucket":-1})
+	actor.set_meta("minion19",{"model":model,"player":player,"skeleton":rig,"materials":materials,"fade":1.0,"death_age":0.0,"clip":""})
 	player.play("idle",0);player.seek(0,true);player.advance(0)
 	return actor
 func _demon19_materials__chapterx(node: Node,materials: Array[StandardMaterial3D],kind: String) -> void:
@@ -913,10 +918,8 @@ func _update_pose__chapterx(actor: Node3D,direction: Vector2,moving: bool,castin
 		var phase: float=float(sample.get("phase",0.0))+float((int(e.id)*37)%101)/101.0
 		time_=fposmod(phase,1)*player.get_animation(clip).length
 	else:time_=fposmod(float(tick)/60.0+float(e.id)*.113,player.get_animation(clip).length)
-	var near_: bool=e.position.distance_squared_to(view.run.hero.position)<30.25
-	var bucket: int=tick/3
-	if moving and not near_ and state.clip==clip and int(state.bucket)==bucket:return
-	state.clip=clip;state.bucket=bucket
+	# Whether this frame samples at all is decided by _pose_due (frame schedule), not here.
+	state.clip=clip
 	# A dashing or recovering charger is sampled again by _update_pose__q21 later in
 	# this same call chain, over the same 28 tracks (every clip keys the same tracks),
 	# so this first sample would be fully overwritten. Skip it, keep everything else.
@@ -1152,14 +1155,6 @@ func _build_staff21() -> void:
 	_staff21_material=StandardMaterial3D.new();_staff21_material.vertex_color_use_as_albedo=true;_staff21_material.vertex_color_is_srgb=true;_staff21_material.albedo_color=Color.WHITE;_staff21_material.roughness=.85
 	_staff21_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 func _update_pose__q21(actor: Node3D,direction: Vector2,moving: bool,casting: bool,dead: bool,tick: int,playing: bool,hit: bool=false,brief_cast: bool=false) -> void:
-	if actor.has_meta("role21") and playing and moving and not dead:
-		var entity := _entity(actor)
-		if not entity.is_empty() and entity.position.distance_squared_to(view.run.hero.position)>9:
-			var bucket: int=tick/3
-			if int(actor.get_meta("role21_bucket",-1))==bucket:
-				if direction.length_squared()>.001:actor.rotation.y=lerp_angle(actor.rotation.y,atan2(direction.x,direction.y),1-exp(-_render_delta*18))
-				return
-			actor.set_meta("role21_bucket",bucket)
 	_update_pose__q20(actor,direction,moving,casting,dead,tick,playing,hit,brief_cast)
 	if not actor.has_meta("role21"):return
 	var e := _entity(actor)
@@ -1229,31 +1224,62 @@ func setup__q25b(owner_view: Node3D) -> void:
 	# Allocate ordinary presenters before the menu; no invisible core entities.
 	for entry in [{"kind":"walker","count":144},{"kind":"ranged","count":40},{"kind":"charger","count":40}]:
 		for i in int(entry.count):
-			var actor := _create__q21(entry.kind)
+			# The first walker keeps the old model: setup() reads its Mophs rig for the pose caches of the other
+			# roles before replacing it. Every other walker is built on the outlaw model directly.
+			var actor := _create_walker34() if entry.kind=="walker" and i>0 else _create__q21(entry.kind)
 			pool25_created+=1
 			var stored := _stash25(actor)
 			assert(stored)
 			if not stored:actor.queue_free()
+	# Elites are built here too (two champions and the final boss per run), so no model load, instance
+	# or material copy happens during a fight. The zone is forced because the elite model depends on it
+	# (Warden rig in zone 2, minion model otherwise).
+	for entry in [{"zone":0,"count":2},{"zone":2,"count":1}]:
+		_zone_override=int(entry.zone)
+		for i in int(entry.count):
+			var elite := _create__q21("elite")
+			pool25_created+=1
+			var stored_elite := _stash25(elite)
+			assert(stored_elite)
+			if not stored_elite:elite.queue_free()
+	_zone_override=-1
 func _pool25_size() -> int:
+	# Elite entries are extra and do not take the ordinary cap.
 	var count := 0
-	for entries in _pool25.values():count+=entries.size()
+	for key in ["walker","ranged","charger"]:count+=_pool25.get(key,[]).size()
 	return count
-func _stash25(actor: Node3D) -> bool:
+## Pool bucket of a presenter: the ordinary roles by kind, elites as "elite" (minion model) or "boss" (Warden rig).
+func _pool25_key(actor: Node3D) -> String:
 	var kind: String=actor.get_meta("kind","")
-	if kind not in ["walker","ranged","charger"] or not actor.has_meta("minion19") or _pool25_size()>=POOL25_CAP:return false
+	if kind=="elite":return "boss" if actor.has_meta("enemy_rig") else ("elite" if actor.has_meta("minion19") else "")
+	return kind if kind in ["walker","ranged","charger"] and actor.has_meta("minion19") else ""
+func _stash25(actor: Node3D) -> bool:
+	var key := _pool25_key(actor)
+	if key.is_empty() or (key not in ["elite","boss"] and _pool25_size()>=POOL25_CAP):return false
 	if actor.get_parent()!=null:actor.get_parent().remove_child(actor)
 	_pool25_root.add_child(actor)
-	var entries: Array=_pool25.get(kind,[]);entries.append(actor);_pool25[kind]=entries
+	var entries: Array=_pool25.get(key,[]);entries.append(actor);_pool25[key]=entries
 	return true
 func _create__q25b(kind: String) -> Node3D:
-	var entries: Array=_pool25.get(kind,[])
-	if kind in ["walker","ranged","charger"] and not entries.is_empty():
+	var key := kind if kind!="elite" else ("boss" if _create_zone()==2 else "elite")
+	var entries: Array=_pool25.get(key,[])
+	if key in ["walker","ranged","charger","elite","boss"] and not entries.is_empty():
 		var actor: Node3D=entries.pop_back();_pool25_root.remove_child(actor)
 		for name_ in actor.get_meta_list():
-			if name_ not in ["kind","minion19","role21"]:actor.remove_meta(name_)
+			if name_ not in ["kind","minion19","role21","enemy_rig"]:actor.remove_meta(name_)
 		actor.transform=Transform3D.IDENTITY;actor.visible=true
+		if key=="boss":
+			var rig_state: Dictionary=actor.get_meta("enemy_rig")
+			rig_state.owner_fade=1.0
+			rig_state.model.position=Vector3.ZERO;rig_state.model.rotation=Vector3.ZERO
+			rig_state.skeleton.reset_bone_poses()
+			rig_state.player.stop();rig_state.player.play("idle",0);rig_state.player.seek(0,true);rig_state.player.advance(0)
+			for material_ in rig_state.materials:material_.albedo_color=material_.get_meta("warden_tint")
+			pool25_hits+=1
+			return actor
 		var state: Dictionary=actor.get_meta("minion19")
-		state.fade=1.0;state.death_age=0.0;state.clip="";state.bucket=-1
+		state.fade=1.0;state.death_age=0.0;state.clip=""
+		for pose_key in POSE_KEYS:state.erase(pose_key)
 		state.model.position=Vector3.ZERO;state.model.rotation=Vector3.ZERO
 		state.erase("staff21_time");state.erase("staff21_clip")
 		state.skeleton.reset_bone_poses()
@@ -1262,7 +1288,7 @@ func _create__q25b(kind: String) -> Node3D:
 		for material_ in state.materials:material_.albedo_color=material_.get_meta("demon19_tint")
 		pool25_hits+=1
 		return actor
-	var actor := _create__q21(kind)
+	var actor := _create_walker34() if kind=="walker" else _create__q21(kind)
 	if kind in ["walker","ranged","charger"]:pool25_created+=1
 	return actor
 func sync__q25b(run: RefCounted,delta: float) -> void:
@@ -1547,14 +1573,21 @@ func setup(owner_view: Node3D) -> void:
 func _replace34(actor: Node3D) -> void:
 	if _is34(actor):return
 	var old: Dictionary=actor.get_meta("minion19")
+	_attach34(actor)
+	_disarm34(old.model);old.model.get_parent().remove_child(old.model);old.model.queue_free()
+## A walker presenter built directly on the outlaw model (no Mophs model made first and swapped out).
+func _create_walker34() -> Node3D:
+	var actor := Node3D.new();actor.set_meta("kind","walker")
+	_attach34(actor)
+	return actor
+func _attach34(actor: Node3D) -> void:
 	var model: Node3D=OUTLAW34.instantiate();actor.add_child(model);model.scale=Vector3.ONE*.62
 	var rig: Skeleton3D=model.find_child("Skeleton3D",true,false)
 	var player: AnimationPlayer=model.find_child("AnimationPlayer",true,false)
 	player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var materials: Array[StandardMaterial3D]=[];_materials34(model,materials)
-	var state := {"family34":true,"model":model,"player":player,"skeleton":rig,"materials":materials,"fade":1.0,"death_age":0.0,"clip":"","bucket":-1}
+	var state := {"family34":true,"model":model,"player":player,"skeleton":rig,"materials":materials,"fade":1.0,"death_age":0.0,"clip":""}
 	actor.set_meta("minion19",state)
-	_disarm34(old.model);old.model.get_parent().remove_child(old.model);old.model.queue_free()
 	player.play("idle",0);player.seek(0,true);player.advance(0);replacements34+=1
 func _materials34(node: Node,materials: Array[StandardMaterial3D]) -> void:
 	if node is MeshInstance3D:
@@ -1572,51 +1605,8 @@ func _create(kind: String) -> Node3D:
 	if kind=="walker" and actor.has_meta("minion19"):_replace34(actor)
 	return actor
 func _update_pose__q34b(actor: Node3D,direction: Vector2,moving: bool,casting: bool,dead: bool,tick: int,playing: bool,hit: bool=false,brief_cast: bool=false) -> void:
-	if not _is34(actor):
-		_update_pose__q32b(actor,direction,moving,casting,dead,tick,playing,hit,brief_cast);return
-	var e := _entity(actor)
-	if e.is_empty():return
-	var state: Dictionary=actor.get_meta("minion19")
-	if not playing and not dead and not String(state.clip).is_empty():return
-	if e.state=="recover":direction=e.attack_direction
-	if playing and direction.length_squared()>.001:actor.rotation.y=lerp_angle(actor.rotation.y,atan2(direction.x,direction.y),1-exp(-_render_delta*18))
-	var fraction := clampf(Engine.get_physics_interpolation_fraction(),0,1) if playing else 0.0
-	var clip := "idle";var time_ := 0.0
-	if dead:
-		clip="death"
-		if view.run.mode not in ["paused","choice","inventory","equipment"]:state.death_age=maxf(float(state.death_age)+_render_delta,float(tick-int(e.dead_tick))/60.0)
-		time_=minf(float(state.death_age),1.60)
-	elif e.state=="windup":
-		var duration: int=e.get("definition",{}).get("windup",view.run.ENEMY_DEFS[e.kind].windup)
-		var left := maxf(0,float(int(e.state_until)-tick)-fraction)
-		clip="attack_slam";time_=clampf(1-left/float(maxi(1,duration)),0,1)*STRIKE34
-	elif e.state=="recover" and _demon19_attacks.has(e.id):
-		var paid: Dictionary=_demon19_attacks[e.id]
-		var extension := maxi(0,int(e.state_until)-int(paid.end))
-		var duration: int=e.get("definition",{}).get("recover",view.run.ENEMY_DEFS[e.kind].recover)
-		var progress := clampf((float(tick-int(paid.tick)-extension)+fraction)/float(maxi(1,duration)),0,1)
-		clip="attack_slam";time_=STRIKE34+progress*(SWING34-STRIKE34)
-	elif moving:
-		clip="walk"
-		var sample: Dictionary=actor.get_meta("motion_sample",{})
-		time_=fposmod(float(sample.get("phase",0.0))+float((int(e.id)*37)%101)/101.0,1)*WALK34
-	else:time_=fposmod(float(tick)/60.0+float(e.id)*.113,128.0/60.0)
-	var near_: bool=e.position.distance_squared_to(view.run.hero.position)<30.25
-	var bucket: int=tick/3
-	if moving and not hit and not near_ and state.clip==clip and int(state.bucket)==bucket:return
-	state.clip=clip;state.bucket=bucket
-	state.model.scale=Vector3.ONE*(.60+float(posmod(int(e.id)*17+int(e.generation)*7,4))*.015)
-	state.player.play(clip,0);state.player.seek(time_,true);state.player.advance(0)
-	if playing and not dead and hit and e.state in ["move","idle"] and not _hit34_frames.is_empty():
-		var age := clampf(float(tick-int(_enemy_hit_until.get(e.id,tick))+12)/12.0,0,1)
-		var weight := .85*sin(PI*age);var sample_ := age*12.0;var a := mini(int(sample_),12);var b := mini(a+1,12)
-		for i in _hit34_indices.size():
-			var index: int=_hit34_indices[i]
-			var pose: Transform3D=_hit34_frames[a][i].interpolate_with(_hit34_frames[b][i],sample_-float(a))
-			state.skeleton.set_bone_pose(index,state.skeleton.get_bone_pose(index).interpolate_with(pose,weight))
-		hit34_blends+=1
-	if _head34>=0:state.skeleton.set_bone_pose_scale(_head34,Vector3.ONE*.72)
-	actor.set_meta("minion19_pose",{"clip":clip,"time":time_,"dead":dead,"tick":tick,"family34":true});motion34_samples+=1
+	# Only non-walker presenters reach this layer; _update_pose handles the walker (family 34) itself.
+	_update_pose__q32b(actor,direction,moving,casting,dead,tick,playing,hit,brief_cast)
 func _overlaps_hero__q34b(actor: Node3D,camera: Camera3D) -> bool:
 	if not _is34(actor):return _overlaps_hero__chapterx(actor,camera)
 	if camera==null or (actor.global_position-hero.global_position).dot(camera.global_basis.z)<=.04:return false
@@ -1647,6 +1637,7 @@ func _update_pose__q36(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 ## Unconnected successor: preserve Actor36 sampling; avoid identical walker commands.
 ## Engine equivalence/performance gate must pass before product assembly adoption.
 func _update_pose(actor: Node3D,direction: Vector2,moving: bool,casting: bool,dead: bool,tick: int,playing: bool,hit: bool=false,brief_cast: bool=false) -> void:
+	if actor.has_meta("minion19") and not _pose_due(actor,direction,moving,dead,tick,playing,hit):return
 	if not _is34(actor):
 		_update_pose__q36(actor,direction,moving,casting,dead,tick,playing,hit,brief_cast);return
 	if not dead:
@@ -1681,10 +1672,8 @@ func _update_pose(actor: Node3D,direction: Vector2,moving: bool,casting: bool,de
 		var sample: Dictionary=actor.get_meta("motion_sample",{})
 		time_=fposmod(float(sample.get("phase",0.0))+float((int(e.id)*37)%101)/101.0,1)*WALK34
 	else:time_=fposmod(float(tick)/60.0+float(e.id)*.113,128.0/60.0)
-	var near_: bool=e.position.distance_squared_to(view.run.hero.position)<30.25
-	var bucket: int=tick/3
-	if moving and not hit and not near_ and state.clip==clip and int(state.bucket)==bucket:return
-	state.clip=clip;state.bucket=bucket
+	# Whether this frame samples at all is decided by _pose_due (frame schedule), not here.
+	state.clip=clip
 	var target_scale := Vector3.ONE*(.60+float(posmod(int(e.id)*17+int(e.generation)*7,4))*.015)
 	if state.model.scale!=target_scale:state.model.scale=target_scale
 	# Read actual player state: setup/pool reuse can leave state.clip stale.
@@ -1709,6 +1698,88 @@ func _sample_actor42(player: AnimationPlayer,clip: String,time_: float) -> void:
 	if player.current_animation!=clip or not player.is_playing():player.play(clip,0)
 	player.seek(time_,true)
 
+# ---- Pose schedule (T2-2'): which minion presenters run the pose block this frame ----
+# The pose block is the whole sample/bone-write/meta/staff chain of _update_pose. A frame that skips it keeps
+# the last pose; position and heading still follow every frame. Times come from the walk phase and the tick,
+# so a skipped frame needs no catch-up except the death age, which keeps accumulating below.
+const POSE_NEAR_SQ := 9.0 # within 3 m of the owner (melee reach): every frame
+const POSE_MID_SQ := 81.0 # 3-9 m: every 2nd frame; beyond: every 3rd
+const POSE_INTERVAL_MID := 2
+const POSE_INTERVAL_FAR := 3
+const POSE_INTERVAL_OFFSCREEN := 8 # outside the view; one pose update the frame it comes back
+const POSE_MAX_AGE := 12 # frames without an update after which the cap no longer holds an actor back
+const POSE_MAX_STALE := .085 # seconds a visible actor may keep its pose (about 12 Hz): at low frame rates the frame intervals above shrink
+# Non-urgent updates per frame (near actors may use all of it, the rest all but POSE_NORMAL_RESERVE). Urgent ones
+# (windup, hit start, dash, recover, first sight, entering the view, a body's first dying frame) are never held back.
+# 32: late game (about 105 presenters, headless 2 ticks per frame) measured about 45 non-urgent updates due per
+# frame at the 2/3-frame intervals; 32 keeps a tick-burst frame near the cost of a normal one, and what is held back
+# is simply still due the next frame (POSE_MAX_STALE bounds it).
+const POSE_REGULAR_CAP := 32
+const POSE_NORMAL_RESERVE := 12 # the last updates of the cap are for near actors only
+const POSE_CULL_RADIUS := 2.5 # frustum margin (m) around an actor's centre
+const CORPSE_FINAL_AGE := 1.60 # the walker death clip is pinned from here (time_=minf(death_age,1.60))
+const POSE_KEYS := ["pose_frame","pose_clock","pose_must","pose_moving","pose_dead","pose_final","pose_visible","pose_hit","pose_death_len"]
+var _sync_frame := 0
+var _sync_clock := 0.0
+var _pose_regular := 0
+var _frustum: Array=[]
+var pose_updates := 0
+var pose_held := 0
+func _in_frustum(at: Vector3) -> bool:
+	for plane in _frustum:
+		if plane.distance_to(at)>POSE_CULL_RADIUS:return false
+	return true
+## Called first in _update_pose for every minion presenter. False: the pose block does not run this frame.
+func _pose_due(actor: Node3D,direction: Vector2,moving: bool,dead: bool,tick: int,playing: bool,hit: bool) -> bool:
+	var state: Dictionary=actor.get_meta("minion19")
+	if state.get("pose_final",false):return false # corpse already shows its last pose
+	if not playing:return true # modal holds, freeze and death outside play keep the original path
+	var e := _entity(actor)
+	if e.is_empty():return true
+	if not dead and tick<int(e.get("stunned_until",0)):return true # the stun hold returns early itself
+	var frame := _sync_frame
+	var st: String=e.state
+	var first: bool=not state.has("pose_frame")
+	var last: int=state.get("pose_frame",0)
+	var nearness: float=e.position.distance_squared_to(view.run.hero.position)
+	var near_: bool=nearness<POSE_NEAR_SQ
+	var visible := near_ or _frustum.is_empty() or _in_frustum(actor.position+Vector3(0,1,0))
+	var entering: bool=visible and not state.get("pose_visible",true)
+	state.pose_visible=visible
+	# Urgent (only while in view): the frame a hit reaction starts, a windup or dash (the readable part of an
+	# attack), the paid swing within 9 m. A reaction that is already running follows the distance schedule.
+	var hit_start: bool=hit and not state.get("pose_hit",false)
+	state.pose_hit=hit
+	var urgent: bool=visible and (hit_start or st=="windup" or st=="dash" or (st=="recover" and nearness<POSE_MID_SQ))
+	var must: bool=urgent or entering or first or e.kind=="elite" or state.get("pose_must",false) or moving!=state.get("pose_moving",moving)
+	if dead and not state.get("pose_dead",false):must=true
+	var interval := 1 if near_ else (POSE_INTERVAL_MID if nearness<POSE_MID_SQ else POSE_INTERVAL_FAR)
+	if not visible:interval=POSE_INTERVAL_OFFSCREEN
+	var age := frame-last
+	var allowed := must or age>=POSE_MAX_AGE or (visible and _sync_clock-float(state.get("pose_clock",0.0))>=POSE_MAX_STALE)
+	if not allowed and age>=interval:
+		if _pose_regular<(POSE_REGULAR_CAP if near_ else POSE_REGULAR_CAP-POSE_NORMAL_RESERVE):allowed=true;_pose_regular+=1
+	if allowed:
+		# First sight starts with a per-actor offset so a wave does not update on the same frames.
+		state.pose_frame=frame-(int(e.id)%POSE_INTERVAL_FAR) if first else frame
+		state.pose_must=urgent;state.pose_moving=moving;state.pose_clock=_sync_clock
+		if dead:
+			state.pose_dead=true
+			var age_after: float=state.death_age
+			if view.run.mode not in ["paused","choice","inventory","equipment"]:age_after=maxf(age_after+_render_delta,float(tick-int(e.dead_tick))/60.0)
+			if age_after>=_corpse_final_age(actor,state):state.pose_final=true # this update is the last one
+		pose_updates+=1
+		return true
+	# Held frame: only what the full path did every frame anyway (death age for the fade, heading).
+	pose_held+=1
+	if dead and view.run.mode not in ["paused","choice","inventory","equipment"]:state.death_age=maxf(float(state.death_age)+_render_delta,float(tick-int(e.dead_tick))/60.0)
+	if direction.length_squared()>.001:actor.rotation.y=lerp_angle(actor.rotation.y,atan2(direction.x,direction.y),1-exp(-_render_delta*18))
+	return false
+func _corpse_final_age(actor: Node3D,state: Dictionary) -> float:
+	if _is34(actor):return CORPSE_FINAL_AGE
+	if not state.has("pose_death_len"):state.pose_death_len=float(state.player.get_animation("death").length)
+	return state.pose_death_len
+
 var _overlap42_active := false
 var _overlap42_ready := false
 var _overlap42_camera_id := 0
@@ -1720,6 +1791,9 @@ func sync(run: RefCounted,delta: float) -> void:
 	_overlap42_ready=false
 	_overlap42_camera_id=0
 	_overlap42_active=true
+	_sync_frame+=1;_sync_clock+=maxf(0.0,delta);_pose_regular=0
+	var schedule_camera := view.get_viewport().get_camera_3d()
+	_frustum=schedule_camera.get_frustum() if schedule_camera!=null else []
 	frame_keys.clear();_entities.clear()
 	for e in run.enemies.values():
 		var key: String="%d:%d"%[e.generation,e.id]
