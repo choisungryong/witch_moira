@@ -11,6 +11,9 @@ is reported as a failure, not as a pass.
 from pathlib import Path
 import argparse, datetime, json, os, re, subprocess, sys, time
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from isolated_env import isolated_env
+
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path(os.environ.get('MOIRA_GODOT', 'C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe'))
 # The profile test only accepts an isolated QA path below this evidence root.
@@ -45,7 +48,7 @@ def run_godot(check):
     if check['extra']:
         command += ['--'] + check['extra']
     try:
-        done = subprocess.run(command, capture_output=True, timeout=check['timeout'])
+        done = subprocess.run(command, capture_output=True, timeout=check['timeout'], env=isolated_env('run_all'))
     except subprocess.TimeoutExpired as expired:
         text = (expired.stdout or b'').decode('utf-8', 'replace') + (expired.stderr or b'').decode('utf-8', 'replace')
         error = re.search(r'SCRIPT ERROR: (.+)', text)

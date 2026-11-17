@@ -12,10 +12,15 @@ export_presets.cfg carries no machine path: the script writes the template paths
 before the export and puts the original bytes back afterwards. If the restore fails, the build fails.
 
 Nothing is downloaded. Nothing outside the repository (other than the template and engine files
-it reads) is touched. Saves in %APPDATA%/WitchMoira are never read or written.
+it reads) is touched. Godot child processes get APPDATA=_local/appdata/build/ (tools/dev/isolated_env.py).
+The original export_presets.cfg is copied to _local/build/ before patching; a leftover copy from a
+run that did not finish is restored at the next run. Saves in %APPDATA%/WitchMoira are never read or written.
 """
 from pathlib import Path
 import argparse, datetime, hashlib, json, os, struct, subprocess, sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from isolated_env import isolated_env
 
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path(os.environ.get('MOIRA_GODOT', 'C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe'))
@@ -31,14 +36,7 @@ FORBIDDEN_SUFFIXES = ('.md',)
 EXE_NAME = 'WitchMoira.exe'
 
 
-def isolated_env(stamp):
-    """Environment for the Godot child processes only: APPDATA points into _local/build, so the
-    engine's own user-folder writes (logs, caches) never land in %APPDATA%/WitchMoira."""
-    folder = ROOT / '_local' / 'build' / stamp / 'appdata_godot'
-    folder.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ)
-    env['APPDATA'] = str(folder)
-    return env
+CFG_BACKUP = ROOT / '_local' / 'build' / 'export_presets.original.cfg'
 
 
 def sha256(path):
@@ -95,7 +93,17 @@ def import_project(env):
 
 def export(preset_name, kind, template, out_exe, log_path, env):
     cfg = ROOT / 'export_presets.cfg'
+    # A crash between patching and restoring leaves machine paths in the repository file. The
+    # original is copied to _local/build/ first; a leftover copy means the last run did not finish.
+    if CFG_BACKUP.is_file():
+        leftover = CFG_BACKUP.read_bytes()
+        if cfg.read_bytes() != leftover:
+            print('BUILD_WARN export_presets.cfg was not restored by an earlier run; restoring it from ' + str(CFG_BACKUP))
+            cfg.write_bytes(leftover)
+        CFG_BACKUP.unlink()
     original = cfg.read_bytes()
+    CFG_BACKUP.parent.mkdir(parents=True, exist_ok=True)
+    CFG_BACKUP.write_bytes(original)
     path_text = template.parent.as_posix()
     patched = original
     for key, file_kind in (('release', 'release'), ('debug', 'debug')):
@@ -116,7 +124,8 @@ def export(preset_name, kind, template, out_exe, log_path, env):
             restore_error = 'export_presets.cfg could not be restored'
     log_path.write_text('exit=%d\n--- stdout ---\n%s\n--- stderr ---\n%s\n' % (result.returncode, result.stdout, result.stderr), encoding='utf-8')
     if restore_error:
-        fail(restore_error)
+        fail(restore_error + ' (original kept at ' + str(CFG_BACKUP) + ')')
+    CFG_BACKUP.unlink()
     print('BUILD_EXPORT exit=%d log=%s' % (result.returncode, log_path))
     errors = [line for line in (result.stdout + '\n' + result.stderr).splitlines() if 'ERROR' in line or 'SCRIPT ERROR' in line]
     for line in errors[:20]:
@@ -180,7 +189,7 @@ def main():
     stamp = args.stamp or '%s-%s' % (datetime.date.today().strftime('%Y%m%d'), commit)
     out_dir = ROOT / '_local' / 'build' / stamp / args.preset
     out_exe = out_dir / EXE_NAME
-    env = isolated_env(stamp)
+    env = isolated_env('build')
     template, template_sha, verified = check_templates(kind)
     print('BUILD_TEMPLATE %s sha256=%s verified=%s' % (template, template_sha, verified))
     if not (ROOT / 'chapter1' / 'art' / 'brand' / 'icon.ico').is_file():
@@ -201,7 +210,7 @@ def main():
         'sha256': sha256(out_exe),
         'commit': commit,
         'working_tree_dirty': dirty,
-        'godot_version': subprocess.run([str(GODOT), '--version'], capture_output=True, text=True).stdout.strip(),
+        'godot_version': subprocess.run([str(GODOT), '--version'], capture_output=True, text=True, env=env).stdout.strip(),
         'template': template.name,
         'template_sha256': template_sha,
         'template_sha256_matches_record': verified,

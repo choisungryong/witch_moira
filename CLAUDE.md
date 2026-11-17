@@ -30,29 +30,36 @@ Godot 4.5.1 기반 군중 생존 ARPG. 지금의 제품 범위는 제1장 「잿
 ## 명령
 
 ```powershell
-# 회귀 전체(약 6분) / 골든·드랍 시뮬레이션 제외(약 20초) / 일부만
+# 회귀 전체(약 11분: 골든 두 번 포함) / 골든·드랍 시뮬레이션 제외(약 30초) / 일부만
 python tools/dev/run_all.py
 python tools/dev/run_all.py --quick
 python tools/dev/run_all.py --only combat,golden
 
-# 게임 실행(필요하면 임포트부터 한다)
+# 게임 실행(필요하면 임포트부터 한다). --chapter1-profile-off가 있는 실행과 --import-only만 _local/appdata/dev/로 격리된다.
+# 그 인수 없이 띄우는 것은 사용자 본인의 플레이라 저장이 %APPDATA%\WitchMoira에 쓰인다.
 python tools/dev/run_dev.py -- --chapter1-start
 python tools/dev/run_dev.py --resolution 1920x1080 -- --chapter1-start --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus
 python tools/dev/run_dev.py --import-only
 
-# 코어 골든 리플레이: 비교 / 갱신(코어 동작을 의도적으로 바꿨을 때만)
-godot --headless --path . --script res://chapter1/tests/golden_core.gd
-godot --headless --path . --script res://chapter1/tests/golden_core.gd -- --update
+# 검사·측정·캡처는 godot를 직접 부르지 말고 tools/dev/godot.py로 부른다(APPDATA를 _local/appdata/godot/로 격리, 인수와 종료 코드는 그대로).
+# 코어 골든 리플레이: 비교 / 갱신(코어 동작을 의도적으로 바꿨을 때만) / 글을 뺀 비교(이름 교체·번역 때)
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --update
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --textless
 
 # 전투 지표 측정(세 계열 × 시드 3개, 약 3분)
-godot --headless --path . --script res://chapter1/tests/measure_combat.gd -- --arc-combined --secondary-off
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_combat.gd -- --arc-combined --secondary-off
 
 # 화면 캡처와 상태 덤프(자동 조작으로 한 판)
-godot --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/hud_dump.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost --shots=_local/shots/<이름> --dump=_local/shots/<이름>.json
+python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/hud_dump.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost --shots=_local/shots/<이름> --dump=_local/shots/<이름>.json
 
 # 드랍 시뮬레이션 / 실제 코어의 한 판 드랍
-godot --headless --path . --script res://chapter1/tests/sim_loot.gd -- --runs=10000
-godot --headless --path . --script res://chapter1/tests/report_run_loot.gd -- --seeds=11,12,13
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd -- --runs=10000
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_run_loot.gd -- --seeds=11,12,13
+
+# Windows 실행 파일(결과는 _local/build/). 다른 에이전트가 쓰는 작업 트리에서는 돌리지 않는다.
+python tools/dev/build.py --preset qa
+python tools/dev/build.py --preset store
 ```
 
 Godot: `C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe`
@@ -81,6 +88,7 @@ Blender: `D:/Blender Foundation/Blender 5.3/blender.exe`(5.3.0, 명령줄 실행
 - 스키마 3, `user://chapter-one-profile-v3.json`. 사용자 폴더는 `%APPDATA%\WitchMoira`다.
 - 스키마 2·1 파일은 같은 폴더에 있으면 읽기만 한다. 옛 저장소 시절의 저장(`%APPDATA%\AshenCloisterChapterOne*`)은 자동으로 넘어오지 않는다.
 - 검사는 `_local/` 아래의 격리 경로만 쓴다. 검사가 사용자 폴더를 읽거나 쓰게 만들지 않는다.
+- 검사·도구의 Godot 실행은 `APPDATA`를 `_local/appdata/<용도>/`로 바꿔 사용자 폴더에 로그·캐시도 쓰지 않는다(`tools/dev/isolated_env.py`). Godot를 직접 부르면 헤드리스 실행도 `%APPDATA%\WitchMoira\logs`에 로그를 쓴다.
 
 ## 반드시 지킬 것
 

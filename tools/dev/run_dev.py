@@ -6,10 +6,14 @@
 
 The repository root is the Godot project. docs/, tools/, art-archive/ and _local/
 carry a .gdignore, so Godot never scans them. Saves go to the project's own user
-directory (%APPDATA%/WitchMoira).
+directory (%APPDATA%/WitchMoira). The import step and any run with --chapter1-profile-off
+use an isolated APPDATA (_local/appdata/dev/); a run without that argument is the user's own play.
 """
 from pathlib import Path
 import argparse, os, subprocess, sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from isolated_env import isolated_env
 
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path(os.environ.get('MOIRA_GODOT', 'C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe'))
@@ -19,7 +23,7 @@ ENTRY = 'res://chapter1/ChapterOne.tscn'
 def import_project(passes=1):
     """Assets extracted from GLB files appear on the first pass and are imported on the second."""
     for index in range(passes):
-        result = subprocess.run([str(GODOT), '--headless', '--path', str(ROOT), '--import'], capture_output=True, text=True, encoding='utf-8', errors='replace')
+        result = subprocess.run([str(GODOT), '--headless', '--path', str(ROOT), '--import'], capture_output=True, text=True, encoding='utf-8', errors='replace', env=isolated_env('dev'))
         print('DEV_IMPORT pass=%d exit=%d' % (index + 1, result.returncode))
         if result.returncode != 0:
             print(result.stdout[-2000:])
@@ -43,7 +47,8 @@ def main():
     if args.resolution:
         command += ['--resolution', args.resolution]
     command += [ENTRY, '--'] + args.game_args
-    return subprocess.call(command)
+    env = isolated_env('dev') if '--chapter1-profile-off' in args.game_args else None
+    return subprocess.call(command, env=env)
 
 
 if __name__ == '__main__':
