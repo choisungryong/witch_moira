@@ -18,14 +18,13 @@ func setup(hud: RefCounted,spec: Dictionary) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter=Control.MOUSE_FILTER_STOP
 	esc_id=String(spec.get("esc_id",""))
-	var dim := ColorRect.new();dim.color=Color(.01,.015,.02,.72);dim.mouse_filter=Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new();dim.color=Palette.SCRIM;dim.mouse_filter=Control.MOUSE_FILTER_STOP
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);add_child(dim)
 	var center := CenterContainer.new();center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter=Control.MOUSE_FILTER_IGNORE;add_child(center)
 	panel=PanelContainer.new();panel.name="FlowDialogPanel";panel.custom_minimum_size.x=float(spec.get("width",760.0))
 	# A confirm window edge is plain brass; the bright brass is reserved for the focused button.
 	var frame: StyleBoxFlat=hud._style(Palette.SURFACE,Palette.BRASS)
-	frame.set_content_margin_all(26);frame.border_width_top=3
 	panel.add_theme_stylebox_override("panel",frame);center.add_child(panel)
 	var column := VBoxContainer.new();column.add_theme_constant_override("separation",16);panel.add_child(column)
 	title_label=hud._label(String(spec.get("title","")),30,Palette.INK);title_label.name="FlowDialogTitle";column.add_child(title_label)

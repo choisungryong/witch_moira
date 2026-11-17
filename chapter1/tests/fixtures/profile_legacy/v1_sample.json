@@ -1,0 +1,156 @@
+{
+  "best_ticks": 20000,
+  "completed_runs": 2,
+  "equipped": {
+    "body": 2,
+    "charm": 3,
+    "ring": 4,
+    "weapon": 1
+  },
+  "essence": 5,
+  "items": [
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "damage",
+            "id": "wrath",
+            "stat": "damage_bps",
+            "value": 1319
+          },
+          {
+            "group": "shape",
+            "id": "volley",
+            "stat": "projectiles",
+            "value": 1
+          }
+        ],
+        "base_id": "chapter1.full.swift_wand",
+        "description": "",
+        "item_level": 8,
+        "name": "다중의 격노의 박동의 마법봉",
+        "quality": "rare",
+        "slot": "weapon",
+        "stats": {
+          "cooldown_bps": 1200,
+          "damage_bps": 1819,
+          "projectiles": 1
+        }
+      },
+      "storage_id": 1
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 5332
+          },
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 311
+          }
+        ],
+        "base_id": "chapter1.full.iron_vest",
+        "description": "",
+        "item_level": 9,
+        "name": "보호의 활력의 쇠실 흉의",
+        "quality": "rare",
+        "slot": "body",
+        "stats": {
+          "cooldown_bps": -500,
+          "damage_reduction_bps": 911,
+          "max_hp_raw": 14292
+        }
+      },
+      "storage_id": 2
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "damage",
+            "id": "wrath",
+            "stat": "damage_bps",
+            "value": 838
+          },
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 3118
+          }
+        ],
+        "base_id": "chapter1.full.chain_knot",
+        "description": "",
+        "item_level": 10,
+        "name": "활력의 격노의 연쇄 매듭",
+        "quality": "rare",
+        "slot": "charm",
+        "stats": {
+          "chain_targets": 1,
+          "damage_bps": 538,
+          "max_hp_raw": 3118
+        }
+      },
+      "storage_id": 3
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "damage",
+            "id": "wrath",
+            "stat": "damage_bps",
+            "value": 1357
+          },
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 698
+          }
+        ],
+        "base_id": "chapter1.full.glass_ring",
+        "description": "",
+        "item_level": 8,
+        "name": "보호의 격노의 유리 반지",
+        "quality": "rare",
+        "slot": "ring",
+        "stats": {
+          "damage_bps": 2557,
+          "damage_reduction_bps": 698,
+          "max_hp_raw": -2560
+        }
+      },
+      "storage_id": 4
+    },
+    {
+      "item": {
+        "affixes": [],
+        "base_id": "chapter1.full.unique.winter_heart",
+        "description": "서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가",
+        "item_level": 9,
+        "name": "겨울의 심장",
+        "quality": "unique",
+        "slot": "charm",
+        "stats": {
+          "cooldown_bps": -500,
+          "frost_threshold": 1,
+          "shatter_count": 2
+        }
+      },
+      "storage_id": 5
+    }
+  ],
+  "next_id": 6,
+  "receipts": [
+    "old"
+  ],
+  "revision": 3,
+  "schema_version": 1
+}

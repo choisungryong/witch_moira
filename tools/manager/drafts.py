@@ -90,6 +90,7 @@ def public(e):
 
 def gallery(drafts=None, canon=None, store=None):
     entries, canonical, warnings = read_index(drafts, canon)
+    selection = load_selection(drafts)
     # newest first within a character (index is chronological; sort by created string, stable)
     entries.sort(key=lambda e: e['created'], reverse=True)
     order, seen = [], set()
@@ -102,7 +103,8 @@ def gallery(drafts=None, canon=None, store=None):
         c['count'] = sum(1 for e in entries if e['character'] == c['character'])
     return {'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'), 'canonical': [public(e) for e in canonical],
             'characters': order, 'items': [public(e) for e in entries], 'warnings': warnings,
-            'thumbnails': thumbs_available(), 'decisions': load_store(store)}
+            'thumbnails': thumbs_available(), 'decisions': load_store(store),
+            'selection': selection, 'group_summary': group_summary(entries, selection), 'marks': MARKS}
 
 
 def thumbs_available():
@@ -111,6 +113,80 @@ def thumbs_available():
         return True
     except ImportError:
         return False
+
+
+# ------------------------------------------------------------------ 후보/확정/보관 표시(색인은 고치지 않는다)
+MARKS = {'': '표시 없음', 'candidate': '후보', 'final': '확정', 'archive': '보관'}
+# 사용자가 하나를 골라야 하는 묶음: 구분 이름에 이 낱말이 들어 있고, 아직 「확정」이 없는 묶음
+WAITING_WORDS = ('수영복', '목업', '재디자인')
+
+
+def selection_path(drafts=None):
+    return (drafts or DRAFTS) / 'selection.json'
+
+
+def load_selection(drafts=None):
+    try:
+        value = json.loads(selection_path(drafts).read_text(encoding='utf-8'))
+        if isinstance(value, dict) and isinstance(value.get('revision'), int) and isinstance(value.get('records'), dict):
+            return value
+    except (OSError, ValueError):
+        pass
+    return {'revision': 0, 'records': {}}
+
+
+def update_selection(payload, valid_ids, drafts=None):
+    """payload: {revision, id, mark}. Writes only selection.json next to index.json (atomic, revision checked)."""
+    path = selection_path(drafts)
+    if not isinstance(payload, dict) or set(payload) != {'revision', 'id', 'mark'}:
+        raise ValueError('Expected revision, id, mark')
+    if type(payload['revision']) is not int or payload['revision'] < 0 or not isinstance(payload['id'], str) or payload['id'] not in valid_ids:
+        raise ValueError('Invalid revision or ID')
+    if not isinstance(payload['mark'], str) or payload['mark'] not in MARKS:
+        raise ValueError('Invalid mark')
+    with LOCK:
+        if path.exists():
+            current = json.loads(path.read_text(encoding='utf-8'))
+            if not isinstance(current, dict) or not isinstance(current.get('revision'), int) or not isinstance(current.get('records'), dict):
+                raise ValueError('Invalid selection file')
+        else:
+            current = {'revision': 0, 'records': {}}
+        if payload['revision'] != current['revision']:
+            return 409, current
+        if payload['mark']:
+            current['records'][payload['id']] = {'mark': payload['mark'], 'updated': time.strftime('%Y-%m-%d %H:%M:%S')}
+        else:
+            current['records'].pop(payload['id'], None)
+        current['revision'] += 1
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp = path.with_suffix('.tmp')
+        with temp.open('w', encoding='utf-8', newline='\n') as f:
+            json.dump(current, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp, path)
+        return 200, current
+
+
+def group_summary(entries, selection):
+    """Per 구분 name: counts of items, 후보/확정/보관 marks, and whether the group still waits for the user's pick."""
+    marks = selection.get('records', {})
+    order, by = [], {}
+    for e in entries:
+        g = e['group']
+        if g not in by:
+            by[g] = {'group': g, 'count': 0, 'candidate': 0, 'final': 0, 'archive': 0, 'ids': [], 'latest': ''}
+            order.append(g)
+        row = by[g]
+        row['count'] += 1
+        row['ids'].append(e['id'])
+        row['latest'] = max(row['latest'], e['created'])
+        m = marks.get(e['id'], {}).get('mark')
+        if m in ('candidate', 'final', 'archive'):
+            row[m] += 1
+    for row in by.values():
+        row['waiting'] = any(w in row['group'] for w in WAITING_WORDS) and row['final'] == 0
+    return sorted((by[g] for g in order), key=lambda r: (not r['waiting'], r['group']))
 
 
 def find(item_id, drafts=None, canon=None):

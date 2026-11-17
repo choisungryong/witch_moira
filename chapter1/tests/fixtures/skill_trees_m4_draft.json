@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "balance_status": "hypothesis",
+  "draft_notes": {
+    "what": "D7 draft trees (ember, arc) and frost revision 2. The game does not read this file: chapter1/data/skill_trees.json is untouched, and a tree that no witch owns would make the validator reject the whole document. tests/sim_progression.gd --trees=<this file> links it in memory.",
+    "grammar": "ranks blocks use the grammar of today's skill_tree.gd. Whatever it cannot take is written under node.draft.pending (one object per rank) with the key names of docs/specs/D7-skill-trees-ember-storm-spec.ko.md 4.5. Nodes whose ranks blocks hold the neutral placeholder {skill:{add:{hit_budget:0}}} have coverage none.",
+    "hook": "now = validator and core as they are today | G = validator grammar extension (W0-a) | R7 = heat build-up core rule | R8 = shock strengthening core rule",
+    "names": "node, tier and branch names and lore lines are placeholders for narrative-lead (D7 W0-d). They avoid the banned words of WORDING-RULES 1 and ITEM-NAMING 1.3.",
+    "frost_rev2": "witch.frost revision 2 = D7 3.2 plan B (field to tier 1, field_wide, dominion) and the lance trim. Pure data, every node is hook now / coverage full."
+  },
+  "trees": [
+    {
+      "tree_id": "witch.ember",
+      "revision": 1,
+      "character_id": "chapter1.character.ember",
+      "signature_skill_id": "chapter1.skill.ember",
+      "node_prefixes": ["witch.ember.", "witch.common."],
+      "tiers": [
+        {"level": 1, "name": "불씨"},
+        {"level": 6, "name": "불길"},
+        {"level": 12, "name": "큰불"},
+        {"level": 18, "name": "불바다"}
+      ],
+      "branches": [
+        {"id": "blast", "name": "폭발", "color": "ember"},
+        {"id": "fan", "name": "부채", "color": "ember"},
+        {"id": "cinder", "name": "잔불", "color": "ember"},
+        {"id": "oath", "name": "버팀", "color": "brass"}
+      ],
+      "nodes": [
+        {"id": "witch.ember.wide_blast", "branch": "blast", "tier": 1, "name": "넓은 폭발", "lore": "잿불탄이 맞은 자리에서 터져 둘레의 적을 친다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"radius_cm": 60, "hit_budget": 4}}}, {"skill": {"add": {"radius_cm": 70, "hit_budget": 4}}}, {"skill": {"add": {"radius_cm": 80, "hit_budget": 6}}}, {"skill": {"add": {"radius_cm": 90, "hit_budget": 6}}}, {"skill": {"add": {"radius_cm": 100, "hit_budget": 8}}}], "draft": {"hook": "now", "coverage": "full", "intent": "판 안 랭크 1부터 탄이 터진다(반경 0 -> 0.6m)"}},
+        {"id": "witch.ember.heavy_shot", "branch": "blast", "tier": 2, "name": "무거운 탄", "lore": "탄 한 발의 피해가 늘고 폭발이 넓어진다.", "max_rank": 3, "requires": {"witch.ember.wide_blast": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"radius_cm": 0}, "mul_bps": {"damage_raw": 10500}}}, {"skill": {"add": {"radius_cm": 20}, "mul_bps": {"damage_raw": 11000}}}, {"skill": {"add": {"radius_cm": 40}, "mul_bps": {"damage_raw": 11500}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.ember.big_target", "branch": "blast", "tier": 3, "name": "큰 표적 태우기", "lore": "수호자와 우두머리에게 주는 피해가 늘어난다.", "max_rank": 3, "requires": {"witch.ember.heavy_shot": 2}, "min_spent": 0, "new_rule": "R1", "ranks": [{"rules": {"elite_damage_bps": 1500}}, {"rules": {"elite_damage_bps": 3000}}, {"rules": {"elite_damage_bps": 4500}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.ember.fan", "branch": "fan", "tier": 1, "name": "불꽃 부채", "lore": "잿불탄이 부채꼴로 더 많이 나간다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"projectiles": 1, "hit_budget": 4}}}, {"skill": {"add": {"projectiles": 1, "hit_budget": 4}}}, {"skill": {"add": {"projectiles": 1, "hit_budget": 4}}}, {"skill": {"add": {"projectiles": 2, "hit_budget": 8}}}, {"skill": {"add": {"projectiles": 2, "hit_budget": 8}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.ember.quick_load", "branch": "fan", "tier": 2, "name": "빠른 장전", "lore": "시전 간격이 짧아진다.", "max_rank": 3, "requires": {"witch.ember.fan": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"cooldown_bps": 9700}}, {"skill": {"cooldown_bps": 9400}}, {"skill": {"cooldown_bps": 9200}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.ember.through_fire", "branch": "fan", "tier": 3, "name": "꿰뚫는 불", "lore": "탄이 터진 뒤에도 지나가 다음 적에서 다시 터진다.", "max_rank": 3, "requires": {"witch.ember.quick_load": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"pierce": 1, "hit_budget": 4}}}, {"skill": {"add": {"pierce": 1, "hit_budget": 6}}}, {"skill": {"add": {"pierce": 1, "hit_budget": 8}}}], "draft": {"hook": "now", "coverage": "full", "intent": "판 안에서 관통이 폭발 뒤에도 탄을 잇는지는 코드 추정(D7 10절)이라 측정으로 확인"}},
+        {"id": "witch.ember.heat", "branch": "cinder", "tier": 1, "name": "열 쌓기", "lore": "맞은 적에 열이 쌓이고, 문턱에 닿으면 그 자리에서 터진다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 6}}}, {"skill": {"add": {"hit_budget": 6}}}, {"skill": {"add": {"hit_budget": 8}}}], "draft": {"hook": "R7", "coverage": "partial", "new_rule": "R7", "pending": [{"heat_threshold": 4, "heat_burst_bps": 4000, "heat_burst_radius_cm": 150}, {"heat_threshold": 4, "heat_burst_bps": 4500, "heat_burst_radius_cm": 150}, {"heat_threshold": 3, "heat_burst_bps": 5000, "heat_burst_radius_cm": 150}, {"heat_threshold": 3, "heat_burst_bps": 5500, "heat_burst_radius_cm": 150}, {"heat_threshold": 3, "heat_burst_bps": 6000, "heat_burst_radius_cm": 150}], "intent": "예산만 켜진다. 열 누적과 열 폭발(R7)은 코어에 없다"}},
+        {"id": "witch.ember.flare", "branch": "cinder", "tier": 2, "name": "터지는 열", "lore": "열 폭발이 더 넓고 더 세다.", "max_rank": 3, "requires": {"witch.ember.heat": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}], "draft": {"hook": "R7", "coverage": "none", "new_rule": "R7", "pending": [{"heat_burst_radius_cm": 50, "heat_burst_bps": 500}, {"heat_burst_radius_cm": 75, "heat_burst_bps": 1000}, {"heat_burst_radius_cm": 100, "heat_burst_bps": 1500}]}},
+        {"id": "witch.ember.spread", "branch": "cinder", "tier": 3, "name": "번지는 불", "lore": "열 폭발에 맞은 적에게도 열이 옮는다.", "max_rank": 3, "requires": {"witch.ember.flare": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}], "draft": {"hook": "R7", "coverage": "none", "new_rule": "R7", "pending": [{"heat_spread": 1}, {"heat_spread": 2}, {"heat_spread": 2, "heat_threshold": 2}], "intent": "명세 4.2의 '랭크 3에서 문턱 최대 2'가 모호하다. 글자 그대로 heat_threshold 2(작은 값 합치기)로 적었다. 디자인 확인 필요"}},
+        {"id": "witch.common.vigor", "branch": "oath", "tier": 1, "name": "질긴 숨", "lore": "최대 생명이 8씩 늘어난다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"hero": {"max_hp": 8}}, {"hero": {"max_hp": 16}}, {"hero": {"max_hp": 24}}, {"hero": {"max_hp": 32}}, {"hero": {"max_hp": 40}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.ward", "branch": "oath", "tier": 2, "name": "두꺼운 살갗", "lore": "받는 피해가 줄고, 3랭크에서 시작 회복약이 하나 는다.", "max_rank": 3, "requires": {"witch.common.vigor": 2}, "min_spent": 0, "new_rule": "R4", "ranks": [{"hero": {"damage_reduction_bps": 300, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 600, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 900, "potion_start": 1}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.favor", "branch": "oath", "tier": 2, "name": "다시 고르기", "lore": "카드 고르기를 판마다 다시 할 수 있다.", "max_rank": 2, "requires": {}, "min_spent": 0, "new_rule": "R5", "ranks": [{"rules": {"grace_rerolls": 1}}, {"rules": {"grace_rerolls": 2}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.ember.head_start", "branch": "oath", "tier": 4, "name": "앞당긴 불길", "lore": "잿불탄이 랭크 2로 시작하고, 결정 카드 없이 진화한다.", "max_rank": 1, "requires": {}, "min_spent": 15, "new_rule": "R6", "ranks": [{"rules": {"start_rank": 2, "evolve_without_passive": true}}], "draft": {"hook": "now", "coverage": "full"}}
+      ],
+      "synergies": [
+        {"target": "witch.ember.big_target", "source": "witch.ember.wide_blast", "per_rank": {"rules": {"elite_damage_bps": 300}}},
+        {"target": "witch.ember.spread", "source": "witch.ember.heat", "per_rank": {"skill": {"add": {"hit_budget": 0}}}, "draft": {"hook": "R7", "coverage": "none", "pending_per_rank": {"heat_burst_radius_cm": 10}}}
+      ],
+      "balance_status": "hypothesis"
+    },
+    {
+      "tree_id": "witch.arc",
+      "revision": 1,
+      "character_id": "chapter1.character.arc",
+      "signature_skill_id": "chapter1.skill.arc",
+      "node_prefixes": ["witch.arc.", "witch.common."],
+      "tiers": [
+        {"level": 1, "name": "번쩍임"},
+        {"level": 6, "name": "갈래 번개"},
+        {"level": 12, "name": "벼락"},
+        {"level": 18, "name": "뇌우"}
+      ],
+      "branches": [
+        {"id": "focus", "name": "집중", "color": "arc"},
+        {"id": "web", "name": "연결망", "color": "arc"},
+        {"id": "shock", "name": "감전", "color": "arc"},
+        {"id": "oath", "name": "버팀", "color": "brass"}
+      ],
+      "nodes": [
+        {"id": "witch.arc.voltage", "branch": "focus", "tier": 1, "name": "높은 전압", "lore": "번개 한 줄기의 피해가 늘어난다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"mul_bps": {"damage_raw": 10400}}}, {"skill": {"mul_bps": {"damage_raw": 10800}}}, {"skill": {"mul_bps": {"damage_raw": 11200}}}, {"skill": {"mul_bps": {"damage_raw": 11600}}}, {"skill": {"mul_bps": {"damage_raw": 12000}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.arc.short_gap", "branch": "focus", "tier": 2, "name": "짧은 간격", "lore": "시전 간격이 짧아진다.", "max_rank": 3, "requires": {"witch.arc.voltage": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"cooldown_bps": 9600}}, {"skill": {"cooldown_bps": 9200}}, {"skill": {"cooldown_bps": 8800}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.arc.big_target", "branch": "focus", "tier": 3, "name": "큰 표적 지지기", "lore": "수호자와 우두머리에게 주는 피해가 늘어난다.", "max_rank": 3, "requires": {"witch.arc.short_gap": 2}, "min_spent": 0, "new_rule": "R1", "ranks": [{"rules": {"elite_damage_bps": 1500}}, {"rules": {"elite_damage_bps": 3000}}, {"rules": {"elite_damage_bps": 4500}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.arc.extra_jump", "branch": "web", "tier": 1, "name": "한 번 더 튀기", "lore": "줄기가 한 번 더 튄다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 2}}}, {"skill": {"add": {"hit_budget": 2}}}, {"skill": {"add": {"hit_budget": 2}}}, {"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 4}}}], "draft": {"hook": "G", "coverage": "partial", "pending": [{"chain_targets": 1}, {"chain_targets": 1}, {"chain_targets": 1}, {"chain_targets": 2}, {"chain_targets": 2}], "intent": "연쇄 대상(chain_targets)이 없어 예산만 켜진다. 대상 수가 그대로면 예산은 효과가 거의 없다(미확인)"}},
+        {"id": "witch.arc.long_reach", "branch": "web", "tier": 2, "name": "멀리 뛰는 줄기", "lore": "줄기가 더 멀리 튀고 한 번 더 튄다.", "max_rank": 3, "requires": {"witch.arc.extra_jump": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 2}}}, {"skill": {"add": {"hit_budget": 3}}}, {"skill": {"add": {"hit_budget": 4}}}], "draft": {"hook": "G", "coverage": "partial", "pending": [{"chain_targets": 0, "chain_range_cm": 100}, {"chain_targets": 1, "chain_range_cm": 150}, {"chain_targets": 1, "chain_range_cm": 200}], "intent": "명세 4.5의 문법 표에 도약 거리 키가 없다. chain_range_cm은 이 표본이 임시로 붙인 이름이다(명세 불일치)"}},
+        {"id": "witch.arc.fork", "branch": "web", "tier": 3, "name": "갈라지는 번개", "lore": "줄기가 둘로 갈라진다.", "max_rank": 3, "requires": {"witch.arc.long_reach": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 6}}}, {"skill": {"add": {"hit_budget": 8}}}], "draft": {"hook": "G", "coverage": "partial", "pending": [{"branches": 1, "chain_targets": 0}, {"branches": 1, "chain_targets": 1}, {"branches": 1, "chain_targets": 1}]}},
+        {"id": "witch.arc.discharge", "branch": "shock", "tier": 1, "name": "쓰러질 때 방전", "lore": "쓰러진 적의 자리에서 번개가 터진다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 2}}}, {"skill": {"add": {"hit_budget": 3}}}, {"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 5}}}, {"skill": {"add": {"hit_budget": 6}}}], "draft": {"hook": "G+R8", "coverage": "partial", "new_rule": "R8", "pending": [{"at_least.death_burst": 1, "burst_radius_cm": 0}, {"at_least.death_burst": 1, "burst_radius_cm": 20}, {"at_least.death_burst": 1, "burst_radius_cm": 40}, {"at_least.death_burst": 1, "burst_radius_cm": 60}, {"at_least.death_burst": 1, "burst_radius_cm": 80}], "intent": "처치 방전(death_burst)은 G 문법, 반경(burst_radius_cm)은 R8. 지금은 예산만 켜진다"}},
+        {"id": "witch.arc.long_jolt", "branch": "shock", "tier": 2, "name": "오래 저림", "lore": "저린 시간이 길고, 다시 저리기까지 짧다.", "max_rank": 3, "requires": {"witch.arc.discharge": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}, {"skill": {"add": {"hit_budget": 0}}}], "draft": {"hook": "R8", "coverage": "none", "new_rule": "R8", "pending": [{"stun_ticks_add": 6, "stun_immunity_cut": 0}, {"stun_ticks_add": 12, "stun_immunity_cut": 20}, {"stun_ticks_add": 18, "stun_immunity_cut": 40}]}},
+        {"id": "witch.arc.wide_discharge", "branch": "shock", "tier": 3, "name": "넓은 방전", "lore": "방전이 더 넓게 퍼진다.", "max_rank": 3, "requires": {"witch.arc.long_jolt": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"hit_budget": 4}}}, {"skill": {"add": {"hit_budget": 6}}}, {"skill": {"add": {"hit_budget": 8}}}], "draft": {"hook": "R8", "coverage": "partial", "new_rule": "R8", "pending": [{"burst_radius_cm": 50}, {"burst_radius_cm": 100}, {"burst_radius_cm": 150}], "intent": "예산만 켜진다"}},
+        {"id": "witch.common.vigor", "branch": "oath", "tier": 1, "name": "질긴 숨", "lore": "최대 생명이 8씩 늘어난다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"hero": {"max_hp": 8}}, {"hero": {"max_hp": 16}}, {"hero": {"max_hp": 24}}, {"hero": {"max_hp": 32}}, {"hero": {"max_hp": 40}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.ward", "branch": "oath", "tier": 2, "name": "두꺼운 살갗", "lore": "받는 피해가 줄고, 3랭크에서 시작 회복약이 하나 는다.", "max_rank": 3, "requires": {"witch.common.vigor": 2}, "min_spent": 0, "new_rule": "R4", "ranks": [{"hero": {"damage_reduction_bps": 300, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 600, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 900, "potion_start": 1}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.favor", "branch": "oath", "tier": 2, "name": "다시 고르기", "lore": "카드 고르기를 판마다 다시 할 수 있다.", "max_rank": 2, "requires": {}, "min_spent": 0, "new_rule": "R5", "ranks": [{"rules": {"grace_rerolls": 1}}, {"rules": {"grace_rerolls": 2}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.arc.head_start", "branch": "oath", "tier": 4, "name": "앞당긴 벼락", "lore": "연쇄 전류가 랭크 2로 시작하고, 결정 카드 없이 진화한다.", "max_rank": 1, "requires": {}, "min_spent": 15, "new_rule": "R6", "ranks": [{"rules": {"start_rank": 2, "evolve_without_passive": true}}], "draft": {"hook": "now", "coverage": "full"}}
+      ],
+      "synergies": [
+        {"target": "witch.arc.big_target", "source": "witch.arc.voltage", "per_rank": {"rules": {"elite_damage_bps": 300}}},
+        {"target": "witch.arc.wide_discharge", "source": "witch.arc.discharge", "per_rank": {"skill": {"add": {"hit_budget": 0}}}, "draft": {"hook": "R8", "coverage": "none", "pending_per_rank": {"burst_radius_cm": 10}}}
+      ],
+      "balance_status": "hypothesis"
+    },
+    {
+      "tree_id": "witch.frost",
+      "revision": 2,
+      "character_id": "chapter1.character.frost",
+      "signature_skill_id": "chapter1.skill.frost",
+      "node_prefixes": ["witch.frost.", "witch.common."],
+      "tiers": [
+        {"level": 1, "name": "첫 서리"},
+        {"level": 6, "name": "빌린 한기"},
+        {"level": 12, "name": "두꺼운 얼음"},
+        {"level": 18, "name": "한겨울"}
+      ],
+      "branches": [
+        {"id": "lance", "name": "관통", "color": "frost"},
+        {"id": "field", "name": "얼음 지대", "color": "frost"},
+        {"id": "shatter", "name": "파쇄", "color": "frost"},
+        {"id": "oath", "name": "버팀", "color": "brass"}
+      ],
+      "nodes": [
+        {"id": "witch.frost.needle", "branch": "lance", "tier": 1, "name": "얼음 바늘", "lore": "창이 적을 더 많이 꿰뚫는다. 피해는 그대로다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"pierce": 1, "hit_budget": 4}}}, {"skill": {"add": {"pierce": 1, "hit_budget": 4}}}, {"skill": {"add": {"pierce": 2, "hit_budget": 8}}}, {"skill": {"add": {"pierce": 2, "hit_budget": 8}}}, {"skill": {"add": {"pierce": 2, "hit_budget": 8}}}], "draft": {"hook": "now", "coverage": "full", "intent": "D7 3.2: 피해 배율 삭제, 관통 +1/+1/+2/+2/+2, 예산 +4/+4/+8/+8/+8"}},
+        {"id": "witch.frost.volley", "branch": "lance", "tier": 2, "name": "겹창", "lore": "창이 한 번에 더 많이 나간다.", "max_rank": 3, "requires": {"witch.frost.needle": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"projectiles": 1, "hit_budget": 6}, "cooldown_bps": 10000}}, {"skill": {"add": {"projectiles": 1, "hit_budget": 6}, "cooldown_bps": 9800}}, {"skill": {"add": {"projectiles": 2, "hit_budget": 12}, "cooldown_bps": 9600}}], "draft": {"hook": "now", "coverage": "full", "intent": "D7 3.2: 간격 x1.00/0.98/0.96"}},
+        {"id": "witch.frost.oath_lance", "branch": "lance", "tier": 3, "name": "큰 표적 꿰기", "lore": "수호자와 우두머리에게 주는 피해가 늘어난다.", "max_rank": 3, "requires": {"witch.frost.volley": 2}, "min_spent": 0, "new_rule": "R1", "ranks": [{"rules": {"elite_damage_bps": 1500}}, {"rules": {"elite_damage_bps": 3000}}, {"rules": {"elite_damage_bps": 4500}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.field", "branch": "field", "tier": 1, "name": "서리 지대", "lore": "창이 닿은 자리 둘레의 땅을 얼려 적을 느리게 한다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": "R2", "ranks": [{"skill": {"at_most": {"freeze_stacks": 6}}, "rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 250, "duration_ticks": 150, "slow_bps": 5000, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 30, "pulse_damage_bps": 0}}}, {"skill": {"at_most": {"freeze_stacks": 6}}, "rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 275, "duration_ticks": 165, "slow_bps": 5250, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 30, "pulse_damage_bps": 0}}}, {"skill": {"at_most": {"freeze_stacks": 6}}, "rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 300, "duration_ticks": 180, "slow_bps": 5500, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 30, "pulse_damage_bps": 500}}}, {"skill": {"at_most": {"freeze_stacks": 6}}, "rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 325, "duration_ticks": 210, "slow_bps": 5750, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 30, "pulse_damage_bps": 750}}}, {"skill": {"at_most": {"freeze_stacks": 6}}, "rules": {"frost_field": {"interval_ticks": 180, "radius_cm": 350, "duration_ticks": 240, "slow_bps": 6000, "freeze_every_ticks": 30, "max_fields": 1, "pulse_every_ticks": 30, "pulse_damage_bps": 1000}}}], "draft": {"hook": "now", "coverage": "full", "intent": "D7 3.2 안 B: 지대를 1단으로. 빙결 문턱 6(at_most)으로 판 안 랭크 1에서도 지대가 얼린다. 맥동 피해는 랭크 3부터"}},
+        {"id": "witch.frost.field_wide", "branch": "field", "tier": 2, "name": "넓은 지대", "lore": "지대가 넓어지고 동시에 둘이 깔린다.", "max_rank": 3, "requires": {"witch.frost.field": 2}, "min_spent": 0, "new_rule": "R2", "ranks": [{"rules": {"frost_field_add": {"radius_cm": 25, "max_fields": 1, "pulse_damage_bps": 1000}}}, {"rules": {"frost_field_add": {"radius_cm": 50, "max_fields": 1, "pulse_damage_bps": 1500}}}, {"rules": {"frost_field_add": {"radius_cm": 75, "max_fields": 1, "pulse_damage_bps": 2000}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.dominion", "branch": "field", "tier": 3, "name": "굳은 땅", "lore": "지대 안의 적이 더 세게 얼어붙고 더 느려진다.", "max_rank": 3, "requires": {"witch.frost.field_wide": 2}, "min_spent": 0, "new_rule": "R2", "ranks": [{"rules": {"frost_field_add": {"radius_cm": 25, "max_fields": 0, "pulse_damage_bps": 1000, "slow_bps_at_least": 7000}}}, {"rules": {"frost_field_add": {"radius_cm": 50, "max_fields": 0, "pulse_damage_bps": 1500, "slow_bps_at_least": 7000}}}, {"rules": {"frost_field_add": {"radius_cm": 50, "max_fields": 0, "pulse_damage_bps": 2500, "slow_bps_at_least": 7000}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.chill", "branch": "shatter", "tier": 1, "name": "냉각 누적", "lore": "맞힐수록 적이 단단히 언다.", "max_rank": 3, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"at_most": {"freeze_stacks": 4}}}, {"skill": {"at_most": {"freeze_stacks": 3}}}, {"skill": {"at_most": {"freeze_stacks": 2}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.shatter", "branch": "shatter", "tier": 2, "name": "빙결 파쇄", "lore": "언 적이 죽으면 얼음 조각이 튄다.", "max_rank": 3, "requires": {"witch.frost.chill": 2}, "min_spent": 0, "new_rule": null, "ranks": [{"skill": {"add": {"shatter_count": 0}, "at_least": {"shatter_count": 2, "proc_depth": 1, "hit_budget": 16}}}, {"skill": {"add": {"shatter_count": 1}, "at_least": {"shatter_count": 3, "proc_depth": 1, "hit_budget": 16}}}, {"skill": {"add": {"shatter_count": 2}, "at_least": {"shatter_count": 4, "proc_depth": 1, "hit_budget": 16}}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.cascade", "branch": "shatter", "tier": 3, "name": "파편 연쇄", "lore": "얼음 조각이 더 많이 튀고 더 멀리 간다.", "max_rank": 3, "requires": {"witch.frost.shatter": 2}, "min_spent": 0, "new_rule": "R3", "ranks": [{"skill": {"add": {"shatter_count": 1}}, "rules": {"shatter_radius_cm": 50}}, {"skill": {"add": {"shatter_count": 2}}, "rules": {"shatter_radius_cm": 100}}, {"skill": {"add": {"shatter_count": 3}}, "rules": {"shatter_radius_cm": 150}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.vigor", "branch": "oath", "tier": 1, "name": "질긴 숨", "lore": "최대 생명이 8씩 늘어난다.", "max_rank": 5, "requires": {}, "min_spent": 0, "new_rule": null, "ranks": [{"hero": {"max_hp": 8}}, {"hero": {"max_hp": 16}}, {"hero": {"max_hp": 24}}, {"hero": {"max_hp": 32}}, {"hero": {"max_hp": 40}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.ward", "branch": "oath", "tier": 2, "name": "두꺼운 살갗", "lore": "받는 피해가 줄고, 3랭크에서 시작 회복약이 하나 는다.", "max_rank": 3, "requires": {"witch.common.vigor": 2}, "min_spent": 0, "new_rule": "R4", "ranks": [{"hero": {"damage_reduction_bps": 300, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 600, "potion_start": 0}}, {"hero": {"damage_reduction_bps": 900, "potion_start": 1}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.common.favor", "branch": "oath", "tier": 2, "name": "다시 고르기", "lore": "카드 고르기를 판마다 다시 할 수 있다.", "max_rank": 2, "requires": {}, "min_spent": 0, "new_rule": "R5", "ranks": [{"rules": {"grace_rerolls": 1}}, {"rules": {"grace_rerolls": 2}}], "draft": {"hook": "now", "coverage": "full"}},
+        {"id": "witch.frost.deep_oath", "branch": "oath", "tier": 4, "name": "앞당긴 겨울", "lore": "서리창이 랭크 2로 시작하고, 결정 카드 없이 진화한다.", "max_rank": 1, "requires": {}, "min_spent": 15, "new_rule": "R6", "ranks": [{"rules": {"start_rank": 2, "evolve_without_passive": true}}], "draft": {"hook": "now", "coverage": "full"}}
+      ],
+      "synergies": [
+        {"target": "witch.frost.oath_lance", "source": "witch.frost.needle", "per_rank": {"rules": {"elite_damage_bps": 300}}},
+        {"target": "witch.frost.dominion", "source": "witch.frost.field", "per_rank": {"rules": {"frost_field_add": {"radius_cm": 10}}}}
+      ],
+      "balance_status": "hypothesis"
+    }
+  ]
+}

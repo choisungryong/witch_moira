@@ -1279,8 +1279,6 @@ class HeroLocator46 extends Control:
 var _locator46: HeroLocator46
 var _view46: WeakRef
 func setup(view: Node3D) -> void:
-	# The older screens are still Korean literals (T3-L2 moves them to keys); until then keep the keyed text in step.
-	Loc.set_locale("ko")
 	setup__q40(view)
 	_build_upgrade_panel()
 	_build_combat_bar()
@@ -1759,7 +1757,6 @@ var _defeat_age := 0.0
 var _flow_prev_mode := ""
 var _flow_dialog: Control
 var _flow_kind := ""
-var _flow_mode := ""
 var _flow_focus: WeakRef
 var _notice_closed := false
 
@@ -1798,11 +1795,19 @@ func _sync_flow(run: RefCounted,delta: float) -> void:
 	if is_instance_valid(_flow_dialog):
 		if _flow_kind in ["notice","fresh"]:
 			if run.mode!="menu" or not rejected:_close_dialog(true)
-		elif run.mode!=_flow_mode:_close_dialog(true)
+		elif not _dialog_alive(_flow_kind,run.mode):_close_dialog(true)
 	elif rejected and run.mode=="menu" and not _notice_closed and not stash_open and overlay.visible and not skill_tree_is_open():
 		_open_notice()
 
 # ---- windows over the modal ----
+
+## Which run modes each window may live in (decided by what the window asks, not by when it was opened):
+## abandon / quit confirmations only while paused; "unsaved:*" only on a result window. The refused-save windows
+## (notice, fresh) are handled in _sync_flow (menu and a refused save).
+func _dialog_alive(kind: String,mode: String) -> bool:
+	if kind in ["abandon","quit"]:return mode=="paused"
+	if kind.begins_with("unsaved:"):return mode in ["victory","defeat"]
+	return true
 
 func _dialog_text(text: String,size: int=19) -> Label:
 	return _label(text,size,Palette.INK_DIM)
@@ -1816,7 +1821,7 @@ func _open_dialog(kind: String,spec: Dictionary) -> void:
 	dialog.setup(self,spec)
 	dialog.chosen.connect(_on_flow_chosen.bind(kind))
 	root.add_child(dialog)
-	_flow_dialog=dialog;_flow_kind=kind;_flow_mode=_flow_prev_mode
+	_flow_dialog=dialog;_flow_kind=kind
 	dialog.focus_default.call_deferred()
 
 func _close_dialog(return_focus: bool) -> void:
@@ -1908,14 +1913,15 @@ func _add_flow_actions(_run: RefCounted) -> void:
 	var box := modal.get_child(0) as VBoxContainer
 	if box==null or box.get_child_count()<4:return
 	var title := box.get_child(0) as Label
-	if title!=null and _result_reason=="abandoned":title.text=Loc.t("result.title.abandoned")
 	var actions := box.get_child(box.get_child_count()-1) as HBoxContainer
-	if actions==null or actions.get_child_count()<2:return
-	var old_retry := actions.get_child(actions.get_child_count()-1) as Button
-	if old_retry!=null:
-		actions.remove_child(old_retry);old_retry.queue_free()
-		var retry_button := _button(Loc.t("result.button.retry"),func():_leave("retry"));retry_button.name="RetrySameWitch"
-		retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
+	var old_retry: Button=null
+	if actions!=null and actions.get_child_count()>=2:old_retry=actions.get_child(actions.get_child_count()-1) as Button
+	if title==null or old_retry==null or old_retry is CheckButton:
+		push_error("result window layout changed: flow buttons not added");return
+	if _result_reason=="abandoned":title.text=Loc.t("result.title.abandoned")
+	actions.remove_child(old_retry);old_retry.queue_free()
+	var retry_button := _button(Loc.t("result.button.retry"),func():_leave("retry"));retry_button.name="RetrySameWitch"
+	retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
 	var second := HBoxContainer.new();second.name="ResultFlowActions";second.add_theme_constant_override("separation",14);box.add_child(second)
 	var menu_button := _button(Loc.t("result.button.menu"),func():_leave("menu"));menu_button.name="ReturnToMenu"
 	menu_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(menu_button)
@@ -1929,9 +1935,10 @@ func _add_flow_buttons(run: RefCounted) -> void:
 		if box==null:return
 		var after := -1
 		for i in box.get_child_count():
-			var child := box.get_child(i) as Button
-			if child!=null and after<0:after=i # the first button of the pause window is "resume"
-		if after<0:return
+			var child := box.get_child(i)
+			if child is Button and not child is CheckButton:after=i;break # the first plain button of the pause window is "resume"
+		if after<0:
+			push_error("pause window layout changed: flow buttons not added");return
 		var row := HBoxContainer.new();row.name="PauseFlowActions";row.add_theme_constant_override("separation",14)
 		row.size_flags_horizontal=Control.SIZE_SHRINK_END
 		var abandon_button := _button(Loc.t("hud.pause.abandon"),func():_ask_abandon());abandon_button.name="AbandonRun";row.add_child(abandon_button)

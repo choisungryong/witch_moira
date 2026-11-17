@@ -1,0 +1,151 @@
+{
+  "best_ticks": 20000,
+  "characters": {
+    "chapter1.character.frost": {
+      "first_rewards": [
+        "champion:0"
+      ],
+      "ranks": {
+
+      },
+      "respecs": 0,
+      "tree_revision": 1,
+      "xp": 300
+    }
+  },
+  "completed_runs": 1,
+  "equipped": {
+
+  },
+  "essence": 0,
+  "items": [
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 697
+          },
+          {
+            "group": "soul",
+            "id": "gleaning",
+            "stat": "soul_gain_bps",
+            "value": 991
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 663
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "description": "",
+        "grammar": 2,
+        "item_level": 6,
+        "name": "잿빛 손길",
+        "quality": "rare",
+        "required_level": 3,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 963,
+          "damage_reduction_bps": 697,
+          "soul_gain_bps": 991
+        }
+      },
+      "storage_id": 1
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 671
+          }
+        ],
+        "base_id": "chapter1.full.worn_sandals",
+        "description": "",
+        "grammar": 2,
+        "item_level": 6,
+        "name": "낡은 샌들 — 보호",
+        "quality": "magic",
+        "required_level": 3,
+        "slot": "feet",
+        "stats": {
+          "damage_reduction_bps": 671,
+          "move_speed_bps": 300
+        }
+      },
+      "storage_id": 2
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 412
+          },
+          {
+            "group": "health",
+            "id": "vigor2",
+            "stat": "max_hp_raw",
+            "value": 10119
+          }
+        ],
+        "base_id": "chapter1.full.warden_mantle",
+        "description": "",
+        "grammar": 2,
+        "item_level": 7,
+        "name": "서리 기도",
+        "quality": "rare",
+        "required_level": 4,
+        "slot": "body",
+        "stats": {
+          "damage_reduction_bps": 1112,
+          "max_hp_raw": 13959,
+          "pickup_radius_cm": 40
+        }
+      },
+      "storage_id": 3
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 577
+          }
+        ],
+        "base_id": "chapter1.full.iron_vest",
+        "description": "",
+        "grammar": 2,
+        "item_level": 7,
+        "name": "쇠실 흉의 — 보호",
+        "quality": "magic",
+        "required_level": 4,
+        "slot": "body",
+        "stats": {
+          "cooldown_bps": -500,
+          "damage_reduction_bps": 1177,
+          "max_hp_raw": 8960
+        }
+      },
+      "storage_id": 4
+    }
+  ],
+  "next_id": 5,
+  "receipts": [
+    "s0-j-1",
+    "s0-j-2"
+  ],
+  "revision": 2,
+  "schema_version": 3
+}

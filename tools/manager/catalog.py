@@ -16,6 +16,7 @@ CATEGORIES = [
     ('world', '구역과 의식'), ('characters', '주인공 원화'), ('models', '3D 모델'),
     ('images', '그림·아이콘'), ('sounds', '소리'), ('code', '코드 구성'),
     ('agents', '에이전트'), ('docs', '문서'), ('quality', '품질 목표'),
+    ('i18n', '번역'), ('build', '빌드·검사'),
 ]
 USAGE_LABELS = {
     'direct': '코드가 파일을 직접 가리킴',
@@ -491,6 +492,32 @@ QUALITY_NAMES = {'common': '일반', 'magic': '마법', 'rare': '희귀', 'legen
 CLASS_NAMES = {'normal': '일반 적', 'elite': '정예', 'carrier': '운반자', 'champion': '수호자', 'boss': '우두머리', 'boss_first_kill': '우두머리 첫 처치'}
 
 
+def rare_word_list(items, label):
+    """[(id or None, name)] from either rare_names format: old plain strings or new {"id","name"} objects (mixing is an error)."""
+    if not isinstance(items, list):
+        raise ValueError('rare_names.%s must be a list' % label)
+    out, ids = [], set()
+    for x in items:
+        if isinstance(x, str):
+            out.append((None, x))
+        elif isinstance(x, dict) and isinstance(x.get('id'), str) and isinstance(x.get('name'), str) and x['id']:
+            if x['id'] in ids:
+                raise ValueError('rare_names.%s has a repeated id %s' % (label, x['id']))
+            ids.add(x['id'])
+            out.append((x['id'], x['name']))
+        else:
+            raise ValueError('rare_names.%s has an unreadable entry' % label)
+    return out
+
+
+def rare_word_sections(names):
+    sections = []
+    for key, title in (('first', '앞말'), ('second', '뒷말')):
+        words = rare_word_list(names[key], key)
+        sections.append(lines(title, ['%s · %s' % (i, n) if i else n for i, n in words]))
+    return sections
+
+
 def gear_entities(c):
     p = 'chapter1/data/loot.json'
     L = read_json(p)
@@ -519,7 +546,7 @@ def gear_entities(c):
         c.add('gear:unique:' + u['id'], 'gear', '고유 장비', u['name'], u['description'],
               [pairs('정보', [('칸', sn.get(u['slot'], u['slot'])), ('나오는 레벨', u['level']), ('연결 기술', u['element']), ('능력', stats_text(u['stats']))])], S('"%s"' % u['id']))
     c.add('gear:names', 'gear', '규칙', '희귀 장비 이름 재료', '앞말 × 뒷말 조합',
-          [lines('앞말', L['rare_names']['first']), lines('뒷말', L['rare_names']['second'])], S('"rare_names"'))
+          rare_word_sections(L['rare_names']), S('"rare_names"'))
     for k, tc in L['treasure_classes'].items():
         q = tc['quality']
         total = sum(q.values()) or 1
@@ -856,12 +883,160 @@ def quality_entities(c, warnings):
         c.add('quality:doc', 'quality', '문서', '품질 목표 문서', '표를 읽지 못해 문서 링크만 제공합니다', [], src(p), links=[{'label': '문서 열기', 'path': p}])
 
 
+# ------------------------------------------------------------------ translations, build presets, regression checks
+LOCALE_DIR = 'chapter1/i18n'
+
+
+def _po_unquote(s):
+    s = s.strip()
+    try:
+        v = json.loads(s)
+        return v if isinstance(v, str) else ''
+    except ValueError:
+        return s[1:-1] if len(s) >= 2 and s[0] == s[-1] == '"' else s
+
+
+def parse_po(text):
+    """Entries of a .po file as [{'id', 'strs': {index: text}, 'fuzzy'}]. The header entry (empty id) is left out."""
+    out, cur, field, fuzzy = [], None, None, False
+    for raw in text.replace('\r\n', '\n').split('\n'):
+        s = raw.strip()
+        if s.startswith('#,'):
+            fuzzy = fuzzy or 'fuzzy' in s
+        elif s.startswith('#') or not s:
+            continue
+        elif s.startswith('msgid_plural'):
+            field = ('plural', 0)
+        elif s.startswith('msgid'):
+            cur = {'id': _po_unquote(s[5:]), 'strs': {}, 'fuzzy': fuzzy}
+            out.append(cur)
+            field, fuzzy = ('id', 0), False
+        elif s.startswith('msgstr') and cur is not None:
+            m = re.match(r'msgstr(?:\[(\d+)\])?\s*(".*")?$', s)
+            if not m:
+                continue
+            field = ('str', int(m.group(1) or 0))
+            cur['strs'][field[1]] = _po_unquote(m.group(2) or '""')
+        elif s.startswith('"') and cur is not None and field:
+            if field[0] == 'id':
+                cur['id'] += _po_unquote(s)
+            elif field[0] == 'str':
+                cur['strs'][field[1]] = cur['strs'].get(field[1], '') + _po_unquote(s)
+    return [e for e in out if e['id']]
+
+
+def po_stats(text):
+    entries = parse_po(text)
+    return {'keys': {e['id'] for e in entries},
+            'empty': sorted(e['id'] for e in entries if not e['strs'] or any(not v for v in e['strs'].values())),
+            'fuzzy': sorted(e['id'] for e in entries if e['fuzzy'])}
+
+
+def i18n_entities(c):
+    cfg = read_json(LOCALE_DIR + '/locales.json')
+    names = cfg.get('names', {})
+    langs = [(k, '출시 대상') for k in cfg.get('shipping', [])] + [(k, '작업 중') for k in cfg.get('in_progress', [])]
+    base = None
+    ko = ROOT / LOCALE_DIR / 'ko.po'
+    if ko.is_file():
+        base = po_stats(ko.read_text(encoding='utf-8'))
+    else:
+        c.warnings.append('한국어 원문 번역 파일(%s/ko.po)이 없습니다.' % LOCALE_DIR)
+    rows = []
+    for code, phase in langs:
+        rel = '%s/%s.po' % (LOCALE_DIR, code)
+        label = '%s (%s)' % (names.get(code, code), code)
+        if not (ROOT / rel).is_file():
+            rows.append([label, phase, '파일 없음', '-', '-'])
+            c.add('i18n:lang:' + code, 'i18n', phase, label, '번역 파일이 아직 없습니다',
+                  [lines('읽는 법', ['%s에 이 언어의 파일이 아직 없습니다. 언어 목록(locales.json)에만 올라 있습니다.' % LOCALE_DIR])], src(LOCALE_DIR + '/locales.json'))
+            continue
+        st = po_stats((ROOT / rel).read_text(encoding='utf-8'))
+        is_base = code == 'ko'
+        missing = sorted(base['keys'] - st['keys']) if base and not is_base else []
+        extra = sorted(st['keys'] - base['keys']) if base and not is_base else []
+        rows.append([label, phase, len(st['keys']), len(st['empty']), '해당 없음(원문)' if is_base else len(missing)])
+        sections = [pairs('집계', [('키 수', len(st['keys'])), ('빈 번역', len(st['empty'])), ('검토 표시(fuzzy)', len(st['fuzzy'])),
+                                  ('한국어 원문에는 있고 이 파일에는 없는 키', '해당 없음(원문)' if is_base else len(missing)),
+                                  ('이 파일에만 있는 키', '해당 없음(원문)' if is_base else len(extra))])]
+        for title, keys in (('빈 번역인 키', st['empty']), ('빠진 키', missing), ('이 파일에만 있는 키', extra)):
+            if keys:
+                sections.append(lines(title + (' (앞 40개)' if len(keys) > 40 else ''), keys[:40]))
+        c.add('i18n:lang:' + code, 'i18n', phase, label,
+              '키 %d개 · 빈 번역 %d개%s' % (len(st['keys']), len(st['empty']), ' · 빠진 키 %d개' % len(missing) if missing else ''),
+              sections, src(rel), links=[{'label': '번역 파일 열기', 'path': rel}])
+    if rows:
+        c.add('i18n:overview', 'i18n', '언어별 요약', '언어별 번역 현황', '%d개 언어' % len(rows),
+              [table('언어', ['언어', '상태', '키 수', '빈 번역', '빠진 키'], rows),
+               lines('읽는 법', ['.po 파일을 글자 그대로 센 값입니다. 번역의 품질이나 화면에서 잘리는지는 확인하지 않습니다.'])],
+              src(LOCALE_DIR + '/locales.json'))
+
+
+def preset_blocks(text):
+    """[(index, {key: value})] for the main [preset.N] sections of export_presets.cfg (option sections are skipped)."""
+    out, cur = [], None
+    for ln in text.replace('\r\n', '\n').split('\n'):
+        s = ln.strip()
+        m = re.fullmatch(r'\[preset\.(\d+)\]', s)
+        if m:
+            cur = {}
+            out.append((int(m.group(1)), cur))
+        elif s.startswith('['):
+            cur = None
+        elif cur is not None and '=' in s:
+            k, v = s.split('=', 1)
+            cur[k.strip()] = v.strip().strip('"')
+    return out
+
+
+def check_names(text):
+    """[(name, kind, script, slow)] read from the source text of tools/dev/run_all.py (never executed)."""
+    out = []
+    for m in re.finditer(r"godot_check\('([\w-]+)',\s*'([^']+)',\s*'([^']+)'([^\n]*)\)", text):
+        out.append((m.group(1), 'Godot 실행', m.group(2).replace('res://', ''), 'slow=True' in m.group(4)))
+    for m in re.finditer(r"\{'name': '([\w-]+)', 'kind': '([\w-]+)', 'timeout': \d+, 'slow': (True|False)\}", text):
+        out.append((m.group(1), {'python': '파이썬 검사', 'i18n-scan': '번역 글 검사'}.get(m.group(2), m.group(2)), '', m.group(3) == 'True'))
+    return out
+
+
+def build_entities(c):
+    try:
+        blocks = preset_blocks(read('export_presets.cfg'))
+    except OSError:
+        c.warnings.append('빌드 프리셋 파일(export_presets.cfg)을 읽지 못했습니다.')
+        blocks = []
+    for i, p in blocks:
+        name = p.get('name') or '프리셋 %d' % i
+        c.add('build:preset:%d' % i, 'build', '빌드 프리셋', name, '%s · 내보내기 경로 %s' % (p.get('platform', '?'), p.get('export_path') or '비어 있음'),
+              [pairs('설정', [('이름', name), ('플랫폼', p.get('platform', '')), ('실행 가능', p.get('runnable', '')),
+                            ('내보내기 경로', p.get('export_path') or '(비어 있음)'), ('제외 파일', p.get('exclude_filter') or '(없음)')]),
+               lines('읽는 법', ['export_presets.cfg의 이름과 설정만 읽었습니다. 실제로 내보내 본 결과가 아닙니다.'])])
+    rel = 'tools/dev/run_all.py'
+    try:
+        text = read(rel)
+    except OSError:
+        c.warnings.append('회귀 검사 목록(%s)을 읽지 못했습니다.' % rel)
+        return
+    names = check_names(text)
+    if not names:
+        c.warnings.append('회귀 검사 이름을 하나도 찾지 못했습니다(%s의 형식이 바뀌었을 수 있습니다).' % rel)
+        return
+    rows = [[n, k, s or '(파이썬 모듈)', '느림(--quick에서 빠짐)' if slow else '빠름'] for n, k, s, slow in names]
+    c.add('build:checks', 'build', '회귀 검사 목록', '회귀 검사', '%d종 · 실행: python tools/dev/run_all.py (--quick, --only 이름)' % len(rows),
+          [table('검사', ['이름', '종류', '스크립트', '속도'], rows),
+           lines('읽는 법', ['run_all.py의 소스를 읽어 이름을 모았습니다. 이 툴은 검사를 실행하지 않으며 통과 여부를 모릅니다.'])], src(rel))
+    for n, k, s, slow in names:
+        c.add('build:check:' + n, 'build', '회귀 검사', n, k + (' · ' + s if s else ''),
+              [pairs('검사', [('이름', n), ('종류', k), ('스크립트', s or '(파이썬 모듈)'), ('실행', 'python tools/dev/run_all.py --only ' + n)])], src(rel, text, "'%s'" % n))
+
+
 # ------------------------------------------------------------------ entry
 def generate():
     c = Catalog()
     warnings = c.warnings
     steps = [('한 판의 기술', growth_entities), ('영구 성장', perm_entities), ('전투 수치', combat_entities), ('장비', gear_entities),
-             ('에셋', asset_entities), ('코드 구성', code_entities), ('에이전트', agent_entities), ('문서', doc_entities)]
+             ('에셋', asset_entities), ('코드 구성', code_entities), ('에이전트', agent_entities), ('문서', doc_entities),
+             ('번역', i18n_entities), ('빌드와 검사 목록', build_entities)]
     for label, fn in steps:
         try:
             fn(c)

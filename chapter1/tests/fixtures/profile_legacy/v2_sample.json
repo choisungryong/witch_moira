@@ -1,0 +1,440 @@
+{
+  "best_ticks": 28000,
+  "completed_runs": 7,
+  "equipped": {
+    "body": 10,
+    "charm": 39,
+    "feet": 18,
+    "hands": 15,
+    "head": 7,
+    "ring": 37,
+    "ring2": 27,
+    "weapon": 4
+  },
+  "essence": 1,
+  "items": [
+    {
+      "item": {
+        "affixes": [],
+        "base_id": "chapter1.full.swift_wand",
+        "description": "",
+        "grammar": 2,
+        "item_level": 4,
+        "name": "박동의 마법봉",
+        "quality": "common",
+        "required_level": 1,
+        "slot": "weapon",
+        "stats": {
+          "cooldown_bps": 1200,
+          "damage_bps": 500
+        }
+      },
+      "storage_id": 1
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "slow",
+            "id": "binding",
+            "stat": "slow_bps",
+            "value": 1223
+          },
+          {
+            "group": "chain",
+            "id": "conductor",
+            "stat": "chain_targets",
+            "value": 1
+          }
+        ],
+        "base_id": "chapter1.full.cinder_staff",
+        "description": "",
+        "grammar": 2,
+        "item_level": 7,
+        "name": "도체의 잿불 지팡이 — 결박",
+        "quality": "magic",
+        "required_level": 4,
+        "slot": "weapon",
+        "stats": {
+          "chain_targets": 1,
+          "damage_bps": 800,
+          "projectiles": 1,
+          "slow_bps": 1223
+        }
+      },
+      "storage_id": 2
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "area",
+            "id": "expanse",
+            "stat": "radius_cm",
+            "value": 63
+          },
+          {
+            "group": "shape",
+            "id": "pierce",
+            "stat": "pierce",
+            "value": 1
+          },
+          {
+            "group": "slow",
+            "id": "binding",
+            "stat": "slow_bps",
+            "value": 1231
+          }
+        ],
+        "base_id": "chapter1.full.piercing_sceptre",
+        "description": "",
+        "grammar": 2,
+        "item_level": 10,
+        "name": "순례 파편",
+        "quality": "rare",
+        "required_level": 7,
+        "slot": "weapon",
+        "stats": {
+          "damage_bps": 1400,
+          "pierce": 2,
+          "radius_cm": 63,
+          "slow_bps": 1231
+        }
+      },
+      "storage_id": 3
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "shatter",
+            "id": "shatter",
+            "stat": "shatter_count",
+            "value": 2
+          },
+          {
+            "group": "slow",
+            "id": "binding",
+            "stat": "slow_bps",
+            "value": 733
+          },
+          {
+            "group": "damage",
+            "id": "wrath",
+            "stat": "damage_bps",
+            "value": 1565
+          }
+        ],
+        "base_id": "chapter1.full.cinder_staff",
+        "description": "연쇄 +3 · 번개 피해 -10%",
+        "grammar": 2,
+        "item_level": 4,
+        "legendary_id": "galvanic",
+        "name": "전도하는 잿불 지팡이",
+        "quality": "legendary",
+        "required_level": 1,
+        "slot": "weapon",
+        "stats": {
+          "arc_damage_bps": -1000,
+          "chain_targets": 3,
+          "damage_bps": 2365,
+          "projectiles": 1,
+          "shatter_count": 2,
+          "slow_bps": 733
+        }
+      },
+      "storage_id": 4
+    },
+    {
+      "item": {
+        "affixes": [],
+        "base_id": "chapter1.full.ash_hood",
+        "description": "",
+        "grammar": 2,
+        "item_level": 7,
+        "name": "재의 두건",
+        "quality": "common",
+        "required_level": 4,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 300
+        }
+      },
+      "storage_id": 5
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward2",
+            "stat": "damage_reduction_bps",
+            "value": 890
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "description": "",
+        "grammar": 2,
+        "item_level": 10,
+        "name": "재의 두건 — 수호",
+        "quality": "magic",
+        "required_level": 7,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 300,
+          "damage_reduction_bps": 890
+        }
+      },
+      "storage_id": 6
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 6419
+          },
+          {
+            "group": "soul",
+            "id": "gleaning",
+            "stat": "soul_gain_bps",
+            "value": 817
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 856
+          }
+        ],
+        "base_id": "chapter1.full.iron_circlet",
+        "description": "",
+        "grammar": 2,
+        "item_level": 4,
+        "name": "황혼 사슬",
+        "quality": "rare",
+        "required_level": 1,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 1256,
+          "max_hp_raw": 8979,
+          "soul_gain_bps": 817
+        }
+      },
+      "storage_id": 7
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 3855
+          },
+          {
+            "group": "soul",
+            "id": "gleaning",
+            "stat": "soul_gain_bps",
+            "value": 1237
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 1160
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "description": "",
+        "grammar": 2,
+        "item_level": 7,
+        "name": "황혼 숨결",
+        "quality": "rare",
+        "required_level": 4,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 1460,
+          "max_hp_raw": 3855,
+          "soul_gain_bps": 1237
+        }
+      },
+      "storage_id": 8
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "harvest",
+            "id": "harvest",
+            "stat": "pickup_radius_cm",
+            "value": 51
+          }
+        ],
+        "base_id": "chapter1.full.warden_mantle",
+        "description": "",
+        "grammar": 2,
+        "item_level": 4,
+        "name": "수문장의 외투 — 수확",
+        "quality": "magic",
+        "required_level": 1,
+        "slot": "body",
+        "stats": {
+          "damage_reduction_bps": 700,
+          "max_hp_raw": 3840,
+          "pickup_radius_cm": 91
+        }
+      },
+      "storage_id": 10
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "haste",
+            "id": "haste2",
+            "stat": "cooldown_bps",
+            "value": 1293
+          },
+          {
+            "group": "damage",
+            "id": "wrath2",
+            "stat": "damage_bps",
+            "value": 1986
+          },
+          {
+            "group": "health",
+            "id": "vigor2",
+            "stat": "max_hp_raw",
+            "value": 6875
+          }
+        ],
+        "base_id": "chapter1.full.linen_wraps",
+        "description": "",
+        "grammar": 2,
+        "item_level": 10,
+        "name": "서리 불씨",
+        "quality": "rare",
+        "required_level": 7,
+        "slot": "hands",
+        "stats": {
+          "cooldown_bps": 1293,
+          "damage_bps": 2286,
+          "max_hp_raw": 6875
+        }
+      },
+      "storage_id": 15
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "health",
+            "id": "vigor2",
+            "stat": "max_hp_raw",
+            "value": 10496
+          }
+        ],
+        "base_id": "chapter1.full.pilgrim_boots",
+        "description": "",
+        "grammar": 2,
+        "item_level": 10,
+        "name": "순례자의 장화 — 생명",
+        "quality": "magic",
+        "required_level": 7,
+        "slot": "feet",
+        "stats": {
+          "max_hp_raw": 11776,
+          "move_speed_bps": 500
+        }
+      },
+      "storage_id": 18
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "harvest",
+            "id": "harvest",
+            "stat": "pickup_radius_cm",
+            "value": 58
+          },
+          {
+            "group": "dash",
+            "id": "blink",
+            "stat": "dash_cooldown_bps",
+            "value": 1298
+          },
+          {
+            "group": "chain",
+            "id": "conductor",
+            "stat": "chain_targets",
+            "value": 2
+          }
+        ],
+        "base_id": "chapter1.full.quick_loop",
+        "description": "",
+        "grammar": 2,
+        "item_level": 10,
+        "name": "잿빛 사슬",
+        "quality": "rare",
+        "required_level": 7,
+        "slot": "ring",
+        "stats": {
+          "chain_targets": 2,
+          "cooldown_bps": 500,
+          "dash_cooldown_bps": 1298,
+          "pickup_radius_cm": 98
+        }
+      },
+      "storage_id": 27
+    },
+    {
+      "item": {
+        "affixes": [],
+        "base_id": "chapter1.full.unique.forked_covenant",
+        "description": "번개 분기 +1 · 연쇄 +1 · 번개 피해 -12%",
+        "grammar": 2,
+        "item_level": 12,
+        "name": "갈림길의 서약",
+        "quality": "unique",
+        "required_level": 9,
+        "slot": "ring",
+        "stats": {
+          "arc_branches": 1,
+          "arc_damage_bps": -1200,
+          "chain_targets": 1
+        }
+      },
+      "storage_id": 37
+    },
+    {
+      "item": {
+        "affixes": [],
+        "base_id": "chapter1.full.unique.winter_heart",
+        "description": "서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가",
+        "item_level": 9,
+        "name": "겨울의 심장",
+        "quality": "unique",
+        "slot": "charm",
+        "stats": {
+          "cooldown_bps": -500,
+          "frost_threshold": 1,
+          "shatter_count": 2
+        }
+      },
+      "storage_id": 39
+    }
+  ],
+  "next_id": 40,
+  "receipts": [
+    "s0-run-1",
+    "s0-run-2",
+    "s0-run-3",
+    "s0-run-4"
+  ],
+  "revision": 11,
+  "schema_version": 2
+}

@@ -40,6 +40,8 @@ var available := false
 ## "incompatible" (well-formed but failed validation), "legacy" (a schema-2/1 file was refused).
 var reject_kind := ""
 var reject_reason := ""
+## The file that was actually refused (the schema-3 path, or the old-format file for "legacy"). Read-only for callers.
+var reject_source := ""
 ## Where the pointer file lives ("" = none). The product uses POINTER_PATH; QA passes an isolated path.
 var pointer_path := ""
 ## The newest readable journal copy, computed once when a v3 file is refused (see _reject).
@@ -79,7 +81,7 @@ static func fresh() -> Dictionary:
 ## Reads `destination` (schema 3). When it does not exist, reads the schema-2 file, then the schema-1 file, into
 ## memory only. In QA mode the legacy paths are optional arguments and must be isolated QA paths too.
 func configure(destination: String=PATH_V3,qa: bool=false,legacy_v2: String="",legacy_v1: String="",pointer: String="") -> bool:
-	available=false;error="";reject_kind="";reject_reason="";_resume={};state=fresh();characters={};notices={};path=destination;_loaded_text="";imported_from_v1=false;imported_from_v2=false;pointer_path=""
+	reject_source="";available=false;error="";reject_kind="";reject_reason="";_resume={};state=fresh();characters={};notices={};path=destination;_loaded_text="";imported_from_v1=false;imported_from_v2=false;pointer_path=""
 	if qa:
 		var base := "res://_local/"
 		for candidate_path in [path,legacy_v2,legacy_v1,pointer]:
@@ -210,7 +212,7 @@ func _write_pointer(file: String,replaces: String,kind: String,reason: String,fr
 ## Records why a file was refused and writes one log line. Writes no file and changes nothing on disk.
 ## The line holds the file name only (no user path) and no item names.
 func _reject(kind: String,reason: String,source: String) -> bool:
-	reject_kind=kind;reject_reason=reason
+	reject_kind=kind;reject_reason=reason;reject_source=source
 	_resume=latest_readable_revision() if kind!="legacy" else {}
 	var text := FileAccess.get_file_as_string(source) if FileAccess.file_exists(source) else ""
 	print("CHAPTER1_PROFILE_REJECTED ",JSON.stringify({"file":source.get_file(),"kind":kind,"reason":reason,"bytes":text.to_utf8_buffer().size(),"sha256_16":text.sha256_text().substr(0,16)}))

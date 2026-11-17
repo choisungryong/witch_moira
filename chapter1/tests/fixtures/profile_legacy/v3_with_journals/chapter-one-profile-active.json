@@ -1,0 +1,9 @@
+{
+  "created_unix": 1794891937,
+  "file": "chapter-one-profile-v3-r20261117-120000.json",
+  "from_revision": "chapter-one-profile-v3.revision-000004-0-0.json",
+  "kind": "incompatible",
+  "reason": "items[0].item: Base+affix identity/stats",
+  "replaces": "chapter-one-profile-v3.json",
+  "schema": 1
+}

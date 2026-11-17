@@ -24,6 +24,8 @@ const LINEN := Color("cbbf9f")          ## thread: connection, belonging, progre
 ## ---- Surfaces ----
 const SURFACE := Color("17191b")        ## panel
 const SURFACE_RAISED := Color("202628") ## button / card
+## Dim behind a window that sits on another window (confirm windows, refused-save notice).
+const SCRIM := Color(.01,.015,.02,.72)
 const PLATE := Color(.035,.045,.05,.92) ## combat bar plate
 const SLOT := Color(.075,.095,.105,1)   ## combat bar slot and tree tile
 ## ---- Threat and life ----

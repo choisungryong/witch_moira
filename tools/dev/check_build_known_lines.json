@@ -1,0 +1,13 @@
+{
+  "_comment": "Known log lines for tools/dev/check_build.py. A line that contains one of these substrings is reported as KNOWN (not a failure). Any other ERROR line is NEW and fails the check. Add an entry only with a reason and a way out; do not add a pattern just to turn a check green.",
+  "known": [
+    {
+      "id": "malgunbd-export",
+      "contains": "MALGUNBD.TTF",
+      "applies_to": ["export"],
+      "reason": "Editor-side system font lookup during export. Seen once in the first debug export of T4-B (t4b/debug/export.log:298), not reproduced in the tech-lead's re-export (TECH-REVIEW-L0a-T4B 3.2). Presumed editor side; the game itself looks fonts up by name at run time (SystemFont) and has the same root cause.",
+      "exit": "T3-L3 (bundled fonts). L3 pass criteria: zero C:/WINDOWS/FONTS paths in export and run logs.",
+      "since": "2026-11-17"
+    }
+  ]
+}

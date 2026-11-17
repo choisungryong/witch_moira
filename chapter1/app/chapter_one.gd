@@ -433,8 +433,9 @@ func profile_rejected() -> bool:
 func profile_reject_info() -> Dictionary:
 	if profile.reject_kind.is_empty():return {}
 	var resume: Dictionary=profile.resume_info() # Computed once when the file was refused; cheap to call every frame.
-	return {"kind":profile.reject_kind,"reason":profile.reject_reason,"file":profile.path.get_file(),
-		"path":ProjectSettings.globalize_path(profile.path),"folder":ProjectSettings.globalize_path(profile.path.get_base_dir()),"resume":resume}
+	var shown: String=profile.reject_source if not profile.reject_source.is_empty() else profile.path
+	return {"kind":profile.reject_kind,"reason":profile.reject_reason,"file":shown.get_file(),
+		"path":ProjectSettings.globalize_path(shown),"folder":ProjectSettings.globalize_path(shown.get_base_dir()),"resume":resume}
 
 ## Opens the save folder in the file manager. Opening only.
 func open_profile_folder() -> void:
@@ -463,7 +464,7 @@ func start_fresh_profile(use_revision: bool) -> bool:
 func return_to_menu() -> void:
 	if run.mode not in ["victory","defeat"]:return
 	run=ChapterRun.new();full_pilot.run=run
-	actors.reset();effects.reset()
+	actors.reset();actors.rest_for_menu();effects.reset()
 	if juice!=null:juice.reset()
 	hud.reset();audio.reset();audio.set_paused(true)
 	if hud.skill_tree_is_open():hud.skill_panel.visible=false

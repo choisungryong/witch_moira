@@ -1,0 +1,92 @@
+{
+  "best_ticks": 20000,
+  "characters": {
+    "chapter1.character.frost": {
+      "first_rewards": [
+        "champion:0"
+      ],
+      "ranks": {
+
+      },
+      "respecs": 0,
+      "tree_revision": 1,
+      "xp": 300
+    }
+  },
+  "completed_runs": 1,
+  "equipped": {
+
+  },
+  "essence": 0,
+  "items": [
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 697
+          },
+          {
+            "group": "soul",
+            "id": "gleaning",
+            "stat": "soul_gain_bps",
+            "value": 991
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 663
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "description": "",
+        "grammar": 2,
+        "item_level": 6,
+        "name": "잿빛 손길",
+        "quality": "rare",
+        "required_level": 3,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 963,
+          "damage_reduction_bps": 697,
+          "soul_gain_bps": 991
+        }
+      },
+      "storage_id": 1
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 671
+          }
+        ],
+        "base_id": "chapter1.full.worn_sandals",
+        "description": "",
+        "grammar": 2,
+        "item_level": 6,
+        "name": "낡은 샌들 — 보호",
+        "quality": "magic",
+        "required_level": 3,
+        "slot": "feet",
+        "stats": {
+          "damage_reduction_bps": 671,
+          "move_speed_bps": 300
+        }
+      },
+      "storage_id": 2
+    }
+  ],
+  "next_id": 3,
+  "receipts": [
+    "s0-j-1"
+  ],
+  "revision": 1,
+  "schema_version": 3
+}

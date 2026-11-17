@@ -1543,6 +1543,7 @@ func setup(owner_view: Node3D) -> void:
 		for index in _hit34_indices:poses.append(rig.get_bone_pose(index))
 		_hit34_frames.append(poses)
 	state.player.play("idle",0);state.player.seek(0,true);state.player.advance(0)
+	_capture_menu_rest()
 func _replace34(actor: Node3D) -> void:
 	if _is34(actor):return
 	var old: Dictionary=actor.get_meta("minion19")
@@ -1761,6 +1762,61 @@ func reset() -> void:
 	_overlap42_ready=false
 	_overlap42_camera_id=0
 	reset__q25b()
+
+# Menu rest pose (D4 return to menu). reset() clears pools and timers only; the hero model keeps the last
+# run's place, pose and element colours. `_capture_menu_rest` notes the first menu state at the end of setup();
+# `rest_for_menu` puts it back. Only return_to_menu() calls it, so start and retry screens are unchanged.
+var _rest_ready := false
+var _rest_hero_transform := Transform3D.IDENTITY
+var _rest_staff_transform := Transform3D.IDENTITY
+var _rest_bones: Array=[]
+var _rest_materials: Array=[]
+var _rest_disc_color := Color.WHITE
+var _rest_ring_color := Color.WHITE
+var _rest_gem: Array=[]
+var _rest_owner_mark_visible := false
+var _rest_element_key := ""
+
+func _capture_menu_rest() -> void:
+	if hero==null:return
+	_rest_hero_transform=hero.transform
+	if _staff!=null:_rest_staff_transform=_staff.transform
+	_rest_bones.clear()
+	if rig_skeleton!=null:
+		# Position, rotation and scale as stored: a Transform3D round trip is not bit-exact.
+		for i in rig_skeleton.get_bone_count():_rest_bones.append([rig_skeleton.get_bone_pose_position(i),rig_skeleton.get_bone_pose_rotation(i),rig_skeleton.get_bone_pose_scale(i)])
+	_rest_materials.clear()
+	for material in _hero_materials:
+		_rest_materials.append([material.albedo_color,material.rim_enabled,material.rim,material.rim_tint,material.emission,material.emission_energy_multiplier])
+	if _hero_disc_material!=null:_rest_disc_color=_hero_disc_material.albedo_color
+	if _hero_ring_material!=null:_rest_ring_color=_hero_ring_material.albedo_color
+	_rest_gem.clear()
+	if _staff!=null and _staff.gem_material!=null:_rest_gem=[_staff.gem_material.albedo_color,_staff.gem_material.emission,_staff.gem_material.emission_energy_multiplier]
+	if owner_mark!=null:_rest_owner_mark_visible=owner_mark.visible
+	_rest_element_key=_hero_element_key
+	_rest_ready=true
+
+func rest_for_menu() -> void:
+	if not _rest_ready:return
+	hero.transform=_rest_hero_transform
+	if _staff!=null:_staff.transform=_rest_staff_transform
+	if rig_player!=null:
+		# The player was left on the last clip (death, run...); put it back on the clip setup() ended with.
+		var samples_before := _pose_samples
+		_sample("idle",0);_pose_samples=samples_before
+	if rig_skeleton!=null and _rest_bones.size()==rig_skeleton.get_bone_count():
+		for i in _rest_bones.size():
+			rig_skeleton.set_bone_pose_position(i,_rest_bones[i][0]);rig_skeleton.set_bone_pose_rotation(i,_rest_bones[i][1]);rig_skeleton.set_bone_pose_scale(i,_rest_bones[i][2])
+	for i in mini(_hero_materials.size(),_rest_materials.size()):
+		var m: StandardMaterial3D=_hero_materials[i];var v: Array=_rest_materials[i]
+		m.albedo_color=v[0];m.rim_enabled=v[1];m.rim=v[2];m.rim_tint=v[3];m.emission=v[4];m.emission_energy_multiplier=v[5]
+	if _hero_disc_material!=null:_hero_disc_material.albedo_color=_rest_disc_color
+	if _hero_ring_material!=null:_hero_ring_material.albedo_color=_rest_ring_color
+	if _staff!=null and _staff.gem_material!=null and _rest_gem.size()==3:
+		_staff.gem_material.albedo_color=_rest_gem[0];_staff.gem_material.emission=_rest_gem[1];_staff.gem_material.emission_energy_multiplier=_rest_gem[2]
+	if owner_mark!=null:owner_mark.visible=_rest_owner_mark_visible
+	_hero_element_key=_rest_element_key
+	if _hero_rim!=null:_hero_rim.visible=false
 
 func _set_color42(material: StandardMaterial3D,color: Color) -> void:
 	if material.albedo_color!=color:material.albedo_color=color

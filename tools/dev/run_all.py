@@ -35,6 +35,7 @@ def checks():
         godot_check('loot', 'res://chapter1/tests/test_loot.gd', 'CHAPTER1_LOOT_RESULT'),
         godot_check('loc', 'res://chapter1/tests/test_loc.gd', 'CHAPTER1_LOC_RESULT'),
         godot_check('app-guard', 'res://chapter1/tests/test_profile_app_guard.gd', 'CHAPTER1_APP_GUARD_RESULT'),
+        godot_check('profile-legacy', 'res://chapter1/tests/test_profile_legacy_fixtures.gd', 'CHAPTER1_PROFILE_LEGACY_RESULT'),
         godot_check('golden', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', timeout=600, slow=True),
         godot_check('golden-textless', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', ['--textless'], timeout=600, slow=True),
         godot_check('loot-sim', 'res://chapter1/tests/sim_loot.gd', 'LOOT_SIM', ['--runs=3000'], timeout=600, slow=True),
