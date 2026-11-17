@@ -1,0 +1,11 @@
+{
+  "shipping": ["ko", "en"],
+  "in_progress": ["ja", "zh_CN", "zh_TW"],
+  "names": {
+    "ko": "한국어",
+    "en": "English",
+    "ja": "日本語",
+    "zh_CN": "简体中文",
+    "zh_TW": "繁體中文"
+  }
+}

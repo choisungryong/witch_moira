@@ -22,6 +22,9 @@ var hud=HUD.new()
 var audio=Audio.new()
 var _frame_probe=FrameProbe.new()
 var _probe_quit_after_complete := false
+## Verification arguments and the F1 diagnostics screen only work in debug builds and builds with the "qa" feature tag.
+## Store builds ignore them, because a player can put arguments on the Steam launch line.
+var qa_allowed := OS.is_debug_build() or OS.has_feature("qa")
 var primary := "chapter1.skill.ember"
 var seed_ := 90131
 var _wall_age := 0.0
@@ -53,12 +56,14 @@ func _exit_tree() -> void:
 		if is_instance_valid(voice):voice.stop();voice.stream=null
 	audio.voices.clear();audio.streams.clear();audio.ambience=null
 
+func _user_args() -> PackedStringArray:
+	return OS.get_cmdline_user_args() if qa_allowed else PackedStringArray()
 func _ready__chapter() -> void:
 	DisplayServer.window_set_title("잿빛 회랑 · Chapter 1")
 	world.setup(self)
 	actors.setup(self)
 	effects.setup(self)
-	if not "--chapter1-no-juice" in OS.get_cmdline_user_args():
+	if not "--chapter1-no-juice" in _user_args():
 		juice=CombatJuice.new();juice.setup(self);juice.apply_look(world)
 	hud.temporary_art=actors.temporary_art
 	hud.setup(self)
@@ -69,6 +74,12 @@ func _ready__chapter() -> void:
 	hud.equip_item.connect(equip_item)
 	hud.pause_toggle.connect(toggle_pause)
 	hud.retry.connect(retry)
+	hud.menu_return.connect(return_to_menu)
+	hud.abandon_request.connect(abandon_run)
+	hud.quit_request.connect(quit_game)
+	hud.profile_open_folder.connect(open_profile_folder)
+	hud.profile_play_without_save.connect(play_without_save)
+	hud.profile_start_fresh.connect(start_fresh_profile)
 	hud.mute_toggle.connect(toggle_mute)
 	hud.motion_toggle.connect(func(enabled: bool):world.set_reduced_motion(not enabled))
 	audio.setup(self)
@@ -80,7 +91,7 @@ func _ready__chapter() -> void:
 	var input_log_path := ""
 	var frame_probe_dir := ""
 	var probe_arg_count := 0
-	for arg in OS.get_cmdline_user_args():
+	for arg in _user_args():
 		if arg=="--chapter1-start":autostart=true
 		elif arg=="--chapter1-pilot":_pilot=true
 		elif arg=="--chapter1-qa-ignore-focus":_qa_ignore_focus=true
@@ -164,6 +175,8 @@ func _qa_log_key(event: InputEvent, phase: String) -> void:
 func _unhandled_key_input__chapter(event: InputEvent) -> void:
 	_qa_log_key(event,"unhandled_key_input")
 	if not event is InputEventKey or not event.pressed or event.echo:return
+	# A confirm window or the refused-save notice answers Esc itself; nothing behind it reacts.
+	if hud.flow_dialog_open():return
 	# Menu shortcuts use logical keys. Native QA proved injected input carries
 	# correct keycode but a constant unrelated physical scan code; WASD stays physical.
 	var shortcut: int=event.keycode if event.keycode!=0 else event.physical_keycode
@@ -178,9 +191,11 @@ func _unhandled_key_input__chapter(event: InputEvent) -> void:
 			_has_move_target=false
 			run.request_dash(_move_input())
 		KEY_M:toggle_mute()
-		KEY_F1:hud.debug.visible=not hud.debug.visible
+		KEY_F1:
+			if qa_allowed:hud.debug.visible=not hud.debug.visible
 		KEY_R:
-			if run.mode in ["victory","defeat"]:retry()
+			# Only once the result window is on screen (D4 F10); unsaved rewards are asked about first (F8).
+			if run.mode in ["victory","defeat"] and hud.result_revealed():hud.request_leave("retry")
 
 func _unhandled_input__chapter(event: InputEvent) -> void:
 	if run.mode!="playing" or not event is InputEventMouseButton:return
@@ -323,6 +338,7 @@ func _print_result__chapter() -> void:
 	print("CHAPTER1_RUNTIME_RESULT ",JSON.stringify({"mode":run.mode,"elapsed":run.elapsed(),"kills":run.kills,"hp_raw":run.hero.get("hp_raw",0),"metrics":run.metrics,"growth":run.growth.snapshot(),"equipped":run.equipped,"pilot":_pilot,"qa_ignore_focus":_qa_ignore_focus,"frame_samples":values.size(),"frame_p95_ms":p95,"scope":"representative encounter; captures/driver may perturb frame times; not formal GPU quality pass"}))
 
 # ---- chapter1/chapter_one_view.gd ----
+const Loc=preload("res://chapter1/view/loc.gd")
 const ChapterRun=preload("res://chapter1/core/chapter_core.gd")
 const ChapterWorld=preload("res://chapter1/view/world/chapter_world.gd")
 const ChapterHUD=preload("res://chapter1/view/hud/chapter_hud.gd")
@@ -349,7 +365,7 @@ func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
 	full_pilot.run=run
 func _ready() -> void:
-	_profile_off="--chapter1-profile-off" in OS.get_cmdline_user_args()
+	_profile_off="--chapter1-profile-off" in _user_args()
 	if _profile_off:profile.error="검증 실행 · 저장 비활성"
 	else:profile.configure()
 	_sync_profile("저장 준비" if profile.available else profile.error)
@@ -366,7 +382,11 @@ func _ready() -> void:
 func start_run(id_: String) -> void:
 	if profile.available and profile.state.items.size()>256:
 		hud.stash_open=true;_sync_profile("회수 장비를 해체해 256개 이하로 정리하면 출발할 수 있습니다");return
-	if not profile.available and not _profile_off and not _profile_session_off and profile.error!="전용 저장 경로가 없는 미리보기입니다":hud.notify(profile.error);return
+	if not profile.available and not _profile_off and not _profile_session_off and profile.error!="전용 저장 경로가 없는 미리보기입니다":
+		# A refused save file opens the notice again instead of a silent block (D5).
+		if profile_rejected():hud.show_profile_notice()
+		else:hud.notify(profile.error)
+		return
 	_chapter_last_event=-1
 	_receipt="%d-%d-%d"%[OS.get_process_id(),Time.get_unix_time_from_system(),Time.get_ticks_usec()];_saved_receipt=""
 	hud.stash_open=false
@@ -437,6 +457,46 @@ func start_fresh_profile(use_revision: bool) -> bool:
 	_sync_profile("새 저장으로 시작했습니다 · 이전 파일은 그대로 남아 있습니다")
 	return true
 
+# Run flow (D4): back to the menu, give up, quit. The screen asks through signals; these decide.
+
+## From a result window back to the title menu: a fresh core object is the same state the game starts in.
+func return_to_menu() -> void:
+	if run.mode not in ["victory","defeat"]:return
+	run=ChapterRun.new();full_pilot.run=run
+	actors.reset();effects.reset()
+	if juice!=null:juice.reset()
+	hud.reset();audio.reset();audio.set_paused(true)
+	if hud.skill_tree_is_open():hud.skill_panel.visible=false
+	hud.stash_open=false
+	hud.set_growth_result("",{},{},{})
+	_chapter_last_event=-1;_last_audio_event=-1;_last_result="";_has_move_target=false
+	_receipt="";_saved_receipt="";run_character_id="";run_progress={};view_before={};view_after={}
+	seed_+=1 # The next run from the menu never repeats the one just played (F3).
+	world.update_camera(Vector2.ZERO,10.0)
+	_sync_profile(Loc.t("notify.profile.ready") if profile.available else profile.error)
+
+## "Abandon this run": the same end as a fall, saved by the same path.
+func abandon_run() -> void:
+	if run.mode in ["menu","victory","defeat"]:return
+	hud.set_result_reason("abandoned")
+	if not run.abandon():
+		hud.set_result_reason("");return
+	_consume_events()
+	hud.invalidate()
+
+## Quit. During a run it is an abandon first, and the game closes only when that save went through (or there is
+## nothing to save). In the menu or a result window the screen has already asked about unsaved rewards.
+func quit_game() -> void:
+	var from_mode: String=run.mode
+	if from_mode not in ["menu","victory","defeat"]:
+		abandon_run()
+		if run.mode!="defeat":return
+		if profile.available and _saved_receipt!=_receipt:
+			hud.ask_unsaved("quit");return
+	print("CHAPTER1_QUIT ",JSON.stringify({"from":"menu" if from_mode=="menu" else ("result" if from_mode in ["victory","defeat"] else "run")}))
+	audio.reset()
+	get_tree().quit()
+
 func _sync_profile(note: String) -> void:
 	hud.profile_state=profile.state.duplicate(true);hud.profile_note=note
 	var views := {}
@@ -488,16 +548,17 @@ func _respec_skill_tree(character_id: String) -> void:
 
 func _save_terminal() -> void:
 	if run.mode not in ["victory","defeat"]:return
-	if _saved_receipt==_receipt:_sync_profile("이번 도전 보상 저장 완료");return
-	if not profile.available:_sync_profile(profile.error);return
+	if _saved_receipt==_receipt:hud.result_unsaved=false;_sync_profile("이번 도전 보상 저장 완료");return
+	if not profile.available:hud.result_unsaved=false;_sync_profile(profile.error);return
 	var progress: Dictionary=run.progress_summary()
 	run_progress=progress
 	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress):
-		_saved_receipt=_receipt
+		_saved_receipt=_receipt;hud.result_unsaved=false
 		if not run_character_id.is_empty():view_after=profile.character_view(run_character_id)
 		hud.set_growth_result(run_character_id,view_before,view_after,run_progress)
 		_sync_profile("이번 도전 보상 저장 완료 · 장비 %d개"%profile.state.items.size())
 	else:
+		hud.result_unsaved=true
 		hud.set_growth_result(run_character_id,view_before,{},run_progress)
 		_sync_profile(profile.error+" · 현재 보상은 이 화면에 유지됩니다")
 func _unhandled_key_input__chapterx(event: InputEvent) -> void:

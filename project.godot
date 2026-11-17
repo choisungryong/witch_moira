@@ -20,5 +20,10 @@ renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.06,0.08,0.08,1)
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://chapter1/i18n/ko.po", "res://chapter1/i18n/en.po")
+locale/fallback="en"
+
 [physics]
 common/physics_ticks_per_second=60

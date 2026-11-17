@@ -242,7 +242,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		if run.tick>=int(_enemy_recoil[id_].until):_enemy_recoil.erase(id_)
 	var wanted: Dictionary={}
 	for e in run.enemies.values():
-		var key: String="%d:%d" % [e.generation,e.id]
+		var key: String=frame_keys[e.id]
 		wanted[key]=true
 		if not actors.has(key):
 			actors[key]=_create(e.kind)
@@ -255,7 +255,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 			var remaining: float=clampf(float(int(recoil.until)-run.tick)/7.0,0,1)
 			actor.position+=Vector3(recoil.direction.x,0,recoil.direction.y)*(.075*sin(remaining*PI))
 		var frozen: bool=run.tick<int(e.frozen_until)
+		_cur_actor=actor;_cur_entity=e
 		_update_pose(actor,e.attack_direction if e.state in ["windup","dash"] else e.direction,e.state=="move",e.state=="windup",dead,run.tick,run.mode=="playing" and not frozen,run.tick<int(_enemy_hit_until.get(e.id,-1)))
+		_cur_actor=null
 		if not dead and _overlaps_hero(actor,camera):_hero_overlapped=true
 		if actor.has_meta("sprite"):
 			var sprite: AnimatedSprite3D=actor.get_meta("sprite")
@@ -264,11 +266,11 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		if dead:
 			# Keep the body its authored size. A corpse fades after its collapse,
 			# rather than shrinking into a toy-sized upright actor.
-			actor.scale=Vector3.ONE
+			if actor.scale!=Vector3.ONE:actor.scale=Vector3.ONE
 			if actor.has_meta("sprite"):
 				var corpse: AnimatedSprite3D=actor.get_meta("sprite")
 				corpse.modulate.a=1.0-clampf(float(run.tick-int(e.dead_tick)-36)/39.0,0,1)
-		else: actor.scale=Vector3.ONE
+		elif actor.scale!=Vector3.ONE:actor.scale=Vector3.ONE
 	for key in actors.keys():
 		if not wanted.has(key):
 			actors[key].queue_free()
@@ -279,7 +281,8 @@ func _present_position(actor: Node3D, at: Vector2, tick: int, playing: bool, fra
 	# One fixed-tick interval of visual interpolation. Never extrapolate a hitbox.
 	# https://docs.godotengine.org/en/4.5/classes/class_engine.html#class-engine-method-get-physics-interpolation-fraction
 	var sample: Dictionary=actor.get_meta("motion_sample",{})
-	if sample.is_empty():sample={"tick":tick,"previous":at,"current":at,"phase":0.0}
+	var created := sample.is_empty()
+	if created:sample={"tick":tick,"previous":at,"current":at,"phase":0.0}
 	elif int(sample.tick)!=tick:
 		var distance: float=at.distance_to(sample.current)
 		var continuous: bool=tick-int(sample.tick)==1 and distance<.85
@@ -292,7 +295,7 @@ func _present_position(actor: Node3D, at: Vector2, tick: int, playing: bool, fra
 		# Same-tick fixture changes and retry/teleports snap, not slide.
 		sample.previous=at;sample.current=at
 	if not playing:sample.previous=at
-	actor.set_meta("motion_sample",sample)
+	if created:actor.set_meta("motion_sample",sample)
 	var fraction := clampf(Engine.get_physics_interpolation_fraction() if fraction_override<0 else fraction_override,0,1)
 	var shown: Vector2=sample.previous.lerp(sample.current,fraction) if playing else at
 	return Vector3(shown.x,0,shown.y)
@@ -539,8 +542,9 @@ func sync__rigged(run: RefCounted,delta: float) -> void:
 		else:_staff.basis=Basis.from_euler(Vector3(deg_to_rad(-3+sin(_phase*TAU)*4),0,deg_to_rad(5)))
 		var bottom: Vector3=_staff.global_transform*Vector3(0,-1.05,0)
 		if bottom.y<.025:_staff.global_position.y+=.025-bottom.y
-		var color: Color={"chapter1.skill.ember":Color("ed913e"),"chapter1.skill.frost":Color("89dbe6"),"chapter1.skill.arc":Color("a3b8ef")}.get(run.growth.snapshot().get("primary",""),Color("89dbe6"))
-		_apply_hero_element(String(run.growth.snapshot().get("primary","")))
+		var primary: Variant=run.growth.snapshot().get("primary","")
+		var color: Color={"chapter1.skill.ember":Color("ed913e"),"chapter1.skill.frost":Color("89dbe6"),"chapter1.skill.arc":Color("a3b8ef")}.get(primary,Color("89dbe6"))
+		_apply_hero_element(String(primary))
 		_staff.set_element(color,clampf(1.0-float(run.tick-_cast_tick)/8.0,0,1))
 
 func _sample(clip: String,time_: float) -> Array[Transform3D]:
@@ -601,18 +605,6 @@ func _overlaps_hero__rigged(actor: Node3D,camera: Camera3D) -> bool:
 					else:_hero_rect=_hero_rect.expand(screen)
 	return _hero_rect.intersects(_projected_frame(actor,camera))
 
-func _sync_hero_rim__rigged(camera: Camera3D,overlapping: bool) -> void:
-	# Fade only nearer enemy sprites that cover the owner. A duplicate mesh
-	# depth tint also revealed the robe's internally occluded surfaces, so it
-	# is deliberately unused. Preserve enemy RGB hit/freeze modulation.
-	for actor in actors.values():
-		if not actor.has_meta("sprite"):continue
-		var sprite: AnimatedSprite3D=actor.get_meta("sprite")
-		var target := .32 if overlapping and _overlaps_hero(actor,camera) else 1.0
-		var alpha := lerpf(float(actor.get_meta("owner_fade",1.0)),target,1.0-exp(-_render_delta*18.0))
-		if alpha>.995:alpha=1.0
-		actor.set_meta("owner_fade",alpha);sprite.modulate.a*=alpha
-
 func reset__rigged() -> void:
 	reset__cloister();_phase=0;_idle_age=0;_death_age=0;_was_dead=false;_bounds_frame=-1;_grip_ready=false
 
@@ -671,11 +663,18 @@ func consume__q12(events: Array) -> void:
 	consume__cloister(events)
 
 func sync__q12(run: RefCounted,delta: float) -> void:
-	_entities.clear()
-	for e in run.enemies.values():_entities["%d:%d"%[e.generation,e.id]]=e
 	sync__rigged(run,delta)
 
+# Per-frame enemy table, filled once at the top of sync(): enemy id -> "generation:id".
+# Presentation-owned; nothing is written into the core dictionaries.
+var frame_keys: Dictionary={}
+# Enemy whose pose is being updated by sync__cloister (same dictionary as _entities[key]).
+var _cur_actor: Node3D=null
+var _cur_entity: Dictionary={}
+
 func _entity(actor: Node3D) -> Dictionary:
+	if actor==_cur_actor:return _cur_entity
+	if actor==hero:return {}
 	var key: String=actor.get_meta("entity_key","")
 	if key.is_empty():
 		for candidate in actors:
@@ -763,22 +762,6 @@ func _bone_point(rig: Skeleton3D,name_: String) -> Vector3:
 
 func _screen_radius(camera: Camera3D,at: Vector3,radius: float) -> float:
 	return camera.unproject_position(at).distance_to(camera.unproject_position(at+camera.global_basis.x*radius))
-
-func _sync_hero_rim__q12(camera: Camera3D,overlapping: bool) -> void:
-	_sync_hero_rim__rigged(camera,overlapping)
-	for actor in actors.values():
-		if not actor.has_meta("enemy_rig"):continue
-		var state: Dictionary=actor.get_meta("enemy_rig");var entity := _entity(actor)
-		var target := .56 if overlapping and _overlaps_hero(actor,camera) else 1.0
-		state.owner_fade=lerpf(state.owner_fade,target,1-exp(-_render_delta*18))
-		if state.owner_fade>.995:state.owner_fade=1.0
-		var corpse_alpha := 1.0
-		if not entity.is_empty() and entity.hp_raw<=0:corpse_alpha=1.0-clampf(float(view.run.tick-int(entity.dead_tick)-36)/39.0,0,1)
-		for material in state.materials:
-			var color: Color=material.get_meta("warden_tint",Color(.52,.55,.51))
-			if not entity.is_empty() and entity.hp_raw>0 and view.run.tick<int(entity.frozen_until):color*=Color(.60,.90,1.16)
-			elif _warden_phase>=2:color*=Color(1.03,.89,.88)
-			color.a=state.owner_fade*corpse_alpha;material.albedo_color=color
 
 func reset__q12() -> void:
 	reset__rigged();_entities.clear();_paid_attacks.clear();_warden_event=-1;_warden_phase=1
@@ -934,7 +917,10 @@ func _update_pose__chapterx(actor: Node3D,direction: Vector2,moving: bool,castin
 	var bucket: int=tick/3
 	if moving and not near_ and state.clip==clip and int(state.bucket)==bucket:return
 	state.clip=clip;state.bucket=bucket
-	_sample_actor42(player,clip,minf(time_,player.get_animation(clip).length))
+	# A dashing or recovering charger is sampled again by _update_pose__q21 later in
+	# this same call chain, over the same 28 tracks (every clip keys the same tracks),
+	# so this first sample would be fully overwritten. Skip it, keep everything else.
+	if not (playing and not dead and e.state in ["dash","recover"] and actor.get_meta("role21","")=="charger"):_sample_actor42(player,clip,minf(time_,player.get_animation(clip).length))
 	actor.set_meta("minion19_pose",{"clip":clip,"time":time_,"dead":dead,"tick":tick});motion19_samples+=1
 func sync__chapterx(run: RefCounted,delta: float) -> void:
 	sync__q16(run,delta)
@@ -943,20 +929,25 @@ func sync__chapterx(run: RefCounted,delta: float) -> void:
 	for key in actors:
 		var actor: Node3D=actors[key]
 		if not actor.has_meta("minion19"):continue
-		var e := _entity(actor)
+		var e: Dictionary=_entities.get(key,{})
 		if e.is_empty():continue
 		var state: Dictionary=actor.get_meta("minion19")
 		var alpha := 1.0
 		if e.hp_raw<=0:alpha=1-clampf((float(state.death_age)-.6)/.65,0,1)
-		if _cold_corpses.has(key):
+		var cold := _cold_corpses.has(key)
+		if cold:
 			var record: Dictionary=_cold_corpses[key]
 			if run.mode not in ["paused","choice","inventory","equipment"]:record.age=maxf(float(record.age)+maxf(0,delta),float(run.tick-int(record.tick))/60.0)
 			alpha*=1-smoothstep(.025,.22,float(record.age))
+		# The tint choice does not depend on the material; decide it once per actor.
+		var icy: bool=cold or (e.hp_raw>0 and run.tick<int(e.frozen_until))
+		var flash: bool=(not icy) and run.tick<int(_enemy_hit_until.get(e.id,-1))-9
+		var shown_alpha: float=alpha*float(state.fade)
 		for mat in state.materials:
 			var color: Color=mat.get_meta("demon19_tint")
-			if _cold_corpses.has(key) or (e.hp_raw>0 and run.tick<int(e.frozen_until)):color*=Color(.48,.86,1.16)
-			elif run.tick<int(_enemy_hit_until.get(e.id,-1))-9:color*=Color(1.3,1.2,1.05)
-			color.a=alpha*float(state.fade);_set_color42(mat,color)
+			if icy:color*=Color(.48,.86,1.16)
+			elif flash:color*=Color(1.3,1.2,1.05)
+			color.a=shown_alpha;_set_color42(mat,color)
 func _overlaps_hero__chapterx(actor: Node3D,camera: Camera3D) -> bool:
 	if not actor.has_meta("minion19"):return _overlaps_hero__q12(actor,camera)
 	if camera==null or (actor.global_position-hero.global_position).dot(camera.global_basis.z)<=.04:return false
@@ -967,11 +958,35 @@ func _overlaps_hero__chapterx(actor: Node3D,camera: Camera3D) -> bool:
 	var radius := _screen_radius(camera,actor.global_position+Vector3.UP,.42)+_screen_radius(camera,hero.global_position+Vector3.UP,.32)
 	return nearest[0].distance_squared_to(nearest[1])<radius*radius
 func _sync_hero_rim(camera: Camera3D,overlapping: bool) -> void:
-	_sync_hero_rim__q12(camera,overlapping)
+	# One pass over the actors. Sprite, Warden rig and minion presenters are disjoint
+	# and independent of each other, so the three former passes are one loop with the
+	# same per-actor bodies in the same order (sprite, rig, minion).
+	var blend := 1-exp(-_render_delta*18)
 	for actor in actors.values():
-		if not actor.has_meta("minion19"):continue
-		var state: Dictionary=actor.get_meta("minion19")
-		state.fade=lerpf(float(state.fade),.4 if overlapping and _overlaps_hero(actor,camera) else 1.0,1-exp(-_render_delta*18))
+		if actor.has_meta("sprite"):
+			# Fade only nearer enemy sprites that cover the owner. A duplicate mesh
+			# depth tint also revealed the robe's internally occluded surfaces, so it
+			# is deliberately unused. Preserve enemy RGB hit/freeze modulation.
+			var sprite: AnimatedSprite3D=actor.get_meta("sprite")
+			var target := .32 if overlapping and _overlaps_hero(actor,camera) else 1.0
+			var alpha := lerpf(float(actor.get_meta("owner_fade",1.0)),target,blend)
+			if alpha>.995:alpha=1.0
+			actor.set_meta("owner_fade",alpha);sprite.modulate.a*=alpha
+		if actor.has_meta("enemy_rig"):
+			var state: Dictionary=actor.get_meta("enemy_rig");var entity := _entity(actor)
+			var target := .56 if overlapping and _overlaps_hero(actor,camera) else 1.0
+			state.owner_fade=lerpf(state.owner_fade,target,blend)
+			if state.owner_fade>.995:state.owner_fade=1.0
+			var corpse_alpha := 1.0
+			if not entity.is_empty() and entity.hp_raw<=0:corpse_alpha=1.0-clampf(float(view.run.tick-int(entity.dead_tick)-36)/39.0,0,1)
+			for material in state.materials:
+				var color: Color=material.get_meta("warden_tint",Color(.52,.55,.51))
+				if not entity.is_empty() and entity.hp_raw>0 and view.run.tick<int(entity.frozen_until):color*=Color(.60,.90,1.16)
+				elif _warden_phase>=2:color*=Color(1.03,.89,.88)
+				color.a=state.owner_fade*corpse_alpha;material.albedo_color=color
+		if actor.has_meta("minion19"):
+			var state: Dictionary=actor.get_meta("minion19")
+			state.fade=lerpf(float(state.fade),.4 if overlapping and _overlaps_hero(actor,camera) else 1.0,blend)
 func reset__chapterx() -> void:
 	reset__q16();_demon19_event=-1;_demon19_attacks.clear();motion19_samples=0
 
@@ -1153,7 +1168,10 @@ func _update_pose__q21(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 	if actor.get_meta("role21")=="ranged":
 		var pose: Dictionary=actor.get_meta("minion19_pose",{})
 		if state.get("staff21_time",-1.0)!=pose.get("time",0.0) or state.get("staff21_clip","")!=pose.get("clip",""):
-			state.staff21.position=actor.to_local(_bone_point(state.skeleton,"Hand.R"));state.staff21_time=pose.get("time",0.0);state.staff21_clip=pose.get("clip","")
+			if _staff30_actor!=actor:
+				_flush_lazy30()
+				state.staff21.position=actor.to_local(_bone_point(state.skeleton,"Hand.R"))
+			state.staff21_time=pose.get("time",0.0);state.staff21_clip=pose.get("clip","")
 		return
 	if not playing or dead:return
 	if actor.get_meta("role21")=="charger":
@@ -1249,7 +1267,7 @@ func _create__q25b(kind: String) -> Node3D:
 	return actor
 func sync__q25b(run: RefCounted,delta: float) -> void:
 	var wanted: Dictionary={}
-	for entity in run.enemies.values():wanted["%d:%d"%[entity.generation,entity.id]]=true
+	for entity in run.enemies.values():wanted[frame_keys[entity.id]]=true
 	for key in actors.keys():
 		if not wanted.has(key) and _stash25(actors[key]):actors.erase(key)
 	sync__q20(run,delta)
@@ -1285,6 +1303,7 @@ func setup__q28(owner_view: Node3D) -> void:
 	player.play("idle",0);player.seek(0,true);player.advance(0)
 func _restore28(actor: Node3D) -> void:
 	if not actor.has_meta("hit28_base"):return
+	_flush_lazy30()
 	var rig: Skeleton3D=actor.get_meta("minion19").skeleton
 	var poses: Array=actor.get_meta("hit28_base")
 	for i in _hit28_indices.size():rig.set_bone_pose(_hit28_indices[i],poses[i])
@@ -1311,6 +1330,7 @@ func _update_pose__q28(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 	if weight<.001:return
 	var sample_ := age*float(HIT28_SAMPLES-1)
 	var a := mini(int(sample_),HIT28_SAMPLES-1);var b := mini(a+1,HIT28_SAMPLES-1)
+	_flush_lazy30()
 	var rig: Skeleton3D=actor.get_meta("minion19").skeleton
 	var base: Array[Transform3D]=[]
 	for i in _hit28_indices.size():
@@ -1360,8 +1380,9 @@ func _apply_variant30(actor: Node3D) -> void:
 	var entity := _entity(actor)
 	if entity.is_empty():return
 	var state: Dictionary=actor.get_meta("minion19")
-	var identity := "%d:%d:%s"%[entity.generation,entity.id,str(variants30_enabled)]
+	var identity: String=frame_keys[entity.id]+(":true" if variants30_enabled else ":false")
 	if actor.get_meta("variant30_identity","")==identity:return
+	_flush_lazy30()
 	var variant := posmod(int(entity.id)*17+int(entity.generation)*7,4)
 	var scale_ := Vector3.ONE*.52
 	if kind=="ranged":scale_=Vector3(.44,.58,.44)
@@ -1385,30 +1406,52 @@ func setup__q30c(owner_view: Node3D) -> void:
 		var index := rig.find_bone(name_)
 		assert(index>=0)
 		_bones30.append(index)
+# The per-frame "restore the shaped bone scales, then shape them again" is deferred:
+# the restore is written (by _flush_lazy30) only when something later in the same
+# frame touches the bones (a new sample, the hit pose blend or its restore, a variant
+# change). When nothing does, the restore and the identical re-shape cancel out and
+# neither is written, so the skeleton is not marked changed for no reason.
+var _lazy30_actor: Node3D=null
+# Actor whose staff position is rewritten at the end of _update_pose__q30c anyway.
+var _staff30_actor: Node3D=null
+func _flush_lazy30() -> void:
+	var actor := _lazy30_actor
+	if actor==null:return
+	_lazy30_actor=null
+	var rig: Skeleton3D=actor.get_meta("minion19").skeleton
+	var base: Array=actor.get_meta("shape30_base")
+	for i in _bones30.size():rig.set_bone_pose_scale(_bones30[i],base[i])
+	actor.set_meta("shape30_active",false)
 func _update_pose__q30c(actor: Node3D,direction: Vector2,moving: bool,casting: bool,dead: bool,tick: int,playing: bool,hit: bool=false,brief_cast: bool=false) -> void:
 	var shaped := actor.has_meta("shape30_base")
 	var state: Dictionary=actor.get_meta("minion19",{})
+	var deferred := false
 	if shaped and actor.get_meta("shape30_active",false) and (playing or dead):
-		var rig: Skeleton3D=state.skeleton
-		var base: Array=actor.get_meta("shape30_base")
-		for i in _bones30.size():rig.set_bone_pose_scale(_bones30[i],base[i])
-		actor.set_meta("shape30_active",false)
+		_lazy30_actor=actor;deferred=true
 	_apply_variant30(actor)
+	# True when the staff position written below is the last write of this frame.
+	if state.has("staff21") and actor.has_meta("variant30_index") and int(actor.get_meta("variant30_index"))>=0 and (deferred or not actor.get_meta("shape30_active",false)):_staff30_actor=actor
 	_update_pose__q28(actor,direction,moving,casting,dead,tick,playing,hit,brief_cast)
-	if not actor.has_meta("variant30_index") or actor.get_meta("shape30_active",false):return
+	_staff30_actor=null
+	var pending := deferred and _lazy30_actor==actor
+	if not actor.has_meta("variant30_index") or (actor.get_meta("shape30_active",false) and not pending):
+		_flush_lazy30();return
 	var variant: int=actor.get_meta("variant30_index")
-	if variant<0:return
+	if variant<0:
+		_flush_lazy30();return
 	var rig: Skeleton3D=state.skeleton
-	var base: Array
-	if shaped:base=actor.get_meta("shape30_base")
+	if pending:_lazy30_actor=null
 	else:
-		base.resize(_bones30.size())
-		actor.set_meta("shape30_base",base)
-	for i in _bones30.size():
-		base[i]=rig.get_bone_pose_scale(_bones30[i])
-		var shape: Vector3=HEAD30[variant] if i==0 else (SHOULDER30[variant] if i<3 else ARM30[variant])
-		rig.set_bone_pose_scale(_bones30[i],base[i]*shape)
-	actor.set_meta("shape30_active",true)
+		var base: Array
+		if shaped:base=actor.get_meta("shape30_base")
+		else:
+			base.resize(_bones30.size())
+			actor.set_meta("shape30_base",base)
+		for i in _bones30.size():
+			base[i]=rig.get_bone_pose_scale(_bones30[i])
+			var shape: Vector3=HEAD30[variant] if i==0 else (SHOULDER30[variant] if i<3 else ARM30[variant])
+			rig.set_bone_pose_scale(_bones30[i],base[i]*shape)
+		actor.set_meta("shape30_active",true)
 	if state.has("staff21"):state.staff21.position=actor.to_local(_bone_point(rig,"Hand.R"))
 
 # ---- chapter1/view/chapter_actors_quality32b.gd ----
@@ -1661,6 +1704,7 @@ func _update_pose(actor: Node3D,direction: Vector2,moving: bool,casting: bool,de
 ## This override becomes active for Demon19/Role21 only after explicit parent
 ## candidate adoption. Legacy parents never call this hook.
 func _sample_actor42(player: AnimationPlayer,clip: String,time_: float) -> void:
+	_flush_lazy30()
 	if player.current_animation!=clip or not player.is_playing():player.play(clip,0)
 	player.seek(time_,true)
 
@@ -1675,14 +1719,27 @@ func sync(run: RefCounted,delta: float) -> void:
 	_overlap42_ready=false
 	_overlap42_camera_id=0
 	_overlap42_active=true
+	frame_keys.clear();_entities.clear()
+	for e in run.enemies.values():
+		var key: String="%d:%d"%[e.generation,e.id]
+		frame_keys[e.id]=key;_entities[key]=e
 	sync__q25b(run,delta)
 	_overlap42_active=false
 	_overlap42_ready=false
 	_overlap42_camera_id=0
+const OVERLAP_CULL_SQ := 30.25
+const OVERLAP_CULL_MIN_SIN := .70
 func _overlaps_hero(actor: Node3D,camera: Camera3D) -> bool:
 	# Preserve all boss/sprite paths and out-of-sync calls verbatim.
 	if not _overlap42_active or not actor.has_meta("minion19"):return _overlaps_hero__q34b(actor,camera)
-	if camera==null or (actor.global_position-hero.global_position).dot(camera.global_basis.z)<=.04:return false
+	if camera==null:return false
+	var offset := actor.global_position-hero.global_position
+	if offset.dot(camera.global_basis.z)<=.04:return false
+	# Cheap reject before any bone is read. With the steep orthographic camera a body
+	# whose root is farther than OVERLAP_CULL_SQ (horizontal) from the owner cannot
+	# reach the owner's screen capsule: the owner's capsule is 1.95m tall and a point
+	# d metres nearer the camera shifts down the screen by d*sin(pitch).
+	if camera.projection==Camera3D.PROJECTION_ORTHOGONAL and camera.global_basis.z.y>=OVERLAP_CULL_MIN_SIN and offset.x*offset.x+offset.z*offset.z>OVERLAP_CULL_SQ:return false
 	if _overlap42_ready and _overlap42_camera_id!=camera.get_instance_id():return _overlaps_hero__q34b(actor,camera)
 	var state: Dictionary=actor.get_meta("minion19")
 	var rig: Skeleton3D=state.skeleton

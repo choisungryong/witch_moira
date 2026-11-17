@@ -30,10 +30,13 @@ def checks():
         godot_check('chapter', 'res://chapter1/tests/test_chapter_run.gd', 'CHAPTER_FULL_TEST'),
         godot_check('profile', 'res://chapter1/tests/test_chapter_profile.gd', 'CHAPTER_PROFILE', ['--fixture-dir=' + FIXTURES + stamp]),
         godot_check('loot', 'res://chapter1/tests/test_loot.gd', 'CHAPTER1_LOOT_RESULT'),
+        godot_check('loc', 'res://chapter1/tests/test_loc.gd', 'CHAPTER1_LOC_RESULT'),
         godot_check('app-guard', 'res://chapter1/tests/test_profile_app_guard.gd', 'CHAPTER1_APP_GUARD_RESULT'),
         godot_check('golden', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', timeout=600, slow=True),
+        godot_check('golden-textless', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', ['--textless'], timeout=600, slow=True),
         godot_check('loot-sim', 'res://chapter1/tests/sim_loot.gd', 'LOOT_SIM', ['--runs=3000'], timeout=600, slow=True),
         {'name': 'manager', 'kind': 'python', 'timeout': 300, 'slow': False},
+        {'name': 'i18n-scan', 'kind': 'i18n-scan', 'timeout': 60, 'slow': False},
     ]
 
 
@@ -86,6 +89,23 @@ def run_manager(check):
     return done.returncode == 0, detail
 
 
+def run_i18n_scan(check):
+    command = [sys.executable, str(ROOT / 'tools' / 'dev' / 'i18n_scan.py')]
+    try:
+        done = subprocess.run(command, cwd=ROOT, capture_output=True, timeout=check['timeout'])
+    except subprocess.TimeoutExpired:
+        return False, 'timeout after %ds' % check['timeout']
+    text = done.stdout.decode('utf-8', 'replace')
+    found = re.search(r'I18N_SCAN (\{.*\})', text)
+    if not found:
+        return False, 'no result line'
+    result = json.loads(found.group(1))
+    detail = '%d files, %d Hangul literals (baseline %d)' % (result['files'], result['total'], result['baseline_total'])
+    if result['grown']:
+        detail += ' · grew: ' + result['grown'][0]
+    return done.returncode == 0, detail
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--quick', action='store_true', help='skip slow checks')
@@ -103,7 +123,8 @@ def main():
             summary.append({'name': check['name'], 'status': 'skipped', 'detail': '--quick', 'seconds': 0})
             continue
         started = time.time()
-        passed, detail = run_godot(check) if check['kind'] == 'godot' else run_manager(check)
+        runner = {'godot': run_godot, 'python': run_manager, 'i18n-scan': run_i18n_scan}[check['kind']]
+        passed, detail = runner(check)
         summary.append({'name': check['name'], 'status': 'pass' if passed else 'FAIL', 'detail': detail, 'seconds': round(time.time() - started, 1)})
         row = summary[-1]
         print('%-8s %-7s %6.1fs  %s' % (row['name'], row['status'], row['seconds'], row['detail']), flush=True)

@@ -338,6 +338,13 @@ signal stash_show
 signal stash_equip(storage_id: int)
 signal stash_salvage(storage_id: int)
 signal save_retry
+## Run flow (D4-U) and refused-save notice (D5-U). Every one only asks; chapter_one.gd decides and acts.
+signal menu_return
+signal abandon_request
+signal quit_request
+signal profile_open_folder
+signal profile_play_without_save
+signal profile_start_fresh(use_revision: bool)
 var profile_state: Dictionary={}
 var profile_note := ""
 var stash_open := false
@@ -601,6 +608,7 @@ func _settle_discovery20(row: Control) -> void:
 func reset() -> void:
 	clear_upgrade()
 	reset__q17();_discovery20_seeded=false;_discovery20_magic=false;_discovery20_slots.clear();_discovery20_uids.clear();_discovery20_queue.clear();_discovery20_gap=0;_discovery20_name="";discovery20_history.clear()
+	_reset_flow()
 
 # ---- chapter1/view/chapter_hud_quality23.gd ----
 ## Stable two-line action status: never split a Korean word to fill spare width.
@@ -879,6 +887,8 @@ func _decorate38(node: Node) -> void:
 
 func _focus_modal38() -> void:
 	if not overlay.visible:return
+	# A confirm window or the refused-save notice owns the keyboard while it is open.
+	if is_instance_valid(_flow_dialog):return
 	# The skill-tree screen owns the keyboard while it is open; a rebuild of the menu beneath it must not take focus.
 	if is_instance_valid(skill_panel) and skill_panel.visible:return
 	var buttons: Array[Control]=[]
@@ -1269,6 +1279,8 @@ class HeroLocator46 extends Control:
 var _locator46: HeroLocator46
 var _view46: WeakRef
 func setup(view: Node3D) -> void:
+	# The older screens are still Korean literals (T3-L2 moves them to keys); until then keep the keyed text in step.
+	Loc.set_locale("ko")
 	setup__q40(view)
 	_build_upgrade_panel()
 	_build_combat_bar()
@@ -1306,6 +1318,7 @@ func sync__q46(run: RefCounted,delta: float) -> void:
 func _build_result40(run: RefCounted) -> void:
 	_build_result40__q40(run)
 	_add_growth_box(run)
+	_add_flow_actions(run)
 	if profile_note!="검증 실행 · 저장 비활성":return
 	var controls: Array[Control]=[];_collect_focus38(modal,controls)
 	for control in controls:
@@ -1340,6 +1353,7 @@ func _build_modal(run: RefCounted) -> void:
 		var box := modal.get_child(0) as VBoxContainer
 		if box!=null and box.get_child_count()>1 and box.get_child(1) is Label:
 			box.get_child(1).text="기술을 선택하세요. 선택 중에는 전투와 Q 회복이 멈춥니다."
+	_add_flow_buttons(run)
 
 # ---- chapter1/view/ui50/chapter_hud_quality50.gd ----
 ## Share the unchanged heading font within this HUD. No gameplay or callback changes.
@@ -1361,6 +1375,7 @@ func _label(text: String,size: int=18,color: Color=Color("e0d8c7")) -> Label:
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
 func sync(run: RefCounted,delta: float) -> void:
 	sync__q47(run,delta)
+	_sync_flow(run,delta)
 	if is_instance_valid(skill_panel) and skill_panel.visible and run.mode not in ["menu","victory","defeat"]:skill_panel.visible=false
 	_sync_upgrade(run,delta)
 	if is_instance_valid(combat_bar):combat_bar.sync(run,delta)
@@ -1723,8 +1738,272 @@ func _add_growth_box(run: RefCounted) -> void:
 		bar.value=target
 	else:
 		bar.value=from
-		var wait := (maxf(0.0,1.3-_victory_age)+.15) if run.mode=="victory" else .25
+		var wait := .25
+		if run.mode=="victory":wait=maxf(0.0,1.3-_victory_age)+.15
+		elif _result_reason!="abandoned":wait=maxf(0.0,DEFEAT_REVEAL-_defeat_age)+.25
 		var tween := bar.create_tween()
 		tween.tween_interval(wait)
 		tween.tween_property(bar,"value",target,GROWTH_FILL_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_growth_played=true
+
+# ---- D4-U run flow (pause, result buttons, confirm windows) and D5-U refused-save notice ----
+## Presentation only. Every button asks through a signal; chapter_one.gd decides and acts. All text here is a key (Loc.t).
+const Loc=preload("res://chapter1/view/loc.gd")
+const FlowDialog=preload("res://chapter1/view/hud/flow_dialog.gd")
+## The defeat window comes up this long after the fall (the scene stays on screen). An abandoned run shows it at once.
+const DEFEAT_REVEAL := 1.2
+## Set by the app: the finished run's rewards are not saved although saving is on (F8).
+var result_unsaved := false
+var _result_reason := ""
+var _defeat_age := 0.0
+var _flow_prev_mode := ""
+var _flow_dialog: Control
+var _flow_kind := ""
+var _flow_mode := ""
+var _flow_focus: WeakRef
+var _notice_closed := false
+
+func _reset_flow() -> void:
+	_result_reason="";result_unsaved=false;_defeat_age=0.0;_flow_prev_mode="";_notice_closed=false;_flow_focus=null
+	_close_dialog(false)
+
+## "abandoned" after the player gave up the run; "" otherwise. Call before the core ends the run.
+func set_result_reason(reason: String) -> void:
+	_result_reason=reason;invalidate()
+
+## True once the result window is on screen (before that the R key and the window's buttons do nothing).
+func result_revealed() -> bool:
+	return overlay.visible
+
+func flow_dialog_open() -> bool:
+	return is_instance_valid(_flow_dialog)
+
+func _app() -> Object:
+	return _view46.get_ref() if _view46!=null else null
+
+func _sync_flow(run: RefCounted,delta: float) -> void:
+	if run.mode!=_flow_prev_mode:
+		if run.mode=="defeat":_defeat_age=0.0
+		_flow_prev_mode=run.mode
+	if run.mode=="defeat":
+		_defeat_age+=maxf(delta,0.0)
+		if not stash_open and _result_reason!="abandoned":
+			var shown := _defeat_age>=DEFEAT_REVEAL
+			if overlay.visible!=shown:
+				overlay.visible=shown
+				if shown:_focus_modal38.call_deferred()
+	var app: Object=_app()
+	var rejected: bool=app!=null and app.has_method("profile_rejected") and app.profile_rejected()
+	if not rejected:_notice_closed=false
+	if is_instance_valid(_flow_dialog):
+		if _flow_kind in ["notice","fresh"]:
+			if run.mode!="menu" or not rejected:_close_dialog(true)
+		elif run.mode!=_flow_mode:_close_dialog(true)
+	elif rejected and run.mode=="menu" and not _notice_closed and not stash_open and overlay.visible and not skill_tree_is_open():
+		_open_notice()
+
+# ---- windows over the modal ----
+
+func _dialog_text(text: String,size: int=19) -> Label:
+	return _label(text,size,Palette.INK_DIM)
+
+func _open_dialog(kind: String,spec: Dictionary) -> void:
+	if not is_instance_valid(_flow_dialog):
+		var owner := root.get_viewport().gui_get_focus_owner()
+		_flow_focus=weakref(owner) if owner!=null else null
+	_close_dialog(false)
+	var dialog: Control=FlowDialog.new();dialog.name="FlowDialog"
+	dialog.setup(self,spec)
+	dialog.chosen.connect(_on_flow_chosen.bind(kind))
+	root.add_child(dialog)
+	_flow_dialog=dialog;_flow_kind=kind;_flow_mode=_flow_prev_mode
+	dialog.focus_default.call_deferred()
+
+func _close_dialog(return_focus: bool) -> void:
+	if is_instance_valid(_flow_dialog):
+		var old: Control=_flow_dialog
+		if old.get_parent()!=null:old.get_parent().remove_child(old)
+		old.queue_free()
+	_flow_dialog=null;_flow_kind=""
+	if not return_focus:return
+	var back: Object=_flow_focus.get_ref() if _flow_focus!=null else null
+	_flow_focus=null
+	if back is Control and is_instance_valid(back) and back.is_inside_tree() and back.is_visible_in_tree():back.grab_focus.call_deferred()
+	else:_focus_modal38.call_deferred()
+
+func _on_flow_chosen(id_: String,kind: String) -> void:
+	match kind:
+		"abandon":
+			_close_dialog(id_!="go")
+			if id_=="go":abandon_request.emit()
+		"quit":
+			_close_dialog(id_!="go")
+			if id_=="go":quit_request.emit()
+		"notice":
+			match id_:
+				"open":profile_open_folder.emit()
+				"play":
+					_close_dialog(false);profile_play_without_save.emit();_focus_modal38.call_deferred()
+				"fresh":_open_fresh()
+				"quit":quit_request.emit()
+				_:
+					_notice_closed=true;_close_dialog(true)
+		"fresh":
+			match id_:
+				"resume":
+					_close_dialog(false);profile_start_fresh.emit(true)
+				"empty","go":
+					_close_dialog(false);profile_start_fresh.emit(false)
+				_:_open_notice()
+		_:
+			# "unsaved:<what comes next>": retry | menu | quit
+			var next := kind.get_slice(":",1)
+			match id_:
+				"save":
+					_close_dialog(true);save_retry.emit()
+				"go":
+					_close_dialog(false);_emit_leave(next)
+				_:_close_dialog(true)
+
+func _save_mode() -> String:
+	var app: Object=_app()
+	if app==null:return "on"
+	if app.get("profile")!=null and bool(app.profile.available):return "on"
+	return "verify" if bool(app.get("_profile_off")) else "off"
+
+func _ask_abandon() -> void:
+	var body_key: String={"on":"flow.abandon.body","verify":"flow.abandon.body_verify"}.get(_save_mode(),"flow.abandon.body_nosave")
+	_open_dialog("abandon",{"width":720,"title":Loc.t("flow.abandon.title"),"content":_dialog_text(Loc.t(body_key)),
+		"buttons":[{"id":"go","text":Loc.t("flow.abandon.confirm")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
+
+func _ask_quit() -> void:
+	var saving := _save_mode()=="on"
+	_open_dialog("quit",{"width":720,"title":Loc.t("flow.quit.title"),"content":_dialog_text(Loc.t("flow.quit.body" if saving else "flow.quit.body_nosave")),
+		"buttons":[{"id":"go","text":Loc.t("flow.quit.confirm" if saving else "flow.quit.confirm_nosave")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
+
+## The rewards of the finished run are not saved. `next` is what the player wanted: "retry", "menu" or "quit".
+## The app calls this too when the save fails during a quit.
+func ask_unsaved(next: String="quit") -> void:
+	_open_dialog("unsaved:"+next,{"width":760,"title":Loc.t("flow.unsaved.title"),"content":_dialog_text(Loc.t("flow.unsaved.body")),
+		"buttons":[{"id":"save","text":Loc.t("flow.unsaved.retry")},{"id":"go","text":Loc.t("flow.unsaved.quit" if next=="quit" else "flow.unsaved.continue")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],
+		"default_id":"cancel","esc_id":"cancel"})
+
+func _emit_leave(next: String) -> void:
+	match next:
+		"retry":retry.emit()
+		"menu":menu_return.emit()
+		"quit":quit_request.emit()
+
+## From a result-window button. Nothing happens before the window is on screen (F10); unsaved rewards are asked about (F8).
+func _leave(next: String) -> void:
+	if not result_revealed() or flow_dialog_open():return
+	if result_unsaved:ask_unsaved(next);return
+	_emit_leave(next)
+
+## The R key and the result buttons come here: what the player wants next is "retry", "menu" or "quit".
+func request_leave(next: String) -> void:
+	_leave(next)
+
+func _add_flow_actions(_run: RefCounted) -> void:
+	var box := modal.get_child(0) as VBoxContainer
+	if box==null or box.get_child_count()<4:return
+	var title := box.get_child(0) as Label
+	if title!=null and _result_reason=="abandoned":title.text=Loc.t("result.title.abandoned")
+	var actions := box.get_child(box.get_child_count()-1) as HBoxContainer
+	if actions==null or actions.get_child_count()<2:return
+	var old_retry := actions.get_child(actions.get_child_count()-1) as Button
+	if old_retry!=null:
+		actions.remove_child(old_retry);old_retry.queue_free()
+		var retry_button := _button(Loc.t("result.button.retry"),func():_leave("retry"));retry_button.name="RetrySameWitch"
+		retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
+	var second := HBoxContainer.new();second.name="ResultFlowActions";second.add_theme_constant_override("separation",14);box.add_child(second)
+	var menu_button := _button(Loc.t("result.button.menu"),func():_leave("menu"));menu_button.name="ReturnToMenu"
+	menu_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(menu_button)
+	var quit_button := _button(Loc.t("result.button.quit"),func():_leave("quit"));quit_button.name="QuitGame"
+	quit_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(quit_button)
+
+func _add_flow_buttons(run: RefCounted) -> void:
+	if not overlay.visible or stash_open:return
+	if run.mode=="paused":
+		var box := modal.get_child(0) as VBoxContainer
+		if box==null:return
+		var after := -1
+		for i in box.get_child_count():
+			var child := box.get_child(i) as Button
+			if child!=null and after<0:after=i # the first button of the pause window is "resume"
+		if after<0:return
+		var row := HBoxContainer.new();row.name="PauseFlowActions";row.add_theme_constant_override("separation",14)
+		row.size_flags_horizontal=Control.SIZE_SHRINK_END
+		var abandon_button := _button(Loc.t("hud.pause.abandon"),func():_ask_abandon());abandon_button.name="AbandonRun";row.add_child(abandon_button)
+		var quit_button := _button(Loc.t("hud.pause.quit"),func():_ask_quit());quit_button.name="QuitGame";row.add_child(quit_button)
+		box.add_child(row);box.move_child(row,after+1)
+		modal.offset_top=-280;modal.offset_bottom=280
+	elif run.mode=="menu":
+		var body := modal.find_child("StartChoices41",true,false) as VBoxContainer
+		if body==null:return
+		for child in body.get_children():
+			if child is HBoxContainer and child.get_child_count()>0 and child.get_child(0) is CheckButton:
+				var quit_button := _button(Loc.t("menu.quit"),func():quit_request.emit());quit_button.name="QuitGame"
+				child.add_child(quit_button);break
+
+# ---- refused save notice (D5-U) ----
+
+func show_profile_notice() -> void:
+	_notice_closed=false
+	_open_notice()
+
+## One key/value pair as two grid cells; the grid aligns the columns, so no width is fixed to a text length.
+func _fact_row(grid: GridContainer,key: String,value: String,anywhere: bool,size: int=18,color: Color=Palette.INK) -> void:
+	var key_label := _label(key,size,Palette.INK_DIM);key_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+	grid.add_child(key_label)
+	var value_label := _label(value,size,color);value_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	value_label.autowrap_mode=TextServer.AUTOWRAP_ARBITRARY if anywhere else TextServer.AUTOWRAP_WORD_SMART
+	value_label.tooltip_text=value;grid.add_child(value_label)
+
+## Local date and time of a Unix time, "2026-11-17 14:05".
+func _local_stamp(unix: int) -> String:
+	var bias := int(Time.get_time_zone_from_system().get("bias",0))
+	var d := Time.get_datetime_dict_from_unix_time(unix+bias*60)
+	return "%04d-%02d-%02d %02d:%02d"%[d.year,d.month,d.day,d.hour,d.minute]
+
+func _open_notice() -> void:
+	var app: Object=_app()
+	if app==null or not app.has_method("profile_reject_info"):return
+	var info: Dictionary=app.profile_reject_info()
+	if info.is_empty():return
+	var kind := String(info.get("kind",""))
+	var resume: Dictionary=info.get("resume",{})
+	var content := VBoxContainer.new();content.add_theme_constant_override("separation",10)
+	content.add_child(_dialog_text(Loc.t("profile.reject.body")))
+	var grid := GridContainer.new();grid.columns=2;grid.add_theme_constant_override("h_separation",16);grid.add_theme_constant_override("v_separation",8);content.add_child(grid)
+	_fact_row(grid,Loc.t("profile.reject.place"),String(info.get("path","")),true)
+	_fact_row(grid,Loc.t("profile.reject.cause"),Loc.t("profile.reject.cause."+(kind if kind in ["damaged","incompatible","legacy"] else "unknown")),false)
+	var reason := String(info.get("reason",""))
+	if not reason.is_empty():_fact_row(grid,"",Loc.t("profile.reject.detail",{"reason":reason}),true,15,Palette.INK_FAINT)
+	if kind!="legacy":
+		var copies := Loc.t("profile.reject.resume_none")
+		if not resume.is_empty():copies=Loc.t("profile.reject.resume_found",{"n":Loc.num(int(resume.revision)),"date":_local_stamp(int(resume.unix))})
+		_fact_row(grid,Loc.t("profile.reject.row.copies"),copies,false)
+	_open_dialog("notice",{"width":900,"title":Loc.t("profile.reject.title"),"content":content,
+		"buttons":[{"id":"open","text":Loc.t("profile.reject.open_folder")},{"id":"play","text":Loc.t("profile.reject.play_without")},
+			{"id":"fresh","text":Loc.t("profile.reject.start_fresh")},{"id":"quit","text":Loc.t("profile.reject.quit")}],
+		"default_id":"play","esc_id":"cancel"})
+
+## Second window of "start a new save": says what is and is not carried over, then asks once more.
+func _open_fresh() -> void:
+	var app: Object=_app()
+	if app==null or not app.has_method("profile_reject_info"):return
+	var info: Dictionary=app.profile_reject_info()
+	var kind := String(info.get("kind",""))
+	var resume: Dictionary=info.get("resume",{})
+	var has_resume := not resume.is_empty() and kind!="legacy"
+	var body_key := "profile.fresh.body_legacy" if kind=="legacy" else ("profile.fresh.body_resume" if has_resume else "profile.fresh.body_empty")
+	var args := {}
+	if has_resume:args={"n":Loc.num(int(resume.revision)),"date":_local_stamp(int(resume.unix))}
+	var buttons: Array=[]
+	if has_resume:
+		buttons.append({"id":"resume","text":Loc.t("profile.fresh.continue")});buttons.append({"id":"empty","text":Loc.t("profile.fresh.empty")})
+	else:buttons.append({"id":"go","text":Loc.t("profile.fresh.go")})
+	buttons.append({"id":"back","text":Loc.t("profile.fresh.back")})
+	_open_dialog("fresh",{"width":820,"title":Loc.t("profile.fresh.title"),"content":_dialog_text(Loc.t(body_key,args)),
+		"buttons":buttons,"default_id":"back","esc_id":"back"})

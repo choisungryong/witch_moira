@@ -1,0 +1,225 @@
+# Witch Moira, Korean source text. The msgid is the key; this msgstr is the original wording.
+# Key rules and template rules: chapter1/i18n/README.ko.md
+msgid ""
+msgstr ""
+"Project-Id-Version: witch-moira\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Example keys for the framework and its check (test_loc.gd). Real screens add their own areas.
+msgid "ui.example.plain"
+msgstr "예시 글"
+
+#. {name}: any text
+msgid "ui.example.greeting"
+msgstr "{name}, 어서 오세요"
+
+#. {name}: any text. The josa marker works in Korean only: {name|을} becomes the name plus 을 or 를.
+msgid "ui.example.defeat"
+msgstr "{name|을} 처치하세요"
+
+#. {rank}: number, {name}: skill name
+msgid "ui.example.start_with"
+msgstr "{name|으로} 시작 (랭크 {rank})"
+
+#. {n}: count
+msgid "ui.example.kills"
+msgid_plural "ui.example.kills"
+msgstr[0] "{n}마리 처치"
+
+#. Flow screens (D4-U, D5-U): pause window, result buttons, confirm windows, refused-save notice.
+
+#. Pause window button: give up the current run
+msgid "hud.pause.abandon"
+msgstr "이번 판 포기"
+
+#. Pause window button: quit the game (asks first)
+msgid "hud.pause.quit"
+msgstr "게임 종료"
+
+#. Title menu button: quit the game
+msgid "menu.quit"
+msgstr "게임 종료"
+
+#. Result window button: new run with the same witch. The key hint stays in the text
+msgid "result.button.retry"
+msgstr "같은 마녀로 다시 도전 [R]"
+
+#. Result window button: back to the title menu where another witch can be picked
+msgid "result.button.menu"
+msgstr "메뉴로 · 마녀 바꾸기"
+
+#. Result window button: quit the game
+msgid "result.button.quit"
+msgstr "게임 종료"
+
+#. Result window title after the player gave up the run
+msgid "result.title.abandoned"
+msgstr "이번 도전을 포기했습니다"
+
+#. Cancel button of a confirm window (the default focus)
+msgid "flow.button.cancel"
+msgstr "취소"
+
+#. Confirm window title: abandon the run
+msgid "flow.abandon.title"
+msgstr "이번 판을 포기할까요?"
+
+#. Confirm window text: what an abandoned run keeps
+msgid "flow.abandon.body"
+msgstr "지금까지 주운 장비와 경험치는 쓰러졌을 때처럼 저장됩니다."
+
+#. Confirm window text when saving is switched off for this session
+msgid "flow.abandon.body_nosave"
+msgstr "이번 실행은 저장하지 않습니다."
+
+#. Confirm window text in a verification run
+msgid "flow.abandon.body_verify"
+msgstr "검증 실행에서는 저장하지 않습니다."
+
+#. Confirm button: abandon the run
+msgid "flow.abandon.confirm"
+msgstr "포기"
+
+#. Confirm window title: quit during a run
+msgid "flow.quit.title"
+msgstr "게임을 끌까요?"
+
+#. Confirm window text: a run in progress is saved as abandoned
+msgid "flow.quit.body"
+msgstr "이번 판은 포기로 저장됩니다."
+
+#. Confirm window text when nothing is saved
+msgid "flow.quit.body_nosave"
+msgstr "이번 실행은 저장하지 않습니다."
+
+#. Confirm button: save, then quit
+msgid "flow.quit.confirm"
+msgstr "저장하고 종료"
+
+#. Confirm button: quit when nothing is saved
+msgid "flow.quit.confirm_nosave"
+msgstr "종료"
+
+#. Window title: the rewards of the finished run were not saved
+msgid "flow.unsaved.title"
+msgstr "저장되지 않은 보상이 있습니다"
+
+#. Window text: what continuing means
+msgid "flow.unsaved.body"
+msgstr "이번 판의 보상을 저장하지 못했습니다. 이대로 계속하면 보상이 사라집니다."
+
+#. Button: try saving again
+msgid "flow.unsaved.retry"
+msgstr "저장 다시 시도"
+
+#. Button: go on without saving
+msgid "flow.unsaved.continue"
+msgstr "그래도 계속"
+
+#. Button: quit without saving
+msgid "flow.unsaved.quit"
+msgstr "그래도 종료"
+
+#. Notice title: the save file was refused
+msgid "profile.reject.title"
+msgstr "저장 파일을 읽지 못했습니다"
+
+#. Notice text: the original is never touched
+msgid "profile.reject.body"
+msgstr "원본은 지우거나 고치지 않고 그대로 두었습니다."
+
+#. Notice row label: where the file is
+msgid "profile.reject.place"
+msgstr "위치"
+
+#. Notice row label: why it was refused
+msgid "profile.reject.cause"
+msgstr "원인"
+
+#. Notice cause: the file is broken (not valid JSON or too large)
+msgid "profile.reject.cause.damaged"
+msgstr "파일이 손상됐습니다"
+
+#. Notice cause: well formed but failed validation
+msgid "profile.reject.cause.incompatible"
+msgstr "이 버전의 게임과 맞지 않는 기록이 있습니다"
+
+#. Notice cause: a file in an older format was refused
+msgid "profile.reject.cause.legacy"
+msgstr "이전 형식의 저장을 옮겨 오지 못했습니다"
+
+#. Notice cause: no class known
+msgid "profile.reject.cause.unknown"
+msgstr "원인을 알 수 없습니다"
+
+#. Notice small line. {reason}: short technical reason from the loader (a location in the file, no item names)
+msgid "profile.reject.detail"
+msgstr "상세: {reason}"
+
+#. Notice row label: earlier copies of the save
+msgid "profile.reject.row.copies"
+msgstr "기록본"
+
+#. Notice row: a journal copy can be continued. {n}: revision number, {date}: local date and time
+msgid "profile.reject.resume_found"
+msgstr "{n}번째 저장({date})에서 이어 할 수 있습니다"
+
+#. Notice row: no readable journal copy
+msgid "profile.reject.resume_none"
+msgstr "읽을 수 있는 기록본이 없습니다"
+
+#. Notice button: open the save folder in the file manager (opening only)
+msgid "profile.reject.open_folder"
+msgstr "폴더 열기"
+
+#. Notice button: play this session without saving
+msgid "profile.reject.play_without"
+msgstr "저장 없이 플레이"
+
+#. Notice button: start a new save next to the original
+msgid "profile.reject.start_fresh"
+msgstr "새 저장으로 시작…"
+
+#. Notice button: quit the game
+msgid "profile.reject.quit"
+msgstr "게임 종료"
+
+#. Second window title: really start a new save
+msgid "profile.fresh.title"
+msgstr "새 저장으로 시작할까요?"
+
+#. Second window text: nothing carried over
+msgid "profile.fresh.body_empty"
+msgstr "원본은 그대로 남습니다. 지금까지의 진행은 새 저장에 없습니다."
+
+#. Second window text: continue from a journal copy. {n}: revision number, {date}: local date and time
+msgid "profile.fresh.body_resume"
+msgstr "원본은 그대로 남습니다. {n}번째 저장({date}) 상태에서 이어 갑니다. 그 뒤의 진행은 새 저장에 없습니다."
+
+#. Second window text: only an older format was refused
+msgid "profile.fresh.body_legacy"
+msgstr "이전 형식의 저장 파일은 그대로 남습니다. 새 저장은 비어 있는 상태로 시작합니다."
+
+#. Button: new save from the newest readable journal copy
+msgid "profile.fresh.continue"
+msgstr "기록본에서 이어 하기"
+
+#. Button: new empty save
+msgid "profile.fresh.empty"
+msgstr "빈 저장으로 시작"
+
+#. Button: new save (nothing to continue from)
+msgid "profile.fresh.go"
+msgstr "새 저장으로 시작"
+
+#. Button: back to the notice (the default focus)
+msgid "profile.fresh.back"
+msgstr "뒤로"
+
+#. Menu profile line when the save is ready (after returning to the menu)
+msgid "notify.profile.ready"
+msgstr "저장 준비"

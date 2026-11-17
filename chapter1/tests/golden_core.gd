@@ -7,9 +7,15 @@ extends SceneTree
 ##   ... -- --update                                             rewrite the golden file
 ##   ... -- --core=res://chapter1/core/other.gd                  compare another core script
 ##   ... -- --case=11:chapter1.skill.frost                       run one case only
+##   ... -- --textless [--update]                                hash with text fields removed; uses core_runtime_textless.json
 const DEFAULT_CORE := "res://chapter1/core/chapter_core.gd"
 const PILOT := "res://chapter1/core/chapter_pilot.gd"
-const GOLDEN := "res://chapter1/tests/golden/core_runtime.json"
+const GOLDEN_DEFAULT := "res://chapter1/tests/golden/core_runtime.json"
+const GOLDEN_TEXTLESS := "res://chapter1/tests/golden/core_runtime_textless.json"
+## Fields removed (recursively, at any depth) before hashing in --textless mode.
+const TEXT_FIELDS := ["name","title","description","rare_words","legacy_name","title_key"]
+var GOLDEN := GOLDEN_DEFAULT
+var textless := false
 ## [seed, primary] or [seed, primary, label, build fixture]. The fourth case is a fixed Lv 20 lance build.
 const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"]]
 const CHECKPOINT_TICKS := 600
@@ -18,8 +24,23 @@ const MAX_TICKS := 12*60*60
 func _initialize() -> void:
 	call_deferred("execute")
 
+func strip_text(value: Variant) -> Variant:
+	if value is Dictionary:
+		var out := {}
+		for key in value:
+			if TEXT_FIELDS.has(str(key)):continue
+			out[key]=strip_text(value[key])
+		return out
+	if value is Array:
+		var out_array := []
+		for item in value:out_array.append(strip_text(item))
+		return out_array
+	return value
+
 func digest(run: RefCounted) -> String:
-	return JSON.stringify(run.snapshot()).sha256_text()
+	var snap: Variant=run.snapshot()
+	if textless:snap=strip_text(snap)
+	return JSON.stringify(snap).sha256_text()
 
 func play(core_path: String,seed_: int,primary: String,build_path: String="") -> Dictionary:
 	var run: RefCounted=load(core_path).new()
@@ -45,6 +66,7 @@ func execute() -> void:
 	var only := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg=="--update":update=true
+		elif arg=="--textless":textless=true;GOLDEN=GOLDEN_TEXTLESS
 		elif arg.begins_with("--core="):core_path=arg.trim_prefix("--core=")
 		elif arg.begins_with("--case="):only=arg.trim_prefix("--case=")
 	var results: Dictionary={}

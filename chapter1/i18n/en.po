@@ -1,0 +1,220 @@
+# Witch Moira, English. Machine first pass, to be reviewed by a native speaker (L-U3).
+msgid ""
+msgstr ""
+"Project-Id-Version: witch-moira\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "ui.example.plain"
+msgstr "Example text"
+
+msgid "ui.example.greeting"
+msgstr "Welcome, {name}"
+
+msgid "ui.example.defeat"
+msgstr "Defeat {name}"
+
+msgid "ui.example.start_with"
+msgstr "Start with {name} (rank {rank})"
+
+msgid "ui.example.kills"
+msgid_plural "ui.example.kills"
+msgstr[0] "{n} kill"
+msgstr[1] "{n} kills"
+
+#. Flow screens (D4-U, D5-U): pause window, result buttons, confirm windows, refused-save notice.
+
+#. Pause window button: give up the current run
+msgid "hud.pause.abandon"
+msgstr "Abandon run"
+
+#. Pause window button: quit the game (asks first)
+msgid "hud.pause.quit"
+msgstr "Quit game"
+
+#. Title menu button: quit the game
+msgid "menu.quit"
+msgstr "Quit game"
+
+#. Result window button: new run with the same witch. The key hint stays in the text
+msgid "result.button.retry"
+msgstr "Retry with same witch [R]"
+
+#. Result window button: back to the title menu where another witch can be picked
+msgid "result.button.menu"
+msgstr "Menu · change witch"
+
+#. Result window button: quit the game
+msgid "result.button.quit"
+msgstr "Quit game"
+
+#. Result window title after the player gave up the run
+msgid "result.title.abandoned"
+msgstr "You abandoned this run"
+
+#. Cancel button of a confirm window (the default focus)
+msgid "flow.button.cancel"
+msgstr "Cancel"
+
+#. Confirm window title: abandon the run
+msgid "flow.abandon.title"
+msgstr "Abandon this run?"
+
+#. Confirm window text: what an abandoned run keeps
+msgid "flow.abandon.body"
+msgstr "Gear and experience gathered so far are saved as if you had fallen."
+
+#. Confirm window text when saving is switched off for this session
+msgid "flow.abandon.body_nosave"
+msgstr "Nothing is saved in this session."
+
+#. Confirm window text in a verification run
+msgid "flow.abandon.body_verify"
+msgstr "Verification runs do not save."
+
+#. Confirm button: abandon the run
+msgid "flow.abandon.confirm"
+msgstr "Abandon"
+
+#. Confirm window title: quit during a run
+msgid "flow.quit.title"
+msgstr "Quit the game?"
+
+#. Confirm window text: a run in progress is saved as abandoned
+msgid "flow.quit.body"
+msgstr "This run is saved as abandoned."
+
+#. Confirm window text when nothing is saved
+msgid "flow.quit.body_nosave"
+msgstr "Nothing is saved in this session."
+
+#. Confirm button: save, then quit
+msgid "flow.quit.confirm"
+msgstr "Save and quit"
+
+#. Confirm button: quit when nothing is saved
+msgid "flow.quit.confirm_nosave"
+msgstr "Quit"
+
+#. Window title: the rewards of the finished run were not saved
+msgid "flow.unsaved.title"
+msgstr "There are unsaved rewards"
+
+#. Window text: what continuing means
+msgid "flow.unsaved.body"
+msgstr "The rewards of this run could not be saved. If you go on now, they are lost."
+
+#. Button: try saving again
+msgid "flow.unsaved.retry"
+msgstr "Try saving again"
+
+#. Button: go on without saving
+msgid "flow.unsaved.continue"
+msgstr "Continue anyway"
+
+#. Button: quit without saving
+msgid "flow.unsaved.quit"
+msgstr "Quit anyway"
+
+#. Notice title: the save file was refused
+msgid "profile.reject.title"
+msgstr "The save file could not be read"
+
+#. Notice text: the original is never touched
+msgid "profile.reject.body"
+msgstr "The original file was left as it is. Nothing was deleted or changed."
+
+#. Notice row label: where the file is
+msgid "profile.reject.place"
+msgstr "Location"
+
+#. Notice row label: why it was refused
+msgid "profile.reject.cause"
+msgstr "Cause"
+
+#. Notice cause: the file is broken (not valid JSON or too large)
+msgid "profile.reject.cause.damaged"
+msgstr "The file is damaged"
+
+#. Notice cause: well formed but failed validation
+msgid "profile.reject.cause.incompatible"
+msgstr "The file has records this version of the game cannot accept"
+
+#. Notice cause: a file in an older format was refused
+msgid "profile.reject.cause.legacy"
+msgstr "An older save format could not be carried over"
+
+#. Notice cause: no class known
+msgid "profile.reject.cause.unknown"
+msgstr "The cause is unknown"
+
+#. Notice small line. {reason}: short technical reason from the loader (a location in the file, no item names)
+msgid "profile.reject.detail"
+msgstr "Detail: {reason}"
+
+#. Notice row label: earlier copies of the save
+msgid "profile.reject.row.copies"
+msgstr "Earlier copies"
+
+#. Notice row: a journal copy can be continued. {n}: revision number, {date}: local date and time
+msgid "profile.reject.resume_found"
+msgstr "Can continue from save number {n} ({date})"
+
+#. Notice row: no readable journal copy
+msgid "profile.reject.resume_none"
+msgstr "No readable earlier copy was found"
+
+#. Notice button: open the save folder in the file manager (opening only)
+msgid "profile.reject.open_folder"
+msgstr "Open folder"
+
+#. Notice button: play this session without saving
+msgid "profile.reject.play_without"
+msgstr "Play without saving"
+
+#. Notice button: start a new save next to the original
+msgid "profile.reject.start_fresh"
+msgstr "Start a new save…"
+
+#. Notice button: quit the game
+msgid "profile.reject.quit"
+msgstr "Quit game"
+
+#. Second window title: really start a new save
+msgid "profile.fresh.title"
+msgstr "Start a new save?"
+
+#. Second window text: nothing carried over
+msgid "profile.fresh.body_empty"
+msgstr "The original stays as it is. Your progress so far will not be in the new save."
+
+#. Second window text: continue from a journal copy. {n}: revision number, {date}: local date and time
+msgid "profile.fresh.body_resume"
+msgstr "The original stays as it is. The new save continues from save number {n} ({date}). Progress after that is not in it."
+
+#. Second window text: only an older format was refused
+msgid "profile.fresh.body_legacy"
+msgstr "The older save file stays as it is. The new save starts empty."
+
+#. Button: new save from the newest readable journal copy
+msgid "profile.fresh.continue"
+msgstr "Continue from earlier copy"
+
+#. Button: new empty save
+msgid "profile.fresh.empty"
+msgstr "Start with an empty save"
+
+#. Button: new save (nothing to continue from)
+msgid "profile.fresh.go"
+msgstr "Start a new save"
+
+#. Button: back to the notice (the default focus)
+msgid "profile.fresh.back"
+msgstr "Back"
+
+#. Menu profile line when the save is ready (after returning to the menu)
+msgid "notify.profile.ready"
+msgstr "Save ready"

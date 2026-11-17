@@ -19,6 +19,18 @@ extends SceneTree
 ##                                then dump the result window (for quick layout work; the real run is the reference).
 ## A2 addition (opt-in, so the default moment list is untouched):
 ##   --notice-shots               also dump "discovery-notice" the first time the first-gear notice is on screen
+## D4-U / D5-U additions (opt-in; the default moment list is untouched):
+##   --flow-shots=abandon|defeat|quit   run-flow screens. abandon: menu, flow-paused, flow-abandon-confirm,
+##                                flow-end-abandon-result, flow-menu-returned, flow-playing-after-return-120.
+##                                defeat (with --defeat-at=<tick>, default 1200): flow-defeat-0.5s, flow-defeat-r-blocked,
+##                                flow-defeat-result. quit: press the menu's quit button (process ends with code 0).
+##                                Each moment also prints a FLOW line {mode, primary, seed, abandoned, tick}.
+##   --profile-fixture=rejected   an isolated profile file whose gear fails validation (a stat is changed by hand), plus journal
+##                                copies, under res://_local/shots/ui-g1p4/profiles/<tag>/. The app is put on its refused-save path.
+##                                Moments: profile-rejected-menu, profile-rejected-fresh, profile-rejected-notice-closed,
+##                                profile-rejected-after-play, profile-rejected-nosave-playing-120 (or profile-rejected-result
+##                                with --result-mock). Prints HUD_DUMP_REJECT lines and HUD_DUMP_FILES (sha256 of every file).
+##   --reject-choice=play|fresh   which way the rejected flow ends (fresh = continue from the newest readable journal copy).
 ## Normal runs now add an "end-<mode>-result" moment after the existing end moment.
 ## Optional: --until=<tick> stops early; --primary=<skill id>; --shots=<dir> also saves a
 ## screenshot per moment (needs a real renderer, so run without --headless).
@@ -44,6 +56,19 @@ var result_mock := false
 var choice_wait := -1
 var notice_shots := false
 var flow_log: Array = []
+var flow_shots := ""
+var defeat_at := 1200
+var reject_choice := "play"
+var rj_stage := 0
+var rj_next := 0
+var rj_tabs := 0
+var rj_files_before: Dictionary = {}
+var rj_folder := ""
+var fl_stage := 0
+var fl_next := 0
+var fl_frame0 := 0
+var fl_before: Dictionary = {}
+const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -59,6 +84,9 @@ func _initialize() -> void:
 		elif arg == "--tree-shots": tree_shots = true
 		elif arg == "--result-mock": result_mock = true
 		elif arg == "--notice-shots": notice_shots = true
+		elif arg.begins_with("--flow-shots="): flow_shots = arg.trim_prefix("--flow-shots=")
+		elif arg.begins_with("--defeat-at="): defeat_at = int(arg.trim_prefix("--defeat-at="))
+		elif arg.begins_with("--reject-choice="): reject_choice = arg.trim_prefix("--reject-choice=")
 	var scene: PackedScene = load("res://chapter1/ChapterOne.tscn")
 	view = scene.instantiate()
 	# A script that failed to compile leaves a bare node: stop instead of spinning.
@@ -74,6 +102,9 @@ func _initialize() -> void:
 ## because the caller keeps --chapter1-profile-off (the view's own configure() is skipped then).
 func _setup_profile() -> void:
 	if profile_fixture.is_empty(): return
+	if profile_fixture == "rejected":
+		_setup_rejected()
+		return
 	var folder := "res://_local/shots/ui-g1p4/profiles"
 	DirAccess.make_dir_recursive_absolute(folder)
 	var listing := DirAccess.open(folder)
@@ -91,6 +122,51 @@ func _setup_profile() -> void:
 		if not profile.commit_tree(FROST_ID,FIXTURE_RANKS): push_error("fixture tree failed: "+String(profile.error))
 	view._sync_profile("저장 준비")
 	print("HUD_DUMP_PROFILE ",JSON.stringify({"fixture":profile_fixture,"path":profile.path,"view":profile.character_view(FROST_ID)}))
+
+func _wipe_folder(folder: String) -> void:
+	var listing := DirAccess.open(folder)
+	if listing == null: return
+	for file_name in listing.get_files(): listing.remove(file_name)
+
+## sha256 of every file in a folder (file name -> first 16 hex characters).
+func _file_hashes(folder: String) -> Dictionary:
+	var out := {}
+	var listing := DirAccess.open(folder)
+	if listing == null: return out
+	for file_name in listing.get_files(): out[file_name] = FileAccess.get_sha256(folder.path_join(file_name)).left(16)
+	return out
+
+## D5-U fixture: a real saved profile (so its journal copies are real), then the newest file gets one gear stat changed by
+## hand. The reader refuses it; the journal copies stay readable. Only ever under res://_local/.
+func _setup_rejected() -> void:
+	rj_folder = "res://_local/shots/ui-g1p4/profiles/"+profile_tag
+	DirAccess.make_dir_recursive_absolute(rj_folder)
+	_wipe_folder(rj_folder)
+	var main := rj_folder+"/profile.json"
+	var pointer := rj_folder+"/active.json"
+	var tables: RefCounted = ProfileScript.loot()
+	var rng := RandomNumberGenerator.new(); rng.seed = 7
+	var maker = ProfileScript.new()
+	var ok: bool = maker.configure(main,true,"","",pointer)
+	var unique: Dictionary = tables.make_unique("winter_heart",12)
+	var magic: Dictionary = tables.roll_item(rng,12,"magic","weapon")
+	var rare: Dictionary = tables.roll_item(rng,12,"rare","head")
+	ok = ok and maker.record_run("fixture-a",[unique,magic,rare],[],false,10) and maker.select_item(1)
+	ok = ok and maker.record_run("fixture-b",[],[],false,20)
+	if not ok: push_error("rejected fixture could not be written: "+String(maker.error))
+	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(main))
+	var stats: Dictionary = doc.items[1].item.stats
+	var key: String = stats.keys()[0]
+	stats[key] = int(stats[key])+777
+	var handle := FileAccess.open(main,FileAccess.WRITE)
+	handle.store_string(JSON.stringify(doc,"  ")); handle.close()
+	var profile = view.profile
+	var loaded: bool = profile.configure(main,true,"","",pointer)
+	# The app skips its own profile on --chapter1-profile-off; here the refused path is the thing under test.
+	view._profile_off = false
+	view._sync_profile(String(profile.error))
+	rj_files_before = _file_hashes(rj_folder)
+	print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fixture","configure":loaded,"available":profile.available,"kind":profile.reject_kind,"reason":profile.reject_reason,"resume":profile.resume_info(),"files":rj_files_before}))
 
 func _describe(node: Node, depth: int, rows: Array) -> void:
 	if node is Control:
@@ -172,6 +248,10 @@ func _process(_delta: float) -> bool:
 	var run: RefCounted = view.run
 	if tree_shots:
 		return _tree_flow()
+	if profile_fixture == "rejected":
+		return _reject_flow()
+	if flow_shots != "":
+		return _run_flow()
 	if result_mock and step < 90:
 		return _mock_result()
 	if notice_shots and step >= 1 and run.mode == "playing" and view.hud._discovery.visible and view.hud._discovery.modulate.a > .95 and _mark("discovery-notice"): _dump("discovery-notice")
@@ -372,4 +452,189 @@ func _mock_result() -> bool:
 		step = 2; frame = 11
 	elif step == 2 and frame >= 11+210:
 		_dump("end-victory-result"); _finish(); return true
+	return false
+
+func _focus_name() -> String:
+	var owner: Control = view.hud.root.get_viewport().gui_get_focus_owner()
+	if owner == null: return ""
+	return String(owner.name)+"|"+(String(owner.text) if owner is Button else "")
+
+func _find_button(button_name: String) -> Button:
+	return view.hud.root.find_child(button_name,true,false) as Button
+
+func _flow_line(label: String) -> void:
+	var run = view.run
+	print("FLOW ",JSON.stringify({"label":label,"mode":run.mode,"primary":view.primary,"seed":view.seed_,"abandoned":view.hud._result_reason == "abandoned","tick":run.tick,"dialog":view.hud._flow_kind}))
+
+## D5-U: the refused-save notice, driven only by key and mouse events like a player. Nothing is pressed that opens the
+## file manager. The refused file and its journal copies are hashed before and after.
+func _reject_flow() -> bool:
+	var hud = view.hud
+	if frame == 3:
+		# The app's own _ready (profile-off, from the arguments) can run after the fixture was set up: put the refused path back.
+		view._profile_off = false
+		view._sync_profile(String(view.profile.error))
+	if frame < rj_next: return false
+	match rj_stage:
+		0:
+			if frame < 10: return false
+			_dump("profile-rejected-menu")
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"menu","rejected":view.profile_rejected(),"dialog_open":hud.flow_dialog_open(),"kind":hud._flow_kind,"focus":_focus_name()}))
+			_key(KEY_TAB); rj_tabs = 1; rj_next = frame+3; rj_stage = 1
+		1:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"tab","n":rj_tabs,"focus":_focus_name()}))
+			if rj_tabs < 4:
+				_key(KEY_TAB); rj_tabs += 1; rj_next = frame+3
+			else:
+				var fresh_button := _find_button("Flow_fresh")
+				if fresh_button == null:
+					push_error("no notice on screen"); _reject_finish(); return true
+				fresh_button.grab_focus(); rj_next = frame+2; rj_stage = 2
+		2:
+			_key(KEY_ENTER); rj_next = frame+4; rj_stage = 3
+		3:
+			_dump("profile-rejected-fresh")
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fresh","kind":hud._flow_kind,"focus":_focus_name()}))
+			if reject_choice == "fresh":
+				_key(KEY_RIGHT); rj_next = frame+3; rj_stage = 4
+			else:
+				_key(KEY_ESCAPE); rj_next = frame+3; rj_stage = 5
+		4:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fresh-focus","focus":_focus_name()}))
+			_key(KEY_ENTER); rj_next = frame+8; rj_stage = 9
+		5:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"esc-from-fresh","kind":hud._flow_kind,"focus":_focus_name()}))
+			_key(KEY_ESCAPE); rj_next = frame+4; rj_stage = 6
+		6:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"esc-from-notice","dialog_open":hud.flow_dialog_open(),"mode":view.run.mode,"rejected":view.profile_rejected(),"focus":_focus_name()}))
+			_dump("profile-rejected-notice-closed")
+			_press(hud._menu_starts[0]); rj_next = frame+4; rj_stage = 7
+		7:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"start-pressed","dialog_open":hud.flow_dialog_open(),"kind":hud._flow_kind,"focus":_focus_name(),"mode":view.run.mode}))
+			_key(KEY_ENTER); rj_next = frame+5; rj_stage = 8
+		8:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"after-play","rejected":view.profile_rejected(),"session_off":view._profile_session_off,"dialog_open":hud.flow_dialog_open(),"available":view.profile.available,"note":hud.profile_note}))
+			_dump("profile-rejected-after-play")
+			rj_stage = 9
+		9:
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"before-start","rejected":view.profile_rejected(),"available":view.profile.available,"dialog_open":hud.flow_dialog_open(),"files":_file_hashes(rj_folder)}))
+			view.start_run(primary)
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"started","mode":view.run.mode,"first_boss_kill":view.run.first_boss_kill,"note":hud.profile_note}))
+			if result_mock:
+				view.run.mode = "victory"
+				view._save_terminal()
+				rj_next = frame+210; rj_stage = 11
+			else:
+				rj_stage = 10
+		10:
+			if view.run.tick >= 120:
+				_dump("profile-rejected-nosave-playing-120")
+				_reject_finish()
+				return true
+		11:
+			_dump("profile-rejected-result")
+			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"result","note":hud.profile_note}))
+			_reject_finish()
+			return true
+	if frame > 20000:
+		push_error("reject flow timed out"); _reject_finish(); return true
+	return false
+
+func _reject_finish() -> void:
+	var after := _file_hashes(rj_folder)
+	var untouched := true
+	for key in rj_files_before:
+		if not after.has(key) or after[key] != rj_files_before[key]: untouched = false
+	print("HUD_DUMP_FILES ",JSON.stringify({"before":rj_files_before,"after":after,"originals_unchanged":untouched,"new_files":after.keys().filter(func(k): return not rj_files_before.has(k))}))
+	_finish()
+
+## D4-U: pause -> abandon -> result -> menu -> another witch, the defeat hold, and the quit button.
+func _run_flow() -> bool:
+	var hud = view.hud
+	var run = view.run
+	if frame < fl_next: return false
+	if flow_shots == "quit":
+		if frame == 6:
+			_press(_find_button("QuitGame"))
+			fl_next = frame+60
+		elif frame > 200:
+			push_error("quit did not end the process"); _finish(); return true
+		return false
+	if flow_shots == "defeat":
+		if frame > 40000:
+			push_error("defeat flow timed out"); _finish(); return true
+		match fl_stage:
+			0:
+				if frame < 6: return false
+				view.start_run(primary); fl_stage = 1
+			1:
+				if run.tick >= defeat_at and run.mode == "playing":
+					# The pilot would dodge forever: park the hero and keep one hit point until something lands.
+					view._pilot = false
+					run.hero.hp_raw = 1
+					fl_stage = 2
+			2:
+				if run.mode == "playing" and run.hero.hp_raw > 1: run.hero.hp_raw = 1
+				if run.mode == "defeat":
+					fl_frame0 = frame; fl_before = {"tick": run.tick}
+					_flow_line("defeat-start")
+					fl_stage = 3
+			3:
+				var since := frame-fl_frame0
+				if since == 18:
+					_key(KEY_R)
+				elif since == 30:
+					_dump("flow-defeat-0.5s"); _flow_line("flow-defeat-0.5s")
+					print("FLOW_CHECK ",JSON.stringify({"overlay_visible":hud.overlay.visible,"revealed":hud.result_revealed()}))
+				elif since == 48:
+					_dump("flow-defeat-r-blocked"); _flow_line("flow-defeat-r-blocked")
+					print("FLOW_CHECK ",JSON.stringify({"tick_at_fall":fl_before.tick,"tick_now":run.tick,"mode":run.mode,"overlay_visible":hud.overlay.visible}))
+				elif since == 120:
+					_dump("flow-defeat-result"); _flow_line("flow-defeat-result")
+					print("FLOW_CHECK ",JSON.stringify({"overlay_visible":hud.overlay.visible,"revealed":hud.result_revealed()}))
+					_finish(); return true
+		return false
+	match fl_stage:
+		0:
+			if frame < 5: return false
+			_dump("menu"); _flow_line("menu")
+			view.start_run(primary); fl_stage = 1
+		1:
+			if run.tick >= 600 and run.mode == "playing":
+				view.toggle_pause(); fl_next = frame+4; fl_stage = 2
+		2:
+			_dump("flow-paused"); _flow_line("flow-paused")
+			print("FLOW_CHECK ",JSON.stringify({"focus":_focus_name(),"abandon_button":_find_button("AbandonRun") != null}))
+			_press(_find_button("AbandonRun")); fl_next = frame+4; fl_stage = 3
+		3:
+			_dump("flow-abandon-confirm"); _flow_line("flow-abandon-confirm")
+			print("FLOW_CHECK ",JSON.stringify({"focus":_focus_name(),"kind":hud._flow_kind}))
+			_key(KEY_ESCAPE); fl_next = frame+4; fl_stage = 30
+		30:
+			print("FLOW_CHECK ",JSON.stringify({"esc_cancels":not hud.flow_dialog_open(),"mode":run.mode,"focus":_focus_name()}))
+			_press(_find_button("AbandonRun")); fl_next = frame+4; fl_stage = 31
+		31:
+			# Keyboard: the default is Cancel; Left/Right reaches the abandon button, Enter presses it.
+			_key(KEY_LEFT); fl_next = frame+3; fl_stage = 32
+		32:
+			print("FLOW_CHECK ",JSON.stringify({"focus_after_left":_focus_name()}))
+			_key(KEY_ENTER); fl_next = frame+10; fl_stage = 4
+		4:
+			print("HUD_DUMP_PROFILE_AFTER ",JSON.stringify({"mode":run.mode,"completed_runs":view.profile.state.completed_runs,"items":view.profile.state.items.size(),"receipts":view.profile.state.receipts.size(),"xp_gained":view.run_progress.get("xp_gained",-1),"bag":run.inventory.size(),"unsaved":hud.result_unsaved}))
+			fl_next = frame+130; fl_stage = 5
+		5:
+			_dump("flow-end-abandon-result"); _flow_line("flow-end-abandon-result")
+			print("FLOW_CHECK ",JSON.stringify({"revealed":hud.result_revealed(),"title":hud.modal.get_child(0).get_child(0).text if hud.modal.get_child_count() > 0 else ""}))
+			_press(_find_button("ReturnToMenu")); fl_next = frame+10; fl_stage = 6
+		6:
+			_dump("flow-menu-returned"); _flow_line("flow-menu-returned")
+			print("FLOW_CHECK ",JSON.stringify({"focus":_focus_name(),"hero_empty":view.run.hero.is_empty(),"mode":view.run.mode}))
+			var other: int = 1 if primary == "chapter1.skill.ember" else 0
+			_press(hud._menu_starts[other]); fl_next = frame+4; fl_stage = 7
+		7:
+			if view.run.tick >= 120 and view.run.mode == "playing":
+				_dump("flow-playing-after-return-120"); _flow_line("flow-playing-after-return-120")
+				_finish(); return true
+	if frame > 30000:
+		push_error("run flow timed out"); _finish(); return true
 	return false
