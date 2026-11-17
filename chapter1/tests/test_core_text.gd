@@ -56,6 +56,8 @@ func play(primary: String) -> Dictionary:
 		return {"error": "start rejected: " + str(run.errors)}
 	var seen_types := {}
 	var named_events := 0
+	var last_offer_token := ""
+	var card_titles_seen := 0
 	while run.mode not in ["victory", "defeat"] and run.tick < MAX_TICKS:
 		run.step(pilot.decide())
 		for event in run.events:
@@ -63,6 +65,20 @@ func play(primary: String) -> Dictionary:
 			seen_types[String(event.type)] = true
 			if event.type in ["gate_opened", "chapter_champion", "ritual_started", "ritual_completed"] and event.has("name"):
 				named_events += 1
+		# The grace offer exists only once get_offer() is called while mode is "choice" (the pilot calls it on its next decide(),
+		# and the same offer is cached, so asking here changes nothing). Walk it, the snapshot and the whole card pool once per offer.
+		if run.mode == "choice":
+			var offer: Dictionary = run.get_offer()
+			var token := String(offer.get("token", ""))
+			if token != "" and token != last_offer_token:
+				last_offer_token = token
+				walk(offer, "growth_offer")
+				walk(run.snapshot(), "")
+				for card in run.growth._eligible_cards():
+					walk(card, "growth_card")
+				for card in offer.get("cards", []):
+					if String(card.get("title_key", "")) != "":
+						card_titles_seen += 1
 		if run.tick % 600 == 0:
 			walk(run.snapshot(), "")
 			walk(run.objective(), "objective")
@@ -70,7 +86,7 @@ func play(primary: String) -> Dictionary:
 	walk(run.snapshot(), "")
 	walk(run.objective(), "objective")
 	var objective: Dictionary = run.objective()
-	return {"tick": run.tick, "mode": run.mode, "types": seen_types, "named_events": named_events, "objective_keys": objective.keys()}
+	return {"tick": run.tick, "mode": run.mode, "types": seen_types, "named_events": named_events, "card_titles": card_titles_seen, "objective_keys": objective.keys()}
 
 func execute() -> void:
 	var primaries: Array = PRIMARIES
@@ -82,6 +98,7 @@ func execute() -> void:
 		check(not result.has("error"), "%s plays: %s" % [primary, str(result.get("error", ""))])
 		if result.has("error"):
 			continue
+		check(int(result.card_titles) > 0, "%s: saw at least one grace card title (%d)" % [primary, int(result.card_titles)])
 		check(result.mode == "victory", "%s reaches victory (%s at tick %d)" % [primary, result.mode, int(result.tick)])
 		for type_ in ["gate_opened", "chapter_champion"]:
 			check(result.types.has(type_), "%s emitted %s" % [primary, type_])

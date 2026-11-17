@@ -22,6 +22,10 @@ class RareWordTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.loot = json.loads((catalog.ROOT / 'chapter1/data/loot.json').read_text(encoding='utf-8'))
+        # Schema 4 stores the words as {"id","name"} objects; the old-format tests below use their plain names.
+        cls.current_is_new_format = all(isinstance(x, dict) for x in cls.loot['rare_names']['first'])
+        if cls.current_is_new_format:
+            cls.loot['rare_names'] = {part: [x['name'] for x in cls.loot['rare_names'][part]] for part in ('first', 'second')}
 
     def converted(self):
         loot = json.loads(json.dumps(self.loot))
@@ -43,8 +47,8 @@ class RareWordTests(unittest.TestCase):
         self.assertEqual(first[0].split(' · ')[0], 'f01')
         self.assertEqual(e['sections'][1]['items'][-1].split(' · ')[0], 's%02d' % len(self.loot['rare_names']['second']))
 
-    def test_current_data_is_still_old_format_and_catalog_reads_it(self):
-        self.assertTrue(all(isinstance(x, str) for x in self.loot['rare_names']['first']))
+    def test_current_data_is_new_format_and_catalog_reads_it(self):
+        self.assertTrue(self.current_is_new_format)
         self.assertEqual(catalog.generate()['warnings'], [])
 
     def test_bad_entries_are_errors_not_crashes(self):

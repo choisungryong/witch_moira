@@ -106,9 +106,9 @@ Blender: `D:/Blender Foundation/Blender 5.3/blender.exe`(5.3.0, 명령줄 실행
 ## 지휘 체계
 
 - 총괄 디렉터: 주 세션. 목표·우선순위·사용자 소통·최종 판정.
-- 중간 관리(Opus, 구현 안 함): `tech-lead`, `design-lead`, `art-lead`. 작업 지시서 작성과 검수.
+- 중간 관리(Opus, 구현 안 함): `tech-lead`, `design-lead`, `art-lead`, `audio-lead`. 작업 지시서 작성과 검수. 소리의 기준 문서는 `docs/AUDIO-PLAN.ko.md`다.
 - 세계관·스토리(Opus, 코드·데이터 수정 안 함): `narrative-lead`. 기준은 `docs/SEASON1_WORLD_STORY_MASTER.md`(기획자 원문)와 `docs/reviews/STORY-REVIEW-20261116.ko.md` 11절(결정 기록), 산출물은 `docs/story/`. 이름·대사·원화 프롬프트처럼 설정이 걸린 일은 이 문서들을 먼저 읽는다.
-- 개발(Sonnet): `gameplay-systems`, `refactor-architect`, `manager-tools`, `qa-perf`(기술) · `content-balance`(기획) · `vfx-feel`, `ui-hud`, `character-artist`, `environment-artist`, `asset-producer`(화면·아트).
+- 개발(Sonnet): `gameplay-systems`, `refactor-architect`, `manager-tools`, `qa-perf`(기술) · `content-balance`(기획) · `vfx-feel`, `ui-hud`, `character-artist`, `environment-artist`, `asset-producer`(화면·아트) · `sound-designer`(소리).
 - Codex: 작업 에이전트 하나로 쓴다. 디렉터가 호출마다 역할 하나를 준다(지금은 그림 생성). 운용은 `codex-operator`가 맡고, Codex가 읽는 지침은 루트의 `AGENTS.md`다. `AGENTS.md`에는 Codex의 역할과 금지만 적고 이 파일의 내용을 옮겨 적지 않는다.
 - 하위 에이전트는 다른 하위 에이전트를 부를 수 없다. 흐름은 디렉터 → 관리자(지시서) → 디렉터가 개발 에이전트에 배정 → 관리자(검수) → 디렉터.
 

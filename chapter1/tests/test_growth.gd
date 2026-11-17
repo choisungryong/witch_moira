@@ -79,6 +79,24 @@ func _initialize() -> void:
 		else:
 			check(first.effects.branches == 1 and last.effects.branches == 2 and last.effects.chain_targets > first.effects.chain_targets,"lightning adds branches and chain targets")
 
+	# R2: the successor configure takes the arc evolution name from its own catalog and refuses any other difference.
+	var successor_growth = load("res://chapter1/core/run_growth_quality37.gd").new()
+	var catalog37 = Catalog.new()
+	check(catalog37.load_file("res://chapter1/data/growth_quality37.json"),"successor catalog loads")
+	var doc37: Dictionary = catalog37.snapshot()
+	var named: Dictionary = doc37.duplicate(true)
+	for skill in named.skills:
+		if skill.id == "chapter1.skill.arc":
+			skill.evolution_name = "different evolution name"
+	check(successor_growth.configure(named,"chapter1.skill.arc",5),"successor accepts a candidate that differs only in the arc evolution name: " + str(successor_growth.errors))
+	var altered: Dictionary = doc37.duplicate(true)
+	altered.skills[0].ranks[0].damage_raw = int(altered.skills[0].ranks[0].damage_raw) + 1
+	var successor_before: Dictionary = successor_growth.snapshot()
+	check(not successor_growth.configure(altered,doc37.skills[0].id,5) and successor_growth.snapshot() == successor_before and str(successor_growth.errors).contains("differ only"),"successor rejects a difference in any field other than the evolution name, state unchanged")
+	var altered_other: Dictionary = doc37.duplicate(true)
+	altered_other.skills[1].weight = int(altered_other.skills[1].weight) + 1
+	check(not successor_growth.configure(altered_other,doc37.skills[0].id,5) and str(successor_growth.errors).contains("differ only"),"successor rejects a changed card weight by the comparison rule, not by catalog validation")
+
 	var a = Growth.new()
 	var b = Growth.new()
 	a.configure(doc,doc.skills[0].id,12345)

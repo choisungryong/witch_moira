@@ -25,7 +25,7 @@ extends SceneTree
 ##                                defeat (with --defeat-at=<tick>, default 1200): flow-defeat-0.5s, flow-defeat-r-blocked,
 ##                                flow-defeat-result. quit: press the menu's quit button (process ends with code 0).
 ##                                Each moment also prints a FLOW line {mode, primary, seed, abandoned, tick}.
-##   --profile-fixture=rejected   an isolated profile file whose gear fails validation (a stat is changed by hand), plus journal
+##   --profile-fixture=rejected   an isolated profile file whose structure is broken (two items share a storage id), plus journal
 ##                                copies, under res://_local/shots/ui-g1p4/profiles/<tag>/. The app is put on its refused-save path.
 ##                                Moments: profile-rejected-menu, profile-rejected-fresh, profile-rejected-notice-closed,
 ##                                profile-rejected-after-play, profile-rejected-nosave-playing-120 (or profile-rejected-result
@@ -134,10 +134,15 @@ func _file_hashes(folder: String) -> Dictionary:
 	var listing := DirAccess.open(folder)
 	if listing == null: return out
 	for file_name in listing.get_files(): out[file_name] = FileAccess.get_sha256(folder.path_join(file_name)).left(16)
+	# Schema 4 keeps its journal copies in a sub-folder.
+	var copies := DirAccess.open(folder.path_join("revisions"))
+	if copies != null:
+		for file_name in copies.get_files(): out["revisions/"+file_name] = FileAccess.get_sha256(folder.path_join("revisions").path_join(file_name)).left(16)
 	return out
 
-## D5-U fixture: a real saved profile (so its journal copies are real), then the newest file gets one gear stat changed by
-## hand. The reader refuses it; the journal copies stay readable. Only ever under res://_local/.
+## D5-U fixture: a real saved profile (so its journal copies are real), then the newest file is broken in structure by hand
+## (two items get the same storage id; schema 4 sets a changed item aside instead of refusing, so a changed stat no longer refuses).
+## The reader refuses it; the journal copies stay readable. Only ever under res://_local/.
 func _setup_rejected() -> void:
 	rj_folder = "res://_local/shots/ui-g1p4/profiles/"+profile_tag
 	DirAccess.make_dir_recursive_absolute(rj_folder)
@@ -151,20 +156,18 @@ func _setup_rejected() -> void:
 	var unique: Dictionary = tables.make_unique("winter_heart",12)
 	var magic: Dictionary = tables.roll_item(rng,12,"magic","weapon")
 	var rare: Dictionary = tables.roll_item(rng,12,"rare","head")
-	ok = ok and maker.record_run("fixture-a",[unique,magic,rare],[],false,10) and maker.select_item(1)
+	ok = ok and maker.record_run("fixture-a",[unique,magic,rare],[],false,10) and maker.wear_outfit(FROST_ID,"chapter1.outfit.frost.swim_1")
 	ok = ok and maker.record_run("fixture-b",[],[],false,20)
 	if not ok: push_error("rejected fixture could not be written: "+String(maker.error))
 	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(main))
-	var stats: Dictionary = doc.items[1].item.stats
-	var key: String = stats.keys()[0]
-	stats[key] = int(stats[key])+777
+	doc.items[1].storage_id = doc.items[0].storage_id
 	var handle := FileAccess.open(main,FileAccess.WRITE)
 	handle.store_string(JSON.stringify(doc,"  ")); handle.close()
 	var profile = view.profile
 	var loaded: bool = profile.configure(main,true,"","",pointer)
 	# The app skips its own profile on --chapter1-profile-off; here the refused path is the thing under test.
 	view._profile_off = false
-	view._sync_profile(String(profile.error))
+	view._sync_profile(view._profile_error_text())
 	rj_files_before = _file_hashes(rj_folder)
 	print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fixture","configure":loaded,"available":profile.available,"kind":profile.reject_kind,"reason":profile.reject_reason,"resume":profile.resume_info(),"files":rj_files_before}))
 
@@ -473,7 +476,7 @@ func _reject_flow() -> bool:
 	if frame == 3:
 		# The app's own _ready (profile-off, from the arguments) can run after the fixture was set up: put the refused path back.
 		view._profile_off = false
-		view._sync_profile(String(view.profile.error))
+		view._sync_profile(view._profile_error_text())
 	if frame < rj_next: return false
 	match rj_stage:
 		0:

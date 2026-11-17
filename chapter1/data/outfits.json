@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "outfits": [
+    {"id": "chapter1.outfit.frost.swim_1", "character_id": "chapter1.character.frost", "default_owned": true, "art": {}},
+    {"id": "chapter1.outfit.frost.swim_2", "character_id": "chapter1.character.frost", "default_owned": true, "art": {}},
+    {"id": "chapter1.outfit.ember.swim_1", "character_id": "chapter1.character.ember", "default_owned": true, "art": {}},
+    {"id": "chapter1.outfit.ember.swim_2", "character_id": "chapter1.character.ember", "default_owned": true, "art": {}},
+    {"id": "chapter1.outfit.arc.swim_1", "character_id": "chapter1.character.arc", "default_owned": true, "art": {}},
+    {"id": "chapter1.outfit.arc.swim_2", "character_id": "chapter1.character.arc", "default_owned": true, "art": {}}
+  ]
+}

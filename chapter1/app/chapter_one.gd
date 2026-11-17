@@ -353,6 +353,12 @@ var _saved_receipt := ""
 var _profile_off := false
 ## True after the player chose "play without saving" for a refused save file. Lasts until the process ends.
 var _profile_session_off := false
+## A sentence the app wrote itself for the profile line (profile off, play without saving); the profile only supplies codes.
+var _app_error := ""
+## The worn set of this run goes back to the witch's kit only when the run started with her kit in (a kit that could not
+## be imported leaves the saved selection alone). `_run_kept_slots` are slots of her kit that were left behind at the start.
+var _run_carry_ok := false
+var _run_kept_slots: Array=[]
 ## Permanent growth, for the screen to read (set by start_run and _save_terminal):
 ## the witch of this run ("" when profile is off), the core's progress_summary() at save time, and the
 ## profile's character_view() before the run and after a successful save ({} until then).
@@ -366,11 +372,11 @@ func _init() -> void:
 	full_pilot.run=run
 func _ready() -> void:
 	_profile_off="--chapter1-profile-off" in _user_args()
-	if _profile_off:profile.error="검증 실행 · 저장 비활성"
+	if _profile_off:_app_error="검증 실행 · 저장 비활성"
 	else:profile.configure()
 	_sync_profile("저장 준비" if profile.available else _profile_error_text())
-	hud.stash_show.connect(func():hud.stash_open=true;hud.invalidate())
-	hud.stash_equip.connect(func(id_: int):_sync_profile("다음 도전 장비 저장 완료" if profile.select_item(id_) else _profile_error_text()))
+	hud.stash_show.connect(func():hud.stash_open=true;_sync_profile(hud.profile_note))
+	hud.stash_equip.connect(_equip_from_stash)
 	hud.stash_salvage.connect(func(id_: int):_sync_profile("장비 해체 저장 완료" if profile.salvage(id_) else _profile_error_text()))
 	hud.save_retry.connect(_save_terminal)
 	hud.skill_tree_open.connect(_open_skill_tree)
@@ -379,6 +385,9 @@ func _ready() -> void:
 	_ready__chapter()
 	DisplayServer.window_set_title("잿빛 회랑 · 제1장")
 	print("FULL_CHAPTER_READY ",JSON.stringify({"scene":"chapter1/ChapterOne.tscn","three_connected_zones":true,"scope":"Full chapter implementation candidate; quality/pacing/manual/audio gates open"}))
+## The stash window's "equip for the next run": onto the witch the title menu shows.
+func _equip_from_stash(id_: int) -> void:
+	_sync_profile("다음 도전 장비 저장 완료" if profile.select_item(id_,menu_character_id()) else _profile_error_text())
 func start_run(id_: String) -> void:
 	if profile.available and profile.state.items.size()>256:
 		hud.stash_open=true;_sync_profile("회수 장비를 해체해 256개 이하로 정리하면 출발할 수 있습니다");return
@@ -393,6 +402,7 @@ func start_run(id_: String) -> void:
 	# The starting skill picks the witch (no character choice yet). Her permanent build goes to the core before
 	# start(); with the profile off or unavailable the run has no build and plays exactly as before.
 	run_character_id="";run_progress={};view_before={};view_after={}
+	_run_carry_ok=false;_run_kept_slots=[]
 	run.clear_build()
 	if profile.available:
 		run_character_id=_character_for(id_)
@@ -409,11 +419,19 @@ func start_run(id_: String) -> void:
 	start_run__chapter(id_)
 	var gear_failed := false
 	if profile.available:
-		# A kit that cannot be imported never ends the game: the run starts bare and the saved selection is untouched.
-		gear_failed=not run.import_starting_gear(profile.starting_gear(run_character_id))
-		if gear_failed:push_error("Starting gear import rejected · starting without gear")
+		gear_failed=not _import_profile_kit()
 		hud.invalidate()
 	hud.notify("출발 장비를 불러오지 못했습니다 · 장비 없이 출발합니다" if gear_failed else "앞뜰의 봉인을 돌파하세요 · Q 회복약 · E 선택 의식")
+
+## The witch's saved kit goes into the fresh run. A kit that cannot be imported never ends the game: the run starts bare,
+## the saved selection is untouched and the run's worn set is not carried back (`_run_carry_ok` stays false).
+func _import_profile_kit() -> bool:
+	var kit: Dictionary=profile.starting_kit(run_character_id)
+	var imported: bool=run.import_starting_gear(kit.gear)
+	_run_kept_slots=kit.kept_slots.duplicate()
+	_run_carry_ok=imported and not run_character_id.is_empty()
+	if not imported:push_error("Starting gear import rejected · starting without gear")
+	return imported
 
 ## The witch whose signature skill is this starting skill ("" if none).
 func _character_for(skill_id: String) -> String:
@@ -437,11 +455,23 @@ func profile_reject_info() -> Dictionary:
 	return {"kind":profile.reject_kind,"reason":profile.reject_reason,"file":shown.get_file(),
 		"path":ProjectSettings.globalize_path(shown),"folder":ProjectSettings.globalize_path(shown.get_base_dir()),"resume":resume}
 
-## The refusal text for the screen: worded from the profile's code and arguments (keys profile.error.<code>).
-## A sentence the app wrote itself (no code) is shown as it is.
+## The refusal text for the screen: a sentence the app wrote itself (profile off, play without saving) is shown as it is;
+## otherwise it is worded from the profile's code and arguments (keys profile.error.<code>).
 func _profile_error_text() -> String:
+	if not _app_error.is_empty() and (_profile_off or _profile_session_off):return _app_error
 	if profile.error_code.is_empty():return profile.error
 	return Loc.t("profile.error."+profile.error_code,profile.error_args)
+
+## The witch the title menu is showing. The screen's own answer when it has one; until it gets a public function this
+## reads its card index (a temporary read of the screen's private value) and maps it through the start skills.
+func menu_character_id() -> String:
+	if hud.has_method("menu_character_id"):return String(hud.call("menu_character_id"))
+	var raw: Variant=hud.get("_menu_witch")
+	if not raw is int:return ""
+	var index: int=raw
+	var skills: Array=ChapterHUD.START_SKILLS
+	if index<0 or index>=skills.size():return ""
+	return _character_for(String(skills[index]))
 
 ## Opens the save folder in the file manager. Opening only.
 func open_profile_folder() -> void:
@@ -451,7 +481,7 @@ func open_profile_folder() -> void:
 func play_without_save() -> bool:
 	if run.mode!="menu" or profile.available or profile.reject_kind.is_empty():return false
 	_profile_session_off=true
-	profile.error=SESSION_NO_SAVE_NOTE
+	_app_error=SESSION_NO_SAVE_NOTE
 	_sync_profile(SESSION_NO_SAVE_NOTE)
 	return true
 
@@ -461,6 +491,7 @@ func start_fresh_profile(use_revision: bool) -> bool:
 	if run.mode!="menu" or profile.available or profile.reject_kind.is_empty():return false
 	if not profile.start_fresh_after_reject(use_revision):
 		hud.notify(_profile_error_text());return false
+	_app_error=""
 	_sync_profile("새 저장으로 시작했습니다 · 이전 파일은 그대로 남아 있습니다")
 	return true
 
@@ -477,7 +508,7 @@ func return_to_menu() -> void:
 	hud.stash_open=false
 	hud.set_growth_result("",{},{},{})
 	_chapter_last_event=-1;_last_audio_event=-1;_last_result="";_has_move_target=false
-	_receipt="";_saved_receipt="";run_character_id="";run_progress={};view_before={};view_after={}
+	_receipt="";_saved_receipt="";run_character_id="";run_progress={};view_before={};view_after={};_run_carry_ok=false;_run_kept_slots=[]
 	seed_+=1 # The next run from the menu never repeats the one just played (F3).
 	world.update_camera(Vector2.ZERO,10.0)
 	_sync_profile(Loc.t("notify.profile.ready") if profile.available else _profile_error_text())
@@ -506,6 +537,8 @@ func quit_game() -> void:
 
 func _sync_profile(note: String) -> void:
 	hud.profile_state=profile.state.duplicate(true);hud.profile_note=note
+	# The screen still reads one worn set: the kit of the witch the menu shows (the stash window equips onto her).
+	hud.profile_state["equipped"]=profile.loadout(menu_character_id()) if profile.available else {}
 	var views := {}
 	for entry in ChapterProfile.progression_doc().get("characters",[]):
 		var view: Dictionary=profile.character_view(String(entry.id))
@@ -559,7 +592,9 @@ func _save_terminal() -> void:
 	if not profile.available:hud.result_unsaved=false;_sync_profile(_profile_error_text());return
 	var progress: Dictionary=run.progress_summary()
 	run_progress=progress
-	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress):
+	var carry := {}
+	if _run_carry_ok and not run_character_id.is_empty():carry={"character_id":run_character_id,"equipped":run.equipped.duplicate(true),"kept_slots":_run_kept_slots.duplicate()}
+	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress,carry):
 		_saved_receipt=_receipt;hud.result_unsaved=false
 		if not run_character_id.is_empty():view_after=profile.character_view(run_character_id)
 		hud.set_growth_result(run_character_id,view_before,view_after,run_progress)

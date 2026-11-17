@@ -3,7 +3,6 @@
   "files": {
     "chapter1/app/chapter_one.gd": 39,
     "chapter1/core/chapter_items.gd": 32,
-    "chapter1/core/chapter_profile.gd": 40,
     "chapter1/core/combat_core.gd": 8,
     "chapter1/core/combat_run.gd": 8,
     "chapter1/core/loot.gd": 1,

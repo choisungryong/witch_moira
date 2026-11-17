@@ -59,6 +59,7 @@ func _check(doc: Dictionary) -> Array[String]:
 		if not doc.has(key): issues.append("Missing "+key)
 	if not issues.is_empty(): return issues
 	if doc.schema_version != 2: issues.append("Unsupported schema")
+	issues.append_array(_check_rare_names(doc.rare_names))
 	var seen: Dictionary = {}
 	for row in doc.bases:
 		if seen.has("b:"+str(row.id)): issues.append("Duplicate base "+str(row.id))
@@ -95,6 +96,63 @@ func _check(doc: Dictionary) -> Array[String]:
 			total += int(tc.quality[quality])
 		if total <= 0: issues.append("Treasure class has no quality weight "+str(id_))
 	return issues
+
+## rare_names = {"first": [{"id","name"}...], "second": [...]}. Ids are permanent (saved items point at them), unique over both
+## lists and made of lowercase letters and digits; a word is one non-empty token without spaces or control characters.
+func _check_rare_names(names: Variant) -> Array[String]:
+	var issues: Array[String] = []
+	if not names is Dictionary or not names.has("first") or not names.has("second") or names.size() != 2:
+		issues.append("Rare names shape")
+		return issues
+	var ids := {}
+	var id_rule := RegEx.create_from_string("^[a-z][a-z0-9]{0,7}\\z")
+	for part in ["first","second"]:
+		if not names[part] is Array or names[part].is_empty():
+			issues.append("Rare names list "+part)
+			continue
+		for entry in names[part]:
+			if not entry is Dictionary or entry.size() != 2 or not entry.has("id") or not entry.has("name") or not entry.id is String or not entry.name is String:
+				issues.append("Rare word shape in "+part)
+				continue
+			if id_rule.search(entry.id) == null or ids.has(entry.id): issues.append("Rare word id "+str(entry.id))
+			ids[entry.id] = true
+			if entry.name.is_empty() or entry.name.length() > 40 or entry.name.contains(" "): issues.append("Rare word text "+str(entry.id))
+			if not _check_text({"name":entry.name,"description":""}).is_empty(): issues.append("Rare word characters "+str(entry.id))
+	return issues
+
+## The two word ids a rare name is made of ("first second"), or [] when it is not exactly one word from each list.
+func rare_word_ids(item_name: String) -> Array:
+	var parts := item_name.split(" ")
+	if parts.size() != 2: return []
+	var first_id := ""
+	var second_id := ""
+	for entry in data.rare_names.first:
+		if entry.name == parts[0]: first_id = entry.id
+	for entry in data.rare_names.second:
+		if entry.name == parts[1]: second_id = entry.id
+	if first_id.is_empty() or second_id.is_empty(): return []
+	return [first_id,second_id]
+
+## The display name for two word ids. A word the data no longer has shows as its own id, never as invented text.
+func rare_name_for(words: Array) -> String:
+	if words.size() != 2: return ""
+	var parts: Array[String] = []
+	for index in 2:
+		var list: Array = data.rare_names.first if index == 0 else data.rare_names.second
+		var shown := String(words[index])
+		for entry in list:
+			if entry.id == words[index]: shown = entry.name
+		parts.append(shown)
+	return parts[0]+" "+parts[1]
+
+## True when both word ids exist in the data.
+func rare_words_known(words: Array) -> bool:
+	if words.size() != 2: return false
+	var found := 0
+	for index in 2:
+		for entry in (data.rare_names.first if index == 0 else data.rare_names.second):
+			if entry.id == words[index]: found += 1
+	return found == 2
 
 func _check_stats(doc: Dictionary, stats: Dictionary, label: String) -> Array[String]:
 	var issues: Array[String] = []
@@ -191,7 +249,7 @@ func roll_item(rng: RandomNumberGenerator, item_level: int, quality: String, slo
 	elif quality == "magic" and chosen.is_empty(): quality = "common"
 	var rare_name := ""
 	if quality == "rare":
-		rare_name = String(data.rare_names.first[rng.randi_range(0,data.rare_names.first.size()-1)])+" "+String(data.rare_names.second[rng.randi_range(0,data.rare_names.second.size()-1)])
+		rare_name = String(data.rare_names.first[rng.randi_range(0,data.rare_names.first.size()-1)].name)+" "+String(data.rare_names.second[rng.randi_range(0,data.rare_names.second.size()-1)].name)
 	var composed := _compose(base,quality,chosen,legendary_id,rare_name)
 	var item := {"grammar":2,"base_id":BASE_PREFIX+String(base.id),"name":composed.name,"slot":slot,"stats":composed.stats,"quality":quality,"item_level":level,"affixes":chosen,"description":composed.description}
 	if quality == "legendary": item.legendary_id = legendary_id

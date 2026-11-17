@@ -71,8 +71,30 @@
     {"id": "forked_covenant", "name": "갈림길의 서약", "slot": "ring", "level": 3, "element": "chapter1.skill.arc", "stats": {"arc_branches": 1, "arc_damage_bps": -1200, "chain_targets": 1}, "description": "번개 분기 +1 · 연쇄 +1 · 번개 피해 -12%"}
   ],
   "rare_names": {
-    "first": ["서리", "재의", "뇌우", "침묵", "서약", "황혼", "순례", "잿빛", "새벽", "폐허"],
-    "second": ["맹세", "손길", "숨결", "파편", "기도", "눈물", "사슬", "불씨", "그림자", "종소리"]
+    "first": [
+      {"id": "f01", "name": "서리"},
+      {"id": "f02", "name": "재의"},
+      {"id": "f03", "name": "뇌우"},
+      {"id": "f04", "name": "침묵"},
+      {"id": "f05", "name": "서약"},
+      {"id": "f06", "name": "황혼"},
+      {"id": "f07", "name": "순례"},
+      {"id": "f08", "name": "잿빛"},
+      {"id": "f09", "name": "새벽"},
+      {"id": "f10", "name": "폐허"}
+    ],
+    "second": [
+      {"id": "s01", "name": "맹세"},
+      {"id": "s02", "name": "손길"},
+      {"id": "s03", "name": "숨결"},
+      {"id": "s04", "name": "파편"},
+      {"id": "s05", "name": "기도"},
+      {"id": "s06", "name": "눈물"},
+      {"id": "s07", "name": "사슬"},
+      {"id": "s08", "name": "불씨"},
+      {"id": "s09", "name": "그림자"},
+      {"id": "s10", "name": "종소리"}
+    ]
   },
   "slot_weights": {"weapon": 22, "head": 20, "body": 20, "hands": 20, "feet": 20, "charm": 1, "ring": 1},
   "treasure_classes": {

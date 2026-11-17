@@ -135,8 +135,8 @@ func name_checks(loot: RefCounted) -> void:
 	# L-2b: every name and description the data can produce passes the text rules.
 	var text_ok := true
 	var words: Array = []
-	words.append_array(loot.data.rare_names.first)
-	words.append_array(loot.data.rare_names.second)
+	for entry in loot.data.rare_names.first: words.append(entry.name)
+	for entry in loot.data.rare_names.second: words.append(entry.name)
 	for table in ["bases","affixes","legendaries","uniques"]:
 		for row in loot.data[table]:
 			words.append(row.name)
@@ -147,7 +147,7 @@ func name_checks(loot: RefCounted) -> void:
 			if not loot._check_text({"name":"x","description":str(row.description)}).is_empty(): text_ok = false
 	for first_word in loot.data.rare_names.first:
 		for second_word in loot.data.rare_names.second:
-			if not loot._check_text({"name":str(first_word)+" "+str(second_word),"description":""}).is_empty(): text_ok = false
+			if not loot._check_text({"name":str(first_word.name)+" "+str(second_word.name),"description":""}).is_empty(): text_ok = false
 	check(text_ok and words.size() > 20,"L-2b every base, affix, legendary, unique and rare-name word from the data passes the text rules")
 	# L-2: any text of a valid shape is accepted, including rare names of one or three words.
 	var texts_ok := true
