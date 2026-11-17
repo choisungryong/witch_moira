@@ -10,3 +10,6 @@ __pycache__/
 # Secrets: API keys. Never commit.
 .env
 .env.*
+
+# 에이전트 작업 폴더
+.claude/worktrees/
