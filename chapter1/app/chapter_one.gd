@@ -335,6 +335,8 @@ var profile=ChapterProfile.new()
 var _receipt := ""
 var _saved_receipt := ""
 var _profile_off := false
+## True after the player chose "play without saving" for a refused save file. Lasts until the process ends.
+var _profile_session_off := false
 ## Permanent growth, for the screen to read (set by start_run and _save_terminal):
 ## the witch of this run ("" when profile is off), the core's progress_summary() at save time, and the
 ## profile's character_view() before the run and after a successful save ({} until then).
@@ -364,7 +366,7 @@ func _ready() -> void:
 func start_run(id_: String) -> void:
 	if profile.available and profile.state.items.size()>256:
 		hud.stash_open=true;_sync_profile("회수 장비를 해체해 256개 이하로 정리하면 출발할 수 있습니다");return
-	if not profile.available and not _profile_off and profile.error!="전용 저장 경로가 없는 미리보기입니다":hud.notify(profile.error);return
+	if not profile.available and not _profile_off and not _profile_session_off and profile.error!="전용 저장 경로가 없는 미리보기입니다":hud.notify(profile.error);return
 	_chapter_last_event=-1
 	_receipt="%d-%d-%d"%[OS.get_process_id(),Time.get_unix_time_from_system(),Time.get_ticks_usec()];_saved_receipt=""
 	hud.stash_open=false
@@ -382,18 +384,58 @@ func start_run(id_: String) -> void:
 	# The signature unique is a first-clear reward, once per witch (her "boss" first-kill receipt); without a
 	# witch record it stays tied to the first completed run.
 	if profile.available and not run_character_id.is_empty():run.first_boss_kill=not "boss" in profile.character_entry(run_character_id).first_rewards
+	elif _profile_session_off:run.first_boss_kill=false # Nothing is saved this session; a first-kill unique would only mislead.
 	else:run.first_boss_kill=not profile.available or int(profile.state.completed_runs)==0
 	start_run__chapter(id_)
+	var gear_failed := false
 	if profile.available:
-		if not run.import_starting_gear(profile.starting_gear(run_character_id)):push_error("Starting gear import rejected");get_tree().quit(1);return
+		# A kit that cannot be imported never ends the game: the run starts bare and the saved selection is untouched.
+		gear_failed=not run.import_starting_gear(profile.starting_gear(run_character_id))
+		if gear_failed:push_error("Starting gear import rejected · starting without gear")
 		hud.invalidate()
-	hud.notify("앞뜰의 봉인을 돌파하세요 · Q 회복약 · E 선택 의식")
+	hud.notify("출발 장비를 불러오지 못했습니다 · 장비 없이 출발합니다" if gear_failed else "앞뜰의 봉인을 돌파하세요 · Q 회복약 · E 선택 의식")
 
 ## The witch whose signature skill is this starting skill ("" if none).
 func _character_for(skill_id: String) -> String:
 	for entry in ChapterProfile.progression_doc().get("characters",[]):
 		if entry.signature_skill_id==skill_id:return String(entry.id)
 	return ""
+
+# Refused-save entry points (D5). The screen only reads profile_reject_info() and calls these; nothing here
+# deletes, edits, moves or renames a save file.
+const SESSION_NO_SAVE_NOTE := "이번 실행은 저장하지 않습니다 · 저장 파일을 읽지 못했습니다"
+
+## True when a save file was found and refused and the player has not yet chosen a way forward.
+func profile_rejected() -> bool:
+	return not profile.available and not _profile_off and not _profile_session_off and not profile.reject_kind.is_empty()
+
+## Read-only facts for the notice: {kind, reason, file, path (full), folder (full), resume: {file, revision, unix} or {}}.
+func profile_reject_info() -> Dictionary:
+	if profile.reject_kind.is_empty():return {}
+	var resume: Dictionary=profile.resume_info() # Computed once when the file was refused; cheap to call every frame.
+	return {"kind":profile.reject_kind,"reason":profile.reject_reason,"file":profile.path.get_file(),
+		"path":ProjectSettings.globalize_path(profile.path),"folder":ProjectSettings.globalize_path(profile.path.get_base_dir()),"resume":resume}
+
+## Opens the save folder in the file manager. Opening only.
+func open_profile_folder() -> void:
+	OS.shell_open(ProjectSettings.globalize_path(profile.path.get_base_dir()))
+
+## "Play without saving": this process runs with no profile; the file stays as it is.
+func play_without_save() -> bool:
+	if run.mode!="menu" or profile.available or profile.reject_kind.is_empty():return false
+	_profile_session_off=true
+	profile.error=SESSION_NO_SAVE_NOTE
+	_sync_profile(SESSION_NO_SAVE_NOTE)
+	return true
+
+## "Start from a new save": a new file next to the refused one (or an empty v3 when only an old format was refused).
+## use_revision=true continues from the newest readable journal copy. Returns false and keeps the refused state on failure.
+func start_fresh_profile(use_revision: bool) -> bool:
+	if run.mode!="menu" or profile.available or profile.reject_kind.is_empty():return false
+	if not profile.start_fresh_after_reject(use_revision):
+		hud.notify(profile.error);return false
+	_sync_profile("새 저장으로 시작했습니다 · 이전 파일은 그대로 남아 있습니다")
+	return true
 
 func _sync_profile(note: String) -> void:
 	hud.profile_state=profile.state.duplicate(true);hud.profile_note=note

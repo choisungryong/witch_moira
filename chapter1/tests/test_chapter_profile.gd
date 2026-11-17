@@ -104,6 +104,167 @@ func g1_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator,v
 	check(gate.starting_gear(FROST).is_empty() and gate.blocked_gear(FROST).size()==1 and int(gate.blocked_gear(FROST)[0].required_level)==need and gate.starting_gear().size()==1,"A selected piece above the level stays selected but is left behind and reported")
 	var pure := Profile.apply_progress({},progress(100,["boss"],EMBER))
 	check(int(pure[EMBER].xp)==100 and int(pure[EMBER].tree_revision)==0 and pure[EMBER].first_rewards==["boss"],"apply_progress is pure and works for a witch without a tree")
+## D5: equipment text is not identity, and a refused file is never touched.
+func file_hashes(dir_path: String) -> Dictionary:
+	var result := {}
+	var dir := DirAccess.open(dir_path)
+	if dir==null:return result
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while not entry.is_empty():
+		if not dir.current_is_dir():result[entry]=FileAccess.get_sha256(dir_path+"/"+entry)
+		entry=dir.get_next()
+	dir.list_dir_end()
+	return result
+func same_files(before: Dictionary,dir_path: String) -> bool:
+	var now := file_hashes(dir_path)
+	for key in before:
+		if not now.has(key) or now[key]!=before[key]:return false
+	return true
+func d5_base(root: String,tables: RefCounted,rng: RandomNumberGenerator,history: bool) -> Dictionary:
+	var main := root+"/profile.json";var pointer := root+"/active.json"
+	var maker=Profile.new();var ok: bool=maker.configure(main,true,"","",pointer)
+	var unique: Dictionary=tables.make_unique("winter_heart",12)
+	var magic: Dictionary=tables.roll_item(rng,12,"magic","weapon")
+	var rare: Dictionary=tables.roll_item(rng,12,"rare","head")
+	ok=ok and maker.record_run("d5-a",[unique,magic,rare],[],false,10) and maker.select_item(1)
+	if history:
+		var slot: String=maker.state.equipped.keys()[0]
+		ok=ok and maker.unselect(slot) and maker.select_item(1)
+	return {"main":main,"pointer":pointer,"ok":ok,"unique":unique,"magic":magic,"rare":rare,"root":root}
+func mutate_file(target: String,mutate: Callable) -> void:
+	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(target));mutate.call(doc)
+	write_text(target,JSON.stringify(doc,"  "))
+func tamper_stats(doc: Dictionary) -> void:
+	var stats: Dictionary=doc.items[1].item.stats
+	var key: String=stats.keys()[0];stats[key]=int(stats[key])+777
+func rename_items(doc: Dictionary) -> void:
+	doc.items[0].item.name="옛 이름";doc.items[0].item.description="옛 설명"
+	doc.items[1].item.name="바뀐 마법 이름"
+	doc.items[2].item.name="세 낱말 희귀 이름"
+func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) -> void:
+	var root := directory+"/d5"
+	# P-1 / P-2 / P-5: renamed text is read, the file is not touched, the next save writes the new text.
+	var a := d5_base(root+"/a",tables,rng,false)
+	check(a.ok,"P-0 d5 fixture profile saved")
+	var data_unique: Dictionary=tables.make_unique("winter_heart",12)
+	var data_magic: String=a.magic.name
+	mutate_file(a.main,rename_items)
+	var renamed_bytes := FileAccess.get_file_as_string(a.main);var before_a := file_hashes(root+"/a")
+	var reader=Profile.new()
+	var read_ok: bool=reader.configure(a.main,true,"","",a.pointer)
+	check(read_ok and reader.available and reader.state.items[0].item.name==data_unique.name and reader.state.items[0].item.description==data_unique.description and reader.state.items[1].item.name==data_magic and reader.state.items[2].item.name=="세 낱말 희귀 이름","P-1 renamed file is read; unique and magic text follow the data, the rare name is kept")
+	check(FileAccess.get_file_as_string(a.main)==renamed_bytes and file_hashes(root+"/a")==before_a,"P-1 reading changes no file")
+	var gear: Array[Dictionary]=reader.starting_gear();var fresh_run=Chapter.new();fresh_run.start(5)
+	check(gear.size()==1 and gear[0].name==data_unique.name and fresh_run.import_starting_gear(gear),"P-5 starting gear carries the current name and imports")
+	var slot_a: String=reader.state.equipped.keys()[0]
+	var journals_before: int=reader.journal_files().size()
+	var saved_ok: bool=reader.unselect(slot_a)
+	var journals_after: int=reader.journal_files().size()
+	var older_same := true
+	for key in before_a:
+		if String(key).contains(".revision-") and (not FileAccess.file_exists(root+"/a/"+String(key)) or FileAccess.get_sha256(root+"/a/"+String(key))!=before_a[key]):older_same=false
+	check(saved_ok and journals_after==journals_before+1 and older_same,"P-2 one save adds one journal copy and leaves earlier copies byte for byte")
+	var saved_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(a.main))
+	check(saved_doc.items[0].item.name==data_unique.name and saved_doc.items[1].item.name==data_magic and saved_doc.items[2].item.name=="세 낱말 희귀 이름","P-2 the saved file now holds the current names")
+	# P-3: a changed number is still refused, with a reason.
+	var b := d5_base(root+"/b",tables,rng,false)
+	mutate_file(b.main,tamper_stats)
+	var b_bytes := FileAccess.get_file_as_string(b.main);var before_b := file_hashes(root+"/b")
+	var bad=Profile.new()
+	check(not bad.configure(b.main,true,"","",b.pointer) and not bad.available and bad.reject_kind=="incompatible" and bad.reject_reason.begins_with("items[1].item"),"P-3 forged stats refused as incompatible and the reason names the item: "+bad.reject_reason)
+	check(FileAccess.get_file_as_string(b.main)==b_bytes and file_hashes(root+"/b")==before_b,"P-3 refused file and folder unchanged")
+	# P-4: damaged, oversize, legacy.
+	var c_dir := root+"/c";write_text(c_dir+"/broken.json","{ not json")
+	var damaged=Profile.new();var before_c := file_hashes(c_dir)
+	check(not damaged.configure(c_dir+"/broken.json",true) and damaged.reject_kind=="damaged" and damaged.reject_reason=="json" and file_hashes(c_dir)==before_c,"P-4 broken JSON is damaged, nothing changes")
+	write_text(c_dir+"/huge.json"," ".repeat(2000001));before_c=file_hashes(c_dir)
+	var huge=Profile.new()
+	check(not huge.configure(c_dir+"/huge.json",true) and huge.reject_kind=="damaged" and huge.reject_reason=="size" and file_hashes(c_dir)==before_c,"P-4 oversize file is damaged, nothing changes")
+	write_text(c_dir+"/old-v2.json",'{"schema_version":2}');before_c=file_hashes(c_dir)
+	var legacy=Profile.new()
+	check(not legacy.configure(c_dir+"/absent-v3.json",true,c_dir+"/old-v2.json") and legacy.reject_kind=="legacy" and file_hashes(c_dir)==before_c and not FileAccess.file_exists(c_dir+"/absent-v3.json"),"P-4 refused schema-2 file is legacy, nothing is created")
+	# P-6 / P-7 / P-8: a fresh save from the newest readable journal copy.
+	var d := d5_base(root+"/d",tables,rng,true)
+	var scout=Profile.new();scout.configure(d.main,true,"","",d.pointer)
+	var d_journals: Array=scout.journal_files()
+	check(d.ok and d_journals.size()==4,"P-6 fixture has four journal copies (%d)"%d_journals.size())
+	var third: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(d.root+"/"+String(d_journals[1].file)))
+	check(int(third.revision)==3 and third.equipped.is_empty(),"P-6 the second newest copy is revision 3 with nothing selected")
+	mutate_file(d.root+"/"+String(d_journals[0].file),tamper_stats)
+	mutate_file(d.main,tamper_stats)
+	var before_d := file_hashes(root+"/d")
+	var refused_d=Profile.new()
+	check(not refused_d.configure(d.main,true,"","",d.pointer) and refused_d.reject_kind=="incompatible","P-6 newest copy and main file are both refused")
+	var latest: Dictionary=refused_d.latest_readable_revision()
+	check(int(latest.get("revision",0))==3 and String(latest.get("file",""))==String(d_journals[1].file),"P-6 latest readable copy is revision 3")
+	check(refused_d.start_fresh_after_reject(true) and refused_d.available and refused_d.path!=d.main and refused_d.path.get_file().begins_with("chapter-one-profile-v3-r") and int(refused_d.state.revision)==4 and refused_d.state.items.size()==3 and refused_d.state.equipped.is_empty(),"P-6 new save starts from revision 3 and continues at revision 4")
+	check(same_files(before_d,root+"/d"),"P-6 refused file and every journal copy are byte for byte the same")
+	var pointer_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(d.pointer))
+	check(pointer_doc.file==refused_d.path.get_file() and pointer_doc.replaces=="profile.json" and pointer_doc.from_revision==String(d_journals[1].file) and pointer_doc.kind=="incompatible","P-6 pointer names the new file, the refused file and the journal copy")
+	var reopened_d=Profile.new()
+	check(reopened_d.configure(d.main,true,"","",d.pointer) and reopened_d.path==refused_d.path and reopened_d.state==refused_d.state,"P-7 a new reader follows the pointer to the new file")
+	var plain_d=Profile.new()
+	check(not plain_d.configure(d.main,true) and plain_d.reject_kind=="incompatible" and same_files(before_d,root+"/d"),"P-7 without the pointer the original is still refused and unchanged")
+	var pointer_bytes := FileAccess.get_file_as_string(d.pointer)
+	var ignored := true
+	for bad_name in ["../x.json","C:/x.json","/abs.json","other.json","chapter-one-profile-v3-r1/../x.json","chapter-one-profile-v3-r99999999-999999.json"]:
+		write_text(d.pointer,JSON.stringify({"schema":1,"file":bad_name}))
+		var text_now := FileAccess.get_file_as_string(d.pointer)
+		var trial=Profile.new()
+		if trial.configure(d.main,true,"","",d.pointer) or trial.path!=d.main or FileAccess.get_file_as_string(d.pointer)!=text_now:ignored=false
+	check(ignored,"P-8 a pointer naming a path, another pattern or a missing file is ignored; the pointer is not rewritten")
+	write_text(d.pointer,pointer_bytes)
+	var name_rule := RegEx.create_from_string(Profile.FRESH_NAME_PATTERN)
+	check(name_rule.search("chapter-one-profile-v3-r20261117-070000-2.json")!=null and name_rule.search("chapter-one-profile-v3-r1.json
+")==null and name_rule.search("chapter-one-profile-v3-r1.json
+")==null,"L1 the pointer name rule accepts the fresh-save names and refuses a trailing line break")
+	# M1: the resume candidate is found once, when the file is refused, and is not looked for again.
+	var resume_before: Dictionary=refused_d.resume_info()
+	check(int(resume_before.get("revision",0))==3 and String(resume_before.get("file",""))==String(d_journals[1].file),"M1 the refused profile carries its resume candidate")
+	write_text(d.root+"/"+String(d_journals[1].file),"garbage now")
+	check(refused_d.resume_info()==resume_before,"M1 resume_info() is cached: it does not read the journal copies again")
+	# M1: only the newest 64 journal copies are scanned.
+	var g := d5_base(root+"/g",tables,rng,false)
+	var long_maker=Profile.new();long_maker.configure(g.main,true,"","",g.pointer)
+	var slot_g: String=long_maker.state.equipped.keys()[0]
+	var long_ok := true
+	for i in 36:long_ok=long_ok and long_maker.unselect(slot_g) and long_maker.select_item(1)
+	var g_files: Array=long_maker.journal_files()
+	check(long_ok and g_files.size()>Profile.MAX_JOURNAL_SCAN+2,"M1 fixture has more journal copies than the scan limit (%d)"%g_files.size())
+	for k in g_files.size()-1:mutate_file(g.root+"/"+String(g_files[k].file),tamper_stats)
+	mutate_file(g.main,tamper_stats)
+	var capped=Profile.new()
+	check(not capped.configure(g.main,true,"","",g.pointer) and capped.resume_info().is_empty(),"M1 a readable copy older than the newest 64 is not searched for")
+	# P-9: no readable copy -> empty save; an existing file is never overwritten.
+	var e := d5_base(root+"/e",tables,rng,true)
+	var e_scout=Profile.new();e_scout.configure(e.main,true,"","",e.pointer)
+	for row in e_scout.journal_files():mutate_file(e.root+"/"+String(row.file),tamper_stats)
+	mutate_file(e.main,tamper_stats)
+	var squatters := {}
+	for squat_name in ["chapter-one-profile-v3-r20000101-000000.json","chapter-one-profile-v3-r20000101-000000-2.json"]:
+		var squat: String=e.root+"/"+squat_name
+		write_text(squat,"keep me "+squat_name);squatters[squat]=FileAccess.get_sha256(squat)
+	var before_e := file_hashes(root+"/e")
+	var refused_e=Profile.new()
+	check(not refused_e.configure(e.main,true,"","",e.pointer) and refused_e.latest_readable_revision().is_empty() and refused_e.resume_info().is_empty(),"P-9 every copy is refused")
+	refused_e.stamp_override="20000101-000000"
+	check(refused_e.start_fresh_after_reject(true) and refused_e.path.ends_with("r20000101-000000-3.json") and int(refused_e.state.revision)==1 and refused_e.state.items.is_empty(),"P-9 empty save takes the first free name (-3) when the plain and -2 names are taken")
+	var squatters_same := true
+	for squat in squatters:
+		if FileAccess.get_sha256(squat)!=squatters[squat]:squatters_same=false
+	check(squatters_same and same_files(before_e,root+"/e"),"P-9 files already there stay byte for byte the same")
+	# P-10: only an old format refused -> empty v3 at the normal path, old file untouched, no pointer.
+	var f_dir := root+"/f";write_text(f_dir+"/old-v2.json",'{"schema_version":2}')
+	var old_bytes := FileAccess.get_file_as_string(f_dir+"/old-v2.json")
+	var only_old=Profile.new()
+	check(not only_old.configure(f_dir+"/profile-v3.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and only_old.reject_kind=="legacy","P-10 refused old format")
+	check(only_old.start_fresh_after_reject(false) and FileAccess.file_exists(f_dir+"/profile-v3.json") and FileAccess.get_file_as_string(f_dir+"/old-v2.json")==old_bytes and not FileAccess.file_exists(f_dir+"/active.json"),"P-10 empty v3 created at the normal path, old file unchanged, no pointer")
+	var after_old=Profile.new()
+	check(after_old.configure(f_dir+"/profile-v3.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and after_old.available,"P-10 the new v3 file reads back")
+	# A save that was never refused cannot be replaced.
+	var healthy=Profile.new();healthy.configure(a.main,true,"","",a.pointer)
+	check(not healthy.start_fresh_after_reject(true),"A readable profile refuses start_fresh_after_reject")
 func execute() -> void:
 	var directory := "res://_local/profile-fixtures-01"
 	for arg in OS.get_cmdline_user_args():
@@ -192,6 +353,7 @@ func execute() -> void:
 	check(not refuse.import_v1_text('{"schema_version":2}') and not refuse.import_v1_text("not json") and not refuse.imported_from_v1,"Non-v1 or broken text is refused as an import")
 	check(Profile.normalize(JSON.parse_string(old_text)).is_empty(),"A schema-1 document is not accepted as schema 2 without the import step")
 	g1_checks(directory,tables,rng,v2.state)
+	d5_checks(directory,tables,rng)
 	if "--negative" in OS.get_cmdline_user_args():check(false,"Intentional checker failure")
 	print("CHAPTER_PROFILE_TEST ",JSON.stringify({"checks":checks,"failures":failures,"fixtures":directory,"scope":"New isolated profile fixture files only; old equipment/progress not read or written"}))
 	quit(0 if failures.is_empty() else 1)

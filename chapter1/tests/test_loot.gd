@@ -104,7 +104,162 @@ func execute() -> void:
 	check(loot.is_upgrade(strong,weak,"chapter1.skill.frost") and not loot.is_upgrade(weak,strong,"chapter1.skill.frost"),"better item prompts, worse item does not")
 	check(loot.is_upgrade(weak,{},"chapter1.skill.frost"),"empty slot always prompts")
 	check(loot.is_upgrade(loot.make_unique("ash_bloom",12),strong,"chapter1.skill.frost"),"unique always prompts")
+	name_checks(loot)
 	finish()
+
+## D5 (a): names and descriptions are presentation. validate() checks ids and numbers; dress() rebuilds the text.
+func name_checks(loot: RefCounted) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 52117
+	# L-1: dress() rebuilds exactly what the roll wrote, for every quality and slot.
+	var dressed_same := true
+	var first_diff := ""
+	var rolled := 0
+	for quality in ["common","magic","rare","legendary"]:
+		for slot in loot.data.slots:
+			for i in 30:
+				var item: Dictionary = loot.roll_item(rng,1+(i*7)%30,quality,slot)
+				rolled += 1
+				var dressed: Dictionary = loot.dress(item)
+				if not loot.validate(item).is_empty() or not loot.validate(dressed).is_empty(): dressed_same = false
+				if dressed.name != item.name or dressed.description != item.description or dressed.stats != item.stats:
+					dressed_same = false
+					if first_diff.is_empty(): first_diff = JSON.stringify(item)
+	for row in loot.data.uniques:
+		var unique: Dictionary = loot.make_unique(row.id,int(row.level))
+		var dressed: Dictionary = loot.dress(unique)
+		if not loot.validate(unique).is_empty(): dressed_same = false
+		if dressed.name != unique.name or dressed.description != unique.description: dressed_same = false
+		rolled += 1
+	check(rolled >= 800 and dressed_same,"L-1 dress() reproduces the rolled name and description for %d items %s"%[rolled,first_diff])
+	# L-2b: every name and description the data can produce passes the text rules.
+	var text_ok := true
+	var words: Array = []
+	words.append_array(loot.data.rare_names.first)
+	words.append_array(loot.data.rare_names.second)
+	for table in ["bases","affixes","legendaries","uniques"]:
+		for row in loot.data[table]:
+			words.append(row.name)
+	for word in words:
+		if not loot._check_text({"name":str(word),"description":""}).is_empty(): text_ok = false
+	for table in ["legendaries","uniques"]:
+		for row in loot.data[table]:
+			if not loot._check_text({"name":"x","description":str(row.description)}).is_empty(): text_ok = false
+	for first_word in loot.data.rare_names.first:
+		for second_word in loot.data.rare_names.second:
+			if not loot._check_text({"name":str(first_word)+" "+str(second_word),"description":""}).is_empty(): text_ok = false
+	check(text_ok and words.size() > 20,"L-2b every base, affix, legendary, unique and rare-name word from the data passes the text rules")
+	# L-2: any text of a valid shape is accepted, including rare names of one or three words.
+	var texts_ok := true
+	for quality in ["common","magic","rare","legendary"]:
+		var item: Dictionary = loot.roll_item(rng,12,quality,"weapon")
+		var variants: Array[Dictionary] = [{"name":"x","description":""},{"name":"가".repeat(160),"description":"설".repeat(300)},{"name":"한낱말","description":"임의의 글"},{"name":"세 낱말 이름","description":""}]
+		for variant in variants:
+			var copy: Dictionary = item.duplicate(true)
+			copy.name = variant.name
+			copy.description = variant.description
+			if not loot.validate(copy).is_empty(): texts_ok = false
+	var uniq: Dictionary = loot.make_unique("winter_heart",12)
+	uniq.name = "다른 이름"
+	uniq.description = "다른 설명"
+	check(texts_ok and loot.validate(uniq).is_empty(),"L-2 any well-formed name and description validates (all qualities and uniques)")
+	# L-3: malformed text is rejected.
+	var shape_ok := true
+	var base_item: Dictionary = loot.roll_item(rng,12,"rare","weapon")
+	for patch in [{"name":"a\nb"},{"name":"a\u0085b"},{"name":"a\u202Eb"},{"name":"a\u2066b"},{"name":"a\u2028b"},{"name":"a\u2029b"},{"description":"a\u0085b"},{"description":"a\u202Eb"},{"description":"a\u2029b"},{"description":"a\rb"},{"name":5},{"name":"가".repeat(161)},{"name":""},{"description":"설".repeat(301)},{"description":7},{"name":"a\u0001b"},{"description":"a\tb"}]:
+		var copy: Dictionary = base_item.duplicate(true)
+		for key in patch: copy[key] = patch[key]
+		if loot.validate(copy).is_empty(): shape_ok = false
+	var newline_ok: Dictionary = base_item.duplicate(true)
+	newline_ok.description = "첫 줄\n둘째 줄"
+	check(shape_ok and loot.validate(newline_ok).is_empty(),"L-3 non-string, empty, over-long and control-character text rejected; a newline is allowed")
+	# L-4: identity forgery is still rejected.
+	var forged_ok := true
+	var item: Dictionary = loot.roll_item(rng,20,"rare","weapon")
+	var copy: Dictionary = item.duplicate(true)
+	copy.affixes[0].value = 99999
+	if loot.validate(copy).is_empty(): forged_ok = false
+	copy = item.duplicate(true)
+	copy.affixes[0].id = "no_such_affix"
+	if loot.validate(copy).is_empty(): forged_ok = false
+	copy = loot.make_unique("ash_bloom",12)
+	for stat in copy.stats:
+		copy.stats[stat] = int(copy.stats[stat])+1
+		break
+	if loot.validate(copy).is_empty(): forged_ok = false
+	var legendary: Dictionary = loot.roll_item(rng,20,"legendary","weapon")
+	check(legendary.quality == "legendary" and legendary.has("legendary_id"),"L-4 the legendary used for the forgery check really is a legendary")
+	var other_slot := ""
+	for row in loot.data.legendaries:
+		if not "weapon" in row.slots: other_slot = row.id
+	if not other_slot.is_empty():
+		copy = legendary.duplicate(true)
+		copy.legendary_id = other_slot
+		if loot.validate(copy).is_empty(): forged_ok = false
+	copy = item.duplicate(true)
+	copy.required_level = int(copy.required_level)+1
+	if loot.validate(copy).is_empty(): forged_ok = false
+	check(forged_ok,"L-4 affix range, unknown affix, unique stats, legendary of another slot and required level are still rejected")
+	# L-5: a renamed unique goes back to the data's name and description.
+	var renamed: Dictionary = loot.make_unique("winter_heart",12)
+	var original: Dictionary = renamed.duplicate(true)
+	renamed.name = "옛 이름"
+	renamed.description = "옛 설명"
+	var back: Dictionary = loot.dress(renamed)
+	check(back.name == original.name and back.description == original.description and back.stats == original.stats,"L-5 dress() restores a unique's name and description from the data")
+	# Rare names are kept as written (the data has no word ids).
+	var rare: Dictionary = loot.roll_item(rng,12,"rare","head")
+	rare.name = "세 낱말 이름"
+	check(loot.dress(rare).name == "세 낱말 이름","L-5b dress() keeps a rare item's own name")
+	# L-6: the frozen bundle of items rolled at the baseline data still validates.
+	var bundle_text := FileAccess.get_file_as_string("res://chapter1/tests/fixtures/loot_compat_items.json")
+	var bundle: Variant = JSON.parse_string(bundle_text)
+	var bundle_ok: bool = bundle is Dictionary and bundle.get("items") is Array and bundle.items.size() >= 200
+	var bad := 0
+	if bundle_ok:
+		for entry in bundle.items:
+			var fixed: Dictionary = entry.duplicate(true)
+			# JSON turns integers into floats; the profile reader converts them back before validating.
+			fixed.item_level = int(fixed.item_level)
+			fixed.required_level = int(fixed.required_level)
+			fixed.grammar = int(fixed.grammar)
+			for stat in fixed.stats: fixed.stats[stat] = int(fixed.stats[stat])
+			for affix in fixed.affixes: affix.value = int(affix.value)
+			if not loot.validate(fixed).is_empty(): bad += 1
+	check(bundle_ok and bad == 0,"L-6 every item in loot_compat_items.json validates against the current data (%d failing)"%bad)
+	# L-7: a renamed copy of the data is honoured; items rolled with the original data still validate and are re-dressed.
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Loot.DATA_PATH))
+	raw.bases[0].name = "새 기본 이름"
+	raw.affixes[0].name = "새 접두"
+	raw.uniques[0].name = "새 고유 이름"
+	raw.uniques[0].description = "새 고유 설명"
+	var copy_path := "res://_local/d5/loot-renamed.json"
+	DirAccess.make_dir_recursive_absolute("res://_local/d5")
+	var handle := FileAccess.open(copy_path,FileAccess.WRITE)
+	check(handle != null,"L-7 the renamed data copy can be written under _local")
+	if handle == null: return
+	handle.store_string(JSON.stringify(raw,"\t"))
+	handle.close()
+	var renamed_loot = Loot.new()
+	check(renamed_loot.load_file(copy_path),"L-7 renamed data copy loads: "+str(renamed_loot.errors))
+	var old_unique: Dictionary = loot.make_unique(String(raw.uniques[0].id),int(raw.uniques[0].level))
+	var old_base_item: Dictionary = {}
+	var old_affix_item: Dictionary = {}
+	var base_id := String(raw.bases[0].id)
+	var affix_id := String(raw.affixes[0].id)
+	for i in 4000:
+		var rolled_item: Dictionary = loot.roll_item(rng,1+i%30,["common","magic"][i%2])
+		if old_base_item.is_empty() and rolled_item.base_id.ends_with("."+base_id) and rolled_item.quality == "common": old_base_item = rolled_item
+		if old_affix_item.is_empty():
+			for entry in rolled_item.affixes:
+				if entry.id == affix_id: old_affix_item = rolled_item
+		if not old_base_item.is_empty() and not old_affix_item.is_empty(): break
+	var renamed_ok := not old_base_item.is_empty() and not old_affix_item.is_empty()
+	if renamed_ok:
+		renamed_ok = renamed_loot.validate(old_unique).is_empty() and renamed_loot.validate(old_base_item).is_empty() and renamed_loot.validate(old_affix_item).is_empty()
+		renamed_ok = renamed_ok and renamed_loot.dress(old_unique).name == "새 고유 이름" and renamed_loot.dress(old_unique).description == "새 고유 설명"
+		renamed_ok = renamed_ok and "새 기본 이름" in renamed_loot.dress(old_base_item).name and "새 접두" in renamed_loot.dress(old_affix_item).name
+	check(renamed_ok,"L-7 items rolled with the old names validate against renamed data and dress() uses the new names")
 
 func finish() -> void:
 	print("CHAPTER1_LOOT_RESULT ",JSON.stringify({"checks":checks,"failures":failures,"scope":"loot grammar v2 only; not wired into the running chapter"}))

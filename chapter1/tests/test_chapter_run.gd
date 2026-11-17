@@ -729,6 +729,169 @@ func build_checks() -> void:
 	var gear_gate := built_run({"witch.frost.needle":1},12)
 	check(gear_gate.can_equip({"required_level":12}) and not gear_gate.can_equip({"required_level":13}) and not tuned_run({},FROST).can_equip({"required_level":2}),"Wearing needs max(permanent level, grace level); no build keeps the grace level")
 
+## D4-K: abandon() takes the defeat path and leaves the snapshot layout alone.
+func abandon_checks() -> void:
+	var menu=Chapter.new()
+	var keys_menu: Array=menu.snapshot().keys()
+	check(not menu.abandon() and menu.mode=="menu","K-3 abandon() from the menu does nothing")
+	var live=Chapter.new();live.start(21)
+	for i in 50:live.step(Vector2.ZERO)
+	var keys_before: Array=live.snapshot().keys()
+	var before_events: int=live.events.size()
+	check(live.abandon() and live.mode=="defeat","K-1 abandon() in a live run returns true and the mode is defeat")
+	var last: Dictionary=live.events[live.events.size()-1]
+	check(live.events.size()==before_events+1 and last.type=="defeat" and last.get("abandoned",false)==true,"K-1 the last event is defeat with abandoned")
+	check(live.snapshot().keys()==keys_before and keys_before==keys_menu,"K-6 snapshot keys are the same before and after (and as a fresh object)")
+	var tick_then: int=live.tick
+	for i in 30:live.step(Vector2.ZERO)
+	check(live.tick==tick_then and live.mode=="defeat","K-4 no tick passes after abandon()")
+	var again_state: String=JSON.stringify(live.snapshot())
+	check(not live.abandon() and JSON.stringify(live.snapshot())==again_state,"K-3 abandon() after the end does nothing")
+	var paused=Chapter.new();paused.start(22)
+	for i in 10:paused.step(Vector2.ZERO)
+	paused.set_paused(true)
+	check(paused.mode=="paused" and paused.abandon() and paused.mode=="defeat","K-2 abandon() works from a paused run")
+	var opened=Chapter.new();opened.start(23)
+	for i in 10:opened.step(Vector2.ZERO)
+	check(opened.open_inventory() and opened.mode=="inventory" and opened.abandon() and opened.mode=="defeat","K-2 abandon() works with the inventory open and closes it")
+	var choosing=Chapter.new();choosing.start(25)
+	choosing.growth.award_xp(12);choosing._refresh_mode()
+	check(choosing.mode=="choice" and choosing.abandon() and choosing.mode=="defeat","K-2 abandon() works while a level-up choice is pending")
+	var won=Chapter.new();won.start(24)
+	won._terminal_mode="victory";won._refresh_mode()
+	check(won.mode=="victory" and not won.abandon() and won.mode=="victory","K-3 abandon() after a victory does nothing")
+	var a=Chapter.new();var b=Chapter.new()
+	a.start(21);b.start(21)
+	for i in 50:
+		a.step(Vector2.ZERO);b.step(Vector2.ZERO)
+	a.abandon()
+	check(a.start(31) and b.start(31),"K-5 both objects restart")
+	for i in 600:
+		a.step(Vector2.RIGHT);b.step(Vector2.RIGHT)
+	check(JSON.stringify(a.snapshot()).sha256_text()==JSON.stringify(b.snapshot()).sha256_text() and a.tick==600,"K-5 a run started after abandon() matches one started without it (600 ticks)")
+## Row value of an id in a block's rows (null when absent).
+func row_of(rows: Array,id_: String) -> Variant:
+	for r in rows:
+		if r.id==id_:return r
+	return null
+
+## The sheet must repeat the numbers the core really uses: effective_skill and hero.
+func sheet_matches(r: RefCounted,label: String) -> bool:
+	var sheet: Dictionary=r.stat_sheet()
+	var ok := true
+	var primary: Dictionary=r.effective_skill(r._primary_id)
+	ok=ok and sheet.primary.id==r._primary_id and row_of(sheet.primary.rows,"damage").raw==int(primary.effects.damage_raw) and row_of(sheet.primary.rows,"interval").raw==int(primary.effects.cooldown_ticks)
+	ok=ok and row_of(sheet.primary.rows,"hit_budget").raw==int(primary.effects.hit_budget)
+	for key in ["projectiles","chain_targets","branches","pierce","shatter_count","slow_bps"]:
+		var row: Variant=row_of(sheet.primary.rows,{"slow_bps":"slow"}.get(key,key))
+		ok=ok and (int(primary.effects.get(key,0))==0 if row==null else row.raw==int(primary.effects[key]))
+	ok=ok and sheet.secondaries.size()==2
+	for block in sheet.secondaries:
+		var skill: Dictionary=r.effective_skill(block.id)
+		ok=ok and not skill.is_empty() and row_of(block.rows,"damage").raw==int(skill.effects.damage_raw) and row_of(block.rows,"interval").raw==int(skill.effects.cooldown_ticks)
+	ok=ok and row_of(sheet.hero.rows,"max_hp").raw==int(r.hero.max_hp_raw) and is_equal_approx(float(row_of(sheet.hero.rows,"speed").value),float(r.hero.speed))
+	ok=ok and row_of(sheet.hero.rows,"soul_gain").raw==int(r._gear_stats.get("soul_gain_bps",0)) and row_of(sheet.hero.rows,"pickup_radius").raw==int(r._gear_stats.get("pickup_radius_cm",0))
+	ok=ok and row_of(sheet.hero.rows,"damage_reduction").raw==int(r._gear_stats.get("damage_reduction_bps",0))+r._build_reduction_bps
+	check(ok,"A1 "+label+": stat_sheet() equals effective_skill and hero")
+	return ok
+
+func fingerprint(r: RefCounted) -> String:
+	return JSON.stringify([r.equipped,r.hero,r._gear_stats,r.snapshot()])
+
+## D6 A1: stat_sheet, preview_equip, sheet_for. Stats are set by hand so every number is known.
+func sheet_checks() -> void:
+	var run=Chapter.new();check(run.start(41,FROST),"A1 run starts")
+	# The fixture hands the run all three skills at rank 1 so the sheet has two secondaries.
+	for id_ in run.SKILL_IDS:
+		if not run.growth._ranks.has(id_):run.growth._ranks[id_]=1
+	check(run.effective_skill("chapter1.skill.ember").size()>0 and run.effective_skill("chapter1.skill.arc").size()>0,"A1 fixture owns all three skills")
+	sheet_matches(run,"empty gear")
+	var before_empty: Dictionary=run.stat_sheet()
+	check(row_of(before_empty.hero.rows,"max_hp").raw==120*256 and before_empty.sets.is_empty() and before_empty.effects.is_empty(),"A1 empty gear sheet: base health, no sets, no effects")
+	var staff_rows: Variant=row_of(before_empty.primary.rows,"damage")
+	check(staff_rows.better=="higher" and row_of(before_empty.primary.rows,"interval").better=="lower" and row_of(before_empty.hero.rows,"dash_cooldown").better=="lower","A1 rows carry the player-friendly direction")
+	# Hand-made bag: weapon, two rings, one ring needing a high level, a legendary body.
+	var mk := func(uid: int,slot_: String,stats: Dictionary,quality: String="magic",req: int=1,desc: String="") -> Dictionary:
+		return {"uid":uid,"name":"item%d"%uid,"slot":slot_,"stats":stats,"quality":quality,"item_level":1,"affixes":[],"description":desc,"required_level":req}
+	run.inventory.clear();run.equipped.clear();run._recompute_gear()
+	run.inventory.append(mk.call(901,"weapon",{"damage_bps":2000,"cooldown_bps":1000,"projectiles":1,"pierce":1}))
+	run.inventory.append(mk.call(902,"ring",{"max_hp_raw":2560,"move_speed_bps":500}))
+	run.inventory.append(mk.call(903,"ring",{"damage_reduction_bps":400,"dash_cooldown_bps":2000,"soul_gain_bps":300}))
+	run.inventory.append(mk.call(904,"ring",{"damage_bps":9000},"rare",99))
+	run.inventory.append(mk.call(905,"body",{"max_hp_raw":-1280,"frost_threshold":1},"legendary",1,"Test effect text"))
+	run.inventory.append(mk.call(906,"charm",{"pickup_radius_cm":100,"slow_bps":500}))
+	var fp_before := fingerprint(run)
+	var pv: Dictionary=run.preview_equip(901)
+	check(fingerprint(run)==fp_before,"A1 preview_equip leaves equipped, hero, _gear_stats and snapshot byte-identical")
+	check(pv.slot=="weapon" and pv.can_equip and not pv.veiled and pv.replaces_uid==0 and pv.sets_before.is_empty() and pv.sets_after.is_empty(),"A1 empty slot preview: slot, can_equip, replaces_uid 0")
+	var dmg: Dictionary={}
+	for row in pv.rows:
+		if row.group=="primary" and row.id=="damage":dmg=row
+	check(dmg.change=="better" and dmg.after>dmg.before,"A1 preview marks a damage gain as better")
+	var cd: Dictionary={}
+	for row in pv.rows:
+		if row.group=="primary" and row.id=="interval":cd=row
+	check(cd.change=="better" and cd.after<cd.before and cd.delta<0.0,"A1 a shorter interval is better although the number falls")
+	# Preview equals a real equip.
+	check(run.open_inventory() and run.equip(901),"A1 real equip")
+	var after_real: Dictionary=run.stat_sheet()
+	check(JSON.stringify(after_real)==JSON.stringify(pv.after),"A1 preview after equals the sheet after a real equip")
+	sheet_matches(run,"weapon worn")
+	# Rings: each slot previews separately; both preview calls change nothing.
+	check(run.equip(902,"ring"),"A1 ring 1 worn")
+	var fp_ring := fingerprint(run)
+	var p_ring: Dictionary=run.preview_equip(903,"ring")
+	var p_ring2: Dictionary=run.preview_equip(903,"ring2")
+	var p_auto: Dictionary=run.preview_equip(903)
+	check(fingerprint(run)==fp_ring,"A1 ring previews change nothing")
+	check(p_ring.slot=="ring" and p_ring.replaces_uid==902 and p_ring2.slot=="ring2" and p_ring2.replaces_uid==0 and p_auto.slot=="ring2","A1 ring previews: ring replaces 902, ring2 is empty, auto picks the free ring2")
+	check(row_of(p_ring.after.hero.rows,"max_hp").raw==120*256 and row_of(p_ring2.after.hero.rows,"max_hp").raw==120*256+2560,"A1 the replaced ring loses its health, the free slot keeps it")
+	check(p_ring.rows.size()==p_ring2.rows.size() and p_ring2.can_equip and p_ring.can_equip,"A1 both ring previews can be worn")
+	var hp_row: Dictionary={}
+	for row in p_ring.rows:
+		if row.group=="hero" and row.id=="max_hp":hp_row=row
+	check(hp_row.change=="worse" and hp_row.delta<0.0,"A1 losing health is worse")
+	var dash_row: Dictionary={}
+	for row in p_ring2.rows:
+		if row.group=="hero" and row.id=="dash_cooldown":dash_row=row
+	check(dash_row.change=="better" and dash_row.delta<0.0,"A1 a shorter dash recharge is better")
+	check(run.equip(903,"ring2"),"A1 ring 2 worn")
+	check(run.preview_equip(902,"ring2").slot=="ring2" and run.preview_equip(902,"ring2").replaces_uid==903,"A1 with both rings worn, a worn ring previews against the other slot")
+	sheet_matches(run,"two rings")
+	# Wrong slot and level gate.
+	var wrong: Dictionary=run.preview_equip(901,"head")
+	check(not wrong.slot_ok and not wrong.can_equip and JSON.stringify(wrong.after)==JSON.stringify(wrong.before),"A1 a slot the item cannot go into: not wearable, no change")
+	var gated: Dictionary=run.preview_equip(904)
+	check(not gated.can_equip and not gated.level_ok and gated.slot_ok and gated.required_level==99 and run.can_equip(run._owned(904))==gated.level_ok,"A1 required-level gate: preview shows numbers, can_equip false, same answer as can_equip")
+	check(not run.equip(904,"ring") and not run.equipped.values().has(904),"A1 the gated item really cannot be worn")
+	check(run.preview_equip(99999).is_empty(),"A1 unknown uid returns an empty dictionary")
+	# Effects: legendary description appears and disappears.
+	var p_leg: Dictionary=run.preview_equip(905)
+	check(p_leg.effects_gained.size()==1 and p_leg.effects_gained[0].source=="item905" and p_leg.effects_gained[0].text=="Test effect text" and p_leg.effects_lost.is_empty(),"A1 legendary effect is gained")
+	check(run.equip(905) and run.stat_sheet().effects.size()==1,"A1 worn legendary shows in the sheet effects")
+	var frost_before: Variant=row_of(before_empty.primary.rows,"freeze_stacks")
+	sheet_matches(run,"legendary body")
+	var p_off: Dictionary=run.preview_equip(905)
+	check(p_off.effects_gained.is_empty() and p_off.slot=="body","A1 re-previewing the worn item gains nothing")
+	run.equipped.erase("body");run._recompute_gear()
+	check(run.equip(906) and run.equipped.has("charm"),"A1 charm slot can be worn")
+	sheet_matches(run,"charm worn")
+	check(frost_before==null or frost_before.better=="lower","A1 freeze threshold is a lower-is-better row")
+	# sheet_for: off-run, no tick passes; time one call.
+	var started := Time.get_ticks_usec()
+	var off: Dictionary=Chapter.sheet_for(FROST,{},[] as Array[Dictionary])
+	var elapsed_ms := float(Time.get_ticks_usec()-started)/1000.0
+	check(not off.has("error") and row_of(off.hero.rows,"max_hp").raw==120*256 and off.primary.id==FROST,"A1 sheet_for without build or gear")
+	var timing := 0.0
+	for i in 20:
+		var t := Time.get_ticks_usec()
+		Chapter.sheet_for(FROST,build_of({}),[] as Array[Dictionary])
+		timing+=float(Time.get_ticks_usec()-t)/1000.0
+	print("SHEET_FOR_MS first=",snappedf(elapsed_ms,.01)," mean_of_20_with_build=",snappedf(timing/20.0,.01))
+	check(Chapter.sheet_for("chapter1.skill.ember",build_of({}),[] as Array[Dictionary]).has("error"),"A1 sheet_for refuses a build of another witch")
+	var bad: Array[Dictionary]=[{"name":"x"}]
+	check(Chapter.sheet_for(FROST,{},bad).has("error"),"A1 sheet_for refuses invalid gear")
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -827,6 +990,8 @@ func execute() -> void:
 	pressure_checks()
 	round2_checks()
 	build_checks()
+	abandon_checks()
+	sheet_checks()
 	if "--negative" in OS.get_cmdline_user_args():check(false,"Intentional checker failure")
 	print("CHAPTER_FULL_TEST ",JSON.stringify({"checks":checks,"failures":failures,"scope":"Fixtures and12000 item rolls; not normal-run pacing or visual approval"}))
 	quit(0 if failures.is_empty() else 1)

@@ -589,28 +589,28 @@ func _publish_item(item: Dictionary,point: Vector2,direct: bool,boss_reward: boo
 			else:metrics.overflow_items=int(metrics.get("overflow_items",0))+1
 	else:items.append(item)
 
-func effective_skill(id_: String) -> Dictionary:
-	var value: Dictionary=super.effective_skill(id_)
+func _skill_with(id_: String,gear: Dictionary) -> Dictionary:
+	var value: Dictionary=super._skill_with(id_,gear)
 	if value.is_empty():return value
 	var effect: Dictionary=value.effects
-	var extra_pierce := int(_gear_stats.get("pierce",0))
+	var extra_pierce := int(gear.get("pierce",0))
 	effect.pierce=mini(8,int(effect.pierce)+extra_pierce)
 	effect.hit_budget=mini(128,int(effect.hit_budget)+extra_pierce*maxi(1,int(effect.projectiles)))
-	if id_ in ["chapter1.skill.ember","chapter1.skill.arc"] and int(effect.radius_cm)>0:effect.radius_cm=mini(1200 if id_=="chapter1.skill.arc" else 650,int(effect.radius_cm)+int(_gear_stats.get("radius_cm",0)))
+	if id_ in ["chapter1.skill.ember","chapter1.skill.arc"] and int(effect.radius_cm)>0:effect.radius_cm=mini(1200 if id_=="chapter1.skill.arc" else 650,int(effect.radius_cm)+int(gear.get("radius_cm",0)))
 	if id_=="chapter1.skill.ember":
-		effect.damage_raw=int(effect.damage_raw)*(10000+int(_gear_stats.get("fire_damage_bps",0)))/10000
-		if _gear_stats.get("fire_burst",0)>0:
+		effect.damage_raw=int(effect.damage_raw)*(10000+int(gear.get("fire_damage_bps",0)))/10000
+		if gear.get("fire_burst",0)>0:
 			effect.death_burst=1;effect.proc_depth=1;effect.radius_cm=maxi(200,int(effect.radius_cm));effect.hit_budget=maxi(32,int(effect.hit_budget))
 	elif id_=="chapter1.skill.frost":
-		effect.slow_bps=mini(8500,int(effect.slow_bps)+int(_gear_stats.get("slow_bps",0)))
-		if _gear_stats.get("frost_threshold",0)>0:
+		effect.slow_bps=mini(8500,int(effect.slow_bps)+int(gear.get("slow_bps",0)))
+		if gear.get("frost_threshold",0)>0:
 			effect.freeze_stacks=maxi(2,int(effect.freeze_stacks)-1) if effect.freeze_stacks>0 else 2
 			effect.shatter_count=mini(16,maxi(2,int(effect.shatter_count)))
 			effect.hit_budget=maxi(12,int(effect.hit_budget))
 	elif id_=="chapter1.skill.arc":
-		effect.branches=mini(3,int(effect.branches)+int(_gear_stats.get("arc_branches",0)))
-		if _gear_stats.get("arc_branches",0)>0:effect.hit_budget=mini(128,maxi(int(effect.hit_budget),int(effect.branches)*int(effect.chain_targets)))
-		effect.damage_raw=int(effect.damage_raw)*(10000+int(_gear_stats.get("arc_damage_bps",0)))/10000
+		effect.branches=mini(3,int(effect.branches)+int(gear.get("arc_branches",0)))
+		if gear.get("arc_branches",0)>0:effect.hit_budget=mini(128,maxi(int(effect.hit_budget),int(effect.branches)*int(effect.chain_targets)))
+		effect.damage_raw=int(effect.damage_raw)*(10000+int(gear.get("arc_damage_bps",0)))/10000
 	# The permanent tree acts on the witch's signature skill only, after gear and before the role bonus.
 	if _build_active and id_==_primary_id and not _build_skill.is_empty():_apply_build_skill(effect)
 	_apply_role_tuning(id_,value)
@@ -663,6 +663,16 @@ func import_starting_gear(gear: Array[Dictionary]) -> bool:
 	# Full health only at a fresh run boundary. Mid-run equipment never heals.
 	hero.hp_raw=hero.max_hp_raw
 	return true
+
+## Off-run sheet: a throwaway core is started (no tick runs), given the build and the worn gear, and read.
+## `gear` items are the profile's storage items (storage_id, optional equip_slot) as import_starting_gear takes them.
+## Returns stat_sheet(), or {"error": reason} when the build, start or gear is refused.
+static func sheet_for(primary: String,build: Dictionary,gear: Array[Dictionary]) -> Dictionary:
+	var core := new()
+	if not build.is_empty() and not core.configure_build(build):return {"error":"build: "+str(core.errors)}
+	if not core.start(1,primary):return {"error":"start: "+str(core.errors)}
+	if not gear.is_empty() and not core.import_starting_gear(gear):return {"error":"gear refused"}
+	return core.stat_sheet()
 
 ## The item as the loot grammar defines it, without run or storage bookkeeping.
 func _bare_item(item: Dictionary) -> Dictionary:

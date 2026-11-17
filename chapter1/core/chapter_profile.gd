@@ -14,6 +14,10 @@ const MAX_ITEMS := 325 # One final69-item recovery batch; start blocked above256
 const PATH_V3 := "user://chapter-one-profile-v3.json"
 const PATH_V2 := "user://chapter-one-profile-v2.json"
 const PATH_V1 := "user://chapter-one-profile-v1.json"
+const POINTER_PATH := "user://chapter-one-profile-active.json"
+const FRESH_NAME_PATTERN := "^chapter-one-profile-v3-r[0-9-]+\\.json\\z"
+## At most this many journal copies are read when looking for one to continue from (newest first).
+const MAX_JOURNAL_SCAN := 64
 const EQUIP_SLOTS := ["weapon","head","body","hands","feet","charm","ring","ring2"]
 const TOP_KEYS := ["schema_version","revision","next_id","items","equipped","completed_runs","best_ticks","essence","receipts"]
 const CHAR_KEYS := ["xp","tree_revision","ranks","first_rewards","respecs"]
@@ -32,6 +36,16 @@ var error := ""
 var path := ""
 var _loaded_text := ""
 var available := false
+## Why the last configure() refused a file: "" when it did not. Kinds: "damaged" (JSON or size),
+## "incompatible" (well-formed but failed validation), "legacy" (a schema-2/1 file was refused).
+var reject_kind := ""
+var reject_reason := ""
+## Where the pointer file lives ("" = none). The product uses POINTER_PATH; QA passes an isolated path.
+var pointer_path := ""
+## The newest readable journal copy, computed once when a v3 file is refused (see _reject).
+var _resume := {}
+## Test hook: when set (digits and dashes only), replaces the time stamp in a new save's file name.
+var stamp_override := ""
 ## True until the first save after reading a schema-1 / schema-2 file.
 var imported_from_v1 := false
 var imported_from_v2 := false
@@ -64,31 +78,143 @@ static func fresh() -> Dictionary:
 
 ## Reads `destination` (schema 3). When it does not exist, reads the schema-2 file, then the schema-1 file, into
 ## memory only. In QA mode the legacy paths are optional arguments and must be isolated QA paths too.
-func configure(destination: String=PATH_V3,qa: bool=false,legacy_v2: String="",legacy_v1: String="") -> bool:
-	available=false;error="";state=fresh();characters={};notices={};path=destination;_loaded_text="";imported_from_v1=false;imported_from_v2=false
+func configure(destination: String=PATH_V3,qa: bool=false,legacy_v2: String="",legacy_v1: String="",pointer: String="") -> bool:
+	available=false;error="";reject_kind="";reject_reason="";_resume={};state=fresh();characters={};notices={};path=destination;_loaded_text="";imported_from_v1=false;imported_from_v2=false;pointer_path=""
 	if qa:
 		var base := "res://_local/"
-		for candidate_path in [path,legacy_v2,legacy_v1]:
+		for candidate_path in [path,legacy_v2,legacy_v1,pointer]:
 			if String(candidate_path).is_empty():continue
 			if not String(candidate_path).begins_with(base) or not String(candidate_path).ends_with(".json"):error="Invalid isolated QA profile path";return false
+		pointer_path=pointer
 	else:
 		if destination!=PATH_V3 or not ProjectSettings.get_setting("application/config/use_custom_user_dir",false) or not String(ProjectSettings.get_setting("application/config/custom_user_dir_name","")).begins_with("WitchMoira"):
 			error="전용 저장 경로가 없는 미리보기입니다";return false
-		legacy_v2=PATH_V2;legacy_v1=PATH_V1
+		legacy_v2=PATH_V2;legacy_v1=PATH_V1;pointer_path=POINTER_PATH
+	path=_pointed(destination)
 	if FileAccess.file_exists(path):
 		_loaded_text=FileAccess.get_file_as_string(path)
-		if _loaded_text.length()>2000000:error="Profile exceeds bound";return false
+		if _loaded_text.length()>2000000:error="Profile exceeds bound";return _reject("damaged","size",path)
 		var parser := JSON.new()
-		if parser.parse(_loaded_text)!=OK:error="저장 파일 검증 실패 · 원본 보존";return false
+		if parser.parse(_loaded_text)!=OK:error="저장 파일 검증 실패 · 원본 보존";return _reject("damaged","json",path)
 		var seen := {}
-		var normalized := normalize_v3(parser.data,false,seen)
-		if normalized.is_empty():error="저장 파일 검증 실패 · 원본 보존";return false
+		var why := []
+		var normalized := normalize_v3(parser.data,false,seen,why)
+		if normalized.is_empty():error="저장 파일 검증 실패 · 원본 보존";return _reject("incompatible",String(why[0]) if not why.is_empty() else "schema 3 document",path)
 		_adopt(normalized);notices=seen
 	elif not legacy_v2.is_empty() and FileAccess.file_exists(legacy_v2):
-		if not import_v2_text(FileAccess.get_file_as_string(legacy_v2)):return false
+		if not import_v2_text(FileAccess.get_file_as_string(legacy_v2)):return _reject("legacy",reject_reason,legacy_v2)
 	elif not legacy_v1.is_empty() and FileAccess.file_exists(legacy_v1):
-		if not import_v1_text(FileAccess.get_file_as_string(legacy_v1)):return false
+		if not import_v1_text(FileAccess.get_file_as_string(legacy_v1)):return _reject("legacy",reject_reason,legacy_v1)
 	available=true;return true
+
+## The file the pointer names, when the pointer is well formed and names an existing file directly beside
+## `destination` with the fresh-save naming rule. Anything else (a path, "..", another pattern, a missing file)
+## is ignored and `destination` is used. The pointer is only read here.
+func _pointed(destination: String) -> String:
+	if pointer_path.is_empty() or not FileAccess.file_exists(pointer_path):return destination
+	var text := FileAccess.get_file_as_string(pointer_path)
+	if text.length()>4096:return destination
+	var parser := JSON.new()
+	if parser.parse(text)!=OK or not parser.data is Dictionary or not parser.data.get("file") is String:return destination
+	var file: String=parser.data.file
+	if RegEx.create_from_string(FRESH_NAME_PATTERN).search(file)==null:return destination
+	var target := _sibling(destination,file)
+	return target if FileAccess.file_exists(target) else destination
+
+static func _sibling(file_path: String,file_name: String) -> String:
+	var folder := file_path.get_base_dir()
+	return folder+file_name if folder.ends_with("/") else folder+"/"+file_name
+
+## Journal copies (`<file>.revision-*.json`) beside the current file, newest revision first: [{file, number}].
+func journal_files() -> Array:
+	var rows := []
+	var dir := DirAccess.open(path.get_base_dir())
+	if dir==null:return rows
+	var prefix := path.get_file().get_basename()+".revision-"
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while not entry.is_empty():
+		if not dir.current_is_dir() and entry.begins_with(prefix) and entry.ends_with(".json"):
+			rows.append({"file":entry,"number":int(entry.trim_prefix(prefix).get_slice("-",0))})
+		entry=dir.get_next()
+	dir.list_dir_end()
+	rows.sort_custom(func(a,b):return int(a.number)>int(b.number) or (int(a.number)==int(b.number) and String(a.file)>String(b.file)))
+	return rows
+
+## The newest journal copy the current rules can read: {file, revision, unix, state} or {}. Reads only.
+func latest_readable_revision() -> Dictionary:
+	var scanned := 0
+	for row in journal_files():
+		scanned+=1
+		if scanned>MAX_JOURNAL_SCAN:break
+		var full := _sibling(path,String(row.file))
+		var text := FileAccess.get_file_as_string(full)
+		if text.length()>2000000:continue
+		var parser := JSON.new()
+		if parser.parse(text)!=OK:continue
+		var read := normalize_v3(parser.data,false)
+		if not read.is_empty():return {"file":row.file,"revision":int(read.revision),"unix":int(FileAccess.get_modified_time(full)),"state":read}
+	return {}
+
+## After a refusal: begin a new save without touching the refused file or its journal copies.
+## - v3 file refused: a new file `chapter-one-profile-v3-r<YYYYMMDD-HHMMSS>[-n].json` beside it (never an existing
+##   name), from the newest readable journal copy when use_revision, else empty; then the pointer file names it.
+## - only a schema-2/1 file refused (no v3 file exists): an empty v3 at the normal path; no pointer.
+## Returns false and leaves the refused state as it was when anything fails.
+## {file, revision, unix} of the journal copy a new save would continue from, or {}. Cached; no disk access.
+func resume_info() -> Dictionary:
+	if _resume.is_empty():return {}
+	return {"file":_resume.file,"revision":_resume.revision,"unix":_resume.unix}
+
+func start_fresh_after_reject(use_revision: bool=true) -> bool:
+	if available or reject_kind.is_empty():error="새 저장을 시작할 수 없는 상태입니다";return false
+	var refused_path := path;var refused_kind := reject_kind;var refused_reason := reject_reason;var refused_error := error
+	var target := path;var from_revision := "";var next_state := fresh();var next_characters := {}
+	if refused_kind=="legacy":
+		if FileAccess.file_exists(target):error="새 저장 파일 이름이 이미 있습니다";return false
+	else:
+		if pointer_path.is_empty():error="가리키는 파일 경로가 없습니다";return false
+		var stamp_time := Time.get_datetime_dict_from_system()
+		var stamp := "%04d%02d%02d-%02d%02d%02d"%[stamp_time.year,stamp_time.month,stamp_time.day,stamp_time.hour,stamp_time.minute,stamp_time.second]
+		if not stamp_override.is_empty():stamp=stamp_override
+		var number := 1
+		target=_sibling(refused_path,"chapter-one-profile-v3-r"+stamp+".json")
+		while FileAccess.file_exists(target):
+			number+=1;target=_sibling(refused_path,"chapter-one-profile-v3-r"+stamp+"-"+str(number)+".json")
+		if use_revision:
+			var latest: Dictionary=_resume
+			if not latest.is_empty():
+				next_state=latest.state.duplicate(true);next_state.erase("characters");next_state.schema_version=2
+				next_characters=latest.state.characters.duplicate(true);from_revision=String(latest.file)
+	state=next_state;characters=next_characters;path=target;_loaded_text="";available=true;error=""
+	var written := _persist(state.duplicate(true))
+	if written and refused_kind!="legacy":written=_write_pointer(target.get_file(),refused_path.get_file(),refused_kind,refused_reason,from_revision)
+	if not written:
+		var why := error
+		available=false;state=fresh();characters={};path=refused_path;_loaded_text="";error=why if not why.is_empty() else refused_error
+		return false
+	reject_kind="";reject_reason=""
+	return true
+
+func _write_pointer(file: String,replaces: String,kind: String,reason: String,from_revision: String) -> bool:
+	var doc := {"schema":1,"file":file,"replaces":replaces,"kind":kind,"reason":reason,"created_unix":int(Time.get_unix_time_from_system()),"from_revision":from_revision}
+	var text := JSON.stringify(doc,"  ")
+	var temporary := pointer_path.get_basename()+".next-%d.json"%Time.get_ticks_usec()
+	var handle := FileAccess.open(temporary,FileAccess.WRITE)
+	if handle==null:error="가리키는 파일 생성 실패";return false
+	handle.store_string(text);handle.flush();var status := handle.get_error();handle.close()
+	if status!=OK or FileAccess.get_file_as_string(temporary)!=text:error="가리키는 파일 쓰기 검증 실패";return false
+	if DirAccess.rename_absolute(temporary,pointer_path)!=OK:error="가리키는 파일 교체 실패";return false
+	return true
+
+## Records why a file was refused and writes one log line. Writes no file and changes nothing on disk.
+## The line holds the file name only (no user path) and no item names.
+func _reject(kind: String,reason: String,source: String) -> bool:
+	reject_kind=kind;reject_reason=reason
+	_resume=latest_readable_revision() if kind!="legacy" else {}
+	var text := FileAccess.get_file_as_string(source) if FileAccess.file_exists(source) else ""
+	print("CHAPTER1_PROFILE_REJECTED ",JSON.stringify({"file":source.get_file(),"kind":kind,"reason":reason,"bytes":text.to_utf8_buffer().size(),"sha256_16":text.sha256_text().substr(0,16)}))
+	return false
 
 func _adopt(v3: Dictionary) -> void:
 	state=v3.duplicate(true);state.erase("characters");state.schema_version=2
@@ -97,11 +223,12 @@ func _adopt(v3: Dictionary) -> void:
 ## Read a schema-2 profile into memory. Nothing is written until the next save,
 ## and that save goes to this profile's own (schema-3) path.
 func import_v2_text(text: String) -> bool:
-	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";return false
+	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";reject_reason="size";return false
 	var parser := JSON.new()
-	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";return false
-	var upgraded := normalize(parser.data)
-	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";return false
+	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="json";return false
+	var why := []
+	var upgraded := normalize(parser.data,why)
+	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason=String(why[0]);return false
 	state=upgraded;characters=migrated_characters(state);imported_from_v2=true
 	return true
 
@@ -120,11 +247,11 @@ static func migrated_characters(old_state: Dictionary) -> Dictionary:
 ## Read a schema-1 profile into memory. Nothing is written until the next save,
 ## and that save goes to this profile's own path.
 func import_v1_text(text: String) -> bool:
-	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";return false
+	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";reject_reason="size";return false
 	var parser := JSON.new()
-	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";return false
+	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="json";return false
 	var upgraded := upgrade_v1(parser.data)
-	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";return false
+	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="schema 1 document";return false
 	state=upgraded;characters=migrated_characters(state);imported_from_v1=true
 	return true
 
@@ -141,7 +268,13 @@ static func upgrade_v1(value: Variant) -> Dictionary:
 	candidate.schema_version=2
 	return normalize(candidate)
 
-static func normalize(value: Variant) -> Dictionary:
+## `reasons_out` (optional) receives a short reason when the document is rejected; the return value is unchanged.
+static func normalize(value: Variant,reasons_out: Array=[]) -> Dictionary:
+	var rejected := _normalize_body(value,reasons_out)
+	if rejected.is_empty() and reasons_out.is_empty():reasons_out.append("profile fields")
+	return rejected
+
+static func _normalize_body(value: Variant,reasons_out: Array) -> Dictionary:
 	if not value is Dictionary or not Catalog.keys_match(value,TOP_KEYS):return {}
 	for key in ["schema_version","revision","next_id","completed_runs","best_ticks","essence"]:
 		if not Catalog.integer(value[key],0,1000000000):return {}
@@ -176,7 +309,11 @@ static func normalize(value: Variant) -> Dictionary:
 		for affix in item.affixes:
 			if not affix is Dictionary or not Catalog.keys_match(affix,["id","group","stat","value"]) or not Catalog.integer(affix.value,0,1000000):return {}
 			affix.value=int(affix.value)
-		if not tables.validate(item).is_empty():return {}
+		var issues: Array[String]=tables.validate(item)
+		if not issues.is_empty():
+			reasons_out.append("items[%d].item: %s"%[result.items.find(record),issues[0]]);return {}
+		# Identity passed; name and description are presentation and follow the current data (memory only).
+		if item.has("grammar"):record.item=tables.dress(item)
 		ids[record.storage_id]=true;slots[record.storage_id]=item.slot
 	var worn := {}
 	for slot in result.equipped:
@@ -194,12 +331,17 @@ static func normalize(value: Variant) -> Dictionary:
 ## strict=true is the write rule: any violation, including a tree_revision that differs from the data, rejects.
 ## strict=false is the read rule: only a tree_revision mismatch is tolerated; the ranks are returned (emptied) and
 ## the witch is listed in `notices`. Every other violation rejects the whole file.
-static func normalize_v3(value: Variant,strict: bool=true,notices_out: Dictionary={}) -> Dictionary:
+static func normalize_v3(value: Variant,strict: bool=true,notices_out: Dictionary={},reasons_out: Array=[]) -> Dictionary:
+	var accepted := _normalize_v3_body(value,strict,notices_out,reasons_out)
+	if accepted.is_empty() and reasons_out.is_empty():reasons_out.append("schema 3 document")
+	return accepted
+
+static func _normalize_v3_body(value: Variant,strict: bool,notices_out: Dictionary,reasons_out: Array) -> Dictionary:
 	if not value is Dictionary or not Catalog.keys_match(value,TOP_KEYS+["characters"]):return {}
 	if not Catalog.integer(value.schema_version,3,3) or not value.characters is Dictionary or value.characters.size()>3:return {}
 	var view: Dictionary=value.duplicate(true);var raw: Dictionary=view.characters
 	view.erase("characters");view.schema_version=2
-	var result := normalize(view)
+	var result := normalize(view,reasons_out)
 	if result.is_empty():return {}
 	var doc := progression_doc();var table := trees()
 	if doc.is_empty() or table.is_empty():return {}

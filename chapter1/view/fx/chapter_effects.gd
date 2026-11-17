@@ -15,7 +15,13 @@ var shadows: MultiMeshInstance3D
 var telegraph: MeshInstance3D
 var telegraph_fill: MeshInstance3D
 var beams: MeshInstance3D
-var debris: Array[Dictionary]=[]
+## Debris particles as parallel arrays (was one Dictionary per particle). life/size stay 64-bit like the old
+## Dictionary floats; p/v/color are the same 32-bit types, so every number matches the old per-particle values.
+var _d_p := PackedVector3Array()
+var _d_v := PackedVector3Array()
+var _d_life := PackedFloat64Array()
+var _d_size := PackedFloat64Array()
+var _d_color := PackedColorArray()
 var item_nodes: Dictionary={}
 var strokes: Array[Dictionary]=[]
 var _last_event := -1
@@ -33,6 +39,22 @@ const COLORS={"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Colo
 const THREAT_COLOR := Color(1.0,.18,.31)
 ## Spell-child projectile scale relative to a normal bolt (brief: 50-60%).
 const CHILD_SIZE := .58
+const HOSTILE_BOLT_COLOR := Color("ff2f4f")
+const ORB_COLOR := Color("508c78")
+var _cam_basis := Basis.IDENTITY
+var _cam_z := Vector3.BACK
+var _enemies_frame: Array=[]
+var _key_cache: Dictionary={}
+## Frost instances written to the replacement batches this frame (the originals keep a zero-scaled twin).
+var _routed_p := 0
+var _routed_i := 0
+var _routed_c := 0
+var _tele_blank := false
+var _flash_blank := false
+var _flash_blank_color: Variant=null
+var _ward_blank := false
+var _arc_blank := false
+var _loot26_blank := false
 
 func setup__cloister(owner_view: Node3D) -> void:
 	view=owner_view
@@ -106,10 +128,22 @@ func _batch(shape: Mesh, capacity: int) -> MultiMeshInstance3D:
 	view.add_child(node)
 	return node
 
+func _shadow_key(e: Dictionary) -> String:
+	var ck: int=(int(e.generation)<<32)|int(e.id)
+	var s: Variant=_key_cache.get(ck)
+	if s==null:
+		if _key_cache.size()>4096:_key_cache.clear()
+		s="%d:%d" % [e.generation,e.id]
+		_key_cache[ck]=s
+	return s
+
 func burst__cloister(at: Vector2, color: Color, count: int, force: float=1) -> void:
-	for i in mini(count,MAX_PARTICLES-debris.size()):
+	for i in mini(count,MAX_PARTICLES-_d_life.size()):
 		var direction := Vector3(_rng.randf_range(-1,1),_rng.randf_range(.2,1.3),_rng.randf_range(-1,1)).normalized()
-		debris.append({"p":Vector3(at.x,.6,at.y),"v":direction*_rng.randf_range(1.5,4)*force,"life":_rng.randf_range(.16,.45),"color":color,"size":_rng.randf_range(.65,1.4)})
+		_debris_add(Vector3(at.x,.6,at.y),direction*_rng.randf_range(1.5,4)*force,_rng.randf_range(.16,.45),color,_rng.randf_range(.65,1.4))
+
+func _debris_add(p: Vector3, v: Vector3, life: float, color: Color, size_: float) -> void:
+	_d_p.append(p);_d_v.append(v);_d_life.append(life);_d_color.append(color);_d_size.append(size_)
 
 func move_marker(at: Vector2) -> void:
 	if strokes.size()<96:strokes.append({"type":"ring","at":at,"radius":.32,"life":.35,"color":Color("9bbcb0")})
@@ -149,7 +183,7 @@ func consume__cloister(events: Array) -> void:
 						if strokes.size()<MAX_STROKES:strokes.append({"type":"arc","from":from,"to":target,"life":.18,"duration":.18,"color":color,"width":.065 if event.get("evolved",false) else .04})
 						for i in 7:
 							var at: Vector2=from.lerp(target,float(i)/7.0)
-							if debris.size()<MAX_PARTICLES:debris.append({"p":Vector3(at.x,.8,at.y),"v":Vector3.ZERO,"life":.13,"color":color,"size":1.5})
+							if _d_life.size()<MAX_PARTICLES:_debris_add(Vector3(at.x,.8,at.y),Vector3.ZERO,.13,color,1.5)
 						from=target
 				else: burst(event.position,color,5,.6)
 
@@ -169,25 +203,31 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	var actor_view: Variant=view.get("actors")
 	var hero_at := Vector3(run.hero.position.x,.006,run.hero.position.y)
 	if actor_view!=null:hero_at=actor_view.hero.position;hero_at.y=.006
-	shadows.multimesh.set_instance_transform(0,Transform3D(Basis.IDENTITY,hero_at))
+	var msh: MultiMesh=shadows.multimesh
+	msh.set_instance_transform(0,Transform3D(Basis.IDENTITY,hero_at))
 	var shadow_count := 1
-	for e in run.enemies.values():
+	_enemies_frame=run.enemies.values()
+	var actor_map: Dictionary={}
+	if actor_view!=null:actor_map=actor_view.actors
+	for e in _enemies_frame:
 		if e.hp_raw<=0 or shadow_count>=513:continue
 		var size_ := 1.5 if e.elite else 1.0
 		var at := Vector3(e.position.x,.005,e.position.y)
-		var key: String="%d:%d" % [e.generation,e.id]
-		if actor_view!=null and actor_view.actors.has(key):at=actor_view.actors[key].position;at.y=.005
-		shadows.multimesh.set_instance_transform(shadow_count,Transform3D(Basis.IDENTITY.scaled(Vector3(size_,1,size_)),at))
+		var key: String=_shadow_key(e)
+		if actor_view!=null and actor_map.has(key):at=actor_map[key].position;at.y=.005
+		msh.set_instance_transform(shadow_count,Transform3D(Basis.IDENTITY.scaled(Vector3(size_,1,size_)),at))
 		shadow_count+=1
-	shadows.multimesh.visible_instance_count=shadow_count
+	msh.visible_instance_count=shadow_count
 	var mm: MultiMesh=projectiles.multimesh
+	var mfp: MultiMesh=_frost39_projectiles.multimesh
 	var index := 0
-	var camera := view.get_viewport().get_camera_3d()
-	var right := Vector2(camera.global_basis.x.x,camera.global_basis.x.z).normalized()
-	var forward := Vector2(-camera.global_basis.z.x,-camera.global_basis.z.z).normalized()
+	_routed_p=0
+	var right := Vector2(_cam_basis.x.x,_cam_basis.x.z).normalized()
+	var forward := Vector2(-_cam_basis.z.x,-_cam_basis.z.z).normalized()
+	var proj_cap := mm.instance_count
 	for p in run.projectiles:
-		if index>=mm.instance_count: break
-		var color: Color=Color("ff2f4f") if p.hostile else COLORS.get(p.skill_id,Color.WHITE)
+		if index>=proj_cap: break
+		var color: Color=HOSTILE_BOLT_COLOR if p.hostile else COLORS.get(p.skill_id,Color.WHITE)
 		var angle := atan2(p.direction.dot(forward),p.direction.dot(right))
 		# Radius is immutable paid projectile data; current rank/gear is never reread.
 		var evolved: bool=not p.hostile and float(p.radius)>.20
@@ -196,27 +236,42 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var child: bool=not p.hostile and bool(p.get("child",false))
 		var size_ := .68 if p.hostile else (CHILD_SIZE if child else (1.28 if evolved else 1.0))
 		var element_code := .5 if p.skill_id=="chapter1.skill.frost" else (1.0 if p.hostile else (.15 if p.skill_id=="chapter1.skill.arc" else 0.0))
-		mm.set_instance_transform(index,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size_),Vector3(p.position.x,.75,p.position.y)))
+		var xf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size_),Vector3(p.position.x,.75,p.position.y))
+		var custom := Color((angle+PI)/TAU,element_code,-1.0 if child else (1.0 if evolved else .20),float(int(p.uid)%17)/17.0)
+		# Frost bolts (element code .5) go to the replacement batch; their original keeps a zero-scaled twin.
+		if element_code>.3 and element_code<.8:
+			mfp.set_instance_transform(_routed_p,xf)
+			mfp.set_instance_custom_data(_routed_p,custom)
+			mfp.set_instance_color(_routed_p,color)
+			_routed_p+=1
+			xf.basis=xf.basis.scaled(Vector3.ZERO)
+		mm.set_instance_transform(index,xf)
 		mm.set_instance_color(index,color)
-		mm.set_instance_custom_data(index,Color((angle+PI)/TAU,element_code,-1.0 if child else (1.0 if evolved else .20),float(int(p.uid)%17)/17.0))
+		mm.set_instance_custom_data(index,custom)
 		index+=1
 	mm.visible_instance_count=index
+	mfp.visible_instance_count=_routed_p
 	mm=gems.multimesh
 	index=0
+	var orb_basis := Basis(Vector3.UP,float(run.tick)*.03)
 	for orb in run.orbs:
 		if index>=mm.instance_count: break
-		var basis := Basis(Vector3.UP,float(run.tick)*.03)
-		mm.set_instance_transform(index,Transform3D(basis,Vector3(orb.position.x,.18,orb.position.y)))
-		mm.set_instance_color(index,Color("508c78"))
+		mm.set_instance_transform(index,Transform3D(orb_basis,Vector3(orb.position.x,.18,orb.position.y)))
+		mm.set_instance_color(index,ORB_COLOR)
 		index+=1
 	mm.visible_instance_count=index
-	var lines := _line_mesh;lines.clear_surfaces()
-	lines.surface_begin(Mesh.PRIMITIVE_LINES)
+	var lines := _line_mesh
 	var vertices := 0
-	var fill := _fill_mesh;fill.clear_surfaces();fill.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	var fill := _fill_mesh
 	var fill_vertices := 0
-	for e in run.enemies.values():
+	var tele_open := false
+	for e in _enemies_frame:
 		if e.telegraph.is_empty() or e.hp_raw<=0: continue
+		if not tele_open:
+			# Surfaces are only rebuilt when there is something to draw (or once, to blank them).
+			tele_open=true
+			lines.clear_surfaces();lines.surface_begin(Mesh.PRIMITIVE_LINES)
+			fill.clear_surfaces();fill.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 		var center := Vector3(e.position.x,.05,e.position.y)
 		var direction: Vector2=e.telegraph.direction
 		var imminent := 1.0-clampf(float(e.telegraph.get("remaining_ticks",40))/48.0,0,1)
@@ -252,23 +307,45 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					vertices+=_circle(lines,cap,radius,16)
 		else:
 			vertices+=_circle(lines,center,float(e.telegraph.radius),40)
-	if vertices==0:
+	if tele_open:
+		if vertices==0:
+			lines.surface_add_vertex(Vector3(0,-20,0));lines.surface_add_vertex(Vector3(0,-20,0))
+		lines.surface_end()
+		telegraph.mesh=lines
+		if fill_vertices==0:
+			for i in 3:fill.surface_add_vertex(Vector3(0,-20,0))
+		fill.surface_end();telegraph_fill.mesh=fill
+		_tele_blank=false
+	elif not _tele_blank:
+		lines.clear_surfaces();lines.surface_begin(Mesh.PRIMITIVE_LINES)
 		lines.surface_add_vertex(Vector3(0,-20,0));lines.surface_add_vertex(Vector3(0,-20,0))
-	lines.surface_end()
-	telegraph.mesh=lines
-	if fill_vertices==0:
+		lines.surface_end()
+		telegraph.mesh=lines
+		fill.clear_surfaces();fill.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 		for i in 3:fill.surface_add_vertex(Vector3(0,-20,0))
-	fill.surface_end();telegraph_fill.mesh=fill
-	var flash := _beam_mesh;flash.clear_surfaces()
-	flash.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+		fill.surface_end();telegraph_fill.mesh=fill
+		_tele_blank=true
+	var flash := _beam_mesh
+	var flash_open := false
 	var stroke_live: Array[Dictionary]=[]
 	var stroke_vertices := 0
 	var impact_count := 0
 	var plume_count := 0
+	var mi: MultiMesh=impacts.multimesh
+	var mfi: MultiMesh=_frost39_impacts.multimesh
+	var mpl: MultiMesh=plumes.multimesh
+	var cam_basis := _cam_basis
+	var last_color: Variant=null
+	_routed_i=0
 	for stroke in strokes:
 		if run.mode=="playing":stroke.life-=delta
 		if stroke.life<=0:continue
-		flash.surface_set_color(stroke.color)
+		last_color=stroke.color
+		if stroke.type!="impact":
+			if not flash_open:
+				flash_open=true
+				flash.clear_surfaces();flash.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+			flash.surface_set_color(stroke.color)
 		if stroke.type=="ring":
 			stroke_vertices+=_ribbon_circle(flash,Vector3(stroke.at.x,.09,stroke.at.y),stroke.radius,24,.012)
 		elif stroke.type=="hit":
@@ -281,18 +358,31 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 			flash.surface_set_color(accent_color)
 			for i in accents:
 				var angle := PI*float(i)/float(accents)+.45
-				var axis := camera.global_basis.x*cos(angle)+camera.global_basis.y*sin(angle)
+				var axis := cam_basis.x*cos(angle)+cam_basis.y*sin(angle)
 				stroke_vertices+=_ribbon(flash,center-axis*extent,center+axis*extent,.016*fade)
 		elif stroke.type=="impact":
 			if impact_count<MAX_IMPACTS:
-				impacts.multimesh.set_instance_transform(impact_count,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y)))
-				impacts.multimesh.set_instance_color(impact_count,stroke.color)
+				var ixf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y))
 				var age := 1.0-float(stroke.life)/float(stroke.duration)
-				impacts.multimesh.set_instance_custom_data(impact_count,Color(age,stroke.element,0,1))
+				var icustom := Color(age,stroke.element,0,1)
+				if float(stroke.element)>.3 and float(stroke.element)<.8:
+					mfi.set_instance_transform(_routed_i,ixf)
+					mfi.set_instance_custom_data(_routed_i,icustom)
+					mfi.set_instance_color(_routed_i,stroke.color)
+					_routed_i+=1
+					ixf.basis=ixf.basis.scaled(Vector3.ZERO)
+				mi.set_instance_transform(impact_count,ixf)
+				mi.set_instance_color(impact_count,stroke.color)
+				mi.set_instance_custom_data(impact_count,icustom)
 				if float(stroke.element)<.25 and plume_count<MAX_IMPACTS:
 					var scale_ := float(stroke.radius)*.70
-					plumes.multimesh.set_instance_transform(plume_count,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*scale_),Vector3(stroke.at.x,scale_*.65,stroke.at.y)))
-					plumes.multimesh.set_instance_custom_data(plume_count,Color(age,0,0,float(impact_count%7)/7.0))
+					# The fire-bloom squash (.85/.52/.85, origin.y*.52) is applied here, in the one write.
+					var plume_basis := Basis.IDENTITY.scaled(Vector3.ONE*scale_)
+					plume_basis=plume_basis.scaled(Vector3(.85,.52,.85))
+					var plume_at := Vector3(stroke.at.x,scale_*.65,stroke.at.y)
+					plume_at.y*=.52
+					mpl.set_instance_transform(plume_count,Transform3D(plume_basis,plume_at))
+					mpl.set_instance_custom_data(plume_count,Color(age,0,0,float(impact_count%7)/7.0))
 					plume_count+=1
 				impact_count+=1
 		else:
@@ -307,11 +397,20 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					var branch := a+side*.50+Vector2(.15,-.15)
 					stroke_vertices+=_ribbon(flash,Vector3(a.x,.85,a.y),Vector3(branch.x,.8,branch.y),float(stroke.width)*.42)
 		stroke_live.append(stroke)
-	if stroke_vertices==0:
+	if flash_open:
+		if stroke_vertices==0:
+			for i in 3:flash.surface_add_vertex(Vector3(0,-20,0))
+		flash.surface_end();beams.mesh=flash;_flash_blank=false
+	elif not _flash_blank or _flash_blank_color!=last_color:
+		# The placeholder vertices carry the colour of the last live stroke (impact strokes set it too).
+		flash.clear_surfaces();flash.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+		if last_color!=null:flash.surface_set_color(last_color)
 		for i in 3:flash.surface_add_vertex(Vector3(0,-20,0))
-	flash.surface_end();beams.mesh=flash;strokes=stroke_live
-	impacts.multimesh.visible_instance_count=impact_count
-	plumes.multimesh.visible_instance_count=plume_count
+		flash.surface_end();beams.mesh=flash;_flash_blank=true;_flash_blank_color=last_color
+	strokes=stroke_live
+	mi.visible_instance_count=impact_count
+	mfi.visible_instance_count=_routed_i
+	mpl.visible_instance_count=plume_count
 	var wanted: Dictionary={}
 	for item in run.items:
 		wanted[item.uid]=true
@@ -331,27 +430,34 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		item_nodes[item.uid].get_child(1).visible=item.position.distance_squared_to(run.hero.position)<64.0
 	for uid in item_nodes.keys():
 		if not wanted.has(uid): item_nodes[uid].queue_free();item_nodes.erase(uid)
-	var live: Array[Dictionary]=[]
 	mm=shards.multimesh
 	index=0
-	for particle in debris:
-		if run.mode=="playing":
-			particle.life-=delta
-			particle.p+=particle.v*delta
-			particle.v.y-=delta*5
-		if particle.life<=0 or index>=MAX_PARTICLES: continue
-		var basis := Basis(Vector3.UP,particle.life*15).scaled(Vector3.ONE*float(particle.size))
-		mm.set_instance_transform(index,Transform3D(basis,particle.p))
-		var faded: Color=particle.color;faded.a=clampf(float(particle.life)/.12,0,1)
+	var playing: bool=run.mode=="playing"
+	var kept := 0
+	for i in _d_life.size():
+		var life: float=_d_life[i]
+		var pos: Vector3=_d_p[i]
+		var vel: Vector3=_d_v[i]
+		if playing:
+			life-=delta
+			pos+=vel*delta
+			vel.y-=delta*5
+		if life<=0 or index>=MAX_PARTICLES: continue
+		var size_: float=_d_size[i]
+		var basis := Basis(Vector3.UP,life*15).scaled(Vector3.ONE*size_)
+		mm.set_instance_transform(index,Transform3D(basis,pos))
+		var faded: Color=_d_color[i];faded.a=clampf(life/.12,0,1)
 		mm.set_instance_color(index,faded)
-		index+=1;live.append(particle)
-	debris=live
+		index+=1
+		# compact the survivors in place
+		_d_life[kept]=life;_d_p[kept]=pos;_d_v[kept]=vel;_d_size[kept]=size_;_d_color[kept]=_d_color[i];kept+=1
+	_d_life.resize(kept);_d_p.resize(kept);_d_v.resize(kept);_d_size.resize(kept);_d_color.resize(kept)
 	mm.visible_instance_count=index
 
 func _ribbon(mesh: ImmediateMesh, a: Vector3, b: Vector3, width: float) -> int:
-	var normal := view.get_viewport().get_camera_3d().global_basis.z
-	var side := (b-a).cross(normal).normalized()*width
-	for vertex in [a-side,a+side,b+side,a-side,b+side,b-side]:mesh.surface_add_vertex(vertex)
+	var side := (b-a).cross(_cam_z).normalized()*width
+	mesh.surface_add_vertex(a-side);mesh.surface_add_vertex(a+side);mesh.surface_add_vertex(b+side)
+	mesh.surface_add_vertex(a-side);mesh.surface_add_vertex(b+side);mesh.surface_add_vertex(b-side)
 	return 6
 
 func _ribbon_circle(mesh: ImmediateMesh, at: Vector3, radius: float, count: int, width: float) -> int:
@@ -371,7 +477,7 @@ func _circle(mesh: ImmediateMesh, at: Vector3, radius: float, count: int) -> int
 
 func reset__cloister() -> void:
 	_last_event=-1
-	debris.clear()
+	_d_p.clear();_d_v.clear();_d_life.clear();_d_size.clear();_d_color.clear()
 	strokes.clear()
 	_last_camera_tick=-100
 	for node in item_nodes.values(): node.queue_free()
@@ -392,8 +498,21 @@ func setup__chapter(owner_view: Node3D) -> void:
 	ward_fill.material_override=fill;view.add_child(ward_rings);view.add_child(ward_fill)
 func sync__chapter(run: RefCounted,delta: float) -> void:
 	sync__cloister(run,delta)
-	_ward_lines.clear_surfaces();_ward_lines.surface_begin(Mesh.PRIMITIVE_LINES)
-	_ward_area.clear_surfaces();_ward_area.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	if run.chapter_hazards.is_empty():
+		if not _ward_blank:
+			_ward_lines.clear_surfaces();_ward_lines.surface_begin(Mesh.PRIMITIVE_LINES)
+			_ward_area.clear_surfaces();_ward_area.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+			for i in 2:_ward_lines.surface_add_vertex(Vector3(0,-20,0))
+			for i in 3:_ward_area.surface_add_vertex(Vector3(0,-20,0))
+			_ward_lines.surface_end();_ward_area.surface_end();ward_rings.mesh=_ward_lines;ward_fill.mesh=_ward_area
+			_ward_blank=true
+	else:
+		_ward_blank=false
+		_ward_lines.clear_surfaces();_ward_lines.surface_begin(Mesh.PRIMITIVE_LINES)
+		_ward_area.clear_surfaces();_ward_area.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+		_sync_ward_hazards(run)
+	_sync_potions(run)
+func _sync_ward_hazards(run: RefCounted) -> void:
 	for h in run.chapter_hazards:
 		var center := Vector3(h.position.x,.075,h.position.y)
 		var radius: float=h.radius
@@ -403,10 +522,8 @@ func sync__chapter(run: RefCounted,delta: float) -> void:
 			_ward_area.surface_add_vertex(center)
 			_ward_area.surface_add_vertex(center+Vector3(cos(TAU*i/48),0,sin(TAU*i/48))*radius)
 			_ward_area.surface_add_vertex(center+Vector3(cos(TAU*(i+1)/48),0,sin(TAU*(i+1)/48))*radius)
-	if run.chapter_hazards.is_empty():
-		for i in 2:_ward_lines.surface_add_vertex(Vector3(0,-20,0))
-		for i in 3:_ward_area.surface_add_vertex(Vector3(0,-20,0))
 	_ward_lines.surface_end();_ward_area.surface_end();ward_rings.mesh=_ward_lines;ward_fill.mesh=_ward_area
+func _sync_potions(run: RefCounted) -> void:
 	var wanted := {}
 	for pickup in run.potion_pickups:
 		wanted[pickup.uid]=true
@@ -452,18 +569,33 @@ func sync__q10(run: RefCounted,delta: float) -> void:
 	sync__chapter(run,delta)
 	var live: Array[Dictionary]=[]
 	var index := 0
-	var camera := view.get_viewport().get_camera_3d()
+	var mc: MultiMesh=contact_batch.multimesh
+	var mfc: MultiMesh=_frost39_contacts.multimesh
+	var cb := _cam_basis
+	_routed_c=0
 	for hit in contacts:
 		hit.age+=delta if run.mode=="playing" else 0.0
 		if hit.age>=hit.duration:continue
 		live.append(hit)
 		var at := Vector3(hit.at.x,.95,hit.at.y)
 		# Offset toward the camera just enough to sit on the struck silhouette.
-		at+=camera.global_basis.z*.18
-		contact_batch.multimesh.set_instance_transform(index,Transform3D(camera.global_basis,at))
-		contact_batch.multimesh.set_instance_custom_data(index,Color(hit.age/hit.duration,hit.element,hit.angle,1))
+		at+=cb.z*.18
+		var element := float(hit.element)
+		var cbasis := cb
+		# Cold/arc contacts are drawn smaller (the former q14 rescale, now applied in the one write).
+		if element>=.3:cbasis=cbasis.scaled(Vector3.ONE*(.68 if element<.8 else .55))
+		var cxf := Transform3D(cbasis,at)
+		var ccustom := Color(hit.age/hit.duration,hit.element,hit.angle,1)
+		if element>.3 and element<.8:
+			mfc.set_instance_transform(_routed_c,cxf)
+			mfc.set_instance_custom_data(_routed_c,ccustom)
+			mfc.set_instance_color(_routed_c,Color(0,0,0,0))
+			_routed_c+=1
+			cxf.basis=cxf.basis.scaled(Vector3.ZERO)
+		mc.set_instance_transform(index,cxf)
+		mc.set_instance_custom_data(index,ccustom)
 		index+=1
-	contacts=live;contact_batch.multimesh.visible_instance_count=index
+	contacts=live;mc.visible_instance_count=index;mfc.visible_instance_count=_routed_c
 
 func reset__q10() -> void:
 	reset__chapter();contacts.clear();_contact_last_seq=-1
@@ -538,14 +670,17 @@ func consume__q14(events: Array) -> void:
 
 func sync__q14(run: RefCounted,delta: float) -> void:
 	sync__q10(run,delta)
-	for i in contacts.size():
-		if float(contacts[i].element)<.3:continue
-		var transform := contact_batch.multimesh.get_instance_transform(i)
-		transform.basis=transform.basis.scaled(Vector3.ONE*(.68 if float(contacts[i].element)<.8 else .55))
-		contact_batch.multimesh.set_instance_transform(i,transform)
 	_sync_arcs(run,delta);_sync_ice(run,delta);_sync_fragments(run,delta)
 
 func _sync_arcs(run: RefCounted,delta: float) -> void:
+	if arc_links.is_empty():
+		# Nothing to draw: leave the off-screen placeholder surface in place (built once).
+		if not _arc_blank:
+			_arc_mesh.clear_surfaces();_arc_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+			for i in 3:_arc_mesh.surface_add_vertex(Vector3(0,-20,0))
+			_arc_mesh.surface_end();arc_surface.mesh=_arc_mesh;_arc_blank=true
+		return
+	_arc_blank=false
 	_arc_mesh.clear_surfaces();_arc_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	var live: Array[Dictionary]=[];var vertices := 0
 	for link in arc_links:
@@ -575,23 +710,31 @@ func _sync_arcs(run: RefCounted,delta: float) -> void:
 	_arc_mesh.surface_end();arc_surface.mesh=_arc_mesh;arc_links=live
 
 func _arc_quad(a: Vector3,b: Vector3,width: float) -> int:
-	var normal := view.get_viewport().get_camera_3d().global_basis.z
-	var side := (b-a).cross(normal).normalized()*width
-	var corners := [a-side,a+side,b+side,b-side]
-	var uvs := [Vector2(0,0),Vector2(0,1),Vector2(1,1),Vector2(1,0)]
-	for i in [0,1,2,0,2,3]:_arc_mesh.surface_set_uv(uvs[i]);_arc_mesh.surface_add_vertex(corners[i])
+	var side := (b-a).cross(_cam_z).normalized()*width
+	var c0 := a-side;var c1 := a+side;var c2 := b+side;var c3 := b-side
+	_arc_mesh.surface_set_uv(Vector2(0,0));_arc_mesh.surface_add_vertex(c0)
+	_arc_mesh.surface_set_uv(Vector2(0,1));_arc_mesh.surface_add_vertex(c1)
+	_arc_mesh.surface_set_uv(Vector2(1,1));_arc_mesh.surface_add_vertex(c2)
+	_arc_mesh.surface_set_uv(Vector2(0,0));_arc_mesh.surface_add_vertex(c0)
+	_arc_mesh.surface_set_uv(Vector2(1,1));_arc_mesh.surface_add_vertex(c2)
+	_arc_mesh.surface_set_uv(Vector2(1,0));_arc_mesh.surface_add_vertex(c3)
 	return 6
 
 func _sync_ice__q14(run: RefCounted,delta: float) -> void:
+	var mm: MultiMesh=ice_batch.multimesh
 	var eligible: Array[Dictionary]=[]
-	for e in run.enemies.values():
+	for e in _enemies_frame:
 		if e.hp_raw>0 and run.tick<int(e.frozen_until):eligible.append(e)
-	eligible.sort_custom(func(a: Dictionary,b: Dictionary)->bool:
-		if bool(a.elite)!=bool(b.elite):return bool(a.elite)
-		return a.position.distance_squared_to(run.hero.position)<b.position.distance_squared_to(run.hero.position))
+	if eligible.is_empty() and ice_targets.is_empty():
+		mm.visible_instance_count=0;return
+	if eligible.size()>1:
+		eligible.sort_custom(func(a: Dictionary,b: Dictionary)->bool:
+			if bool(a.elite)!=bool(b.elite):return bool(a.elite)
+			return a.position.distance_squared_to(run.hero.position)<b.position.distance_squared_to(run.hero.position))
 	var wanted := {}
+	var ordered: Array=[]
 	for i in mini(ICE_TARGET_CAP,eligible.size()):
-		var e: Dictionary=eligible[i];var key := "%d:%d"%[e.generation,e.id];wanted[key]=true
+		var e: Dictionary=eligible[i];var key := "%d:%d"%[e.generation,e.id];wanted[key]=true;ordered.append(key)
 		if not ice_targets.has(key):ice_targets[key]={"age":0.0,"strength":0.0,"at":e.position,"elite":bool(e.elite)}
 		var record: Dictionary=ice_targets[key];record.at=e.position
 		if run.mode=="playing":record.age+=delta
@@ -603,10 +746,6 @@ func _sync_ice__q14(run: RefCounted,delta: float) -> void:
 			if ice_targets[key].strength<=0:ice_targets.erase(key)
 	# During rapid target turnover, keep the batch strictly bounded, with live
 	# frozen elites first. Fading stale records never displace a live target.
-	var ordered: Array=[]
-	for e in eligible:
-		var key := "%d:%d"%[e.generation,e.id]
-		if wanted.has(key):ordered.append(key)
 	for key in ice_targets:
 		if not wanted.has(key):ordered.append(key)
 	if ice_targets.size()>ICE_STATE_CAP:
@@ -619,26 +758,32 @@ func _sync_ice__q14(run: RefCounted,delta: float) -> void:
 		var record: Dictionary=ice_targets[key];var strength: float=record.strength
 		var big: bool=record.elite
 		var size_ := 1.65 if big else 1.0
+		var key_phase := float(key.hash()%31)*.1
 		for i in 4:
-			var angle := float(i)*TAU/4.0+float(key.hash()%31)*.1
+			var angle := float(i)*TAU/4.0+key_phase
 			var spread := .38*size_
 			var at := Vector3(record.at.x+cos(angle)*spread,.02,record.at.y+sin(angle)*spread)
 			var basis := Basis.from_euler(Vector3(sin(angle)*.18,angle,-cos(angle)*.18)).scaled(Vector3(.20,.80+float(i%3)*.23,.20)*size_*maxf(.01,strength))
-			ice_batch.multimesh.set_instance_transform(index,Transform3D(basis,at))
-			ice_batch.multimesh.set_instance_color(index,Color(.72,.92,1,strength*.60));index+=1
-	ice_batch.multimesh.visible_instance_count=index
+			# Narrow asymmetric blades, not an opaque shell over the whole actor (applied in the one write).
+			basis=basis.scaled(Vector3(.80,.88 if index%2==0 else .68,.52))
+			mm.set_instance_transform(index,Transform3D(basis,at))
+			mm.set_instance_color(index,Color(.72,.92,1,strength*.60));index+=1
+	mm.visible_instance_count=index
 
 func _sync_fragments__q14(run: RefCounted,delta: float) -> void:
 	var live: Array[Dictionary]=[];var index := 0
+	var mm: MultiMesh=ice_fragment_batch.multimesh
 	for shard in ice_fragments:
 		if run.mode=="playing":shard.age+=delta;shard.position+=shard.velocity*delta;shard.velocity.y-=delta*8
 		if shard.age>=shard.duration:continue
 		live.append(shard)
 		var fade := clampf((float(shard.duration)-float(shard.age))/.16,0,1)
 		var basis := Basis.from_euler(Vector3(shard.age*7,shard.angle,shard.age*4)).scaled(Vector3(.55,1,.55)*float(shard.size))
-		ice_fragment_batch.multimesh.set_instance_transform(index,Transform3D(basis,shard.position))
-		ice_fragment_batch.multimesh.set_instance_color(index,Color(.58,.88,1,fade));index+=1
-	ice_fragments=live;ice_fragment_batch.multimesh.visible_instance_count=index
+		# Broad splinters contrast with the upright frozen state (applied in the one write).
+		basis=basis.scaled(Vector3(1.45,.68,.42))
+		mm.set_instance_transform(index,Transform3D(basis,shard.position))
+		mm.set_instance_color(index,Color(.58,.88,1,fade));index+=1
+	ice_fragments=live;mm.visible_instance_count=index
 
 func _crystal_mesh() -> ArrayMesh:
 	var vertices := PackedVector3Array();var normals := PackedVector3Array();var colors := PackedColorArray()
@@ -720,14 +865,24 @@ func setup__q26(owner_view: Node3D) -> void:
 	_loot26_leaders.material_override=material;_loot26_leaders.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	view.add_child(_loot26_leaders)
 func sync__q26(run: RefCounted,delta: float) -> void:
-	sync__q20(run,delta);layout26_records.clear();_loot26_mesh.clear_surfaces();_loot26_leaders.visible=false
+	sync__q20(run,delta);layout26_records.clear()
 	var camera := view.get_viewport().get_camera_3d()
-	if camera==null:return
+	if camera==null:
+		_loot26_mesh.clear_surfaces();_loot26_leaders.visible=false;_loot26_blank=false;return
 	var viewport_size: Vector2=view.get_viewport().get_visible_rect().size
 	var candidates: Array=[]
 	for item in run.items:
 		if item.position.distance_squared_to(run.hero.position)>=64.0:continue
 		candidates.append(item)
+	if candidates.is_empty():
+		# No ground names nearby: keep the off-screen placeholder line (built once).
+		if not _loot26_blank:
+			_loot26_mesh.clear_surfaces();_loot26_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+			_loot26_mesh.surface_add_vertex(Vector3(0,-20,0));_loot26_mesh.surface_add_vertex(Vector3(0,-20,0))
+			_loot26_mesh.surface_end();_loot26_leaders.visible=false;_loot26_blank=true
+		return
+	_loot26_blank=false
+	_loot26_mesh.clear_surfaces();_loot26_leaders.visible=false
 	candidates.sort_custom(func(a,b):
 		var priority := {"unique":0,"legendary":0,"rare":1,"magic":2,"common":3}
 		var ap: int=priority.get(a.quality,3);var bp: int=priority.get(b.quality,3)
@@ -793,12 +948,8 @@ func setup__q33(owner_view: Node3D) -> void:
 	material.shader=preload("res://chapter1/view/flame_bloom_quality33.gdshader")
 	plumes.material_override=material
 func sync__q33(run: RefCounted,delta: float) -> void:
+	# The fire-bloom squash (basis .85/.52/.85, origin.y*.52) is applied where the plume is written (sync__cloister).
 	sync__q26(run,delta)
-	for index in plumes.multimesh.visible_instance_count:
-		var transform := plumes.multimesh.get_instance_transform(index)
-		transform.basis=transform.basis.scaled(Vector3(.85,.52,.85))
-		transform.origin.y*=.52
-		plumes.multimesh.set_instance_transform(index,transform)
 
 # ---- chapter1/view/chapter_elements_quality33b.gd ----
 ## Rarity hierarchy on existing ground drops. No generation/collection changes.
@@ -846,18 +997,28 @@ func setup__q36(owner_view: Node3D) -> void:
 func sync__q36(run: RefCounted,delta: float) -> void:
 	sync__q33b(run,delta)
 	stun36_visible=0
-	var ids: Array=run.enemies.keys();ids.sort()
-	for id_ in ids:
-		var entity: Dictionary=run.enemies[id_]
-		if entity.hp_raw<=0 or run.tick>=int(entity.get("stunned_until",0)):continue
+	# Only stunned enemies are sorted (by id, as before); with none stunned nothing is sorted or written.
+	var enemies: Dictionary=run.enemies
+	var stunned: Array=[]
+	for id_ in enemies:
+		var candidate: Dictionary=enemies[id_]
+		if candidate.hp_raw<=0 or run.tick>=int(candidate.get("stunned_until",0)):continue
+		stunned.append(id_)
+	if stunned.is_empty():
+		_stun36_sparks.multimesh.visible_instance_count=0
+		return
+	stunned.sort()
+	var msp: MultiMesh=_stun36_sparks.multimesh
+	for id_ in stunned:
+		var entity: Dictionary=enemies[id_]
 		if stun36_visible>=STUN36_VISIBLE_CAP:break
 		var height: float=2.1 if entity.elite else 1.5
 		for point in 3:
 			var angle: float=float(run.tick)*.22+TAU*float(point)/3.0
 			var position := Vector3(entity.position.x+cos(angle)*.28,height+sin(angle*2.0)*.08,entity.position.y+sin(angle)*.28)
-			_stun36_sparks.multimesh.set_instance_transform(stun36_visible*3+point,Transform3D(Basis.IDENTITY,position))
+			msp.set_instance_transform(stun36_visible*3+point,Transform3D(Basis.IDENTITY,position))
 		stun36_visible+=1
-	_stun36_sparks.multimesh.visible_instance_count=stun36_visible*3
+	msp.visible_instance_count=stun36_visible*3
 func reset__q36() -> void:
 	reset__q26();stun36_visible=0
 	if is_instance_valid(_stun36_sparks):_stun36_sparks.multimesh.visible_instance_count=0
@@ -959,6 +1120,10 @@ func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	burst__cloister(at,color,count,force)
 
 func sync(run: RefCounted,delta: float) -> void:
+	# Camera looked up once per frame; the ribbon/arc/contact builders read it from here.
+	var cam := view.get_viewport().get_camera_3d()
+	if cam!=null:
+		_cam_basis=cam.global_basis;_cam_z=_cam_basis.z
 	var stripe_ticks: int=int(run.tuning.get("presentation",{}).get("arc_stripe_ticks",12))
 	_arc_duration=clampf(float(stripe_ticks)/60.0,.05,2.0)
 	# The inherited presenter treats every unknown stroke type as an arc and
@@ -974,55 +1139,32 @@ func sync(run: RefCounted,delta: float) -> void:
 	strokes=inherited
 	sync__q36(run,delta)
 	strokes.append_array(releases)
-	frost39_projectile_count=_route_frost39(projectiles,_frost39_projectiles)
-	frost39_impact_count=_route_frost39(impacts,_frost39_impacts)
-	frost39_contact_count=_route_frost39(contact_batch,_frost39_contacts)
+	# The frost replacement batches were filled while the originals were written (same values, no read-back).
+	frost39_projectile_count=_routed_p
+	frost39_impact_count=_routed_i
+	frost39_contact_count=_routed_c
 	frost39_cast_count=0
-	var camera := view.get_viewport().get_camera_3d()
+	var mk: MultiMesh=_frost39_casts.multimesh
+	var cast_basis := _cam_basis
 	for stroke in strokes:
 		if stroke.type!="frost39_cast":continue
 		if frost39_cast_count>=MAX_STROKES:break
 		var at := Vector3(stroke.at.x,1.05,stroke.at.y)
-		_frost39_casts.multimesh.set_instance_transform(frost39_cast_count,Transform3D(camera.global_basis,at))
-		_frost39_casts.multimesh.set_instance_custom_data(frost39_cast_count,Color(1.0-float(stroke.life)/float(stroke.duration),0,0,1))
+		mk.set_instance_transform(frost39_cast_count,Transform3D(cast_basis,at))
+		mk.set_instance_custom_data(frost39_cast_count,Color(1.0-float(stroke.life)/float(stroke.duration),0,0,1))
 		frost39_cast_count+=1
-	_frost39_casts.multimesh.visible_instance_count=frost39_cast_count
-
-func _route_frost39(original: MultiMeshInstance3D,replacement: MultiMeshInstance3D) -> int:
-	var count := 0
-	for index in original.multimesh.visible_instance_count:
-		var data := original.multimesh.get_instance_custom_data(index)
-		if data.g<=.3 or data.g>=.8:continue
-		var transform := original.multimesh.get_instance_transform(index)
-		replacement.multimesh.set_instance_transform(count,transform)
-		replacement.multimesh.set_instance_custom_data(count,data)
-		replacement.multimesh.set_instance_color(count,original.multimesh.get_instance_color(index))
-		# Parent rewrites this transform from paid state on its next sync.
-		transform.basis=Basis.IDENTITY.scaled(Vector3.ZERO)
-		original.multimesh.set_instance_transform(index,transform)
-		count+=1
-	replacement.multimesh.visible_instance_count=count
-	return count
+	mk.visible_instance_count=frost39_cast_count
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
-	for index in ice_batch.multimesh.visible_instance_count:
-		var transform := ice_batch.multimesh.get_instance_transform(index)
-		# Narrow asymmetric blades, not an opaque shell over the whole actor.
-		transform.basis=transform.basis.scaled(Vector3(.80,.88 if index%2==0 else .68,.52))
-		ice_batch.multimesh.set_instance_transform(index,transform)
 
 func _sync_fragments(run: RefCounted,delta: float) -> void:
 	_sync_fragments__q14(run,delta)
-	for index in ice_fragment_batch.multimesh.visible_instance_count:
-		var transform := ice_fragment_batch.multimesh.get_instance_transform(index)
-		# Inherited .48s ballistics/age stay untouched; broad splinters contrast
-		# with the upright frozen state instead of spawning another burst layer.
-		transform.basis=transform.basis.scaled(Vector3(1.45,.68,.42))
-		ice_fragment_batch.multimesh.set_instance_transform(index,transform)
 
 func reset() -> void:
 	reset__q36()
+	_tele_blank=false;_flash_blank=false;_ward_blank=false;_arc_blank=false;_loot26_blank=false
+	_key_cache.clear()
 	_frost39_seq=-1
 	frost39_projectile_count=0
 	frost39_impact_count=0

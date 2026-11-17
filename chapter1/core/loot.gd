@@ -256,7 +256,8 @@ func validate(item: Dictionary) -> Array[String]:
 		var uid := String(item.base_id).trim_prefix(UNIQUE_PREFIX)
 		if not String(item.base_id).begins_with(UNIQUE_PREFIX) or not _uniques.has(uid): return issues+(["Unknown unique"] as Array[String])
 		var def: Dictionary = _uniques[uid]
-		if item.slot != def.slot or item.stats != def.stats or item.name != def.name or item.description != def.description or not item.affixes.is_empty() or item.item_level < int(def.level): issues.append("Unique identity/stats")
+		if item.slot != def.slot or item.stats != def.stats or not item.affixes.is_empty() or item.item_level < int(def.level): issues.append("Unique identity/stats")
+		issues.append_array(_check_text(item))
 		return issues
 	var bid := String(item.base_id).trim_prefix(BASE_PREFIX)
 	if not _bases.has(bid): return issues+(["Unknown base"] as Array[String])
@@ -280,13 +281,47 @@ func validate(item: Dictionary) -> Array[String]:
 		if not _legendaries.has(legendary_id) or not item.slot in _legendaries[legendary_id].slots or item.item_level < int(_legendaries[legendary_id].level): return issues+(["Legendary identity"] as Array[String])
 	elif not legendary_id.is_empty(): issues.append("Unexpected legendary effect")
 	if not issues.is_empty(): return issues
-	var expected := _compose(base,item.quality,item.affixes,legendary_id,String(item.name))
-	if item.quality == "rare":
-		var parts := String(item.name).split(" ")
-		if parts.size() != 2 or not parts[0] in data.rare_names.first or not parts[1] in data.rare_names.second: issues.append("Rare name")
-	elif item.name != expected.name: issues.append("Name")
-	if item.stats != expected.stats or item.description != expected.description: issues.append("Base+affix identity/stats")
+	# Name and description are presentation: only their type and length are checked (see dress()).
+	var expected := _compose(base,item.quality,item.affixes,legendary_id,"")
+	if item.stats != expected.stats: issues.append("Base+affix identity/stats")
+	issues.append_array(_check_text(item))
 	return issues
+
+## Name 1..160 characters on one line, description 0..300 characters (line breaks allowed); no control characters.
+func _check_text(item: Dictionary) -> Array[String]:
+	var issues: Array[String] = []
+	if not item.name is String or item.name.length() < 1 or item.name.length() > 160: issues.append("Name format")
+	if not item.description is String or item.description.length() > 300: issues.append("Description format")
+	if not issues.is_empty(): return issues
+	# A name is one line; a description may have line breaks. Neither may carry control, line-separator or
+	# bidirectional-override characters (they would break or reorder a HUD line).
+	for field in ["name","description"]:
+		var text: String = item[field]
+		for i in text.length():
+			var code: int = text.unicode_at(i)
+			var is_break: bool = code == 10 and field == "description"
+			if not is_break and (code < 32 or code == 127 or (code >= 0x80 and code <= 0x9F) or code == 0x2028 or code == 0x2029 or (code >= 0x202A and code <= 0x202E) or (code >= 0x2066 and code <= 0x2069)):
+				issues.append("Text control character")
+				return issues
+	return issues
+
+## A copy of `item` with name and description rebuilt from the current data (rare names are kept).
+## Call only on an item that passed validate(). Never changes stats or ids. v1 items are returned unchanged.
+func dress(item: Dictionary) -> Dictionary:
+	var result: Dictionary = item.duplicate(true)
+	if not item.has("grammar"): return result
+	if item.quality == "unique":
+		var uid := String(item.base_id).trim_prefix(UNIQUE_PREFIX)
+		if _uniques.has(uid):
+			result.name = _uniques[uid].name
+			result.description = _uniques[uid].description
+		return result
+	var bid := String(item.base_id).trim_prefix(BASE_PREFIX)
+	if not _bases.has(bid): return result
+	var composed := _compose(_bases[bid],item.quality,item.affixes,String(item.get("legendary_id","")),String(item.name))
+	result.description = composed.description
+	if item.quality != "rare": result.name = composed.name
+	return result
 
 ## Rough worth of an item for a given signature skill. Used only to decide whether
 ## a pickup deserves a prompt; it never changes combat.

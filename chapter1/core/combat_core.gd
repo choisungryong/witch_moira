@@ -188,6 +188,16 @@ func close_inventory() -> void:
 	_inventory_open = false
 	_refresh_mode()
 
+## The player gives up. Same terminal path as a defeat: the app saves the run as a defeat.
+## Only from a live run; never from the menu or after the end. Not used by the golden replay.
+func abandon() -> bool:
+	if mode == "menu" or not _terminal_mode.is_empty(): return false
+	_inventory_open = false
+	_terminal_mode = "defeat"
+	_refresh_mode()
+	_emit("defeat", hero.position, {"abandoned": true})
+	return true
+
 func _refresh_mode() -> void:
 	if mode == "menu": return
 	if not _terminal_mode.is_empty():
@@ -268,31 +278,179 @@ func unequip(slot: String) -> bool:
 	return true
 
 func _recompute_gear() -> void:
+	var totals := _gear_totals(equipped)
 	_gear_stats.clear()
+	_gear_stats.merge(totals)
+	var body := _hero_body(_gear_stats)
+	hero.max_hp_raw = body.max_hp_raw
+	hero.hp_raw = mini(int(hero.hp_raw),int(hero.max_hp_raw))
+	hero.speed = body.speed
+
+## Pure: summed gear stats for an equip map {slot: uid} over the bag. No state change.
+func _gear_totals(equip_map: Dictionary) -> Dictionary:
+	var totals := {}
 	for slot in EQUIP_SLOTS:
-		if not equipped.has(slot): continue
-		var item := _owned(int(equipped[slot]))
+		if not equip_map.has(slot): continue
+		var item := _owned(int(equip_map[slot]))
 		if item.is_empty(): continue
 		for stat in item.stats:
-			_gear_stats[stat] = int(_gear_stats.get(stat,0))+int(item.stats[stat])
-	hero.max_hp_raw = 120*UNIT+int(_gear_stats.get("max_hp_raw",0))+_build_max_hp*UNIT
-	hero.hp_raw = mini(int(hero.hp_raw),int(hero.max_hp_raw))
-	hero.speed = BASE_SPEED*float(10000+int(_gear_stats.get("move_speed_bps",0)))/10000.0
+			totals[stat] = int(totals.get(stat,0))+int(item.stats[stat])
+	return totals
+
+## Pure: the hero's gear-and-build body values for the given gear totals.
+func _hero_body(gear: Dictionary) -> Dictionary:
+	return {"max_hp_raw":120*UNIT+int(gear.get("max_hp_raw",0))+_build_max_hp*UNIT,
+		"speed":BASE_SPEED*float(10000+int(gear.get("move_speed_bps",0)))/10000.0}
 
 func effective_skill(id_: String) -> Dictionary:
+	return _skill_with(id_,_gear_stats)
+
+## Pure: the skill's final effect for the given gear totals.
+func _skill_with(id_: String, gear: Dictionary) -> Dictionary:
 	var value: Dictionary = growth.effective_skill(id_)
 	if value.is_empty(): return {}
 	var effect: Dictionary = value.effects
-	var additional := int(_gear_stats.get("projectiles",0))
+	var additional := int(gear.get("projectiles",0))
 	if effect.projectiles > 0: effect.projectiles = mini(16,int(effect.projectiles)+additional)
 	else: effect.chain_targets = mini(32,int(effect.chain_targets)+additional)
-	effect.chain_targets = mini(32,int(effect.chain_targets)+int(_gear_stats.get("chain_targets",0)))
-	if int(effect.shatter_count) > 0: effect.shatter_count = mini(16,int(effect.shatter_count)+int(_gear_stats.get("shatter_count",0)))
-	effect.damage_raw = int(effect.damage_raw)*(10000+int(_gear_stats.get("damage_bps",0)))/10000
-	effect.cooldown_ticks = maxi(12,int(effect.cooldown_ticks)*10000/(10000+int(_gear_stats.get("cooldown_bps",0))))
+	effect.chain_targets = mini(32,int(effect.chain_targets)+int(gear.get("chain_targets",0)))
+	if int(effect.shatter_count) > 0: effect.shatter_count = mini(16,int(effect.shatter_count)+int(gear.get("shatter_count",0)))
+	effect.damage_raw = int(effect.damage_raw)*(10000+int(gear.get("damage_bps",0)))/10000
+	effect.cooldown_ticks = maxi(12,int(effect.cooldown_ticks)*10000/(10000+int(gear.get("cooldown_bps",0))))
 	# Equipment augments attack shape, but cannot escape a cast's global damage budget.
-	effect.hit_budget = mini(128,int(effect.hit_budget)+additional*8+int(_gear_stats.get("chain_targets",0))*2)
+	effect.hit_budget = mini(128,int(effect.hit_budget)+additional*8+int(gear.get("chain_targets",0))*2)
 	return value
+
+# ---------------------------------------------------------------- stat sheet (read only)
+
+static func _row(id_: String, label: String, raw: int, value: float, unit: String, better: String, decimals: int, detail: bool = false, kind: String = "number") -> Dictionary:
+	return {"id":id_,"label":label,"raw":raw,"value":value,"unit":unit,"better":better,"decimals":decimals,"detail":detail,"kind":kind}
+
+## Rows of one skill's final effect. Primary shows the shape numbers that are nonzero; a secondary shows damage and interval.
+func _skill_rows(effect: Dictionary, primary: bool) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	rows.append(_row("damage","주문 피해",int(effect.damage_raw),float(effect.damage_raw)/UNIT,"","higher",1))
+	rows.append(_row("interval","시전 간격",int(effect.cooldown_ticks),float(effect.cooldown_ticks)/HZ,"초","lower",2))
+	if not primary: return rows
+	var counts := [["projectiles","발사체"],["chain_targets","연쇄 대상"],["branches","번개 분기"],["pierce","관통"]]
+	for pair in counts:
+		var n := int(effect.get(pair[0],0))
+		if n > 0: rows.append(_row(pair[0],pair[1],n,float(n),"","higher",0))
+	if int(effect.get("radius_cm",0)) > 0: rows.append(_row("radius","범위",int(effect.radius_cm),float(effect.radius_cm)/100.0,"m","higher",1))
+	if int(effect.get("slow_bps",0)) > 0: rows.append(_row("slow","감속",int(effect.slow_bps),float(effect.slow_bps)/100.0,"%","higher",0))
+	if int(effect.get("freeze_stacks",0)) > 0: rows.append(_row("freeze_stacks","빙결 문턱",int(effect.freeze_stacks),float(effect.freeze_stacks),"회","lower",0))
+	if int(effect.get("shatter_count",0)) > 0: rows.append(_row("shatter_count","파쇄 수",int(effect.shatter_count),float(effect.shatter_count),"","higher",0))
+	if int(effect.get("death_burst",0)) > 0: rows.append(_row("death_burst","처치 폭발",1,1.0,"","higher",0,false,"flag"))
+	rows.append(_row("hit_budget","한 시전 최대 명중",int(effect.get("hit_budget",0)),float(effect.get("hit_budget",0)),"","higher",0,true))
+	return rows
+
+func _skill_block(id_: String, gear: Dictionary, primary: bool) -> Dictionary:
+	var skill := _skill_with(id_,gear)
+	if skill.is_empty(): return {}
+	return {"id":id_,"name":skill.name,"rank":int(skill.rank),"evolved":bool(skill.evolved),"rows":_skill_rows(skill.effects,primary)}
+
+func _hero_rows(gear: Dictionary) -> Array[Dictionary]:
+	var body := _hero_body(gear)
+	var reduction := int(gear.get("damage_reduction_bps",0))+_build_reduction_bps
+	var dash := maxi(60,180*10000/(10000+int(gear.get("dash_cooldown_bps",0))))
+	var pickup := int(gear.get("pickup_radius_cm",0))
+	var soul := int(gear.get("soul_gain_bps",0))
+	var speed_bps := 10000+int(gear.get("move_speed_bps",0))
+	var rows: Array[Dictionary] = []
+	rows.append(_row("max_hp","최대 생명",int(body.max_hp_raw),float(body.max_hp_raw)/UNIT,"","higher",0))
+	rows.append(_row("damage_reduction","받는 피해 감소",reduction,float(reduction)/100.0,"%","higher",1))
+	rows.append(_row("speed","이동 속도",speed_bps,float(body.speed),"m/초","higher",2))
+	rows.append(_row("dash_cooldown","회피 재사용",dash,float(dash)/HZ,"초","lower",2))
+	rows.append(_row("pickup_radius","회수 반경",pickup,1.3+float(pickup)/100.0,"m","higher",1))
+	rows.append(_row("soul_gain","영혼 획득",soul,float(soul)/100.0,"%","higher",0))
+	return rows
+
+## Legendary and unique descriptions of what the equip map wears.
+func _effects_of(equip_map: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for slot in EQUIP_SLOTS:
+		if not equip_map.has(slot): continue
+		var item := _owned(int(equip_map[slot]))
+		if item.is_empty() or not item.get("quality","") in ["legendary","unique"]: continue
+		var text := String(item.get("description",""))
+		if not text.is_empty(): result.append({"source":String(item.name),"text":text})
+	return result
+
+func _sheet_of(gear: Dictionary, equip_map: Dictionary) -> Dictionary:
+	var secondaries: Array[Dictionary] = []
+	for id_ in SKILL_IDS:
+		if id_ == _primary_id: continue
+		var block := _skill_block(id_,gear,false)
+		if not block.is_empty(): secondaries.append(block)
+	var sets: Array[Dictionary] = []
+	return {"primary":_skill_block(_primary_id,gear,true),"secondaries":secondaries,"hero":{"rows":_hero_rows(gear)},"sets":sets,"effects":_effects_of(equip_map)}
+
+## Read-only. The numbers the core uses right now.
+## {primary:{id,name,rank,evolved,rows}, secondaries:[{...}], hero:{rows}, sets:[], effects:[{source,text}]}
+## A row is {id,label,raw,value,unit,better:"higher"|"lower",decimals,detail,kind:"number"|"flag"}.
+func stat_sheet() -> Dictionary:
+	return _sheet_of(_gear_stats,equipped)
+
+## Read-only. stat_sheet() as if bag item `uid` were worn in `slot` ("" = target_slot). Changes nothing.
+## {slot, can_equip, slot_ok, level_ok, required_level, replaces_uid, veiled, before, after, sets_before, sets_after,
+##  effects_gained, effects_lost, rows:[{group,id,label,unit,decimals,better,detail,kind,before,after,delta,change}]}
+## change is "better", "worse" or "same" from the player's side (a smaller interval is better).
+## An unknown uid returns {}.
+func preview_equip(uid: int, slot: String = "") -> Dictionary:
+	var item := _owned(uid)
+	if item.is_empty(): return {}
+	var chosen := slot
+	if chosen.is_empty() or not chosen in EQUIP_SLOTS: chosen = target_slot(item)
+	var slot_ok: bool = (item.slot == "ring") == (chosen in ["ring","ring2"]) and (item.slot == "ring" or chosen == item.slot)
+	var level_ok := can_equip(item)
+	var before := stat_sheet()
+	var map := equipped.duplicate()
+	if slot_ok:
+		var previous := equip_slot_of(uid)
+		if not previous.is_empty() and previous != chosen: map.erase(previous)
+		map[chosen] = uid
+	var after := before
+	if slot_ok: after = _sheet_of(_gear_totals(map),map)
+	var gained: Array[Dictionary] = []
+	var lost: Array[Dictionary] = []
+	for e in after.effects:
+		if not before.effects.has(e): gained.append(e)
+	for e in before.effects:
+		if not after.effects.has(e): lost.append(e)
+	return {"slot":chosen,"can_equip":slot_ok and level_ok,"slot_ok":slot_ok,"level_ok":level_ok,"required_level":int(item.get("required_level",1)),
+		"replaces_uid":int(equipped.get(chosen,0)),"veiled":false,"before":before,"after":after,"sets_before":before.sets,"sets_after":after.sets,
+		"effects_gained":gained,"effects_lost":lost,"rows":_diff_rows(before,after)}
+
+func _diff_rows(before: Dictionary, after: Dictionary) -> Array[Dictionary]:
+	var groups: Array[Dictionary] = []
+	groups.append({"group":"primary","a":before.primary.get("rows",[]),"b":after.primary.get("rows",[])})
+	for i in before.secondaries.size():
+		groups.append({"group":String(before.secondaries[i].id),"a":before.secondaries[i].rows,"b":after.secondaries[i].rows if i < after.secondaries.size() else []})
+	groups.append({"group":"hero","a":before.hero.rows,"b":after.hero.rows})
+	var result: Array[Dictionary] = []
+	for g in groups:
+		var seen := {}
+		var order: Array[Dictionary] = []
+		for r in g.a:
+			seen[r.id] = true
+			order.append(r)
+		for r in g.b:
+			if not seen.has(r.id): order.append(r)
+		for r in order:
+			var a := {}
+			var b := {}
+			for x in g.a:
+				if x.id == r.id: a = x
+			for x in g.b:
+				if x.id == r.id: b = x
+			var ra := int(a.get("raw",0))
+			var rb := int(b.get("raw",0))
+			var va := float(a.get("value",0.0))
+			var vb := float(b.get("value",0.0))
+			var change := "same"
+			if rb != ra: change = "better" if (rb > ra) == (r.better == "higher") else "worse"
+			result.append({"group":g.group,"id":r.id,"label":r.label,"unit":r.unit,"decimals":r.decimals,"better":r.better,"detail":r.detail,"kind":r.kind,"before":va,"after":vb,"delta":vb-va,"change":change})
+	return result
 
 func compare_item(uid: int) -> Dictionary:
 	var item := _owned(uid)
