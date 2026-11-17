@@ -16,12 +16,14 @@ func configure(candidate: Variant, primary_skill: String, run_seed: int) -> bool
 		_successor_document = catalog.snapshot()
 	var expected: Dictionary = candidate.duplicate(true)
 	var changed := false
-	for skill in expected.get("skills",[]):
+	# The one allowed difference is the arc evolution name; it is not compared as text, the successor's value is copied over.
+	var successor_arc_name := ""
+	for skill in _successor_document.get("skills",[]):
 		if skill.get("id","") == "chapter1.skill.arc":
-			if skill.get("evolution_name","") != "두 갈래 폭풍":
-				errors.assign(["Unexpected predecessor arc evolution name"])
-				return false
-			skill.evolution_name = "세 갈래 폭풍"
+			successor_arc_name = String(skill.get("evolution_name",""))
+	for skill in expected.get("skills",[]):
+		if skill.get("id","") == "chapter1.skill.arc" and not successor_arc_name.is_empty():
+			skill.evolution_name = successor_arc_name
 			changed = true
 	if not changed or not expected.has("xp_thresholds"):
 		errors.assign(["Successor growth predecessor fields missing"])

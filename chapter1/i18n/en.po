@@ -218,3 +218,403 @@ msgstr "Back"
 #. Menu profile line when the save is ready (after returning to the menu)
 msgid "notify.profile.ready"
 msgstr "Save ready"
+
+#. Zone name, first room
+msgid "zone.0.name"
+msgstr "Ash Forecourt"
+
+#. Zone name, second room
+msgid "zone.1.name"
+msgstr "Fallen Choir"
+
+#. Zone name, last room
+msgid "zone.2.name"
+msgstr "Sanctum of Cinders"
+
+#. Ritual name (hold the ring)
+msgid "ritual.vigil.name"
+msgstr "Unquenched Ember"
+
+#. Ritual name (kill inside the ring)
+msgid "ritual.reliquary.name"
+msgstr "Sealed Reliquary"
+
+#. Seal guardian name, zone 0
+msgid "enemy.champion.0.name"
+msgstr "Gatekeeper of Embers"
+
+#. Seal guardian name, zone 1
+msgid "enemy.champion.1.name"
+msgstr "Frost Choirmaster"
+
+#. Seal guardian name, zone 2 (the chapter boss)
+msgid "enemy.champion.2.name"
+msgstr "Warden-King of the Corridor"
+
+#. Goal line while the next zone is not entered yet
+msgid "hud.objective.move"
+msgstr "Follow the open east corridor to the next courtyard"
+
+#. Goal line. {done}: kills so far, {total}: kills needed (plain numbers)
+msgid "hud.objective.seal_kills"
+msgstr "Kills around the seal {done} / {total}"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.ember.name"
+msgstr "Ember Shot"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.ember.evolved_name"
+msgstr "Chain Fireball"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.frost.name"
+msgstr "Frost Lance"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.frost.evolved_name"
+msgstr "Shatter Wave"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.arc.name"
+msgstr "Chain Lightning"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.arc.evolved_name"
+msgstr "Three-Fork Storm"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.embers.name"
+msgstr "Embers"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.crystal.name"
+msgstr "Crystal"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.conductor.name"
+msgstr "Conductor"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.pierce_add"
+msgstr "Pierce +{n}"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.projectiles_add"
+msgstr "Lances +{n}"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.shatter_add"
+msgstr "Shards +{n}"
+
+#. Skill tree effect line. {v}: percent points, up to two decimals
+msgid "tree.effect.slow_add"
+msgstr "Slow +{v} points"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.radius_add"
+msgstr "Radius +{v} m"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.damage_add"
+msgstr "Damage +{v}%"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.interval_less"
+msgstr "Cast interval -{v}%"
+
+#. Skill tree effect line. {n}: hits
+msgid "tree.effect.freeze_at"
+msgstr "Freezes after {n} hits"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.shatter_min"
+msgstr "At least {n} shatter shards"
+
+#. Skill tree effect line. {n}: points
+msgid "tree.effect.max_hp_add"
+msgstr "Max life +{n}"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.reduction_add"
+msgstr "Damage taken -{v}%"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.potion_start"
+msgstr "Starting potions +{n}"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.elite_damage"
+msgstr "Damage to guardians and bosses +{v}%"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.shatter_radius"
+msgstr "Shatter radius +{v} m"
+
+#. Skill tree effect line. {radius}: meters, {seconds}: seconds, {slow}: percent
+msgid "tree.effect.frost_field"
+msgstr "Frost field: radius {radius} m · {seconds} s · slow {slow}%"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.field_radius_add"
+msgstr "Field radius +{v} m"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.field_count_add"
+msgstr "Fields at once +{n}"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.field_pulse"
+msgstr "Field damage: {v}% of lance damage"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.field_slow_min"
+msgstr "Field slow {v}%"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.rerolls"
+msgstr "Grace rerolls: {n}"
+
+#. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
+msgid "tree.effect.start_rank"
+msgstr "Start the lance at rank {rank}"
+
+#. Skill tree effect line.
+msgid "tree.effect.evolve_free"
+msgstr "Evolve without the crystal grace"
+
+#. Save refusal text
+msgid "profile.error.preview_only"
+msgstr "This is a preview without a dedicated save path"
+
+#. Save refusal text
+msgid "profile.error.file_rejected"
+msgstr "Save file failed verification · original kept"
+
+#. Save refusal text
+msgid "profile.error.fresh_unavailable"
+msgstr "A new save cannot be started right now"
+
+#. Save refusal text
+msgid "profile.error.fresh_name_taken"
+msgstr "The new save file name is already taken"
+
+#. Save refusal text
+msgid "profile.error.pointer_path_missing"
+msgstr "There is no path for the pointer file"
+
+#. Save refusal text
+msgid "profile.error.pointer_create_failed"
+msgstr "Could not create the pointer file"
+
+#. Save refusal text
+msgid "profile.error.pointer_write_failed"
+msgstr "Writing the pointer file failed verification"
+
+#. Save refusal text
+msgid "profile.error.pointer_replace_failed"
+msgstr "Could not replace the pointer file"
+
+#. Save refusal text
+msgid "profile.error.old_too_large"
+msgstr "The older save file is too large · original kept"
+
+#. Save refusal text
+msgid "profile.error.old_rejected"
+msgstr "The older save file failed verification · original kept"
+
+#. Save refusal text
+msgid "profile.error.save_path_unverified"
+msgstr "The save path has to be verified first"
+
+#. Save refusal text
+msgid "profile.error.save_candidate_rejected"
+msgstr "The save candidate failed verification"
+
+#. Save refusal text
+msgid "profile.error.save_changed_elsewhere"
+msgstr "The save was changed by another run · existing file kept"
+
+#. Save refusal text
+msgid "profile.error.save_moved"
+msgstr "The save file was moved from outside"
+
+#. Save refusal text
+msgid "profile.error.save_name_conflict"
+msgstr "Save file name conflict"
+
+#. Save refusal text
+msgid "profile.error.save_create_failed"
+msgstr "Could not create the save file"
+
+#. Save refusal text
+msgid "profile.error.save_write_failed"
+msgstr "Writing the save failed verification"
+
+#. Save refusal text
+msgid "profile.error.save_replace_failed"
+msgstr "Could not replace the save · previous file and new revision kept"
+
+#. Save refusal text
+msgid "profile.error.save_replace_verify_failed"
+msgstr "Replacing the save failed verification"
+
+#. Save refusal text
+msgid "profile.error.reward_rejected"
+msgstr "The reward gear failed verification"
+
+#. Save refusal text
+msgid "profile.error.stash_full"
+msgstr "The stash is full"
+
+#. Save refusal text
+msgid "profile.error.tree_locked"
+msgstr "This witch's skill tree is not open yet"
+
+#. Save refusal text
+msgid "profile.error.tree_rejected"
+msgstr "The tree investment failed verification"
+
+#. Save refusal text
+msgid "profile.error.tree_confirmed"
+msgstr "Confirmed investments can only be undone by a full reset"
+
+#. Save refusal text
+msgid "profile.error.tree_nothing_to_undo"
+msgstr "There is no investment to undo"
+
+#. Save refusal text
+msgid "profile.error.essence_short"
+msgstr "Not enough essence"
+
+#. Save refusal text
+msgid "profile.error.isolated_path_invalid"
+msgstr "Invalid isolated QA profile path"
+
+#. Save refusal text
+msgid "profile.error.profile_too_large"
+msgstr "Profile exceeds bound"
+
+#. Save refusal text
+msgid "profile.error.growth_data_missing"
+msgstr "Growth data could not be read"
+
+#. Save refusal text
+msgid "profile.error.unknown_character"
+msgstr "Unknown character"
+
+#. Save refusal text
+msgid "profile.error.xp_out_of_range"
+msgstr "Experience out of range"
+
+#. Save refusal text
+msgid "profile.error.first_kills_format"
+msgstr "First-kill format error"
+
+#. Save refusal text
+msgid "profile.error.first_kill_unknown"
+msgstr "Unknown first-kill id"
+
+#. Save refusal text
+msgid "profile.error.progress_rejected"
+msgstr "The run record was not accepted"
+
+#. {n}: required level
+msgid "profile.error.level_required"
+msgstr "Level {n} required"
+
+#. {detail}: developer reason, English
+msgid "profile.error.tree_rejected_detail"
+msgstr "The tree investment failed verification · {detail}"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.damage.label"
+msgstr "Spell damage"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.interval.label"
+msgstr "Cast interval"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.projectiles.label"
+msgstr "Projectiles"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.chain_targets.label"
+msgstr "Chain targets"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.branches.label"
+msgstr "Lightning branches"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.pierce.label"
+msgstr "Pierce"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.radius.label"
+msgstr "Radius"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.slow.label"
+msgstr "Slow"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.freeze_stacks.label"
+msgstr "Freeze threshold"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.shatter_count.label"
+msgstr "Shatter count"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.death_burst.label"
+msgstr "Kill burst"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.hit_budget.label"
+msgstr "Most hits per cast"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.max_hp.label"
+msgstr "Max life"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.damage_reduction.label"
+msgstr "Damage reduction"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.speed.label"
+msgstr "Move speed"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.dash_cooldown.label"
+msgstr "Evade cooldown"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.pickup_radius.label"
+msgstr "Pickup radius"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.soul_gain.label"
+msgstr "Soul gain"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.s"
+msgstr "s"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.m"
+msgstr "m"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.pct"
+msgstr "%"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.count"
+msgstr "x"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.m_per_s"
+msgstr "m/s"

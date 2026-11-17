@@ -35,11 +35,10 @@ func _init() -> void:
 	loot = _shared_loot
 
 const ZONES := [Vector2(0,0),Vector2(48,0),Vector2(96,0)]
-const ZONE_NAMES := ["잿빛 앞뜰","무너진 성가대","재의 성소"]
 ## Kills that break each zone's seal: tuning.seal_kills (chapter1/data/combat_tuning.json).
 const RITUALS := [
-	{"id":"vigil","name":"꺼지지 않는 불씨","position":Vector2(8,-7),"zone":0,"kind":"hold"},
-	{"id":"reliquary","name":"봉인된 성유물","position":Vector2(40,6),"zone":1,"kind":"kill"}
+	{"id":"vigil","position":Vector2(8,-7),"zone":0,"kind":"hold"},
+	{"id":"reliquary","position":Vector2(40,6),"zone":1,"kind":"kill"}
 ]
 var zone := 0
 var zone_kills := 0
@@ -111,7 +110,7 @@ func _install_tuning(document: Dictionary) -> void:
 func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	# A build belongs to one witch and her signature skill; any other start is refused before anything changes.
 	if not _pending_build.is_empty() and _build_signature(_pending_build)!=primary:
-		errors.assign(["빌드의 마녀와 시작 기술이 다릅니다"]);return false
+		errors.assign(["Build witch and starting skill differ"]);return false
 	if tuning.is_empty():
 		if _shared_tuning.is_empty():
 			var loader = Tuning.new()
@@ -165,33 +164,33 @@ func _build_signature(build: Dictionary) -> String:
 ## uses decide whether the ranks are legal. The core does not see the witch's first-kill receipts, so it grants
 ## the most points she could hold at this level.
 func _normalize_build(build: Dictionary) -> Dictionary:
-	if build.is_empty():return {"error":"빈 빌드 사전입니다 · clear_build()를 쓰세요"}
-	if not _growth_data():return {"error":"성장 데이터를 읽지 못했습니다"}
-	if build.size()!=BUILD_KEYS.size():return {"error":"빌드 키가 맞지 않습니다"}
+	if build.is_empty():return {"error":"Empty build dictionary; use clear_build()"}
+	if not _growth_data():return {"error":"Growth data could not be read"}
+	if build.size()!=BUILD_KEYS.size():return {"error":"Build keys do not match"}
 	for key in BUILD_KEYS:
-		if not build.has(key):return {"error":"빌드 키 없음: "+key}
+		if not build.has(key):return {"error":"Build key missing: "+key}
 	var doc: Dictionary=_shared_progression
 	var known: Dictionary=Progression.character_entry(doc,build.character_id) if build.character_id is String else {}
-	if known.is_empty():return {"error":"알 수 없는 캐릭터"}
-	if not GrowthCatalog.integer(build.character_xp,0,1000000000) or not GrowthCatalog.integer(build.character_level,1,int(doc.level_cap)):return {"error":"캐릭터 레벨·경험치 범위 밖"}
-	if Progression.level_for_xp(doc,int(build.character_xp))!=int(build.character_level):return {"error":"캐릭터 레벨이 경험치와 맞지 않습니다"}
-	if not build.tree_id is String or not build.ranks is Dictionary or not GrowthCatalog.integer(build.tree_revision,0,1000000):return {"error":"트리 형식 오류"}
+	if known.is_empty():return {"error":"Unknown character"}
+	if not GrowthCatalog.integer(build.character_xp,0,1000000000) or not GrowthCatalog.integer(build.character_level,1,int(doc.level_cap)):return {"error":"Character level or xp out of range"}
+	if Progression.level_for_xp(doc,int(build.character_xp))!=int(build.character_level):return {"error":"Character level does not match xp"}
+	if not build.tree_id is String or not build.ranks is Dictionary or not GrowthCatalog.integer(build.tree_revision,0,1000000):return {"error":"Tree format error"}
 	var ranks := {}
 	for node_id in build.ranks:
-		if not node_id is String or not SkillTree.integer_(build.ranks[node_id],1,10):return {"error":"랭크 형식 오류"}
+		if not node_id is String or not SkillTree.integer_(build.ranks[node_id],1,10):return {"error":"Rank format error"}
 		ranks[node_id]=int(build.ranks[node_id])
 	var clean := {"character_id":build.character_id,"tree_id":build.tree_id,"tree_revision":int(build.tree_revision),"ranks":ranks,"character_level":int(build.character_level),"character_xp":int(build.character_xp)}
 	var has_tree: bool=known.get("tree_id")!=null
 	if String(build.tree_id).is_empty():
-		if has_tree or int(build.tree_revision)!=0 or not ranks.is_empty():return {"error":"트리가 없는 마녀의 빌드가 아닙니다"}
+		if has_tree or int(build.tree_revision)!=0 or not ranks.is_empty():return {"error":"Not a build of a witch without a tree"}
 		return clean
-	if not has_tree or known.tree_id!=build.tree_id or not _shared_trees.has(build.tree_id):return {"error":"이 마녀의 트리가 아닙니다"}
+	if not has_tree or known.tree_id!=build.tree_id or not _shared_trees.has(build.tree_id):return {"error":"Not this witch's tree"}
 	var tree: Dictionary=_shared_trees[build.tree_id]
-	if int(build.tree_revision)!=int(tree.revision):return {"error":"트리 리비전이 다릅니다"}
+	if int(build.tree_revision)!=int(tree.revision):return {"error":"Tree revision differs"}
 	var bound := (int(build.character_level)-1)*int(doc.points_per_level)
 	for reward in doc.first_rewards:bound+=int(doc.first_rewards[reward])
 	var problems: Array[String]=SkillTree.legal_ranks(tree,ranks,int(build.character_level),bound)
-	if not problems.is_empty():return {"error":"트리 투자 검증 실패 · "+problems[0]}
+	if not problems.is_empty():return {"error":"Tree investment rejected: "+problems[0]}
 	return clean
 
 ## Take a build for the next start(). Call it before start(); a rejected build changes nothing. The build lives
@@ -417,14 +416,14 @@ func _spawn_wave() -> void:
 		if _spawn("elite",_spawn_point(8,9)):
 			seals[zone].champion_spawned=true;_champion_id=_enemy_sequence
 			var e: Dictionary=enemies[_champion_id]
-			e.chapter_boss=zone==2;e.title=["잿불의 문지기","서리의 성가대장","회랑의 파수왕"][zone]
+			e.chapter_boss=zone==2;e.title_key="enemy.champion.%d.name"%zone
 			var champion: Dictionary=tuning.champions[zone]
 			e.definition.hp=int(champion.hp);e.definition.windup=int(champion.windup)
 			e.definition.recover=int(champion.recover);e.definition.damage=int(champion.damage)
 			e.definition.xp=int(champion.xp);e.hp_raw=int(e.definition.hp)*UNIT;e.max_hp_raw=e.hp_raw
 			_boss_phase=1 if zone==2 else 0;_next_ward=tick+3*HZ
 			_record("boss_spawned" if zone==2 else "champion_spawned")
-			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id,"name":e.title})
+			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id})
 			if zone==2 and tuning.final_level_on_boss_spawn:_seal_grace()
 	if tick<_next_spawn:return
 	# Frequent weak bodies provide sweepable packs, mixed with bounded specialists.
@@ -505,7 +504,7 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	else:
 		for i in int(tuning.potion.seal_drops):_drop_potion(e.position+Vector2(.4*i,0))
 		zone+=1;zone_kills=0;_zone_entered=false
-		_emit("gate_opened",ZONES[zone]-Vector2(24,0),{"zone":zone,"name":ZONE_NAMES[zone]})
+		_emit("gate_opened",ZONES[zone]-Vector2(24,0),{"zone":zone})
 		_record("gate_opened")
 
 ## The last seal's grace (tuning.final_level_on_boss_spawn): when the final boss appears, the orbs still on
@@ -699,7 +698,7 @@ func activate_ritual(id_: String) -> bool:
 	for def in RITUALS:
 		if def.id==id_ and def.zone==zone and hero.position.distance_squared_to(def.position)<=3.0*3.0:
 			rituals[id_].state="active";rituals[id_].started_tick=tick;_record("ritual_started:"+id_)
-			_emit("ritual_started",def.position,{"id":id_,"name":def.name});return true
+			_emit("ritual_started",def.position,{"id":id_});return true
 	return false
 
 func _step_rituals() -> void:
@@ -717,7 +716,7 @@ func _step_rituals() -> void:
 		if state.progress>=target:
 			state.state="completed";state.completed_tick=tick;_record("ritual_completed:"+def.id)
 			_publish_item(loot.roll_item(_loot_rng,ZONE_LEVELS[zone],"rare"),def.position,true)
-			_drop_potion(def.position);_emit("ritual_completed",def.position,{"id":def.id,"name":def.name})
+			_drop_potion(def.position);_emit("ritual_completed",def.position,{"id":def.id})
 
 func _step_chapter_hazards() -> void:
 	if _champion_id<=0 or not enemies.has(_champion_id) or zone!=2:return
@@ -766,15 +765,17 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 		elif tick-pickup.tick<180*HZ:live.append(pickup)
 	potion_pickups=live
 
+## What the screen needs to word the goal. `kind`: "move" (walk to the next room), "seal_kills" (done/total kills around the
+## seal) or "champion" (hp/hp_max of the seal guardian, `title_key` names it). No sentence is made here.
 func objective() -> Dictionary:
-	var title: String=ZONE_NAMES[zone]
 	var seal_kills: int=int(tuning.seal_kills[zone])
-	var text := "봉인 주변 처치 %d / %d"%[mini(zone_kills,seal_kills),seal_kills]
 	var destination: Vector2=ZONES[zone]
-	if not _zone_entered:text="열린 동쪽 회랑을 따라 다음 마당으로 이동"
+	var result := {"zone":zone,"kind":"seal_kills","done":mini(zone_kills,seal_kills),"total":seal_kills,"hp":0,"hp_max":0,"title_key":"","destination":destination,"boss_phase":_boss_phase,"entered":_zone_entered}
+	if not _zone_entered:result.kind="move"
 	elif _champion_id>0 and enemies.has(_champion_id):
-		var e: Dictionary=enemies[_champion_id];title=e.get("title",title);text="%d / %d"%[ceili(float(e.hp_raw)/UNIT),ceili(float(e.max_hp_raw)/UNIT)]
-	return {"zone":zone,"title":title,"text":text,"destination":destination,"boss_phase":_boss_phase,"entered":_zone_entered}
+		var e: Dictionary=enemies[_champion_id]
+		result.kind="champion";result.hp=ceili(float(e.hp_raw)/UNIT);result.hp_max=ceili(float(e.max_hp_raw)/UNIT);result.title_key=String(e.get("title_key",""))
+	return result
 
 func snapshot() -> Dictionary:
 	var result: Dictionary=super.snapshot()

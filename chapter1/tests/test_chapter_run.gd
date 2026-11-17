@@ -260,7 +260,7 @@ func round2_checks() -> void:
 	# Seal kills come from the data.
 	var sk := tuned_run({"seal_kills":[3,5,7]});clear_field(sk)
 	sk.hero.position=Chapter.ZONES[0];sk._zone_entered=true;sk.zone_kills=2;sk._spawn_wave()
-	check(sk._champion_id==-1 and sk.objective().text.ends_with("2 / 3"),"Below seal_kills[0] there is no champion and the objective shows the data value")
+	check(sk._champion_id==-1 and sk.objective().kind=="seal_kills" and sk.objective().done==2 and sk.objective().total==3 and sk.objective().title_key.is_empty(),"Below seal_kills[0] there is no champion and the objective shows the data value")
 	sk.zone_kills=3;sk._spawn_wave()
 	check(sk._champion_id>0,"The champion comes at seal_kills[0]")
 	sk.zone=2;sk._champion_id=-1;sk.hero.position=Chapter.ZONES[2];sk.zone_kills=6;sk._spawn_wave()
@@ -867,7 +867,7 @@ func sheet_checks() -> void:
 	check(run.preview_equip(99999).is_empty(),"A1 unknown uid returns an empty dictionary")
 	# Effects: legendary description appears and disappears.
 	var p_leg: Dictionary=run.preview_equip(905)
-	check(p_leg.effects_gained.size()==1 and p_leg.effects_gained[0].source=="item905" and p_leg.effects_gained[0].text=="Test effect text" and p_leg.effects_lost.is_empty(),"A1 legendary effect is gained")
+	check(p_leg.effects_gained.size()==1 and p_leg.effects_gained[0].source_uid==905 and p_leg.effects_gained[0].kind=="legendary" and p_leg.effects_gained[0].has("id") and not p_leg.effects_gained[0].has("text") and p_leg.effects_lost.is_empty(),"A1 legendary effect is gained")
 	check(run.equip(905) and run.stat_sheet().effects.size()==1,"A1 worn legendary shows in the sheet effects")
 	var frost_before: Variant=row_of(before_empty.primary.rows,"freeze_stacks")
 	sheet_matches(run,"legendary body")

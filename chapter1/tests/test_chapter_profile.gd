@@ -85,7 +85,7 @@ func g1_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator,v
 	var item: Dictionary=tables.roll_item(rng,8,"rare","weapon");item.uid=900
 	check(tree.record_run("g1-loot",[item],[],false,1) and tree.salvage(int(tree.state.items[0].storage_id)) and int(tree.state.essence)==8,"Essence for the respec checks")
 	tree.respec_cost_override=3
-	check(tree.respec_cost(FROST)==12 and not tree.respec(FROST) and tree.error.contains("재") and int(tree.state.essence)==8 and int(tree.character_view(FROST).points_spent)==4,"Respec refused when essence is short, nothing changes")
+	check(tree.respec_cost(FROST)==12 and not tree.respec(FROST) and tree.error.contains("재") and tree.error_code=="essence_short" and int(tree.state.essence)==8 and int(tree.character_view(FROST).points_spent)==4,"Respec refused when essence is short, nothing changes")
 	tree.respec_cost_override=2
 	check(tree.respec(FROST) and int(tree.state.essence)==0 and tree.characters[FROST].ranks.is_empty() and int(tree.characters[FROST].respecs)==1,"Respec costs essence per point and clears the ranks")
 	tree.respec_cost_override=-1
@@ -94,13 +94,13 @@ func g1_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator,v
 	# 11. another run saved first
 	var race_path := root+"/race/profile.json";var one=Profile.new();one.configure(race_path,true);one.record_run("g1-r",[],[],true,1,progress(1000));one.record_run("g1-r2",[],[],true,1,progress(1000))
 	var two=Profile.new();two.configure(race_path,true)
-	check(one.commit_tree(FROST,{NEEDLE:1}) and not two.commit_tree(FROST,{NEEDLE:2}) and two.error.contains("다른 실행"),"commit_tree is refused after another run saved first")
+	check(one.commit_tree(FROST,{NEEDLE:1}) and not two.commit_tree(FROST,{NEEDLE:2}) and two.error.contains("다른 실행") and two.error_code=="save_changed_elsewhere" and two.error_args.is_empty(),"commit_tree is refused after another run saved first")
 	# level-gated gear
 	var gate=Profile.new();gate.configure(root+"/gate/profile.json",true)
 	var strong: Dictionary=tables.roll_item(rng,12,"rare","weapon");strong.uid=901
 	check(gate.record_run("g1-gate",[strong],[],false,1,progress(0)) and int(gate.state.items[0].item.required_level)>1,"A high-level piece is stored")
 	var need := int(gate.state.items[0].item.required_level)
-	check(not gate.select_item(int(gate.state.items[0].storage_id),FROST) and gate.error.contains("Lv") and gate.select_item(int(gate.state.items[0].storage_id)),"select_item with a witch refuses a piece above her level; without one it selects")
+	check(not gate.select_item(int(gate.state.items[0].storage_id),FROST) and gate.error.contains("Lv") and gate.error_code=="level_required" and int(gate.error_args.n)>1 and gate.select_item(int(gate.state.items[0].storage_id)),"select_item with a witch refuses a piece above her level; without one it selects")
 	check(gate.starting_gear(FROST).is_empty() and gate.blocked_gear(FROST).size()==1 and int(gate.blocked_gear(FROST)[0].required_level)==need and gate.starting_gear().size()==1,"A selected piece above the level stays selected but is left behind and reported")
 	var pure := Profile.apply_progress({},progress(100,["boss"],EMBER))
 	check(int(pure[EMBER].xp)==100 and int(pure[EMBER].tree_revision)==0 and pure[EMBER].first_rewards==["boss"],"apply_progress is pure and works for a witch without a tree")
@@ -295,7 +295,7 @@ func execute() -> void:
 	run.tick=1;check(not run.import_starting_gear(gear),"Mid-run gear import forbidden")
 	check(reopened.record_run("run-two",run.inventory,[],false,100),"Defeat saves without duplicating existing gear")
 	check(reopened.state.items.size()==1 and reopened.state.completed_runs==1,"Starter gear not duplicated and defeat not completed")
-	check(not profile.select_item(id_) and profile.error.contains("다른 실행"),"Stale writer refused and external save preserved")
+	check(not profile.select_item(id_) and profile.error.contains("다른 실행") and profile.error_code=="save_changed_elsewhere","Stale writer refused and external save preserved")
 	check(reopened.salvage(id_) and reopened.state.items.is_empty() and reopened.state.equipped.is_empty() and reopened.state.essence==8,"Explicit salvage clears equipped reference and records reward")
 	var broken := Profile.fresh();broken.items=[{"storage_id":1,"item":Items.unique(0,5)}];broken.next_id=2;broken.equipped={"body":1}
 	check(Profile.normalize(broken).is_empty(),"Wrong-slot equipped reference rejected")

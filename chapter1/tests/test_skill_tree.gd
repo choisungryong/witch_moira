@@ -2,6 +2,7 @@ extends SceneTree
 ## P1 checks of the stateless permanent-growth modules: core/skill_tree.gd and core/character_progression.gd.
 const SkillTree = preload("res://chapter1/core/skill_tree.gd")
 const Progression = preload("res://chapter1/core/character_progression.gd")
+const TreeText = preload("res://chapter1/view/hud/tree_text.gd")
 const FROST := "witch.frost"
 var checks := 0
 var failures: Array[String] = []
@@ -184,6 +185,22 @@ func _initialize() -> void:
 				hidden = hidden and not line.contains("budget") and not line.contains("예산")
 			check(not SkillTree.describe(tree, id_, r + 1).is_empty(), "every node rank has a description: %s %d" % [id_, r + 1])
 	check(hidden, "hit_budget is never shown")
+	# The key lines (no text in the core) say exactly what the old lines say, once the screen words them. Every node, every rank.
+	var same_text := true
+	var key_only := true
+	var words_checked := 0
+	for id_ in nodes:
+		for r in int(nodes[id_].max_rank):
+			var old_lines: Array[String] = SkillTree.describe(tree, id_, r + 1)
+			var entries: Array[Dictionary] = SkillTree.describe_keys(tree, id_, r + 1)
+			var new_lines: Array[String] = TreeText.lines(entries)
+			same_text = same_text and old_lines == new_lines
+			words_checked += new_lines.size()
+			for entry in entries:
+				key_only = key_only and str(entry.key).begins_with("tree.effect.") and entry.keys().size() == 2 and not str(entry.args).contains("tree.effect")
+	check(same_text and words_checked > 20, "describe_keys worded by the screen equals describe, all nodes and ranks (%d lines)" % words_checked)
+	check(key_only, "describe_keys gives keys and arguments only")
+	check(SkillTree.describe_keys(tree, "witch.frost.needle", 0).is_empty() and SkillTree.describe_keys(tree, "nope", 1).is_empty(), "describe_keys of rank 0 or an unknown node is empty")
 
 	# ---- static power table
 	var growth := read_json("res://chapter1/data/growth_quality37.json")

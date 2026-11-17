@@ -604,6 +604,74 @@ static func describe(tree: Dictionary, node_id: String, rank: int) -> Array[Stri
 		return none
 	return describe_block(nodes[node_id].ranks[rank - 1])
 
+## The same lines as describe_block, as keys and number arguments: [{key, args}]. The screen words them
+## (view/hud/tree_text.gd, keys tree.effect.*). Numbers that were shown with up to two decimals are strings ("3.5").
+static func describe_block_keys(block: Dictionary) -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	var skill: Dictionary = block.get("skill", {})
+	var add: Dictionary = skill.get("add", {})
+	if int(add.get("pierce", 0)) != 0:
+		lines.append(_line("pierce_add", {"n": int(add.pierce)}))
+	if int(add.get("projectiles", 0)) != 0:
+		lines.append(_line("projectiles_add", {"n": int(add.projectiles)}))
+	if int(add.get("shatter_count", 0)) != 0:
+		lines.append(_line("shatter_add", {"n": int(add.shatter_count)}))
+	if int(add.get("slow_bps", 0)) != 0:
+		lines.append(_line("slow_add", {"v": _hundredths(int(add.slow_bps))}))
+	if int(add.get("radius_cm", 0)) != 0:
+		lines.append(_line("radius_add", {"v": _hundredths(int(add.radius_cm))}))
+	var mul: Dictionary = skill.get("mul_bps", {})
+	if mul.has("damage_raw") and int(mul.damage_raw) != 10000:
+		lines.append(_line("damage_add", {"v": _hundredths(int(mul.damage_raw) - 10000)}))
+	if skill.has("cooldown_bps") and int(skill.cooldown_bps) != 10000:
+		lines.append(_line("interval_less", {"v": _hundredths(10000 - int(skill.cooldown_bps))}))
+	if skill.get("at_most", {}).has("freeze_stacks"):
+		lines.append(_line("freeze_at", {"n": int(skill.at_most.freeze_stacks)}))
+	if skill.get("at_least", {}).has("shatter_count"):
+		lines.append(_line("shatter_min", {"n": int(skill.at_least.shatter_count)}))
+	var hero: Dictionary = block.get("hero", {})
+	if int(hero.get("max_hp", 0)) != 0:
+		lines.append(_line("max_hp_add", {"n": int(hero.max_hp)}))
+	if int(hero.get("damage_reduction_bps", 0)) != 0:
+		lines.append(_line("reduction_add", {"v": _hundredths(int(hero.damage_reduction_bps))}))
+	if int(hero.get("potion_start", 0)) != 0:
+		lines.append(_line("potion_start", {"n": int(hero.potion_start)}))
+	var rules: Dictionary = block.get("rules", {})
+	if int(rules.get("elite_damage_bps", 0)) != 0:
+		lines.append(_line("elite_damage", {"v": _hundredths(int(rules.elite_damage_bps))}))
+	if int(rules.get("shatter_radius_cm", 0)) != 0:
+		lines.append(_line("shatter_radius", {"v": _hundredths(int(rules.shatter_radius_cm))}))
+	if rules.has("frost_field"):
+		var field: Dictionary = rules.frost_field
+		lines.append(_line("frost_field", {"radius": _hundredths(int(field.radius_cm)), "seconds": _hundredths(int(field.duration_ticks) * 100 / 60), "slow": _hundredths(int(field.slow_bps))}))
+	var field_add: Dictionary = rules.get("frost_field_add", {})
+	if int(field_add.get("radius_cm", 0)) != 0:
+		lines.append(_line("field_radius_add", {"v": _hundredths(int(field_add.radius_cm))}))
+	if int(field_add.get("max_fields", 0)) != 0:
+		lines.append(_line("field_count_add", {"n": int(field_add.max_fields)}))
+	if int(field_add.get("pulse_damage_bps", 0)) != 0:
+		lines.append(_line("field_pulse", {"v": _hundredths(int(field_add.pulse_damage_bps))}))
+	if int(field_add.get("slow_bps_at_least", 0)) != 0:
+		lines.append(_line("field_slow_min", {"v": _hundredths(int(field_add.slow_bps_at_least))}))
+	if int(rules.get("grace_rerolls", 0)) != 0:
+		lines.append(_line("rerolls", {"n": int(rules.grace_rerolls)}))
+	if rules.has("start_rank"):
+		lines.append(_line("start_rank", {"rank": int(rules.start_rank)}))
+	if rules.get("evolve_without_passive", false):
+		lines.append(_line("evolve_free", {}))
+	return lines
+
+static func _line(name_: String, args: Dictionary) -> Dictionary:
+	return {"key": "tree.effect." + name_, "args": args}
+
+## Key lines of the cumulative effect at `rank` (empty for rank 0 or an unknown node).
+static func describe_keys(tree: Dictionary, node_id: String, rank: int) -> Array[Dictionary]:
+	var nodes := index_nodes(tree)
+	if not nodes.has(node_id) or rank < 1 or rank > nodes[node_id].ranks.size():
+		var none: Array[Dictionary] = []
+		return none
+	return describe_block_keys(nodes[node_id].ranks[rank - 1])
+
 # ---------------------------------------------------------------- static power estimate
 
 static func _limited(stat: String, amount: int) -> int:

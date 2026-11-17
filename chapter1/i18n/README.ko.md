@@ -53,6 +53,23 @@ Loc.bus().locale_changed.connect(_rebuild)          # 언어가 바뀌면 화면
 5. 코어에서 받는 것은 id·키·숫자뿐이다. 사람이 읽는 글을 코어에 요구하지 않는다.
 6. 저장 파일에 번역된 글을 넣지 않는다.
 
+## 코어가 내는 것과 화면이 짓는 글
+
+코어는 글을 만들지 않는다. 화면이 아래 키로 글을 만든다(T3-L1, 2026-11-17).
+
+| 코어가 내는 것 | 화면이 쓰는 키 |
+|---|---|
+| 구역 번호 `zone` (이벤트 `gate_opened`, `zone_entered`, `objective().zone`) | `zone.<n>.name` |
+| 수호자 `title_key`(= `enemy.champion.<zone>.name`), 이벤트 `chapter_champion.zone` | 그 키 그대로 |
+| 의식 `id` (이벤트 `ritual_started/completed`, `RITUALS[].id`) | `ritual.<id>.name` |
+| `objective()` = `{zone, kind, done, total, hp, hp_max, title_key, ...}` | `kind`가 `move`이면 `hud.objective.move`, `seal_kills`이면 `hud.objective.seal_kills`({done}, {total}), `champion`이면 `hp / hp_max`와 `title_key` |
+| 은총 카드 `title_key`, `effective_skill().name_key` | `skill.<id>.name`, `skill.<id>.evolved_name`, `grace.passive.<id>.name` |
+| `SkillTree.describe_keys()` = `[{key, args}]` | `Loc.t(key, args)`. `view/hud/tree_text.gd`가 줄을 만든다 |
+| `stat_sheet()` 줄 `{id, unit_id, ...}`, 효과 `{source_uid, kind, id}` | `stat.<id>.label`, `unit.<unit_id>` |
+| 저장 거부 `profile.error_code`와 `error_args` | `profile.error.<code>` (`error`는 개발용 문장으로 남는다) |
+
+코어 쪽 파일이 `Loc`·`TranslationServer`·`tr(`·`res://chapter1/view`를 부르면 `tools/dev/i18n_scan.py`가 실패한다. 코어 출력에 한글이 새는지는 `chapter1/tests/test_core_text.gd`가 본다(장비 사전의 `name`·`description`만 T3-S까지 허용).
+
 ## 검사
 
 `godot --headless --path . --script res://chapter1/tests/test_loc.gd` → 마커 `CHAPTER1_LOC_RESULT`. `ko.po`·`en.po`의 키 일치, 자리 표시자 일치, 조사 표기 규칙까지 본다.

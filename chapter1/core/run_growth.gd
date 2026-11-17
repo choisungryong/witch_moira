@@ -122,7 +122,7 @@ func effective_skill(id_: String) -> Dictionary:
 	var definition: Dictionary = _skills[id_]
 	var effect: Dictionary = definition.evolution if id_ in _evolved else definition.ranks[rank-1]
 	return {"id":id_,"rank":rank,"evolved":id_ in _evolved,
-		"name":definition.evolution_name if id_ in _evolved else definition.name,
+		"name_key":"skill.%s.%s"%[id_,"evolved_name" if id_ in _evolved else "name"],
 		"effects":effect.duplicate(true)}
 
 func xp_thresholds() -> Array:
@@ -134,15 +134,15 @@ func _eligible_cards() -> Array[Dictionary]:
 	for s in _doc.skills:
 		var rank := int(_ranks.get(s.id,0))
 		if rank == 0 and _ranks.size() < int(_doc.max_active_skills):
-			result.append({"id":"unlock:"+s.id,"kind":"unlock","skill_id":s.id,"rank":1,"weight":int(s.weight),"title":s.name,"after":s.ranks[0].duplicate(true)})
+			result.append({"id":"unlock:"+s.id,"kind":"unlock","skill_id":s.id,"rank":1,"weight":int(s.weight),"title_key":"skill.%s.name"%s.id,"after":s.ranks[0].duplicate(true)})
 		elif rank > 0 and rank < 4:
-			result.append({"id":"rank:%s:%d" % [s.id,rank+1],"kind":"rank","skill_id":s.id,"rank":rank+1,"weight":int(s.weight),"title":s.name,"after":s.ranks[rank].duplicate(true)})
+			result.append({"id":"rank:%s:%d" % [s.id,rank+1],"kind":"rank","skill_id":s.id,"rank":rank+1,"weight":int(s.weight),"title_key":"skill.%s.name"%s.id,"after":s.ranks[rank].duplicate(true)})
 		# With evolve_without_passive the primary's crystal card does nothing but unlock evolution, so it is not offered.
 		if rank >= 2 and not s.passive_id in _owned_passives and _owned_passives.size() < int(_doc.max_passives) and not (_evolve_free and s.id == _primary):
 			var p: Dictionary = _passives[s.passive_id]
-			result.append({"id":"passive:"+p.id,"kind":"passive","skill_id":s.id,"passive_id":p.id,"weight":int(p.weight),"title":p.name})
+			result.append({"id":"passive:"+p.id,"kind":"passive","skill_id":s.id,"passive_id":p.id,"weight":int(p.weight),"title_key":"grace.passive.%s.name"%p.id})
 		if rank == 4 and (s.passive_id in _owned_passives or (_evolve_free and s.id == _primary)) and not s.id in _evolved:
-			result.append({"id":"evolve:"+s.id,"kind":"evolve","skill_id":s.id,"rank":4,"weight":int(s.weight),"title":s.evolution_name,"after":s.evolution.duplicate(true)})
+			result.append({"id":"evolve:"+s.id,"kind":"evolve","skill_id":s.id,"rank":4,"weight":int(s.weight),"title_key":"skill.%s.evolved_name"%s.id,"after":s.evolution.duplicate(true)})
 	return result
 
 func _protected_card(cards: Array[Dictionary]) -> int:

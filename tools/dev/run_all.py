@@ -38,6 +38,7 @@ def checks():
         godot_check('profile-legacy', 'res://chapter1/tests/test_profile_legacy_fixtures.gd', 'CHAPTER1_PROFILE_LEGACY_RESULT'),
         godot_check('golden', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', timeout=600, slow=True),
         godot_check('golden-textless', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', ['--textless'], timeout=600, slow=True),
+        godot_check('core-text', 'res://chapter1/tests/test_core_text.gd', 'CHAPTER1_CORE_TEXT_RESULT', timeout=600, slow=True),
         godot_check('loot-sim', 'res://chapter1/tests/sim_loot.gd', 'LOOT_SIM', ['--runs=3000'], timeout=600, slow=True),
         {'name': 'manager', 'kind': 'python', 'timeout': 300, 'slow': False},
         {'name': 'i18n-scan', 'kind': 'i18n-scan', 'timeout': 60, 'slow': False},
@@ -77,6 +78,11 @@ def run_godot(check):
     else:
         error = re.search(r'(?:SCRIPT ERROR|ERROR): (?!BUG: Unreferenced)(.+)', text)
         detail = 'no result line' + (' · ' + error.group(1).strip() if error else '')
+    # A script error stops a test function in the middle and the run still prints a clean result line with fewer checks
+    # (found while doing T3-L1), so any script error is a failure.
+    script_error = re.search(r'SCRIPT ERROR: (.+)', text)
+    if script_error:
+        return False, (detail + ' · ' if detail else '') + 'SCRIPT ERROR: ' + script_error.group(1).strip()
     return done.returncode == 0 and bool(found), detail or 'exit %d' % done.returncode
 
 

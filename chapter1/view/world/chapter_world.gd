@@ -280,7 +280,7 @@ func setup__chapter(view: Node3D) -> void:
 	for def in view.run.RITUALS:
 		_ring(Vector3(def.position.x,.04,def.position.y),2.2,2.28,Color("79604f"))
 		var label := Label3D.new();label.position=Vector3(def.position.x,1.3,def.position.y);label.pixel_size=.008;label.font_size=30;label.billboard=BaseMaterial3D.BILLBOARD_ENABLED
-		label.text=def.name+"\n[E] 의식 시작";root.add_child(label);ritual_labels[def.id]=label
+		label.text=Loc.t("ritual.%s.name"%def.id)+"\n[E] 의식 시작";root.add_child(label);ritual_labels[def.id]=label
 	route=MeshInstance3D.new();var arrow := PrismMesh.new();arrow.size=Vector3(.45,.035,.7);route.mesh=arrow;route.material_override=material(Color("c5a367"),.3);root.add_child(route)
 
 func _ground_material__chapter() -> Material:
@@ -332,7 +332,7 @@ func sync__chapter(run: RefCounted,_delta: float) -> void:
 		mat.albedo_color=Color("9c8352") if run.seals[i].cleared else (Color("d8b46a") if i==run.zone else Color("4a4538"))
 	for def in run.RITUALS:
 		var state: Dictionary=run.rituals[def.id];var label: Label3D=ritual_labels[def.id]
-		var text: String=def.name
+		var text: String=Loc.t("ritual.%s.name"%def.id)
 		if state.state=="ready":text+="\n[E] 의식 시작"
 		elif state.state=="active":text+="\n%d / %d"%[state.progress/60 if def.kind=="hold" else state.progress,25 if def.kind=="hold" else 60]
 		elif state.state=="completed":text+="\n의식 완료"
@@ -753,6 +753,7 @@ func _batch22(records: Array[Dictionary],shape: Mesh,label: String) -> void:
 
 # ---- chapter1/view/chapter_world_quality51.gd ----
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
+const Loc=preload("res://chapter1/view/loc.gd")
 func setup(view: Node3D) -> void:
 	setup__q31d(view)
 	# Flat arrow points along local+Z, matching atan2(direction.x,direction.y).

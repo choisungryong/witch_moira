@@ -223,3 +223,403 @@ msgstr "뒤로"
 #. Menu profile line when the save is ready (after returning to the menu)
 msgid "notify.profile.ready"
 msgstr "저장 준비"
+
+#. Zone name, first room
+msgid "zone.0.name"
+msgstr "잿빛 앞뜰"
+
+#. Zone name, second room
+msgid "zone.1.name"
+msgstr "무너진 성가대"
+
+#. Zone name, last room
+msgid "zone.2.name"
+msgstr "재의 성소"
+
+#. Ritual name (hold the ring)
+msgid "ritual.vigil.name"
+msgstr "꺼지지 않는 불씨"
+
+#. Ritual name (kill inside the ring)
+msgid "ritual.reliquary.name"
+msgstr "봉인된 성유물"
+
+#. Seal guardian name, zone 0
+msgid "enemy.champion.0.name"
+msgstr "잿불의 문지기"
+
+#. Seal guardian name, zone 1
+msgid "enemy.champion.1.name"
+msgstr "서리의 성가대장"
+
+#. Seal guardian name, zone 2 (the chapter boss)
+msgid "enemy.champion.2.name"
+msgstr "회랑의 파수왕"
+
+#. Goal line while the next zone is not entered yet
+msgid "hud.objective.move"
+msgstr "열린 동쪽 회랑을 따라 다음 마당으로 이동"
+
+#. Goal line. {done}: kills so far, {total}: kills needed (plain numbers)
+msgid "hud.objective.seal_kills"
+msgstr "봉인 주변 처치 {done} / {total}"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.ember.name"
+msgstr "잿불탄"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.ember.evolved_name"
+msgstr "연쇄 화염구"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.frost.name"
+msgstr "서리창"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.frost.evolved_name"
+msgstr "파쇄 물결"
+
+#. Skill name (source: growth data)
+msgid "skill.chapter1.skill.arc.name"
+msgstr "연쇄 전류"
+
+#. Skill name after evolution (source: growth data)
+msgid "skill.chapter1.skill.arc.evolved_name"
+msgstr "세 갈래 폭풍"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.embers.name"
+msgstr "잔불"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.crystal.name"
+msgstr "결정"
+
+#. Grace passive name (source: growth data)
+msgid "grace.passive.chapter1.passive.conductor.name"
+msgstr "도체"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.pierce_add"
+msgstr "관통 +{n}"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.projectiles_add"
+msgstr "창 +{n}발"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.shatter_add"
+msgstr "파편 +{n}"
+
+#. Skill tree effect line. {v}: percent points, up to two decimals
+msgid "tree.effect.slow_add"
+msgstr "감속 +{v}%p"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.radius_add"
+msgstr "반경 +{v} m"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.damage_add"
+msgstr "피해 +{v}%"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.interval_less"
+msgstr "시전 간격 −{v}%"
+
+#. Skill tree effect line. {n}: hits
+msgid "tree.effect.freeze_at"
+msgstr "{n}번 맞으면 빙결"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.shatter_min"
+msgstr "파쇄 파편 최소 {n}"
+
+#. Skill tree effect line. {n}: points
+msgid "tree.effect.max_hp_add"
+msgstr "최대 생명 +{n}"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.reduction_add"
+msgstr "받는 피해 −{v}%"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.potion_start"
+msgstr "시작 회복약 +{n}"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.elite_damage"
+msgstr "수호자·우두머리 피해 +{v}%"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.shatter_radius"
+msgstr "파쇄 반경 +{v} m"
+
+#. Skill tree effect line. {radius}: meters, {seconds}: seconds, {slow}: percent
+msgid "tree.effect.frost_field"
+msgstr "서리 지대: 반경 {radius} m · {seconds}초 · 감속 {slow}%"
+
+#. Skill tree effect line. {v}: meters
+msgid "tree.effect.field_radius_add"
+msgstr "지대 반경 +{v} m"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.field_count_add"
+msgstr "지대 동시 +{n}개"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.field_pulse"
+msgstr "지대 피해: 창 피해의 {v}%"
+
+#. Skill tree effect line. {v}: percent
+msgid "tree.effect.field_slow_min"
+msgstr "지대 감속 {v}%"
+
+#. Skill tree effect line. {n}: count
+msgid "tree.effect.rerolls"
+msgstr "은총 다시 빌기 {n}회"
+
+#. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
+msgid "tree.effect.start_rank"
+msgstr "서리창 랭크 {rank}으로 시작"
+
+#. Skill tree effect line.
+msgid "tree.effect.evolve_free"
+msgstr "결정 은총 없이 진화"
+
+#. Save refusal text
+msgid "profile.error.preview_only"
+msgstr "전용 저장 경로가 없는 미리보기입니다"
+
+#. Save refusal text
+msgid "profile.error.file_rejected"
+msgstr "저장 파일 검증 실패 · 원본 보존"
+
+#. Save refusal text
+msgid "profile.error.fresh_unavailable"
+msgstr "새 저장을 시작할 수 없는 상태입니다"
+
+#. Save refusal text
+msgid "profile.error.fresh_name_taken"
+msgstr "새 저장 파일 이름이 이미 있습니다"
+
+#. Save refusal text
+msgid "profile.error.pointer_path_missing"
+msgstr "가리키는 파일 경로가 없습니다"
+
+#. Save refusal text
+msgid "profile.error.pointer_create_failed"
+msgstr "가리키는 파일 생성 실패"
+
+#. Save refusal text
+msgid "profile.error.pointer_write_failed"
+msgstr "가리키는 파일 쓰기 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.pointer_replace_failed"
+msgstr "가리키는 파일 교체 실패"
+
+#. Save refusal text
+msgid "profile.error.old_too_large"
+msgstr "이전 저장 파일이 너무 큽니다 · 원본 보존"
+
+#. Save refusal text
+msgid "profile.error.old_rejected"
+msgstr "이전 저장 파일 검증 실패 · 원본 보존"
+
+#. Save refusal text
+msgid "profile.error.save_path_unverified"
+msgstr "저장 경로 검증이 필요합니다"
+
+#. Save refusal text
+msgid "profile.error.save_candidate_rejected"
+msgstr "저장 후보 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.save_changed_elsewhere"
+msgstr "다른 실행에서 저장이 변경됐습니다 · 기존 파일 보존"
+
+#. Save refusal text
+msgid "profile.error.save_moved"
+msgstr "저장 파일이 외부에서 이동됐습니다"
+
+#. Save refusal text
+msgid "profile.error.save_name_conflict"
+msgstr "저장 파일 이름 충돌"
+
+#. Save refusal text
+msgid "profile.error.save_create_failed"
+msgstr "저장 파일 생성 실패"
+
+#. Save refusal text
+msgid "profile.error.save_write_failed"
+msgstr "저장 쓰기 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.save_replace_failed"
+msgstr "저장 교체 실패 · 이전 파일과 새 revision 보존"
+
+#. Save refusal text
+msgid "profile.error.save_replace_verify_failed"
+msgstr "저장 교체 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.reward_rejected"
+msgstr "보상 장비 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.stash_full"
+msgstr "장비 보관 공간이 부족합니다"
+
+#. Save refusal text
+msgid "profile.error.tree_locked"
+msgstr "이 마녀의 스킬 트리는 아직 열리지 않았습니다"
+
+#. Save refusal text
+msgid "profile.error.tree_rejected"
+msgstr "트리 투자 검증 실패"
+
+#. Save refusal text
+msgid "profile.error.tree_confirmed"
+msgstr "확정한 투자는 전체 초기화로만 되돌립니다"
+
+#. Save refusal text
+msgid "profile.error.tree_nothing_to_undo"
+msgstr "되돌릴 투자가 없습니다"
+
+#. Save refusal text
+msgid "profile.error.essence_short"
+msgstr "재가 모자랍니다"
+
+#. Save refusal text
+msgid "profile.error.isolated_path_invalid"
+msgstr "Invalid isolated QA profile path"
+
+#. Save refusal text
+msgid "profile.error.profile_too_large"
+msgstr "Profile exceeds bound"
+
+#. Save refusal text
+msgid "profile.error.growth_data_missing"
+msgstr "성장 데이터를 읽지 못했습니다"
+
+#. Save refusal text
+msgid "profile.error.unknown_character"
+msgstr "알 수 없는 캐릭터"
+
+#. Save refusal text
+msgid "profile.error.xp_out_of_range"
+msgstr "경험치 범위 밖"
+
+#. Save refusal text
+msgid "profile.error.first_kills_format"
+msgstr "첫 처치 형식 오류"
+
+#. Save refusal text
+msgid "profile.error.first_kill_unknown"
+msgstr "알 수 없는 첫 처치 id"
+
+#. Save refusal text
+msgid "profile.error.progress_rejected"
+msgstr "보상 기록을 받아들이지 못했습니다"
+
+#. {n}: required level
+msgid "profile.error.level_required"
+msgstr "Lv {n} 필요"
+
+#. {detail}: developer reason, English
+msgid "profile.error.tree_rejected_detail"
+msgstr "트리 투자 검증 실패 · {detail}"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.damage.label"
+msgstr "주문 피해"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.interval.label"
+msgstr "시전 간격"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.projectiles.label"
+msgstr "발사체"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.chain_targets.label"
+msgstr "연쇄 대상"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.branches.label"
+msgstr "번개 분기"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.pierce.label"
+msgstr "관통"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.radius.label"
+msgstr "범위"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.slow.label"
+msgstr "감속"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.freeze_stacks.label"
+msgstr "빙결 문턱"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.shatter_count.label"
+msgstr "파쇄 수"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.death_burst.label"
+msgstr "처치 폭발"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.hit_budget.label"
+msgstr "한 시전 최대 명중"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.max_hp.label"
+msgstr "최대 생명"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.damage_reduction.label"
+msgstr "받는 피해 감소"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.speed.label"
+msgstr "이동 속도"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.dash_cooldown.label"
+msgstr "회피 재사용"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.pickup_radius.label"
+msgstr "회수 반경"
+
+#. Stat sheet row name (stat_sheet() row id)
+msgid "stat.soul_gain.label"
+msgstr "영혼 획득"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.s"
+msgstr "초"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.m"
+msgstr "m"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.pct"
+msgstr "%"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.count"
+msgstr "회"
+
+#. Unit written after a stat sheet value (unit_id)
+msgid "unit.m_per_s"
+msgstr "m/초"

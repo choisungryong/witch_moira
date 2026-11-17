@@ -368,10 +368,10 @@ func _ready() -> void:
 	_profile_off="--chapter1-profile-off" in _user_args()
 	if _profile_off:profile.error="검증 실행 · 저장 비활성"
 	else:profile.configure()
-	_sync_profile("저장 준비" if profile.available else profile.error)
+	_sync_profile("저장 준비" if profile.available else _profile_error_text())
 	hud.stash_show.connect(func():hud.stash_open=true;hud.invalidate())
-	hud.stash_equip.connect(func(id_: int):_sync_profile("다음 도전 장비 저장 완료" if profile.select_item(id_) else profile.error))
-	hud.stash_salvage.connect(func(id_: int):_sync_profile("장비 해체 저장 완료" if profile.salvage(id_) else profile.error))
+	hud.stash_equip.connect(func(id_: int):_sync_profile("다음 도전 장비 저장 완료" if profile.select_item(id_) else _profile_error_text()))
+	hud.stash_salvage.connect(func(id_: int):_sync_profile("장비 해체 저장 완료" if profile.salvage(id_) else _profile_error_text()))
 	hud.save_retry.connect(_save_terminal)
 	hud.skill_tree_open.connect(_open_skill_tree)
 	hud.skill_tree_commit.connect(_commit_skill_tree)
@@ -382,10 +382,10 @@ func _ready() -> void:
 func start_run(id_: String) -> void:
 	if profile.available and profile.state.items.size()>256:
 		hud.stash_open=true;_sync_profile("회수 장비를 해체해 256개 이하로 정리하면 출발할 수 있습니다");return
-	if not profile.available and not _profile_off and not _profile_session_off and profile.error!="전용 저장 경로가 없는 미리보기입니다":
+	if not profile.available and not _profile_off and not _profile_session_off and profile.error_code!="preview_only":
 		# A refused save file opens the notice again instead of a silent block (D5).
 		if profile_rejected():hud.show_profile_notice()
-		else:hud.notify(profile.error)
+		else:hud.notify(_profile_error_text())
 		return
 	_chapter_last_event=-1
 	_receipt="%d-%d-%d"%[OS.get_process_id(),Time.get_unix_time_from_system(),Time.get_ticks_usec()];_saved_receipt=""
@@ -437,6 +437,12 @@ func profile_reject_info() -> Dictionary:
 	return {"kind":profile.reject_kind,"reason":profile.reject_reason,"file":shown.get_file(),
 		"path":ProjectSettings.globalize_path(shown),"folder":ProjectSettings.globalize_path(shown.get_base_dir()),"resume":resume}
 
+## The refusal text for the screen: worded from the profile's code and arguments (keys profile.error.<code>).
+## A sentence the app wrote itself (no code) is shown as it is.
+func _profile_error_text() -> String:
+	if profile.error_code.is_empty():return profile.error
+	return Loc.t("profile.error."+profile.error_code,profile.error_args)
+
 ## Opens the save folder in the file manager. Opening only.
 func open_profile_folder() -> void:
 	OS.shell_open(ProjectSettings.globalize_path(profile.path.get_base_dir()))
@@ -454,7 +460,7 @@ func play_without_save() -> bool:
 func start_fresh_profile(use_revision: bool) -> bool:
 	if run.mode!="menu" or profile.available or profile.reject_kind.is_empty():return false
 	if not profile.start_fresh_after_reject(use_revision):
-		hud.notify(profile.error);return false
+		hud.notify(_profile_error_text());return false
 	_sync_profile("새 저장으로 시작했습니다 · 이전 파일은 그대로 남아 있습니다")
 	return true
 
@@ -474,7 +480,7 @@ func return_to_menu() -> void:
 	_receipt="";_saved_receipt="";run_character_id="";run_progress={};view_before={};view_after={}
 	seed_+=1 # The next run from the menu never repeats the one just played (F3).
 	world.update_camera(Vector2.ZERO,10.0)
-	_sync_profile(Loc.t("notify.profile.ready") if profile.available else profile.error)
+	_sync_profile(Loc.t("notify.profile.ready") if profile.available else _profile_error_text())
 
 ## "Abandon this run": the same end as a fall, saved by the same path.
 func abandon_run() -> void:
@@ -538,19 +544,19 @@ func _after_tree_saved(character_id: String,note: String,notice: String) -> void
 
 func _commit_skill_tree(character_id: String,ranks: Dictionary) -> void:
 	if profile.commit_tree(character_id,ranks):_after_tree_saved(character_id,"스킬 트리 저장 완료","투자를 확정했습니다 · 저장 완료")
-	else:hud.skill_tree_error(profile.error+" · 예정 투자는 화면에 남겨 두었습니다")
+	else:hud.skill_tree_error(_profile_error_text()+" · 예정 투자는 화면에 남겨 두었습니다")
 
 func _respec_skill_tree(character_id: String) -> void:
 	if profile.respec(character_id):_after_tree_saved(character_id,"스킬 트리 초기화 저장 완료","전체 초기화 · 포인트를 모두 돌려받았습니다")
 	else:
 		var view: Dictionary=profile.character_view(character_id)
 		hud.update_skill_tree(view,_tree_info(character_id,view))
-		hud.skill_tree_error(profile.error)
+		hud.skill_tree_error(_profile_error_text())
 
 func _save_terminal() -> void:
 	if run.mode not in ["victory","defeat"]:return
 	if _saved_receipt==_receipt:hud.result_unsaved=false;_sync_profile("이번 도전 보상 저장 완료");return
-	if not profile.available:hud.result_unsaved=false;_sync_profile(profile.error);return
+	if not profile.available:hud.result_unsaved=false;_sync_profile(_profile_error_text());return
 	var progress: Dictionary=run.progress_summary()
 	run_progress=progress
 	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress):
@@ -561,7 +567,7 @@ func _save_terminal() -> void:
 	else:
 		hud.result_unsaved=true
 		hud.set_growth_result(run_character_id,view_before,{},run_progress)
-		_sync_profile(profile.error+" · 현재 보상은 이 화면에 유지됩니다")
+		_sync_profile(_profile_error_text()+" · 현재 보상은 이 화면에 유지됩니다")
 func _unhandled_key_input__chapterx(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key: int=event.keycode if event.keycode!=0 else event.physical_keycode
@@ -600,13 +606,13 @@ func _consume_events() -> void:
 				# A ring or amulet has its own bright cue; a legendary or unique adds a chime.
 				if event.item.slot in ["ring","charm"]:audio.play("jewel",run.tick)
 				if event.item.quality in ["legendary","unique"]:audio.play("legend",run.tick)
-			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+event.name);audio.play_ui("equip",run.tick)
-			"zone_entered":hud.notify(run.ZONE_NAMES[run.zone]+" · 새로운 봉인을 돌파하세요")
-			"chapter_champion":hud.notify(event.name+" 출현");world.kick_camera(.45)
+			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+Loc.t("zone.%d.name"%int(event.zone)));audio.play_ui("equip",run.tick)
+			"zone_entered":hud.notify(Loc.t("zone.%d.name"%run.zone)+" · 새로운 봉인을 돌파하세요")
+			"chapter_champion":hud.notify(Loc.t("enemy.champion.%d.name"%int(event.zone))+" 출현");world.kick_camera(.45)
 			"boss_phase":hud.notify("파수왕의 격노 · 재의 낙인을 피하세요");world.kick_camera(.6)
 			"chapter_burst":audio.play("explosion",run.tick)
 			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);audio.play("pickup",run.tick)
-			"ritual_completed":hud.notify(event.name+" 완료 · 보상 획득");audio.play_ui("equip",run.tick)
+			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");audio.play_ui("equip",run.tick)
 			"reward_pending":hud.notify("가방이 가득 찼습니다 · 의식 보상을 보관 대기합니다")
 func _process(delta: float) -> void:
 	_process__chapter(delta)

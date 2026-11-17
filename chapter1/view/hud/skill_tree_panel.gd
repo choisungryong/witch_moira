@@ -210,9 +210,11 @@ func _api_can_refund(node_id: String) -> bool:
 		return _core_module().can_refund_staged(tree,committed,staged,node_id)
 	return _stub_can_refund(node_id)
 
+const TreeText = preload("res://chapter1/view/hud/tree_text.gd")
+
 func _api_describe(node_id: String, rank: int) -> Array:
 	if USE_CORE_MODULE:
-		return Array(_core_module().describe(tree,node_id,rank))
+		return Array(TreeText.describe(tree,node_id,rank))
 	return _stub_describe(node_id,rank)
 
 func _core_module() -> GDScript:

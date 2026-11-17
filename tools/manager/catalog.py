@@ -562,13 +562,18 @@ def world_entities(c, warnings):
     p = 'chapter1/core/chapter_core.gd'
     text = read(p)
     try:
-        zones, zn, rituals = gd_const(text, 'ZONES'), gd_const(text, 'ZONE_NAMES'), gd_const(text, 'RITUALS')
+        zones, rituals = gd_const(text, 'ZONES'), gd_const(text, 'RITUALS')
     except ValueError as e:
         warnings.append('구역·의식을 읽지 못했습니다: %s (%s)' % (e, p))
         return
+    # The core holds ids only (T3-L1); the names are the Korean source text in the translation file.
+    words = {e['id']: e['strs'].get(0, '') for e in parse_po(read('chapter1/i18n/ko.po'))}
+    zn = [words.get('zone.%d.name' % i, '') for i in range(len(zones))]
+    for r in rituals:
+        r['name'] = words.get('ritual.%s.name' % r['id'], r['id'])
     t = read_json('chapter1/data/combat_tuning.json')
     for i, z in enumerate(zones):
-        name = zn[i] if i < len(zn) else '구역 %d' % (i + 1)
+        name = zn[i] or '구역 %d' % (i + 1)
         rows = [('위치', '(%s, %s)' % (num(z['x']), num(z['y']))), ('봉인 해제 처치 수', t['seal_kills'][i] if i < len(t['seal_kills']) else '?')]
         zs = t['spawn']['zones']
         if i < len(zs):

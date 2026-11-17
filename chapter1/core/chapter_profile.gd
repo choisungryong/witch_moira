@@ -32,7 +32,13 @@ var state: Dictionary={}
 var characters: Dictionary={}
 ## {character_id: true} when a tree revision change returned the ranks on read. Cleared by acknowledge_notice.
 var notices: Dictionary={}
-var error := ""
+## Dev sentence of the last refusal. The screen words a refusal from `error_code` and `error_args` (keys profile.error.<code>);
+## assigning `error` directly clears the code, so only _err() sets both.
+var error := "":
+	set(value):
+		error=value;error_code="";error_args={}
+var error_code := ""
+var error_args: Dictionary={}
 var path := ""
 var _loaded_text := ""
 var available := false
@@ -86,22 +92,22 @@ func configure(destination: String=PATH_V3,qa: bool=false,legacy_v2: String="",l
 		var base := "res://_local/"
 		for candidate_path in [path,legacy_v2,legacy_v1,pointer]:
 			if String(candidate_path).is_empty():continue
-			if not String(candidate_path).begins_with(base) or not String(candidate_path).ends_with(".json"):error="Invalid isolated QA profile path";return false
+			if not String(candidate_path).begins_with(base) or not String(candidate_path).ends_with(".json"):_err("isolated_path_invalid","Invalid isolated QA profile path");return false
 		pointer_path=pointer
 	else:
 		if destination!=PATH_V3 or not ProjectSettings.get_setting("application/config/use_custom_user_dir",false) or not String(ProjectSettings.get_setting("application/config/custom_user_dir_name","")).begins_with("WitchMoira"):
-			error="전용 저장 경로가 없는 미리보기입니다";return false
+			_err("preview_only","전용 저장 경로가 없는 미리보기입니다");return false
 		legacy_v2=PATH_V2;legacy_v1=PATH_V1;pointer_path=POINTER_PATH
 	path=_pointed(destination)
 	if FileAccess.file_exists(path):
 		_loaded_text=FileAccess.get_file_as_string(path)
-		if _loaded_text.length()>2000000:error="Profile exceeds bound";return _reject("damaged","size",path)
+		if _loaded_text.length()>2000000:_err("profile_too_large","Profile exceeds bound");return _reject("damaged","size",path)
 		var parser := JSON.new()
-		if parser.parse(_loaded_text)!=OK:error="저장 파일 검증 실패 · 원본 보존";return _reject("damaged","json",path)
+		if parser.parse(_loaded_text)!=OK:_err("file_rejected","저장 파일 검증 실패 · 원본 보존");return _reject("damaged","json",path)
 		var seen := {}
 		var why := []
 		var normalized := normalize_v3(parser.data,false,seen,why)
-		if normalized.is_empty():error="저장 파일 검증 실패 · 원본 보존";return _reject("incompatible",String(why[0]) if not why.is_empty() else "schema 3 document",path)
+		if normalized.is_empty():_err("file_rejected","저장 파일 검증 실패 · 원본 보존");return _reject("incompatible",String(why[0]) if not why.is_empty() else "schema 3 document",path)
 		_adopt(normalized);notices=seen
 	elif not legacy_v2.is_empty() and FileAccess.file_exists(legacy_v2):
 		if not import_v2_text(FileAccess.get_file_as_string(legacy_v2)):return _reject("legacy",reject_reason,legacy_v2)
@@ -168,14 +174,17 @@ func resume_info() -> Dictionary:
 	if _resume.is_empty():return {}
 	return {"file":_resume.file,"revision":_resume.revision,"unix":_resume.unix}
 
+func _err(code: String,text: String,args: Dictionary={}) -> void:
+	error=text;error_code=code;error_args=args
+
 func start_fresh_after_reject(use_revision: bool=true) -> bool:
-	if available or reject_kind.is_empty():error="새 저장을 시작할 수 없는 상태입니다";return false
-	var refused_path := path;var refused_kind := reject_kind;var refused_reason := reject_reason;var refused_error := error
+	if available or reject_kind.is_empty():_err("fresh_unavailable","새 저장을 시작할 수 없는 상태입니다");return false
+	var refused_path := path;var refused_kind := reject_kind;var refused_reason := reject_reason;var refused_error := error;var refused_code := error_code;var refused_args := error_args
 	var target := path;var from_revision := "";var next_state := fresh();var next_characters := {}
 	if refused_kind=="legacy":
-		if FileAccess.file_exists(target):error="새 저장 파일 이름이 이미 있습니다";return false
+		if FileAccess.file_exists(target):_err("fresh_name_taken","새 저장 파일 이름이 이미 있습니다");return false
 	else:
-		if pointer_path.is_empty():error="가리키는 파일 경로가 없습니다";return false
+		if pointer_path.is_empty():_err("pointer_path_missing","가리키는 파일 경로가 없습니다");return false
 		var stamp_time := Time.get_datetime_dict_from_system()
 		var stamp := "%04d%02d%02d-%02d%02d%02d"%[stamp_time.year,stamp_time.month,stamp_time.day,stamp_time.hour,stamp_time.minute,stamp_time.second]
 		if not stamp_override.is_empty():stamp=stamp_override
@@ -192,8 +201,9 @@ func start_fresh_after_reject(use_revision: bool=true) -> bool:
 	var written := _persist(state.duplicate(true))
 	if written and refused_kind!="legacy":written=_write_pointer(target.get_file(),refused_path.get_file(),refused_kind,refused_reason,from_revision)
 	if not written:
-		var why := error
+		var why := error;var why_code := error_code;var why_args := error_args
 		available=false;state=fresh();characters={};path=refused_path;_loaded_text="";error=why if not why.is_empty() else refused_error
+		error_code=why_code if not why.is_empty() else refused_code;error_args=why_args if not why.is_empty() else refused_args
 		return false
 	reject_kind="";reject_reason=""
 	return true
@@ -203,10 +213,10 @@ func _write_pointer(file: String,replaces: String,kind: String,reason: String,fr
 	var text := JSON.stringify(doc,"  ")
 	var temporary := pointer_path.get_basename()+".next-%d.json"%Time.get_ticks_usec()
 	var handle := FileAccess.open(temporary,FileAccess.WRITE)
-	if handle==null:error="가리키는 파일 생성 실패";return false
+	if handle==null:_err("pointer_create_failed","가리키는 파일 생성 실패");return false
 	handle.store_string(text);handle.flush();var status := handle.get_error();handle.close()
-	if status!=OK or FileAccess.get_file_as_string(temporary)!=text:error="가리키는 파일 쓰기 검증 실패";return false
-	if DirAccess.rename_absolute(temporary,pointer_path)!=OK:error="가리키는 파일 교체 실패";return false
+	if status!=OK or FileAccess.get_file_as_string(temporary)!=text:_err("pointer_write_failed","가리키는 파일 쓰기 검증 실패");return false
+	if DirAccess.rename_absolute(temporary,pointer_path)!=OK:_err("pointer_replace_failed","가리키는 파일 교체 실패");return false
 	return true
 
 ## Records why a file was refused and writes one log line. Writes no file and changes nothing on disk.
@@ -225,12 +235,12 @@ func _adopt(v3: Dictionary) -> void:
 ## Read a schema-2 profile into memory. Nothing is written until the next save,
 ## and that save goes to this profile's own (schema-3) path.
 func import_v2_text(text: String) -> bool:
-	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";reject_reason="size";return false
+	if text.length()>2000000:_err("old_too_large","이전 저장 파일이 너무 큽니다 · 원본 보존");reject_reason="size";return false
 	var parser := JSON.new()
-	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="json";return false
+	if parser.parse(text)!=OK:_err("old_rejected","이전 저장 파일 검증 실패 · 원본 보존");reject_reason="json";return false
 	var why := []
 	var upgraded := normalize(parser.data,why)
-	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason=String(why[0]);return false
+	if upgraded.is_empty():_err("old_rejected","이전 저장 파일 검증 실패 · 원본 보존");reject_reason=String(why[0]);return false
 	state=upgraded;characters=migrated_characters(state);imported_from_v2=true
 	return true
 
@@ -249,11 +259,11 @@ static func migrated_characters(old_state: Dictionary) -> Dictionary:
 ## Read a schema-1 profile into memory. Nothing is written until the next save,
 ## and that save goes to this profile's own path.
 func import_v1_text(text: String) -> bool:
-	if text.length()>2000000:error="이전 저장 파일이 너무 큽니다 · 원본 보존";reject_reason="size";return false
+	if text.length()>2000000:_err("old_too_large","이전 저장 파일이 너무 큽니다 · 원본 보존");reject_reason="size";return false
 	var parser := JSON.new()
-	if parser.parse(text)!=OK:error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="json";return false
+	if parser.parse(text)!=OK:_err("old_rejected","이전 저장 파일 검증 실패 · 원본 보존");reject_reason="json";return false
 	var upgraded := upgrade_v1(parser.data)
-	if upgraded.is_empty():error="이전 저장 파일 검증 실패 · 원본 보존";reject_reason="schema 1 document";return false
+	if upgraded.is_empty():_err("old_rejected","이전 저장 파일 검증 실패 · 원본 보존");reject_reason="schema 1 document";return false
 	state=upgraded;characters=migrated_characters(state);imported_from_v1=true
 	return true
 
@@ -383,14 +393,14 @@ static func _normalize_v3_body(value: Variant,strict: bool,notices_out: Dictiona
 ## progress = {character_id, xp_gained, first_kills: [reward id...]} (other keys of progress_summary are ignored).
 static func apply_progress(current: Dictionary,progress: Dictionary) -> Dictionary:
 	var doc := progression_doc();var table := trees()
-	if doc.is_empty() or table.is_empty():return {"error":"성장 데이터를 읽지 못했습니다"}
+	if doc.is_empty() or table.is_empty():return {"error":"성장 데이터를 읽지 못했습니다","code":"growth_data_missing"}
 	var id_: Variant=progress.get("character_id")
 	var known: Dictionary=Progression.character_entry(doc,id_) if id_ is String else {}
-	if known.is_empty():return {"error":"알 수 없는 캐릭터"}
-	if not Catalog.integer(progress.get("xp_gained"),0,int(Progression.xp_bounds(doc).run_xp_max)):return {"error":"경험치 범위 밖"}
-	if not progress.get("first_kills",[]) is Array:return {"error":"첫 처치 형식 오류"}
+	if known.is_empty():return {"error":"알 수 없는 캐릭터","code":"unknown_character"}
+	if not Catalog.integer(progress.get("xp_gained"),0,int(Progression.xp_bounds(doc).run_xp_max)):return {"error":"경험치 범위 밖","code":"xp_out_of_range"}
+	if not progress.get("first_kills",[]) is Array:return {"error":"첫 처치 형식 오류","code":"first_kills_format"}
 	for reward in progress.get("first_kills",[]):
-		if not reward is String or not doc.first_rewards.has(reward):return {"error":"알 수 없는 첫 처치 id"}
+		if not reward is String or not doc.first_rewards.has(reward):return {"error":"알 수 없는 첫 처치 id","code":"first_kill_unknown"}
 	var result: Dictionary=current.duplicate(true)
 	var entry: Dictionary=result.get(id_,{"xp":0,"tree_revision":int(table[known.tree_id].revision) if known.get("tree_id")!=null and table.has(known.tree_id) else 0,"ranks":{},"first_rewards":[],"respecs":0})
 	entry.xp=mini(1000000000,int(entry.xp)+int(progress.xp_gained))
@@ -400,32 +410,32 @@ static func apply_progress(current: Dictionary,progress: Dictionary) -> Dictiona
 	return result
 
 func _persist(candidate: Dictionary,next_characters: Variant=null) -> bool:
-	if not available:error="저장 경로 검증이 필요합니다";return false
+	if not available:_err("save_path_unverified","저장 경로 검증이 필요합니다");return false
 	candidate=candidate.duplicate(true);candidate.revision=int(state.revision)+1
 	var normalized := normalize(candidate)
-	if normalized.is_empty():error="저장 후보 검증 실패";return false
+	if normalized.is_empty():_err("save_candidate_rejected","저장 후보 검증 실패");return false
 	var document := normalized.duplicate(true);document.schema_version=3
 	document.characters=(characters if next_characters==null else next_characters).duplicate(true)
 	var v3 := normalize_v3(document,true)
-	if v3.is_empty():error="저장 후보 검증 실패";return false
+	if v3.is_empty():_err("save_candidate_rejected","저장 후보 검증 실패");return false
 	if FileAccess.file_exists(path):
-		if FileAccess.get_file_as_string(path)!=_loaded_text:error="다른 실행에서 저장이 변경됐습니다 · 기존 파일 보존";return false
-	elif not _loaded_text.is_empty():error="저장 파일이 외부에서 이동됐습니다";return false
+		if FileAccess.get_file_as_string(path)!=_loaded_text:_err("save_changed_elsewhere","다른 실행에서 저장이 변경됐습니다 · 기존 파일 보존");return false
+	elif not _loaded_text.is_empty():_err("save_moved","저장 파일이 외부에서 이동됐습니다");return false
 	var text := JSON.stringify(v3,"  ")
 	var stamp := "%06d-%d-%d"%[normalized.revision,OS.get_process_id(),Time.get_ticks_usec()]
 	var journal := path.get_basename()+".revision-"+stamp+".json"
 	var temporary := path.get_basename()+".next-"+stamp+".json"
-	if FileAccess.file_exists(journal) or FileAccess.file_exists(temporary):error="저장 파일 이름 충돌";return false
+	if FileAccess.file_exists(journal) or FileAccess.file_exists(temporary):_err("save_name_conflict","저장 파일 이름 충돌");return false
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	for target in [journal,temporary]:
 		var file := FileAccess.open(target,FileAccess.WRITE)
-		if file==null:error="저장 파일 생성 실패";return false
+		if file==null:_err("save_create_failed","저장 파일 생성 실패");return false
 		file.store_string(text);file.flush();var status := file.get_error();file.close()
-		if status!=OK or FileAccess.get_file_as_string(target)!=text:error="저장 쓰기 검증 실패";return false
+		if status!=OK or FileAccess.get_file_as_string(target)!=text:_err("save_write_failed","저장 쓰기 검증 실패");return false
 	# The immutable revision remains if replacement fails. No historic backup is deleted.
 	var rename := DirAccess.rename_absolute(temporary,path)
-	if rename!=OK:error="저장 교체 실패 · 이전 파일과 새 revision 보존";return false
-	if FileAccess.get_file_as_string(path)!=text:error="저장 교체 검증 실패";return false
+	if rename!=OK:_err("save_replace_failed","저장 교체 실패 · 이전 파일과 새 revision 보존");return false
+	if FileAccess.get_file_as_string(path)!=text:_err("save_replace_verify_failed","저장 교체 검증 실패");return false
 	_adopt(v3);_loaded_text=text;error="";imported_from_v1=false;imported_from_v2=false;return true
 
 ## One atomic write holds the equipment, the receipt, the experience and the first kills of the run.
@@ -437,7 +447,7 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 	var next_characters: Variant=null
 	if not progress.is_empty():
 		var applied := apply_progress(characters,progress)
-		if applied.has("error"):error=String(applied.error);return false
+		if applied.has("error"):_err(String(applied.get("code","progress_rejected")),String(applied.error));return false
 		next_characters=applied
 	var candidate: Dictionary=state.duplicate(true)
 	for source in inventory+pending:
@@ -445,9 +455,9 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 		var clean := {}
 		for key in ITEM_KEYS+ITEM_KEYS_V2:
 			if source.has(key):clean[key]=source[key]
-		if not loot().validate(clean).is_empty():error="보상 장비 검증 실패";return false
+		if not loot().validate(clean).is_empty():_err("reward_rejected","보상 장비 검증 실패");return false
 		candidate.items.append({"storage_id":int(candidate.next_id),"item":clean.duplicate(true)});candidate.next_id+=1
-	if candidate.items.size()>MAX_ITEMS:error="장비 보관 공간이 부족합니다";return false
+	if candidate.items.size()>MAX_ITEMS:_err("stash_full","장비 보관 공간이 부족합니다");return false
 	candidate.receipts.append(receipt)
 	if candidate.receipts.size()>64:candidate.receipts.pop_front()
 	if victory:
@@ -472,7 +482,7 @@ func select_item(storage_id: int,character_id: String="") -> bool:
 	for record in candidate.items:
 		if record.storage_id==storage_id:
 			if not character_id.is_empty() and required_level_of(record.item)>character_level(character_id):
-				error="Lv %d 필요"%required_level_of(record.item);return false
+				_err("level_required","Lv %d 필요"%required_level_of(record.item),{"n":required_level_of(record.item)});return false
 			var slot: String=record.item.slot
 			# A ring takes the first free ring slot, otherwise it replaces the first ring.
 			if slot=="ring" and candidate.equipped.has("ring") and not candidate.equipped.has("ring2"):slot="ring2"
@@ -567,17 +577,17 @@ func build_for(character_id: String) -> Dictionary:
 func commit_tree(character_id: String,ranks: Dictionary) -> bool:
 	if not available:return false
 	var doc := progression_doc();var known := Progression.character_entry(doc,character_id)
-	if known.is_empty() or known.get("tree_id")==null or not trees().has(known.tree_id):error="이 마녀의 스킬 트리는 아직 열리지 않았습니다";return false
+	if known.is_empty() or known.get("tree_id")==null or not trees().has(known.tree_id):_err("tree_locked","이 마녀의 스킬 트리는 아직 열리지 않았습니다");return false
 	var tree: Dictionary=trees()[known.tree_id];var entry := character_entry(character_id)
 	var next := {}
 	for node_id in ranks:
-		if not node_id is String or not Catalog.integer(ranks[node_id],1,10):error="트리 투자 검증 실패";return false
+		if not node_id is String or not Catalog.integer(ranks[node_id],1,10):_err("tree_rejected","트리 투자 검증 실패");return false
 		next[node_id]=int(ranks[node_id])
 	for node_id in entry.ranks:
-		if int(next.get(node_id,0))<int(entry.ranks[node_id]):error="확정한 투자는 전체 초기화로만 되돌립니다";return false
+		if int(next.get(node_id,0))<int(entry.ranks[node_id]):_err("tree_confirmed","확정한 투자는 전체 초기화로만 되돌립니다");return false
 	var xp := int(entry.xp)
 	var problems := SkillTree.legal_ranks(tree,next,Progression.level_for_xp(doc,xp),Progression.points_earned(doc,xp,entry.first_rewards))
-	if not problems.is_empty():error="트리 투자 검증 실패 · "+problems[0];return false
+	if not problems.is_empty():_err("tree_rejected_detail","트리 투자 검증 실패 · "+problems[0],{"detail":problems[0]});return false
 	entry.ranks=next;entry.tree_revision=int(tree.revision)
 	var table: Dictionary=characters.duplicate(true);table[character_id]=entry
 	return _persist(state.duplicate(true),table)
@@ -591,11 +601,11 @@ func respec_cost(character_id: String) -> int:
 func respec(character_id: String) -> bool:
 	if not available:return false
 	var known := Progression.character_entry(progression_doc(),character_id)
-	if known.is_empty() or known.get("tree_id")==null:error="이 마녀의 스킬 트리는 아직 열리지 않았습니다";return false
+	if known.is_empty() or known.get("tree_id")==null:_err("tree_locked","이 마녀의 스킬 트리는 아직 열리지 않았습니다");return false
 	var entry := character_entry(character_id)
-	if entry.ranks.is_empty():error="되돌릴 투자가 없습니다";return false
+	if entry.ranks.is_empty():_err("tree_nothing_to_undo","되돌릴 투자가 없습니다");return false
 	var cost := respec_cost(character_id)
-	if int(state.essence)<cost:error="재가 모자랍니다";return false
+	if int(state.essence)<cost:_err("essence_short","재가 모자랍니다");return false
 	var candidate: Dictionary=state.duplicate(true);candidate.essence=int(state.essence)-cost
 	entry.ranks={};entry.respecs=int(entry.respecs)+1;entry.tree_revision=int(trees()[known.tree_id].revision)
 	var table: Dictionary=characters.duplicate(true);table[character_id]=entry

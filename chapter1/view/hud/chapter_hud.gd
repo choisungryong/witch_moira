@@ -186,8 +186,8 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	for id_ in skill_labels:skill_labels[id_].text=SKILL_NAMES[id_]+"\n미습득"
 	for id_ in g.ranks:
 		var d: Dictionary=run.effective_skill(id_)
-		texts.append((d.name if d.evolved else SKILL_NAMES.get(id_,id_))+" %d" % d.rank)
-		if skill_labels.has(id_):skill_labels[id_].text=(d.name if d.evolved else SKILL_NAMES.get(id_,id_))+"\n"+("진화 · " if d.evolved else "")+"랭크 %d" % d.rank
+		texts.append((Loc.t(String(d.name_key)) if d.evolved else SKILL_NAMES.get(id_,id_))+" %d" % d.rank)
+		if skill_labels.has(id_):skill_labels[id_].text=(Loc.t(String(d.name_key)) if d.evolved else SKILL_NAMES.get(id_,id_))+"\n"+("진화 · " if d.evolved else "")+"랭크 %d" % d.rank
 	skills.text="   /   ".join(texts)
 	var elite_alive := false
 	for e in run.enemies.values():
@@ -241,7 +241,7 @@ func _build_modal__cloister(run: RefCounted) -> void:
 				emblem.element=String(card.get("skill_id","chapter1.skill.ember")).get_slice(".",2)
 				emblem.tint={"ember":Color("e88b43"),"frost":Color("8ac8de"),"arc":Color("b5bde4")}.get(emblem.element,Color("bc9a63"))
 				column.add_child(emblem)
-				column.add_child(_label(card.title,25,Color("e5d19b")))
+				column.add_child(_label(Loc.t(String(card.title_key)),25,Color("e5d19b")))
 				column.add_child(_label({"unlock":"새 기술","rank":"기술 강화","passive":"진화 준비","evolve":"기술 진화"}.get(card.kind,""),16,Color("91bca6")))
 				column.add_child(_label(_card_description(card,run),17))
 				var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;column.add_child(space)
@@ -369,11 +369,11 @@ func sync__chapter(run: RefCounted,delta: float) -> void:
 	sync__cloister(run,delta)
 	if run.hero.is_empty():return
 	var goal: Dictionary=run.objective()
-	objective.text="%s · %02d:%02d\n%s"%[goal.title,run.tick/3600,(run.tick/60)%60,goal.text]
+	objective.text="%s · %02d:%02d\n%s"%[_goal_title(goal),run.tick/3600,(run.tick/60)%60,_goal_text(goal)]
 	dash.text=("Space 회피 준비" if run.tick>=run.get_next_dash_tick() else "회피 %.1f초"%(float(run.get_next_dash_tick()-run.tick)/60))+"  ·  Q 회복약 %d / %d"%[run.potions,int(run.tuning.potion.carry_max)]
 	for def in run.RITUALS:
 		if def.zone==run.zone and run.rituals[def.id].state=="ready" and run.hero.position.distance_squared_to(def.position)<=3*3:
-			objective.text+="\n[E] "+def.name+" · 선택 보상"
+			objective.text+="\n[E] "+Loc.t("ritual.%s.name"%def.id)+" · 선택 보상"
 	boss_bar.visible=run._champion_id>0 and run.enemies.has(run._champion_id)
 	if boss_bar.visible:
 		var e: Dictionary=run.enemies[run._champion_id];boss_bar.max_value=e.max_hp_raw;boss_bar.value=e.hp_raw
@@ -955,7 +955,7 @@ func sync__q40(run: RefCounted,delta: float) -> void:
 	for i in 3:
 		var cleared: bool=i<run.seals.size() and bool(run.seals[i].get("cleared",false))
 		var current: bool=i==int(goal.zone)
-		_route_labels40[i].text=("✓ " if cleared else ("◆ " if current else "○ "))+String(run.ZONE_NAMES[i])
+		_route_labels40[i].text=("✓ " if cleared else ("◆ " if current else "○ "))+Loc.t("zone.%d.name"%i)
 		_route_labels40[i].add_theme_color_override("font_color",Color("a8baaa") if cleared else (Color("efdaa6") if current else Color("85877f")))
 	if not bool(goal.entered):
 		var destination: Vector2=goal.destination
@@ -1338,8 +1338,8 @@ func sync__q47(run: RefCounted,delta: float) -> void:
 		var champion: Dictionary=run.enemies[run._champion_id]
 		boss_bar.visible=champion.hp_raw>0
 		if champion.hp_raw>0:
-			_route_hint40.text="봉인 수호자 · %s를 처치하세요"%String(champion.get("title","수호자"))
-			objective.text="%s · %02d:%02d\n수호자 생명 %d / %d"%[String(champion.get("title","봉인 수호자")),run.tick/3600,(run.tick/60)%60,ceili(float(champion.hp_raw)/256),ceili(float(champion.max_hp_raw)/256)]
+			_route_hint40.text="봉인 수호자 · %s를 처치하세요"%_champion_title(champion,"수호자")
+			objective.text="%s · %02d:%02d\n수호자 생명 %d / %d"%[_champion_title(champion,"봉인 수호자"),run.tick/3600,(run.tick/60)%60,ceili(float(champion.hp_raw)/256),ceili(float(champion.max_hp_raw)/256)]
 	var remaining: int=maxi(0,int(run._next_potion)-int(run.tick))
 	if run.potions>0 and remaining>0:
 		dash.text=dash.text.replace(" · Q로 회복","")
@@ -1385,12 +1385,28 @@ func sync(run: RefCounted,delta: float) -> void:
 
 ## Screen furniture that depends on the mode: the in-play plates are hidden on the title menu and the stash, the champion bar
 ## carries its name, and the toast keeps below the champion bar.
+## The guardian's name from the key the core gives it (enemy.champion.<zone>.name); `fallback` when it has none.
+func _champion_title(champion: Dictionary,fallback: String) -> String:
+	var key := String(champion.get("title_key",""))
+	return Loc.t(key) if not key.is_empty() else fallback
+
+## The goal plate title and line from objective() (kind, numbers, title_key). The core makes no sentence.
+func _goal_title(goal: Dictionary) -> String:
+	if String(goal.kind)=="champion" and not String(goal.title_key).is_empty():return Loc.t(String(goal.title_key))
+	return Loc.t("zone.%d.name"%int(goal.zone))
+
+func _goal_text(goal: Dictionary) -> String:
+	match String(goal.kind):
+		"move":return Loc.t("hud.objective.move")
+		"champion":return "%d / %d"%[int(goal.hp),int(goal.hp_max)]
+	return Loc.t("hud.objective.seal_kills",{"done":str(int(goal.done)),"total":str(int(goal.total))})
+
 func _sync_chrome(run: RefCounted) -> void:
 	if is_instance_valid(_top_row):_top_row.visible=not (run.mode=="menu" or stash_open)
 	if is_instance_valid(boss_name):
 		boss_name.visible=boss_bar.visible and run.mode=="playing"
 		if boss_name.visible and run._champion_id>0 and run.enemies.has(run._champion_id):
-			boss_name.text=String(run.enemies[run._champion_id].get("title","봉인 수호자"))
+			boss_name.text=_champion_title(run.enemies[run._champion_id],"봉인 수호자")
 	if is_instance_valid(boss_bar) and is_instance_valid(toast):
 		toast.position.y=maxf(80.0,boss_bar.get_rect().end.y+10.0) if boss_bar.visible else 80.0
 

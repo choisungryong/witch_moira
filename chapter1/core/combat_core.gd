@@ -323,31 +323,31 @@ func _skill_with(id_: String, gear: Dictionary) -> Dictionary:
 
 # ---------------------------------------------------------------- stat sheet (read only)
 
-static func _row(id_: String, label: String, raw: int, value: float, unit: String, better: String, decimals: int, detail: bool = false, kind: String = "number") -> Dictionary:
-	return {"id":id_,"label":label,"raw":raw,"value":value,"unit":unit,"better":better,"decimals":decimals,"detail":detail,"kind":kind}
+## The row carries ids only: the screen words it with stat.<id>.label and unit.<unit_id> ("" none, "s", "m", "pct", "count", "m_per_s").
+static func _row(id_: String, raw: int, value: float, unit_id: String, better: String, decimals: int, detail: bool = false, kind: String = "number") -> Dictionary:
+	return {"id":id_,"raw":raw,"value":value,"unit_id":unit_id,"better":better,"decimals":decimals,"detail":detail,"kind":kind}
 
 ## Rows of one skill's final effect. Primary shows the shape numbers that are nonzero; a secondary shows damage and interval.
 func _skill_rows(effect: Dictionary, primary: bool) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
-	rows.append(_row("damage","주문 피해",int(effect.damage_raw),float(effect.damage_raw)/UNIT,"","higher",1))
-	rows.append(_row("interval","시전 간격",int(effect.cooldown_ticks),float(effect.cooldown_ticks)/HZ,"초","lower",2))
+	rows.append(_row("damage",int(effect.damage_raw),float(effect.damage_raw)/UNIT,"","higher",1))
+	rows.append(_row("interval",int(effect.cooldown_ticks),float(effect.cooldown_ticks)/HZ,"s","lower",2))
 	if not primary: return rows
-	var counts := [["projectiles","발사체"],["chain_targets","연쇄 대상"],["branches","번개 분기"],["pierce","관통"]]
-	for pair in counts:
-		var n := int(effect.get(pair[0],0))
-		if n > 0: rows.append(_row(pair[0],pair[1],n,float(n),"","higher",0))
-	if int(effect.get("radius_cm",0)) > 0: rows.append(_row("radius","범위",int(effect.radius_cm),float(effect.radius_cm)/100.0,"m","higher",1))
-	if int(effect.get("slow_bps",0)) > 0: rows.append(_row("slow","감속",int(effect.slow_bps),float(effect.slow_bps)/100.0,"%","higher",0))
-	if int(effect.get("freeze_stacks",0)) > 0: rows.append(_row("freeze_stacks","빙결 문턱",int(effect.freeze_stacks),float(effect.freeze_stacks),"회","lower",0))
-	if int(effect.get("shatter_count",0)) > 0: rows.append(_row("shatter_count","파쇄 수",int(effect.shatter_count),float(effect.shatter_count),"","higher",0))
-	if int(effect.get("death_burst",0)) > 0: rows.append(_row("death_burst","처치 폭발",1,1.0,"","higher",0,false,"flag"))
-	rows.append(_row("hit_budget","한 시전 최대 명중",int(effect.get("hit_budget",0)),float(effect.get("hit_budget",0)),"","higher",0,true))
+	for count_id in ["projectiles","chain_targets","branches","pierce"]:
+		var n := int(effect.get(count_id,0))
+		if n > 0: rows.append(_row(count_id,n,float(n),"","higher",0))
+	if int(effect.get("radius_cm",0)) > 0: rows.append(_row("radius",int(effect.radius_cm),float(effect.radius_cm)/100.0,"m","higher",1))
+	if int(effect.get("slow_bps",0)) > 0: rows.append(_row("slow",int(effect.slow_bps),float(effect.slow_bps)/100.0,"pct","higher",0))
+	if int(effect.get("freeze_stacks",0)) > 0: rows.append(_row("freeze_stacks",int(effect.freeze_stacks),float(effect.freeze_stacks),"count","lower",0))
+	if int(effect.get("shatter_count",0)) > 0: rows.append(_row("shatter_count",int(effect.shatter_count),float(effect.shatter_count),"","higher",0))
+	if int(effect.get("death_burst",0)) > 0: rows.append(_row("death_burst",1,1.0,"","higher",0,false,"flag"))
+	rows.append(_row("hit_budget",int(effect.get("hit_budget",0)),float(effect.get("hit_budget",0)),"","higher",0,true))
 	return rows
 
 func _skill_block(id_: String, gear: Dictionary, primary: bool) -> Dictionary:
 	var skill := _skill_with(id_,gear)
 	if skill.is_empty(): return {}
-	return {"id":id_,"name":skill.name,"rank":int(skill.rank),"evolved":bool(skill.evolved),"rows":_skill_rows(skill.effects,primary)}
+	return {"id":id_,"name_key":skill.name_key,"rank":int(skill.rank),"evolved":bool(skill.evolved),"rows":_skill_rows(skill.effects,primary)}
 
 func _hero_rows(gear: Dictionary) -> Array[Dictionary]:
 	var body := _hero_body(gear)
@@ -357,12 +357,12 @@ func _hero_rows(gear: Dictionary) -> Array[Dictionary]:
 	var soul := int(gear.get("soul_gain_bps",0))
 	var speed_bps := 10000+int(gear.get("move_speed_bps",0))
 	var rows: Array[Dictionary] = []
-	rows.append(_row("max_hp","최대 생명",int(body.max_hp_raw),float(body.max_hp_raw)/UNIT,"","higher",0))
-	rows.append(_row("damage_reduction","받는 피해 감소",reduction,float(reduction)/100.0,"%","higher",1))
-	rows.append(_row("speed","이동 속도",speed_bps,float(body.speed),"m/초","higher",2))
-	rows.append(_row("dash_cooldown","회피 재사용",dash,float(dash)/HZ,"초","lower",2))
-	rows.append(_row("pickup_radius","회수 반경",pickup,1.3+float(pickup)/100.0,"m","higher",1))
-	rows.append(_row("soul_gain","영혼 획득",soul,float(soul)/100.0,"%","higher",0))
+	rows.append(_row("max_hp",int(body.max_hp_raw),float(body.max_hp_raw)/UNIT,"","higher",0))
+	rows.append(_row("damage_reduction",reduction,float(reduction)/100.0,"pct","higher",1))
+	rows.append(_row("speed",speed_bps,float(body.speed),"m_per_s","higher",2))
+	rows.append(_row("dash_cooldown",dash,float(dash)/HZ,"s","lower",2))
+	rows.append(_row("pickup_radius",pickup,1.3+float(pickup)/100.0,"m","higher",1))
+	rows.append(_row("soul_gain",soul,float(soul)/100.0,"pct","higher",0))
 	return rows
 
 ## Legendary and unique descriptions of what the equip map wears.
@@ -372,8 +372,10 @@ func _effects_of(equip_map: Dictionary) -> Array[Dictionary]:
 		if not equip_map.has(slot): continue
 		var item := _owned(int(equip_map[slot]))
 		if item.is_empty() or not item.get("quality","") in ["legendary","unique"]: continue
-		var text := String(item.get("description",""))
-		if not text.is_empty(): result.append({"source":String(item.name),"text":text})
+		if String(item.get("description","")).is_empty(): continue
+		var kind := String(item.quality)
+		var effect_id := String(item.get("legendary_id","")) if kind == "legendary" else String(item.get("base_id",""))
+		result.append({"source_uid":int(item.uid),"kind":kind,"id":effect_id})
 	return result
 
 func _sheet_of(gear: Dictionary, equip_map: Dictionary) -> Dictionary:
@@ -386,14 +388,14 @@ func _sheet_of(gear: Dictionary, equip_map: Dictionary) -> Dictionary:
 	return {"primary":_skill_block(_primary_id,gear,true),"secondaries":secondaries,"hero":{"rows":_hero_rows(gear)},"sets":sets,"effects":_effects_of(equip_map)}
 
 ## Read-only. The numbers the core uses right now.
-## {primary:{id,name,rank,evolved,rows}, secondaries:[{...}], hero:{rows}, sets:[], effects:[{source,text}]}
-## A row is {id,label,raw,value,unit,better:"higher"|"lower",decimals,detail,kind:"number"|"flag"}.
+## {primary:{id,name_key,rank,evolved,rows}, secondaries:[{...}], hero:{rows}, sets:[], effects:[{source_uid,kind,id}]}
+## A row is {id,raw,value,unit_id,better:"higher"|"lower",decimals,detail,kind:"number"|"flag"}.
 func stat_sheet() -> Dictionary:
 	return _sheet_of(_gear_stats,equipped)
 
 ## Read-only. stat_sheet() as if bag item `uid` were worn in `slot` ("" = target_slot). Changes nothing.
 ## {slot, can_equip, slot_ok, level_ok, required_level, replaces_uid, veiled, before, after, sets_before, sets_after,
-##  effects_gained, effects_lost, rows:[{group,id,label,unit,decimals,better,detail,kind,before,after,delta,change}]}
+##  effects_gained, effects_lost, rows:[{group,id,unit_id,decimals,better,detail,kind,before,after,delta,change}]}
 ## change is "better", "worse" or "same" from the player's side (a smaller interval is better).
 ## An unknown uid returns {}.
 func preview_equip(uid: int, slot: String = "") -> Dictionary:
@@ -449,7 +451,7 @@ func _diff_rows(before: Dictionary, after: Dictionary) -> Array[Dictionary]:
 			var vb := float(b.get("value",0.0))
 			var change := "same"
 			if rb != ra: change = "better" if (rb > ra) == (r.better == "higher") else "worse"
-			result.append({"group":g.group,"id":r.id,"label":r.label,"unit":r.unit,"decimals":r.decimals,"better":r.better,"detail":r.detail,"kind":r.kind,"before":va,"after":vb,"delta":vb-va,"change":change})
+			result.append({"group":g.group,"id":r.id,"unit_id":r.unit_id,"decimals":r.decimals,"better":r.better,"detail":r.detail,"kind":r.kind,"before":va,"after":vb,"delta":vb-va,"change":change})
 	return result
 
 func compare_item(uid: int) -> Dictionary:
