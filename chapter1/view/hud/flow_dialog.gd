@@ -4,6 +4,7 @@ extends Control
 ## decides what a choice means. Keyboard: Tab / arrow keys cycle through the buttons only, Enter or Space presses the
 ## focused one, Esc answers with `esc_id` (an empty `esc_id` means Esc does nothing).
 const Palette=preload("res://chapter1/view/hud/palette.gd")
+const UiStyle=preload("res://chapter1/view/hud/ui_style.gd")
 signal chosen(id: String)
 var esc_id := ""
 var buttons: Array[Button]=[]
@@ -24,8 +25,7 @@ func setup(hud: RefCounted,spec: Dictionary) -> void:
 	center.mouse_filter=Control.MOUSE_FILTER_IGNORE;add_child(center)
 	panel=PanelContainer.new();panel.name="FlowDialogPanel";panel.custom_minimum_size.x=float(spec.get("width",760.0))
 	# A confirm window edge is plain brass; the bright brass is reserved for the focused button.
-	var frame: StyleBoxFlat=hud._style(Palette.SURFACE,Palette.BRASS)
-	panel.add_theme_stylebox_override("panel",frame);center.add_child(panel)
+	panel.add_theme_stylebox_override("panel",UiStyle.window());center.add_child(panel)
 	var column := VBoxContainer.new();column.add_theme_constant_override("separation",16);panel.add_child(column)
 	title_label=hud._label(String(spec.get("title","")),30,Palette.INK);title_label.name="FlowDialogTitle";column.add_child(title_label)
 	var content: Control=spec.get("content")

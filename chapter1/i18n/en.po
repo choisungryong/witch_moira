@@ -618,3 +618,69 @@ msgstr "x"
 #. Unit written after a stat sheet value (unit_id)
 msgid "unit.m_per_s"
 msgstr "m/s"
+
+#. U2 combat HUD (A4 4.4): top-right buttons, route hints, guardian lines, gear notices.
+
+#. Top-right button: open the gear window. The key hint stays in the text
+msgid "hud.button.equipment"
+msgstr "Gear [I]"
+
+#. Top-right button: pause
+msgid "hud.button.pause"
+msgstr "Pause [Esc]"
+
+#. Top-right button: mute the sound
+msgid "hud.button.mute"
+msgstr "Mute [M]"
+
+#. First-gear notice header. {slot}: slot name
+msgid "hud.notice.unique_found"
+msgstr "Unique gear found · {slot}"
+
+#. Gear notice and compare: nothing changes
+msgid "hud.notice.no_change"
+msgstr "No change in stats"
+
+#. Route hint before the next zone is entered. {meters}: distance in metres (plain number)
+msgid "hud.route.next_seal"
+msgstr "{meters} m to the next seal · follow the open east corridor"
+
+#. Route hint in the last zone
+msgid "hud.route.last_seal"
+msgstr "Last seal · defeat the corridor's watch king"
+
+#. Route hint inside a zone
+msgid "hud.route.break_seal"
+msgstr "Break the seal of this zone"
+
+#. Route hint while a seal guardian is alive. {name}: the guardian's name
+msgid "hud.route.champion"
+msgstr "Seal guardian · defeat {name}"
+
+#. Route hint toward a waypoint. {stage}: zone name, {meters}: distance in metres
+msgid "hud.route.waypoint"
+msgstr "{meters} m to {stage} · follow the golden direction marker"
+
+#. Short fallback name of a guardian
+msgid "hud.champion.short"
+msgstr "Guardian"
+
+#. Fallback name of a seal guardian
+msgid "hud.champion.fallback"
+msgstr "Seal guardian"
+
+#. Goal plate while a guardian is alive. {title}: name, {time}: mm:ss, {hp}/{max}: life numbers
+msgid "hud.objective.champion_status"
+msgstr "{title} · {time}\nGuardian life {hp} / {max}"
+
+#. Better-gear notice header. {slot}: slot name, {quality}: grade name
+msgid "hud.notice.better_gear"
+msgstr "Better gear · {slot} · {quality}"
+
+#. Better-gear notice: the slot is empty
+msgid "hud.notice.empty_slot"
+msgstr "Wear it in the empty slot"
+
+#. Better-gear notice: key hints (keys stay in the text)
+msgid "hud.notice.keys"
+msgstr "[F] Wear now  ·  [I] Compare"

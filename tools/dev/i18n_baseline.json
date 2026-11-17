@@ -8,7 +8,7 @@
     "chapter1/core/loot.gd": 1,
     "chapter1/core/skill_tree.gd": 22,
     "chapter1/view/fx/chapter_effects.gd": 1,
-    "chapter1/view/hud/chapter_hud.gd": 293,
+    "chapter1/view/hud/chapter_hud.gd": 273,
     "chapter1/view/hud/skill_tree_panel.gd": 90,
     "chapter1/view/loc.gd": 35,
     "chapter1/view/ui51/chapter_route51.gd": 4,

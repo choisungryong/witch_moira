@@ -623,3 +623,69 @@ msgstr "회"
 #. Unit written after a stat sheet value (unit_id)
 msgid "unit.m_per_s"
 msgstr "m/초"
+
+#. U2 combat HUD (A4 4.4): top-right buttons, route hints, guardian lines, gear notices.
+
+#. Top-right button: open the gear window. The key hint stays in the text
+msgid "hud.button.equipment"
+msgstr "장비 [I]"
+
+#. Top-right button: pause
+msgid "hud.button.pause"
+msgstr "정지 [Esc]"
+
+#. Top-right button: mute the sound
+msgid "hud.button.mute"
+msgstr "음소거 [M]"
+
+#. First-gear notice header. {slot}: slot name
+msgid "hud.notice.unique_found"
+msgstr "고유 장비 발견 · {slot}"
+
+#. Gear notice and compare: nothing changes
+msgid "hud.notice.no_change"
+msgstr "능력치 변화 없음"
+
+#. Route hint before the next zone is entered. {meters}: distance in metres (plain number)
+msgid "hud.route.next_seal"
+msgstr "다음 봉인까지 {meters}m · 열린 동쪽 회랑을 따라 이동"
+
+#. Route hint in the last zone
+msgid "hud.route.last_seal"
+msgstr "마지막 봉인 · 회랑의 파수왕을 처치하세요"
+
+#. Route hint inside a zone
+msgid "hud.route.break_seal"
+msgstr "현재 구역의 봉인을 돌파하세요"
+
+#. Route hint while a seal guardian is alive. {name}: the guardian's name
+msgid "hud.route.champion"
+msgstr "봉인 수호자 · {name|를} 처치하세요"
+
+#. Route hint toward a waypoint. {stage}: zone name, {meters}: distance in metres
+msgid "hud.route.waypoint"
+msgstr "{stage}까지 {meters}m · 금빛 방향 표시를 따라 이동"
+
+#. Short fallback name of a guardian
+msgid "hud.champion.short"
+msgstr "수호자"
+
+#. Fallback name of a seal guardian
+msgid "hud.champion.fallback"
+msgstr "봉인 수호자"
+
+#. Goal plate while a guardian is alive. {title}: name, {time}: mm:ss, {hp}/{max}: life numbers
+msgid "hud.objective.champion_status"
+msgstr "{title} · {time}\n수호자 생명 {hp} / {max}"
+
+#. Better-gear notice header. {slot}: slot name, {quality}: grade name
+msgid "hud.notice.better_gear"
+msgstr "더 좋은 장비 · {slot} · {quality}"
+
+#. Better-gear notice: the slot is empty
+msgid "hud.notice.empty_slot"
+msgstr "빈 슬롯에 착용"
+
+#. Better-gear notice: key hints (keys stay in the text)
+msgid "hud.notice.keys"
+msgstr "[F] 바로 착용  ·  [I] 비교"

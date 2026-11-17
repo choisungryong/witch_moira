@@ -1,8 +1,10 @@
 extends Control
-## Bottom-centre combat bar (layout A): life orb, skill slots, the reserved
-## ultimate slot, dash and potion, soul orb. It only reads run state.
+## Bottom-centre combat bar (layout A): life orb, skill slots, the ultimate slot, dash and potion, soul orb, and the
+## strip of effects on the hero. It only reads run state. One control, one _draw(): every piece comes from the atlas
+## in ui_style.gd, no node is added for it (A4 3.2.5).
 const ElementSeal = preload("res://chapter1/view/ui38/element_seal.gd")
 const Palette = preload("res://chapter1/view/hud/palette.gd")
+const UiStyle = preload("res://chapter1/view/hud/ui_style.gd")
 const SKILLS := [["chapter1.skill.ember","ember",Palette.FIRE],["chapter1.skill.frost","frost",Palette.FROST],["chapter1.skill.arc","arc",Palette.ARC]]
 const BRASS := Palette.BRASS
 const BRASS_DIM := Palette.BRASS_DIM
@@ -21,6 +23,8 @@ const SLOT_Y := 92.0
 const SLOT_SIZES := [60,60,60,74,60,60]
 const SLOT_GAP := 14.0
 const LOW_LIFE := .30
+## Effect strip: ends left of the life orb's ring, below y 720 (code), so it stays out of the central 60 percent.
+const EFFECT_SIZE := 30.0
 
 var _seals: Array[Control] = []
 var _rects: Array[Rect2] = []
@@ -37,16 +41,21 @@ var _potions := 0
 var _potion_left := 0.0
 var _clock := 0.0
 var _playing := false
-var _pill := StyleBoxFlat.new()
+var _invulnerable := false
+var _in_ward := false
+var _pill := UiStyle.pill()
+var _strip_node: Control
+var _liquids: Array[ShaderMaterial] = []
+var _primary_index := -1
+var _soul_key := "frost"
 
 func _ready() -> void:
-	_pill.bg_color = Color(0,0,0,.35)
-	_pill.set_corner_radius_all(14)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = BAR_SIZE
 	anchor_left = .5; anchor_right = .5; anchor_top = 1.0; anchor_bottom = 1.0
 	offset_left = -BAR_SIZE.x*.5; offset_right = BAR_SIZE.x*.5
 	offset_top = -BAR_SIZE.y-10; offset_bottom = -10
+	if UiStyle.bound(): texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	var total := 0.0
 	for size_ in SLOT_SIZES: total += float(size_)
 	total += SLOT_GAP*float(SLOT_SIZES.size()-1)
@@ -54,14 +63,17 @@ func _ready() -> void:
 	for size_ in SLOT_SIZES:
 		_rects.append(Rect2(x,SLOT_Y-float(size_)*.5,float(size_),float(size_)))
 		x += float(size_)+SLOT_GAP
+	if UiStyle.bound(): _make_bound_nodes()
 	for index in SKILLS.size():
+		_skill_state.append({"rank":0,"evolved":false,"wait":0.0,"seconds":0.0})
+		# The bound look draws the glyphs itself; the old look keeps its seal nodes.
+		if UiStyle.bound(): continue
 		var seal = ElementSeal.new()
 		seal.element = SKILLS[index][1]; seal.tint = SKILLS[index][2]
 		seal.size = Vector2(70,70)
 		seal.position = _rects[index].get_center()-Vector2(35,35)
 		add_child(seal)
 		_seals.append(seal)
-		_skill_state.append({"rank":0,"evolved":false,"wait":0.0})
 
 func sync(run: RefCounted, delta: float) -> void:
 	_playing = run.mode == "playing"
@@ -81,31 +93,211 @@ func sync(run: RefCounted, delta: float) -> void:
 	else: _soul = 1.0
 	# The in-run growth orb carries the primary element's colour (ART-PLAN 2.1).
 	_soul_color = SOUL_DEFAULT
-	for skill in SKILLS:
-		if skill[0] == String(growth.get("primary","")): _soul_color = skill[2]
+	_primary_index = -1
+	for k in SKILLS.size():
+		if SKILLS[k][0] == String(growth.get("primary","")): _soul_color = SKILLS[k][2]; _primary_index = k; _soul_key = SKILLS[k][1]
 	var ranks: Dictionary = growth.get("ranks",{})
 	var evolved: Array = growth.get("evolved",[])
 	for i in SKILLS.size():
 		var id_: String = SKILLS[i][0]
 		var rank := int(ranks.get(id_,0))
 		var wait := 0.0
+		var seconds := 0.0
 		if rank > 0:
 			var next_cast: Dictionary = run.get("_next_cast")
 			var skill: Dictionary = run.effective_skill(id_)
 			var cooldown := maxf(1.0,float(skill.get("effects",{}).get("cooldown_ticks",60)))
 			wait = clampf(float(int(next_cast.get(id_,0))-int(run.tick))/cooldown,0,1)
-		_skill_state[i] = {"rank":rank,"evolved":id_ in evolved,"wait":wait}
-		_seals[i].modulate = Color(1,1,1,1) if rank > 0 else Color(1,1,1,.22)
+			seconds = wait*cooldown/60.0
+		_skill_state[i] = {"rank":rank,"evolved":id_ in evolved,"wait":wait,"seconds":seconds}
+		if not _seals.is_empty(): _seals[i].modulate = Color(1,1,1,1) if rank > 0 else Color(1,1,1,.22)
 	_dash_left = maxf(0.0,float(int(run.get_next_dash_tick())-int(run.tick))/60.0)
 	_dash_total = maxf(_dash_total if _dash_left > 0 else 1.0,_dash_left)
 	_potions = int(run.get("potions"))
 	_potion_left = maxf(0.0,float(int(run.get("_next_potion"))-int(run.tick))/60.0)
+	# Read-only hero state for the effect strip: the dodge's invulnerable frames, and standing in a boss ward.
+	_invulnerable = int(run.tick) < int(run.get("_invulnerable_until"))
+	_in_ward = false
+	for hazard in run.get("chapter_hazards"):
+		if run.hero.position.distance_to(hazard.position) <= float(hazard.radius): _in_ward = true; break
 	queue_redraw()
 
 func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0, outline: int = 4) -> void:
 	var font := get_theme_default_font()
 	draw_string_outline(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,outline,Color(0,0,0,.85))
 	draw_string(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,color)
+
+func _draw() -> void:
+	if UiStyle.bound(): _draw_bound()
+	else: _draw_legacy()
+
+# ======================================================================================
+# Bound look (kit C): brass-ringed glass orbs on a leather strip that spans only orb to orb, round slots, key tags.
+# Sizes in code units: kit pixels * UiStyle.CODE (the kit is authored at 2 px per 1080p px, 1080p is 1.2 x code).
+# ======================================================================================
+const STRIP_FROM := -150.0
+const STRIP_TO := 980.0
+const CY := 76.0
+const BOUND_LIFE := Vector2(63.3,CY)
+const BOUND_SOUL := Vector2(796.7,CY)
+const BOUND_SLOT_X := [238.3,313.3,388.3,467.5,546.7,621.7]
+const GLASS := 125.0
+const ICON := 55.0
+
+func _make_bound_nodes() -> void:
+	var shader := UiStyle.liquid_shader()
+	_strip_node = Control.new(); _strip_node.name = "Strip"
+	_strip_node.mouse_filter = Control.MOUSE_FILTER_IGNORE; _strip_node.show_behind_parent = true
+	_strip_node.size = BAR_SIZE
+	_strip_node.draw.connect(_draw_strip)
+	add_child(_strip_node)
+	for centre in [BOUND_LIFE,BOUND_SOUL]:
+		var rect := ColorRect.new(); rect.name = "Liquid"
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE; rect.show_behind_parent = true
+		rect.size = Vector2(GLASS,GLASS); rect.position = centre-Vector2(GLASS,GLASS)*.5
+		var material := ShaderMaterial.new(); material.shader = shader
+		rect.material = material
+		add_child(rect)
+		_liquids.append(material)
+
+## Leather strip: end pieces with the buckle and corner irons, tiles between, brass studs, and the shade below it.
+const STRIP_SCALE := 1.45
+func _draw_strip() -> void:
+	var fade_top := CY-20.0
+	var xs := [STRIP_FROM-60.0,STRIP_FROM+60.0,STRIP_TO-60.0,STRIP_TO+60.0]
+	var alphas := [0.0,.5,.5,0.0]
+	for i in 3:
+		_strip_node.draw_polygon(PackedVector2Array([Vector2(xs[i],fade_top),Vector2(xs[i+1],fade_top),Vector2(xs[i+1],BAR_SIZE.y+14.0),Vector2(xs[i],BAR_SIZE.y+14.0)]),
+			PackedColorArray([Color(0,0,0,0),Color(0,0,0,0),Color(0,0,0,alphas[i+1]),Color(0,0,0,alphas[i])]))
+	var tile := UiStyle.piece_size("strip_tile")*STRIP_SCALE
+	var end_size := UiStyle.piece_size("strip_left")*STRIP_SCALE
+	var top := CY-tile.y*.5
+	var x := STRIP_FROM+end_size.x-1.0
+	var stop := STRIP_TO-end_size.x+1.0
+	while x < stop:
+		var width := minf(tile.x,stop-x)
+		UiStyle.blit_part(_strip_node,"strip_tile",Rect2(x,top,width,tile.y),width/tile.x)
+		x += tile.x-1.0
+	UiStyle.blit(_strip_node,"strip_left",Rect2(Vector2(STRIP_FROM,top),end_size))
+	UiStyle.blit(_strip_node,"strip_right",Rect2(Vector2(STRIP_TO-end_size.x,top),end_size))
+	# Brass studs on the strip, one outside each orb.
+	for stud_x in [BOUND_LIFE.x-104.0,BOUND_SOUL.x+104.0]:
+		var stud := Vector2(stud_x,CY)
+		_strip_node.draw_circle(stud+Vector2(0,1.5),6.5,Color(0,0,0,.5))
+		_strip_node.draw_circle(stud,6.0,BRASS_DIM)
+		_strip_node.draw_circle(stud,4.6,BRASS)
+		_strip_node.draw_circle(stud+Vector2(-1.5,-1.5),1.8,Color(Palette.LINEN,.8))
+
+func _sweep(centre: Vector2, wait: float, radius: float) -> void:
+	if wait <= 0.0: return
+	var points := PackedVector2Array([centre])
+	var steps := maxi(3,int(ceil(wait*20.0)))
+	for i in steps+1:
+		var angle := -PI*.5+TAU*wait*float(i)/float(steps)
+		points.append(centre+Vector2.from_angle(angle)*radius)
+	draw_colored_polygon(points,Color(0,0,0,.3))
+
+func _effect_badge(center: Vector2, kind: String) -> void:
+	var r := EFFECT_SIZE*.5
+	draw_circle(center,r,Color(0.055,.07,.075,.92))
+	draw_arc(center,r,0,TAU,24,BRASS_HI if kind == "ward" else BRASS,2.0,true)
+	match kind:
+		"ward":
+			draw_colored_polygon(PackedVector2Array([center+Vector2(0,-9),center+Vector2(9,7),center+Vector2(-9,7)]),Palette.THREAT)
+			draw_line(center+Vector2(0,-3),center+Vector2(0,2),INK,2.0,true)
+			draw_circle(center+Vector2(0,5),1.2,INK)
+		_:
+			draw_colored_polygon(PackedVector2Array([center+Vector2(-8,-8),center+Vector2(8,-8),center+Vector2(8,1),center+Vector2(0,10),center+Vector2(-8,1)]),Color(Palette.FROST,.9))
+			draw_line(center+Vector2(0,-6),center+Vector2(0,6),Color("0e1316"),2.0,true)
+
+func _active_effects() -> Array[String]:
+	var list: Array[String] = []
+	if _in_ward: list.append("ward")
+	if _invulnerable: list.append("dodge")
+	return list
+
+func _draw_bound() -> void:
+	var low := _life < LOW_LIFE
+	var pulse := .5+.5*sin(_clock*9.0)
+	# Liquids (shader nodes under this draw): fill, colour pieces and glass tint.
+	var life_tint := Palette.LIFE if not low else Palette.LIFE_LOW.lerp(Palette.LIFE,pulse)
+	UiStyle.set_liquid(_liquids[0],"life",_life,life_tint)
+	UiStyle.set_liquid(_liquids[1],_soul_key,_soul,_soul_color)
+	var ring_tint := Color.WHITE if not low else Color.WHITE.lerp(Palette.LIFE_LOW.darkened(.35),.2+.8*pulse)
+	for orb in [[BOUND_LIFE,ring_tint],[BOUND_SOUL,Color.WHITE]]:
+		UiStyle.blit_centered(self,"glass_highlight",orb[0],1.0,Color(1,1,1,.45))
+		UiStyle.blit_centered(self,"orb_frame",orb[0],1.0,orb[1])
+	# The life number sits in the liquid, no plate behind it.
+	var number_font := UiStyle.number_font()
+	draw_string(number_font,BOUND_LIFE+Vector2(-50.0,8.5),_life_text,HORIZONTAL_ALIGNMENT_CENTER,100,20,Color(0.12,0.0,0.03,.6))
+	draw_string(number_font,BOUND_LIFE+Vector2(-50.0,7.0),_life_text,HORIZONTAL_ALIGNMENT_CENTER,100,20,Color("f0e4c4"))
+	# Slots: round gem frames. The primary skill has the gold frame; a cooling slot shows its icon small above the seconds.
+	var icons := ["icon_fire","icon_frost","icon_arc","","icon_dash","icon_potion"]
+	for i in 6:
+		var c := Vector2(BOUND_SLOT_X[i],CY)
+		if i == 3:
+			UiStyle.blit_centered(self,"medal_cross",c)
+			continue
+		var learned := true
+		var wait := 0.0
+		var seconds := 0.0
+		var frame := "slot_normal"
+		if i < 3:
+			var state: Dictionary = _skill_state[i]
+			learned = int(state.rank) > 0
+			wait = float(state.wait); seconds = float(state.seconds)
+			if i == _primary_index: frame = "slot_selected"
+		elif i == 4:
+			wait = clampf(_dash_left/maxf(.1,_dash_total),0,1); seconds = _dash_left
+		else:
+			wait = clampf(_potion_left/4.0,0,1); seconds = _potion_left
+		# Short gaps between casts (under half a second) are not shown as a cooldown.
+		var counting := wait > 0.0 and seconds >= 0.5
+		draw_circle(c,ICON*.5,Color(0.03,.035,.04,1))
+		var icon_tint := Color.WHITE if (learned and (i != 5 or _potions > 0)) else Color(1,1,1,.4)
+		if counting:
+			UiStyle.blit_centered(self,icons[i],c+Vector2(0,-9),.6,Color(icon_tint,.6))
+			_sweep(c,wait,ICON*.5)
+			if frame != "slot_selected": frame = "slot_cooldown"
+		else:
+			UiStyle.blit_centered(self,icons[i],c,1.0,icon_tint)
+		UiStyle.blit_centered(self,frame,c)
+		if counting: _text(c+Vector2(0,19),"%.1f" % seconds,17,INK,56,4)
+		if i < 3:
+			# Rank beads under a skill slot: one brass bead per rank, a gold ring once evolved.
+			var state2: Dictionary = _skill_state[i]
+			var base := c+Vector2(0,CY*0.0+39.0)
+			if bool(state2.evolved):
+				draw_arc(base,4.5,0,TAU,20,BRASS_HI,2.0,true)
+			else:
+				for pip in 4:
+					var bead := base+Vector2((float(pip)-1.5)*9.0,0)
+					if pip < int(state2.rank): draw_circle(bead,3.0,SKILLS[i][2]); draw_arc(bead,3.2,0,TAU,12,BRASS,1.0,true)
+					else: draw_arc(bead,2.6,0,TAU,12,Color(BRASS_DIM,.8),1.0,true)
+	var p := Vector2(BOUND_SLOT_X[5],CY)
+	var count_at := p+Vector2(24,24)
+	draw_circle(count_at,9.5,Color(0.04,.045,.05,1))
+	draw_arc(count_at,9.5,0,TAU,20,BRASS,1.5,true)
+	_text(count_at+Vector2(0,5),str(_potions),14,INK,20,2)
+	if low and _potions > 0 and _potion_left <= 0.0:
+		draw_arc(p,ICON*.5+5.0,0,TAU,40,Color(Palette.LIFE_LOW,pulse),3.0,true)
+	# Key tags (text 14 code units: 11.2 px at 720p).
+	for key in [[4,"Space"],[5,"Q"]]:
+		var kc := Vector2(BOUND_SLOT_X[key[0]],CY+47.0)
+		UiStyle.blit_centered(self,"key_tag",kc)
+		_text(kc+Vector2(0,5),key[1],14,INK,70,3)
+	# Level plate: a brass disc hanging on the soul orb's lower rim.
+	var badge := BOUND_SOUL+Vector2(0,66.0)
+	UiStyle.blit_centered(self,"level_badge",badge,1.25)
+	_text(badge+Vector2(0,7),str(_level),20,INK,40,3)
+	var x_end := BOUND_LIFE.x-96.0
+	for kind in _active_effects():
+		_effect_badge(Vector2(x_end-EFFECT_SIZE*.5,CY),kind)
+		x_end -= EFFECT_SIZE+6.0
+
+# ======================================================================================
+# Old look (THEME = LEGACY), kept so the switch in ui_style.gd really switches.
+# ======================================================================================
 
 func _orb(center: Vector2, fraction: float, top: Color, bottom: Color, rim: Color) -> void:
 	draw_circle(center,ORB_RADIUS+6,Color("101315"))
@@ -132,7 +324,7 @@ func _slot(rect: Rect2, border: Color, wait: float) -> void:
 	draw_rect(rect,border,false,2.0)
 	draw_rect(rect.grow(-4),Color(border,.25),false,1.0)
 
-func _draw() -> void:
+func _draw_legacy() -> void:
 	var first: Rect2 = _rects[0]
 	var last: Rect2 = _rects[_rects.size()-1]
 	var plate := Rect2(first.position.x-22,SLOT_Y-52,last.end.x-first.position.x+44,104)

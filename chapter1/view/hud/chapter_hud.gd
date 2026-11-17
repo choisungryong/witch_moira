@@ -62,10 +62,10 @@ func setup__cloister(view: Node3D) -> void:
 	objective=_label("잿빛 회랑",20,Color("ded8c4"))
 	objective.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	row.add_child(objective)
-	var item_button := _button("장비 [I]",func():equipment.emit())
+	var item_button := _button(Loc.t("hud.button.equipment"),func():equipment.emit())
 	row.add_child(item_button)
-	row.add_child(_button("정지 [Esc]",func():pause_toggle.emit()))
-	row.add_child(_button("음소거 [M]",func():mute_toggle.emit()))
+	row.add_child(_button(Loc.t("hud.button.pause"),func():pause_toggle.emit()))
+	row.add_child(_button(Loc.t("hud.button.mute"),func():mute_toggle.emit()))
 	var bottom := PanelContainer.new()
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_top=-94;bottom.offset_left=22;bottom.offset_right=-22;bottom.offset_bottom=-18
@@ -124,41 +124,11 @@ func setup__cloister(view: Node3D) -> void:
 	modal=PanelContainer.new()
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal.offset_left=190;modal.offset_right=-190;modal.offset_top=120;modal.offset_bottom=-120
-	modal.add_theme_stylebox_override("panel",_style(Color("211c16"),Color("8b6b43")))
+	modal.add_theme_stylebox_override("panel",UiStyle.window())
 	overlay.add_child(modal)
 
-func _style__cloister(color: Color, border: Color=Color("65523c")) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color=color;s.border_color=border;s.set_border_width_all(1);s.set_content_margin_all(22)
-	s.corner_radius_top_left=2;s.corner_radius_top_right=2;s.corner_radius_bottom_left=2;s.corner_radius_bottom_right=2
-	return s
-
-func _label__cloister(text: String, size: int=18, color: Color=Color("e0d8c7")) -> Label:
-	var label := Label.new()
-	label.text=text;label.add_theme_font_size_override("font_size",size);label.add_theme_color_override("font_color",color)
-	label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	if size>=25:
-		var heading := SystemFont.new();heading.font_names=PackedStringArray(["Batang","바탕","Georgia"])
-		label.add_theme_font_override("font",heading)
-	return label
-
 func _bar(color: Color, height: float) -> ProgressBar:
-	var bar := ProgressBar.new()
-	bar.show_percentage=false;bar.custom_minimum_size.y=height
-	var fill := _style(color,color);fill.set_content_margin_all(0)
-	var back := _style(Color("332a20"),Color("332a20"));back.set_content_margin_all(0)
-	bar.add_theme_stylebox_override("fill",fill)
-	bar.add_theme_stylebox_override("background",back)
-	return bar
-
-func _button__cloister(text: String, action: Callable) -> Button:
-	var b := Button.new()
-	b.text=text;b.custom_minimum_size.y=42
-	for variant in [["normal",Color("30271d"),Color("70583b")],["hover",Color("493922"),Color("b9955f")],["focus",Color("463823"),Color("d2b27c")]]:
-		var style := _style(variant[1],variant[2]);style.content_margin_left=12;style.content_margin_right=12;style.content_margin_top=8;style.content_margin_bottom=8
-		b.add_theme_stylebox_override(variant[0],style)
-	b.pressed.connect(action)
-	return b
+	return UiStyle.bar(color,height)
 
 func sync__cloister(run: RefCounted, delta: float) -> void:
 	_toast_left=maxf(0,_toast_left-delta)
@@ -334,6 +304,11 @@ var boss_name: Label
 const BOSS_BAR_WIDTH := 560.0
 const BOSS_BAR_HEIGHT := 14.0
 const BOSS_BAR_TOP := 100.0
+## Bound look: the bar is the glass of the kit's frame (385 x 16.5 inside a 550 x 58.75 frame), the name sits in the plate under it.
+func _boss_width() -> float:return 385.0 if UiStyle.bound() else BOSS_BAR_WIDTH
+func _boss_height() -> float:return 16.5 if UiStyle.bound() else BOSS_BAR_HEIGHT
+func _boss_top() -> float:return 70.0 if UiStyle.bound() else BOSS_BAR_TOP
+func _boss_name_shift() -> float:return 64.8
 signal stash_show
 signal stash_equip(storage_id: int)
 signal stash_salvage(storage_id: int)
@@ -356,14 +331,14 @@ func _init() -> void:
 	victory_title="제1장 · 회랑의 파수왕을 처치했습니다"
 func setup__chapter(view: Node3D) -> void:
 	setup__cloister(view)
-	boss_bar=_bar(Palette.THREAT_DEEP,BOSS_BAR_HEIGHT);boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	boss_bar=_bar(Palette.THREAT_DEEP,_boss_height());boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_style_boss_bar()
-	boss_bar.offset_left=-BOSS_BAR_WIDTH*.5;boss_bar.offset_right=BOSS_BAR_WIDTH*.5;boss_bar.offset_top=BOSS_BAR_TOP;boss_bar.offset_bottom=BOSS_BAR_TOP+BOSS_BAR_HEIGHT;boss_bar.visible=false;root.add_child(boss_bar)
+	boss_bar.offset_left=-_boss_width()*.5;boss_bar.offset_right=_boss_width()*.5;boss_bar.offset_top=_boss_top();boss_bar.offset_bottom=_boss_top()+_boss_height();boss_bar.visible=false;root.add_child(boss_bar)
 	boss_name=_label("",18,Palette.INK);boss_name.autowrap_mode=TextServer.AUTOWRAP_OFF;boss_name.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	boss_name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;boss_name.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	boss_name.add_theme_constant_override("outline_size",4);boss_name.add_theme_color_override("font_outline_color",Color(0,0,0,.85))
 	boss_name.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	boss_name.offset_left=-BOSS_BAR_WIDTH*.5;boss_name.offset_right=BOSS_BAR_WIDTH*.5;boss_name.offset_top=BOSS_BAR_TOP-28;boss_name.offset_bottom=BOSS_BAR_TOP-3
+	boss_name.offset_left=-_boss_width()*.5;boss_name.offset_right=_boss_width()*.5;boss_name.offset_top=_boss_top()-28.0+(_boss_name_shift() if UiStyle.bound() else 0.0);boss_name.offset_bottom=_boss_top()-3.0+(_boss_name_shift() if UiStyle.bound() else 0.0)
 	boss_name.visible=false;root.add_child(boss_name)
 func sync__chapter(run: RefCounted,delta: float) -> void:
 	sync__cloister(run,delta)
@@ -444,6 +419,7 @@ func _card_description__q16(card: Dictionary,run: RefCounted) -> String:
 # ---- chapter1/view/chapter_hud_quality17.gd ----
 const Sigil=preload("res://chapter1/view/equipment_sigil_quality17.gd")
 const Palette=preload("res://chapter1/view/hud/palette.gd")
+const UiStyle=preload("res://chapter1/view/hud/ui_style.gd")
 const QUALITY_COLORS=Palette.QUALITY_COLORS
 const QUALITY_NAMES={"common":"일반","magic":"마법","rare":"희귀","legendary":"전설","unique":"고유"}
 var _gear_scroll: ScrollContainer
@@ -478,7 +454,7 @@ func _show_discovery__q17(item: Dictionary) -> void:
 	for child in _discovery.get_children():_discovery.remove_child(child);child.queue_free()
 	var row := HBoxContainer.new();row.add_theme_constant_override("separation",16);_discovery.add_child(row)
 	row.add_child(_sigil(item));var text := VBoxContainer.new();row.add_child(text)
-	text.add_child(_label("고유 장비 발견 · "+SLOT_NAMES[item.slot],14,Palette.QUALITY_UNIQUE))
+	text.add_child(_label(Loc.t("hud.notice.unique_found",{"slot":SLOT_NAMES[item.slot]}),14,Palette.QUALITY_UNIQUE))
 	text.add_child(_label(item.name,23,Color("efd0a0")));_discovery_left=3.0
 func _sigil__q17(item: Dictionary) -> Control:
 	var icon := Sigil.new();icon.slot=item.get("slot","charm");icon.tint=QUALITY_COLORS.get(item.get("quality","common"),Color.WHITE);return icon
@@ -664,29 +640,12 @@ var life_seal38: Control
 var level38: Label
 var _focus_return38: WeakRef
 
+## Frames, buttons and labels are built by ui_style.gd (A4 US); this class only asks.
 func _style(color: Color, border: Color=BRASS38) -> StyleBoxFlat:
-	# Normalize the inherited warm surfaces to carbonized stone; rarity remains.
-	var surface := color
-	if color.r>color.b*1.12 and color.r<0.34:surface=Palette.SURFACE
-	var s := StyleBoxFlat.new()
-	s.bg_color=surface;s.border_color=border;s.set_border_width_all(1)
-	s.set_content_margin_all(20)
-	s.border_width_top=2
-	s.shadow_color=Color(0,0,0,.45);s.shadow_size=8;s.shadow_offset=Vector2(0,4)
-	return s
+	return UiStyle.flat(color,border)
 
 func _button(text: String, action: Callable) -> Button:
-	var b := Button.new();b.text=text;b.custom_minimum_size.y=48
-	b.add_theme_font_size_override("font_size",18)
-	b.add_theme_color_override("font_color",Palette.INK)
-	b.add_theme_color_override("font_disabled_color",Color("777a78"))
-	for entry in [["normal",Palette.SURFACE_RAISED,Palette.BRASS_DIM],["hover",Color("303a3d"),Palette.BRASS],["pressed",Color("111719"),Palette.INK],["disabled",Color("191d1f"),Color("3e4343")]]:
-		var s := _style(entry[1],entry[2]);s.set_content_margin_all(12)
-		b.add_theme_stylebox_override(entry[0],s)
-	var focus := StyleBoxFlat.new();focus.bg_color=Color(0,0,0,0);focus.border_color=Palette.BRASS_HI;focus.set_border_width_all(3)
-	b.add_theme_stylebox_override("focus",focus)
-	b.pressed.connect(action)
-	return b
+	return UiStyle.button(text,action)
 
 func setup__q38(view: Node3D) -> void:
 	setup__q23(view)
@@ -706,10 +665,7 @@ func setup__q38(view: Node3D) -> void:
 		if child is Button:
 			child.reparent(top);child.custom_minimum_size.y=36;child.add_theme_font_size_override("font_size",15)
 			child.size_flags_vertical=Control.SIZE_SHRINK_BEGIN
-			for state in ["normal","hover","pressed","disabled"]:
-				var compact: StyleBoxFlat=child.get_theme_stylebox(state).duplicate()
-				compact.content_margin_top=7;compact.content_margin_bottom=7
-				child.add_theme_stylebox_override(state,compact)
+			UiStyle.compact_button_faces(child)
 	old_top.queue_free()
 	var dock := HBoxContainer.new();dock.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	dock.offset_left=28;dock.offset_right=-28;dock.offset_top=-142;dock.offset_bottom=-22
@@ -745,16 +701,11 @@ func setup__q38(view: Node3D) -> void:
 	# Keep overlays above the replacement dock, and retain boss/toast layering.
 	root.move_child(overlay,root.get_child_count()-1)
 	modal.offset_left=90;modal.offset_right=-90;modal.offset_top=104;modal.offset_bottom=-76
-	modal.add_theme_stylebox_override("panel",_style(Palette.SURFACE,BRASS38))
+	modal.add_theme_stylebox_override("panel",UiStyle.window())
 	overlay.color=Color(.025,.035,.045,.87)
 
-func _plate_style38() -> StyleBoxFlat:
-	var frame := StyleBoxFlat.new()
-	frame.bg_color=Color(.025,.038,.045,.88)
-	frame.border_color=Color(.44,.40,.30,.8);frame.border_width_bottom=1
-	frame.content_margin_left=12;frame.content_margin_right=12
-	frame.content_margin_top=9;frame.content_margin_bottom=9
-	return frame
+func _plate_style38() -> StyleBox:
+	return UiStyle.plate()
 
 func _backplate38() -> PanelContainer:
 	var panel := PanelContainer.new();panel.add_theme_stylebox_override("panel",_plate_style38())
@@ -872,7 +823,7 @@ func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 	details.add_child(equip_button)
 
 func _delta_text38(stats: Dictionary) -> String:
-	if stats.is_empty():return "능력치 변화 없음"
+	if stats.is_empty():return Loc.t("hud.notice.no_change")
 	# Existing formatter owns units and vocabulary; normalize signed negative cases.
 	var text := _stats(stats)
 	text=text.replace("--","+").replace("+-","-")
@@ -956,11 +907,11 @@ func sync__q40(run: RefCounted,delta: float) -> void:
 		var cleared: bool=i<run.seals.size() and bool(run.seals[i].get("cleared",false))
 		var current: bool=i==int(goal.zone)
 		_route_labels40[i].text=("✓ " if cleared else ("◆ " if current else "○ "))+Loc.t("zone.%d.name"%i)
-		_route_labels40[i].add_theme_color_override("font_color",Color("a8baaa") if cleared else (Color("efdaa6") if current else Color("85877f")))
+		_route_labels40[i].add_theme_color_override("font_color",Color("a8baaa") if cleared else (Color("efdaa6") if current else Palette.INK_DIM))
 	if not bool(goal.entered):
 		var destination: Vector2=goal.destination
-		_route_hint40.text="다음 봉인까지 %.0fm · 열린 동쪽 회랑을 따라 이동"%run.hero.position.distance_to(destination)
-	else:_route_hint40.text="마지막 봉인 · 회랑의 파수왕을 처치하세요" if int(goal.boss_phase)>0 else "현재 구역의 봉인을 돌파하세요"
+		_route_hint40.text=Loc.t("hud.route.next_seal",{"meters":"%.0f"%run.hero.position.distance_to(destination)})
+	else:_route_hint40.text=Loc.t("hud.route.last_seal") if int(goal.boss_phase)>0 else Loc.t("hud.route.break_seal")
 
 func _build_modal__q40(run: RefCounted) -> void:
 	_build_modal__q38(run)
@@ -981,9 +932,7 @@ func _filter40(values: Array,names: Array,current: int,change: Callable) -> Opti
 		var compact := _style(Palette.SURFACE_RAISED,Palette.BRASS_DIM);compact.content_margin_top=8;compact.content_margin_bottom=8
 		compact.content_margin_left=12;compact.content_margin_right=12
 		option.add_theme_stylebox_override(state,compact)
-	var focus := StyleBoxFlat.new();focus.bg_color=Color.TRANSPARENT
-	focus.border_color=Palette.BRASS_HI;focus.set_border_width_all(3)
-	option.add_theme_stylebox_override("focus",focus)
+	option.add_theme_stylebox_override("focus",UiStyle.focus_mark())
 	for name_ in names:option.add_item(String(name_))
 	option.select(current)
 	option.item_selected.connect(func(index: int):change.call(values[index]))
@@ -1252,7 +1201,7 @@ func _build_modal__q45(run: RefCounted) -> void:
 		modal.offset_left=-420;modal.offset_right=420
 		modal.offset_top=-220;modal.offset_bottom=220
 		# Same frame as every other window: brass 1px, top 2px (it was 4px here only).
-		modal.add_theme_stylebox_override("panel",_style(Palette.SURFACE,BRASS38))
+		modal.add_theme_stylebox_override("panel",UiStyle.window())
 		box.add_theme_constant_override("separation",18)
 		var controls := _label("WASD / 좌클릭 이동 · Space 회피\nQ 회복약 · E 의식 · I 장비",18,Color("b9c3bb"))
 		box.add_child(controls);box.move_child(controls,2)
@@ -1338,8 +1287,8 @@ func sync__q47(run: RefCounted,delta: float) -> void:
 		var champion: Dictionary=run.enemies[run._champion_id]
 		boss_bar.visible=champion.hp_raw>0
 		if champion.hp_raw>0:
-			_route_hint40.text="봉인 수호자 · %s를 처치하세요"%_champion_title(champion,"수호자")
-			objective.text="%s · %02d:%02d\n수호자 생명 %d / %d"%[_champion_title(champion,"봉인 수호자"),run.tick/3600,(run.tick/60)%60,ceili(float(champion.hp_raw)/256),ceili(float(champion.max_hp_raw)/256)]
+			_route_hint40.text=Loc.t("hud.route.champion",{"name":_champion_title(champion,Loc.t("hud.champion.short"))})
+			objective.text=Loc.t("hud.objective.champion_status",{"title":_champion_title(champion,Loc.t("hud.champion.fallback")),"time":"%02d:%02d"%[run.tick/3600,(run.tick/60)%60],"hp":str(ceili(float(champion.hp_raw)/256)),"max":str(ceili(float(champion.max_hp_raw)/256))})
 	var remaining: int=maxi(0,int(run._next_potion)-int(run.tick))
 	if run.potions>0 and remaining>0:
 		dash.text=dash.text.replace(" · Q로 회복","")
@@ -1355,19 +1304,8 @@ func _build_modal(run: RefCounted) -> void:
 
 # ---- chapter1/view/ui50/chapter_hud_quality50.gd ----
 ## Share the unchanged heading font within this HUD. No gameplay or callback changes.
-var _heading50: SystemFont
 func _label(text: String,size: int=18,color: Color=Color("e0d8c7")) -> Label:
-	var label := Label.new()
-	label.text=text
-	label.add_theme_font_size_override("font_size",size)
-	label.add_theme_color_override("font_color",color)
-	label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	if size>=25:
-		if _heading50==null:
-			_heading50=SystemFont.new()
-			_heading50.font_names=PackedStringArray(["Batang","바탕","Georgia"])
-		label.add_theme_font_override("font",_heading50)
-	return label
+	return UiStyle.label(text,size,color)
 
 # ---- chapter1/view/ui51/chapter_hud_quality51.gd ----
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
@@ -1381,7 +1319,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	if run.hero.is_empty() or run.mode!="playing" or run.objective().entered:return
 	var waypoint_: Dictionary=Route51.waypoint(run)
 	var target: Vector2=waypoint_.position
-	_route_hint40.text="%s까지 %.0fm · 금빛 방향 표시를 따라 이동"%[waypoint_.stage,run.hero.position.distance_to(target)]
+	_route_hint40.text=Loc.t("hud.route.waypoint",{"stage":String(waypoint_.stage),"meters":"%.0f"%run.hero.position.distance_to(target)})
 
 ## Screen furniture that depends on the mode: the in-play plates are hidden on the title menu and the stash, the champion bar
 ## carries its name, and the toast keeps below the champion bar.
@@ -1402,20 +1340,22 @@ func _goal_text(goal: Dictionary) -> String:
 	return Loc.t("hud.objective.seal_kills",{"done":str(int(goal.done)),"total":str(int(goal.total))})
 
 func _sync_chrome(run: RefCounted) -> void:
+	var mark := 0
+	if run.seals.size()>2 and bool(run.seals[2].get("cleared",false)):mark=2
+	elif run._champion_id>0 and run.zone==2 and run.enemies.has(run._champion_id):mark=1
+	if mark!=_boss_mark:
+		_boss_mark=mark
+		if is_instance_valid(_route40):_route40.queue_redraw()
 	if is_instance_valid(_top_row):_top_row.visible=not (run.mode=="menu" or stash_open)
 	if is_instance_valid(boss_name):
 		boss_name.visible=boss_bar.visible and run.mode=="playing"
 		if boss_name.visible and run._champion_id>0 and run.enemies.has(run._champion_id):
-			boss_name.text=_champion_title(run.enemies[run._champion_id],"봉인 수호자")
+			boss_name.text=_champion_title(run.enemies[run._champion_id],Loc.t("hud.champion.fallback"))
 	if is_instance_valid(boss_bar) and is_instance_valid(toast):
-		toast.position.y=maxf(80.0,boss_bar.get_rect().end.y+10.0) if boss_bar.visible else 80.0
+		toast.position.y=maxf(80.0,(boss_name.get_rect().end.y+12.0 if UiStyle.bound() else boss_bar.get_rect().end.y+10.0)) if boss_bar.visible else 80.0
 
 func _style_boss_bar() -> void:
-	var fill := StyleBoxFlat.new();fill.bg_color=Palette.THREAT_DEEP
-	fill.border_color=Palette.THREAT;fill.border_width_top=1
-	var back := StyleBoxFlat.new();back.bg_color=Color(.03,.035,.04,.92)
-	back.border_color=Palette.BRASS_DIM;back.set_border_width_all(1);back.set_content_margin_all(1)
-	boss_bar.add_theme_stylebox_override("fill",fill);boss_bar.add_theme_stylebox_override("background",back)
+	boss_bar.add_theme_stylebox_override("fill",UiStyle.boss_fill());boss_bar.add_theme_stylebox_override("background",UiStyle.boss_back())
 
 # ---- loot grammar v2: stash helper and the better-item prompt ----
 ## True when any equip slot of the saved profile holds this stored item.
@@ -1430,7 +1370,7 @@ const UPGRADE_SECONDS := 9.0
 const NOTICE_WIDTH := 336.0
 const NOTICE_HEIGHT := 152.0
 const NOTICE_MARGIN := 24.0
-const NOTICE_BOTTOM := 20.0
+var NOTICE_BOTTOM := 130.0 if UiStyle.bound() else 20.0
 ## Text column inside a notice: slot width - margins (14+14) - sigil (56) - gap (12).
 const NOTICE_TEXT_WIDTH := 240.0
 var upgrade_uid := -1
@@ -1445,9 +1385,8 @@ func _place_notice(panel: Control,height: float) -> void:
 	panel.offset_right=-NOTICE_MARGIN;panel.offset_left=-NOTICE_MARGIN-NOTICE_WIDTH
 	panel.offset_bottom=-NOTICE_BOTTOM;panel.offset_top=-NOTICE_BOTTOM-height
 
-func _notice_style(border: Color) -> StyleBoxFlat:
-	var frame := _style(Color(.055,.06,.065,.97),border);frame.set_content_margin_all(14)
-	return frame
+func _notice_style(border: Color) -> StyleBox:
+	return UiStyle.notice(border)
 
 func _build_upgrade_panel() -> void:
 	_upgrade_panel=PanelContainer.new();_upgrade_panel.name="UpgradePrompt"
@@ -1465,15 +1404,15 @@ func offer_upgrade(candidate: Dictionary,current: Dictionary,slot: String) -> vo
 	var row := HBoxContainer.new();row.add_theme_constant_override("separation",12);_upgrade_panel.add_child(row)
 	row.add_child(_sigil(candidate))
 	var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
-	var header := _label("더 좋은 장비 · "+String(SLOT_NAMES.get(slot,slot))+" · "+String(QUALITY_NAMES.get(candidate.quality,"")),14,color)
+	var header := _label(Loc.t("hud.notice.better_gear",{"slot":String(SLOT_NAMES.get(slot,slot)),"quality":String(QUALITY_NAMES.get(candidate.quality,""))}),14,color)
 	header.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header)
 	var name_label := _label(String(candidate.name),20,Palette.INK);name_label.autowrap_mode=TextServer.AUTOWRAP_OFF
 	name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.tooltip_text=String(candidate.name);column.add_child(name_label)
-	var summary := "빈 슬롯에 착용" if current.is_empty() else _upgrade_delta(candidate,current)
+	var summary := Loc.t("hud.notice.empty_slot") if current.is_empty() else _upgrade_delta(candidate,current)
 	# Gains and losses both stay on screen: the line wraps instead of cutting the loss off (the slot grows upward, still below y 720 up to three lines).
 	var change := _label(summary,14,Color("b9d4b0"));change.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	change.custom_minimum_size.x=NOTICE_TEXT_WIDTH;change.tooltip_text=summary;column.add_child(change)
-	var hint := _label("[F] 바로 착용  ·  [I] 비교",14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
+	var hint := _label(Loc.t("hud.notice.keys"),14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
 	upgrade_uid=int(candidate.uid);_upgrade_left=UPGRADE_SECONDS;_upgrade_panel.visible=true
 
 func _upgrade_delta(candidate: Dictionary,current: Dictionary) -> String:
@@ -1484,7 +1423,7 @@ func _upgrade_delta(candidate: Dictionary,current: Dictionary) -> String:
 		if value!=0:difference[key]=value
 	for key in worn:
 		if not mine.has(key) and int(worn[key])!=0:difference[key]=-int(worn[key])
-	if difference.is_empty():return "능력치 변화 없음"
+	if difference.is_empty():return Loc.t("hud.notice.no_change")
 	return _delta_text38(difference).replace("\n"," · ")
 
 func clear_upgrade() -> void:
@@ -1521,15 +1460,70 @@ func _build_combat_bar() -> void:
 	goal_plate.size_flags_vertical=Control.SIZE_SHRINK_BEGIN
 	objective.custom_minimum_size.x=300;objective.add_theme_font_size_override("font_size",17)
 	# Same brass frame as the bottom bar plate (ART-PLAN 2.4): brass edge, brighter top line.
-	for plate in [goal_plate,_route40]:
-		var brass_frame: StyleBoxFlat=plate.get_theme_stylebox("panel").duplicate()
-		brass_frame.border_color=BRASS38;brass_frame.set_border_width_all(1);brass_frame.border_width_top=2
-		plate.add_theme_stylebox_override("panel",brass_frame)
+	goal_plate.add_theme_stylebox_override("panel",UiStyle.zone_plate(goal_plate.get_theme_stylebox("panel").duplicate()))
+	if UiStyle.bound():
+		# The route has no plate: a rope with beads drawn on its own space, labels outlined to read on the field.
+		_route40.add_theme_stylebox_override("panel",UiStyle.route_back())
+		var toast_box: StyleBox=toast.get_theme_stylebox("normal").duplicate()
+		toast_box.content_margin_top=4.0;toast_box.content_margin_bottom=4.0
+		toast.add_theme_stylebox_override("normal",toast_box)
+		var route_texts: Array[Label]=_route_labels40.duplicate();route_texts.append(_route_hint40)
+		for label in route_texts:
+			label.add_theme_constant_override("outline_size",4);label.add_theme_color_override("font_outline_color",Color(0,0,0,.85))
+		root.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var buttons_row: Control=objective.get_parent().get_parent()
+		var pieces: Array[String]=["btn_bag","btn_book","btn_speaker"];var at_button:=0
+		for child in buttons_row.get_children():
+			if child is Button and at_button<pieces.size():
+				UiStyle.icon_button(child,pieces[at_button],child.text);at_button+=1
+	else:
+		_route40.add_theme_stylebox_override("panel",UiStyle.chrome_plate(_route40.get_theme_stylebox("panel").duplicate()))
 	_route40.custom_minimum_size.x=0
 	_route40.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_route40.grow_horizontal=Control.GROW_DIRECTION_BEGIN
-	_route40.offset_right=-28;_route40.offset_left=-28;_route40.offset_top=70;_route40.offset_bottom=70
+	var route_top:=96.0 if UiStyle.bound() else 70.0
+	_route40.offset_right=-28;_route40.offset_left=-28;_route40.offset_top=route_top;_route40.offset_bottom=route_top
+	if UiStyle.bound():
+		# Pieces drawn on top of two existing controls: no node is added for them.
+		boss_bar.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		boss_bar.draw.connect(_draw_boss_caps)
+		_route40.draw.connect(_draw_route_marker)
 	root.move_child(overlay,root.get_child_count()-1)
+
+## The kit's champion frame around the bar and the name plate under it.
+func _draw_boss_caps() -> void:
+	var frame := UiStyle.piece_size("boss_frame");var plate := UiStyle.piece_size("boss_name")
+	var inner_top := frame.y*.36
+	UiStyle.blit(boss_bar,"boss_frame",Rect2(Vector2(boss_bar.size.x*.5-frame.x*.5,-inner_top),frame))
+	UiStyle.blit_centered(boss_bar,"boss_name",Vector2(boss_bar.size.x*.5,frame.y-inner_top+11.7+plate.y*.5-plate.y*.5))
+
+## The champion's mark above the last route entry: hollow diamond = not met, filled with a ring = on the field,
+## diamond with a tick = defeated. Shape carries the state; colour only helps.
+var _boss_mark := 0
+func _draw_route_marker() -> void:
+	if _route_labels40.size()<3:return
+	var entry: Label=_route_labels40[2]
+	var centres: Array[float]=[]
+	for label in _route_labels40:centres.append(label.global_position.x-_route40.global_position.x+label.size.x*.5)
+	_route40.draw_line(Vector2(centres[0],8.0),Vector2(centres[2],8.0),Palette.BRASS_DIM,2.5,true)
+	for i in 3:
+		var text: String=_route_labels40[i].text
+		var piece:="bead_empty"
+		if text.begins_with("✓"):piece="bead_brass"
+		elif text.begins_with("◆"):piece="bead_gold"
+		UiStyle.blit_centered(_route40,piece,Vector2(centres[i],8.0),1.0)
+	var at := entry.global_position-_route40.global_position+Vector2(entry.size.x*.5,-9.0)
+	var diamond := PackedVector2Array([at+Vector2(0,-8),at+Vector2(8,0),at+Vector2(0,8),at+Vector2(-8,0)])
+	match _boss_mark:
+		1:
+			_route40.draw_colored_polygon(diamond,Palette.THREAT)
+			_route40.draw_polyline(diamond+PackedVector2Array([diamond[0]]),Palette.BRASS_HI,2.0,true)
+			for side in [-1.0,1.0]:_route40.draw_line(at+Vector2(side*12,-3),at+Vector2(side*17,-7),Palette.BRASS_HI,2.0,true)
+		2:
+			_route40.draw_polyline(diamond+PackedVector2Array([diamond[0]]),Palette.BRASS,2.0,true)
+			_route40.draw_polyline(PackedVector2Array([at+Vector2(-3,0),at+Vector2(-1,3),at+Vector2(4,-3)]),Palette.BRASS,2.0,true)
+		_:
+			_route40.draw_polyline(diamond+PackedVector2Array([diamond[0]]),Palette.BRASS_DIM,2.0,true)
 
 # ---- G1 permanent growth (P4): menu summary, skill-tree screen host, result growth box ----
 ## Read-only toward the core. The screen asks through signals; chapter_one.gd answers with the profile's public
