@@ -284,14 +284,39 @@ static func lint(text: String, locale_code: String) -> Array[String]:
 
 # ---- fonts ----
 
-## Role "body" or "heading". Until L3 this is the same SystemFont the HUD builds by hand.
+## Bundled fonts (T3-L3). Variable fonts: the weight is picked with a FontVariation, not a second file.
+## No system font is ever used (allow_system_fallback off), so every machine draws the same glyphs.
+const FONT_BODY := "res://chapter1/art/fonts/PretendardVariable.ttf"
+const FONT_HEADING := "res://chapter1/art/fonts/NotoSerifKR-VF.ttf"
+## Role -> [file, wght, tabular digits]. body = text, bold = labels, number = fixed-width digits, heading = serif titles.
+const FONT_ROLES := {
+	"body": [FONT_BODY, 400.0, false],
+	"bold": [FONT_BODY, 700.0, false],
+	"number": [FONT_BODY, 600.0, true],
+	"heading": [FONT_HEADING, 700.0, false],
+}
+
+static func _font_file(path: String) -> FontFile:
+	var f: FontFile = load(path)
+	f.allow_system_fallback = false
+	return f
+
+static func _weighted(path: String, weight: float) -> FontVariation:
+	var f := FontVariation.new()
+	f.base_font = _font_file(path)
+	f.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
+	return f
+
+## Role "body", "bold", "number" or "heading". Chain: the role's font, then the other bundled family, never the system.
+## The chain is the same for every shipped locale until the CJK and Cyrillic families are added (per-locale chains go here).
 static func font(role: String = "body") -> Font:
 	if _fonts.has(role):
 		return _fonts[role]
-	var f := SystemFont.new()
-	if role == "heading":
-		f.font_names = PackedStringArray(["Batang", "바탕", "Georgia"])
-	else:
-		f.font_names = PackedStringArray(["Malgun Gothic", "맑은 고딕", "sans-serif"])
+	var spec: Array = FONT_ROLES.get(role, FONT_ROLES["body"])
+	var f := _weighted(String(spec[0]), float(spec[1]))
+	if bool(spec[2]):
+		f.opentype_features = {TextServerManager.get_primary_interface().name_to_tag("tnum"): 1}
+	var other: String = FONT_HEADING if String(spec[0]) == FONT_BODY else FONT_BODY
+	f.fallbacks = [_weighted(other, float(spec[1]))]
 	_fonts[role] = f
 	return f

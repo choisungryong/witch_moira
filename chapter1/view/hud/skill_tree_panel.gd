@@ -56,9 +56,10 @@ const TILE_H := 82.0
 const OPEN_GUARD_MS := 250
 
 static var _fonts_ready := false
-static var _body: SystemFont
-static var _bold: SystemFont
-static var _head: SystemFont
+const Loc = preload("res://chapter1/view/loc.gd")
+static var _body: Font
+static var _bold: Font
+static var _head: Font
 
 var tree: Dictionary = {}
 var committed: Dictionary = {}
@@ -96,13 +97,9 @@ func _ready() -> void:
 static func _ensure_fonts() -> void:
 	if _fonts_ready: return
 	_fonts_ready = true
-	_body = SystemFont.new()
-	_body.font_names = PackedStringArray(["Malgun Gothic","맑은 고딕","sans-serif"])
-	_bold = SystemFont.new()
-	_bold.font_names = PackedStringArray(["Malgun Gothic","맑은 고딕","sans-serif"])
-	_bold.font_weight = 700
-	_head = SystemFont.new()
-	_head.font_names = PackedStringArray(["Batang","바탕","Georgia"])
+	_body = Loc.font("body")
+	_bold = Loc.font("bold")
+	_head = Loc.font("heading")
 
 func _apply_portrait(key: String) -> void:
 	if not PORTRAITS.has(key): key = "frost"

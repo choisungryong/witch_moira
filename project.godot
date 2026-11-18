@@ -14,6 +14,10 @@ window/size/window_width_override=1440
 window/size/window_height_override=810
 window/stretch/mode="canvas_items"
 
+[gui]
+
+theme/custom_font="res://chapter1/art/fonts/PretendardVariable.ttf"
+
 [rendering]
 anti_aliasing/quality/msaa_3d=2
 renderer/rendering_method="forward_plus"

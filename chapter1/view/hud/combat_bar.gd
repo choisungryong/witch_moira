@@ -5,6 +5,7 @@ extends Control
 const ElementSeal = preload("res://chapter1/view/ui38/element_seal.gd")
 const Palette = preload("res://chapter1/view/hud/palette.gd")
 const UiStyle = preload("res://chapter1/view/hud/ui_style.gd")
+const Loc = preload("res://chapter1/view/loc.gd")
 const SKILLS := [["chapter1.skill.ember","ember",Palette.FIRE],["chapter1.skill.frost","frost",Palette.FROST],["chapter1.skill.arc","arc",Palette.ARC]]
 const BRASS := Palette.BRASS
 const BRASS_DIM := Palette.BRASS_DIM
@@ -123,7 +124,7 @@ func sync(run: RefCounted, delta: float) -> void:
 	queue_redraw()
 
 func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0, outline: int = 4) -> void:
-	var font := get_theme_default_font()
+	var font := Loc.font("number")
 	draw_string_outline(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,outline,Color(0,0,0,.85))
 	draw_string(font,at-Vector2(width*.5,0),text,HORIZONTAL_ALIGNMENT_CENTER,width,size_,color)
 
@@ -337,7 +338,7 @@ func _draw_legacy() -> void:
 	var life_rim := BRASS if not low else BRASS.lerp(Palette.LIFE_LOW,pulse)
 	_orb(LIFE_CENTER,_life,Palette.LIFE if not low else Palette.LIFE_LOW.lerp(Palette.LIFE,pulse),Palette.LIFE_DEEP,life_rim)
 	# The life number sits on a translucent pill so it reads on any liquid level (contrast target 4.5:1).
-	var life_font := get_theme_default_font()
+	var life_font := Loc.font("number")
 	var life_width := life_font.get_string_size(_life_text,HORIZONTAL_ALIGNMENT_LEFT,-1,19).x+18.0
 	draw_style_box(_pill,Rect2(LIFE_CENTER+Vector2(-life_width*.5,-12),Vector2(life_width,28)))
 	_text(LIFE_CENTER+Vector2(0,7),_life_text,19,INK,130,5)

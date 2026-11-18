@@ -55,7 +55,7 @@ const AtlasBox = preload("res://chapter1/view/hud/atlas_box.gd")
 
 static var _atlas: Texture2D
 static var _textures: Dictionary = {}
-static var _heading: SystemFont
+const Loc = preload("res://chapter1/view/loc.gd")
 
 static func bound() -> bool:
 	return THEME == BOUND_CODEX
@@ -146,13 +146,9 @@ static func set_liquid(material: ShaderMaterial, key: String, fill: float, tint:
 	material.set_shader_parameter("fill", fill)
 	material.set_shader_parameter("tint", tint)
 
-static func number_font() -> SystemFont:
-	if _number_font == null:
-		_number_font = SystemFont.new()
-		_number_font.font_names = PackedStringArray(["Georgia", "Batang", String.chr(0xBC14) + String.chr(0xD0D5)])
-		_number_font.font_italic = true
-	return _number_font
-static var _number_font: SystemFont
+## Fixed-width digits (Pretendard, tnum). Was an italic system serif; no italic file is bundled, so upright.
+static func number_font() -> Font:
+	return Loc.font("number")
 
 # ---- Flat frames (also the base of every legacy look) ----
 
@@ -275,11 +271,8 @@ static func compact_button_faces(b: Button) -> void:
 		compact.content_margin_top = 7; compact.content_margin_bottom = 7
 		b.add_theme_stylebox_override(state, compact)
 
-static func heading_font() -> SystemFont:
-	if _heading == null:
-		_heading = SystemFont.new()
-		_heading.font_names = PackedStringArray(["Batang", String.chr(0xBC14) + String.chr(0xD0D5), "Georgia"])
-	return _heading
+static func heading_font() -> Font:
+	return Loc.font("heading")
 
 ## Small key plate hung under a control (K "key tag"): drawn from the control's draw signal. `text` is the key name.
 static func draw_key_tag(item: Control, text: String) -> void:
@@ -296,10 +289,7 @@ static func label(text: String, size: int = 18, color: Color = Color("e0d8c7")) 
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if size >= 25:
-		if _heading == null:
-			_heading = SystemFont.new()
-			_heading.font_names = PackedStringArray(["Batang", String.chr(0xBC14) + String.chr(0xD0D5), "Georgia"])  # a font family name, not screen text
-		l.add_theme_font_override("font", _heading)
+		l.add_theme_font_override("font", Loc.font("heading"))
 	return l
 
 ## Progress bar with a flat fill and back (inherited bars: hp, xp).

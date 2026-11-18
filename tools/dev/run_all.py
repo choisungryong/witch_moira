@@ -44,6 +44,7 @@ def checks():
         godot_check('loot-sim', 'res://chapter1/tests/sim_loot.gd', 'LOOT_SIM', ['--runs=3000'], timeout=600, slow=True),
         {'name': 'manager', 'kind': 'python', 'timeout': 300, 'slow': False},
         {'name': 'i18n-scan', 'kind': 'i18n-scan', 'timeout': 60, 'slow': False},
+        {'name': 'glyphs', 'kind': 'glyphs', 'timeout': 120, 'slow': False},
     ]
 
 
@@ -118,6 +119,16 @@ def run_i18n_scan(check):
     return done.returncode == 0, detail
 
 
+def run_glyphs(check):
+    command = [sys.executable, str(ROOT / 'tools' / 'dev' / 'check_glyphs.py')]
+    try:
+        done = subprocess.run(command, cwd=ROOT, capture_output=True, timeout=check['timeout'])
+    except subprocess.TimeoutExpired:
+        return False, 'timeout after %ds' % check['timeout']
+    lines = done.stdout.decode('utf-8', 'replace').strip().splitlines()
+    return done.returncode == 0, (lines[0] if done.returncode else '') + (' · ' if done.returncode else '') + (lines[-1] if lines else 'no output')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--quick', action='store_true', help='skip slow checks')
@@ -135,7 +146,7 @@ def main():
             summary.append({'name': check['name'], 'status': 'skipped', 'detail': '--quick', 'seconds': 0})
             continue
         started = time.time()
-        runner = {'godot': run_godot, 'python': run_manager, 'i18n-scan': run_i18n_scan}[check['kind']]
+        runner = {'godot': run_godot, 'python': run_manager, 'i18n-scan': run_i18n_scan, 'glyphs': run_glyphs}[check['kind']]
         passed, detail = runner(check)
         summary.append({'name': check['name'], 'status': 'pass' if passed else 'FAIL', 'detail': detail, 'seconds': round(time.time() - started, 1)})
         row = summary[-1]

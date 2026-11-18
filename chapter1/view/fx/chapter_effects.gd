@@ -2,6 +2,7 @@ extends RefCounted
 ## Flattened by tools/dev/flatten_chain.py from chapter1/view/chapter_elements_quality44.gd.
 ## Methods named x__tag are the earlier layers of x; calls between them were super calls.
 const Palette=preload("res://chapter1/view/hud/palette.gd")
+const Loc=preload("res://chapter1/view/loc.gd")
 
 # ---- chapter1/view/cloister_effects.gd ----
 ## Bounded event-driven mesh/shard presentation; never owns damage.
@@ -852,13 +853,13 @@ func setup__q22(owner_view: Node3D) -> void:
 ## Size and separation are presentation only; collection stays in the core.
 const LOOT26_FONT := 36
 const LOOT26_NOMINAL_PIXELS := 15.0
-var _loot26_font: SystemFont
+var _loot26_font: Font
 var _loot26_mesh := ImmediateMesh.new()
 var _loot26_leaders: MeshInstance3D
 var layout26_records: Array[Dictionary]=[]
 func setup__q26(owner_view: Node3D) -> void:
 	setup__q22(owner_view)
-	_loot26_font=SystemFont.new();_loot26_font.font_names=PackedStringArray(["Malgun Gothic","맑은 고딕","sans-serif"])
+	_loot26_font=Loc.font("body")
 	_loot26_leaders=MeshInstance3D.new();_loot26_leaders.name="GroundNameLeaders26";_loot26_leaders.mesh=_loot26_mesh
 	var material := _glow(Color(.72,.69,.59,.65),0)
 	material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;material.no_depth_test=true

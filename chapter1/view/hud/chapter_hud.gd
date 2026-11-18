@@ -48,9 +48,7 @@ func setup__cloister(view: Node3D) -> void:
 	root.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 	var theme := Theme.new()
-	var font := SystemFont.new()
-	font.font_names=PackedStringArray(["Malgun Gothic","맑은 고딕","sans-serif"])
-	theme.default_font=font
+	theme.default_font=Loc.font("body")
 	theme.default_font_size=17
 	root.theme=theme
 	var top := MarginContainer.new()

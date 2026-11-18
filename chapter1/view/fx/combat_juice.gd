@@ -3,6 +3,7 @@ extends RefCounted
 ## lights and the overall look (glow, contrast, camera distance).
 ## Presentation only. It reads core events and never writes game state, so the
 ## golden replay is unaffected. Everything is pooled and bounded.
+const Loc = preload("res://chapter1/view/loc.gd")
 const COLORS := {"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Color("9ce7ef"),"chapter1.skill.arc":Color("b9caff")}
 const ARC_LIGHT_COLOR := Color("6f88ff")
 const ARC_PULSE_COLOR := Color("86a0ff")
@@ -153,6 +154,7 @@ func _pool(mesh: Mesh, capacity: int, material: Material, name_: String, custom 
 func _build_numbers() -> void:
 	for i in NUMBER_POOL+HEAVY_POOL:
 		var label := Label3D.new()
+		label.font = Loc.font("number")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.pixel_size = .012
