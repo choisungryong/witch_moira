@@ -80,6 +80,48 @@
 
 비교로 BOOM Library "Magic – Arcane Forces"(€119 이상)는 마법 전용이고 더 비싸다. 1안으로 모자라고 Epic 팩도 부족할 때의 추가 후보다.
 
+### 3안: 0원~1만 원 (2026-11-18 추가. 사용자: "다른 루트를 찾아봐. 너무 비싸.")
+
+Epic Stock Media($54)는 접는다. 값 말고도 걸리는 것이 있었다: 약관(2026-02-18 개정) 2.5절이 생성 AI의 입력으로 쓰는 것을 금지하고 1.4.1절이 "스크립트·로봇·API 등 사람이 아닌 접근"을 사용자에서 빼서, 에이전트가 파일을 다루는 우리 작업 방식이 허용되는지 약관만으로는 알 수 없고, 내려받은 뒤에는 환불이 없다.
+
+아래는 2026-11-18에 판매 페이지를 읽은 값이다(요약 도구를 거친 읽기). 소리는 들어 보지 않았다.
+
+| 후보 | 값 | 내용 | 조건 | 비고 |
+|---|---|---|---|---|
+| Sonniss GameAudioGDC 옛 묶음 | 0 | 2024 23.5GB, 2021~2023 38.7GB, 2020 48.2GB, 2019 26.2GB, 2018 29.3GB, 2017 19.2GB, 2016 12.9GB, 2015 9.0GB | 상업 가능, 표시 불필요, 무제한 작품. AI·기계학습 **학습** 금지(가공·편집은 허용) | 전문 제작사의 유료 팩에서 뽑은 묶음이다. 해마다 곡목표(구글 시트)가 있어 받기 전에 마법·타격 소리 수를 셀 수 있다. 아직 열지 않음 |
+| Shapeforms Audio Free Sound Effects | 0(원하는 값) | 180개. Arcane Activations(마법), Hit & Punch(타격), Future UI 등 유료 팩의 맛보기. 115MB, 24비트 48kHz WAV | 상업 가능, 표시 불필요 | 유료 본편: Hit & Punch Essentials $7, Hit and Punch $19, Arcane Activations $29.99 |
+| lentikula Basic Spell Impacts | 0(원하는 값) | 주문 타격 20개(번개·불·얼음·물 5개씩). 13MB, 24비트 48kHz WAV | CC0 | 같은 제작자의 Healing Spell Impacts도 CC0로 표시됨(열지 않음) |
+| thesoundrack Magic Spell SFX Soundpack | 0(원하는 값) | 425개, 9원소(불·번개·얼음 포함). 96kHz WAV, 약 1.45GB | CC BY 4.0(크레딧에 표시 필요) | 내려받기가 외부 링크와 분할 RAR이고 "수상한 페이지로 간다"는 댓글이 있었다. 받는다면 격리해서 연다 |
+| Leohpaz 개별 팩 | $1~$3.99 | Spell Effects $2.49(30개: 전기·불·얼음·독), Spell Effects II $3.49(62개), 괴물 팩 $2.49~$3.99, 무료 RPG Essentials 48개 | 상업 가능, 표시는 선택 | 이름에 "Retro"가 붙은 팩은 옛 게임기풍일 수 있다. 들어 봐야 안다 |
+| Ovani Sound | 묶음 3개 50%, 6개 55%, 10개 60% 할인(12월 11일까지) | Fantasy UI $10, 괴물 묶음 $20 등. 마법 전용 팩은 확인 못 함 | 상업 가능, 표시 불필요, AI 학습 금지 | 낱개 값이 $10부터라 0원 쪽으로 모자랄 때의 후보 |
+| Humble Bundle 소리 묶음 | 확인 못 함 | 페이지를 읽지 못했다 | - | 지금 진행 중인 묶음이 있는지 모른다 |
+
+**권하는 순서**
+1. Sonniss 옛 묶음의 곡목표를 열어 불·얼음·전기·타격·괴물·UI 소리가 많은 해를 고른다(내려받기 없이 가능).
+2. Shapeforms 무료 팩과 lentikula CC0 팩(합쳐 약 130MB)을 받아, 이미 있는 Sonniss 2026 맛보기와 함께 타격 소리 몇 개를 만들어 사용자에게 들려 드린다.
+3. 사용자가 들어 보고 방향이 맞으면 고른 해의 Sonniss 묶음을 받는다. 모자라는 칸만 $1~$7짜리 낱개 팩으로 채운다.
+
+**AI 조항 읽기**: Sonniss와 Ovani가 금지하는 것은 소리를 AI·기계학습의 학습 자료로 쓰는 것이다. 파일을 자르고 겹치고 음량을 맞추는 가공은 허용 범위다. 이 소리들을 생성 도구의 입력이나 학습에 넣지 않는다는 규칙은 그대로 둔다.
+
+### Sonniss 옛 묶음의 곡목표(2026-11-18 낮, 디렉터가 CSV로 받아 직접 셈)
+
+사용자가 맛보기를 듣고 "Sonniss로도 접근해 보자"고 했다(청취 결과는 결정 목록 2.26절). 곡목표는 `_local/audio/sonniss-tracklists/<해>.csv`에 있다. 파일 이름과 팩 이름에 낱말이 들었는지로 센 것이라 어림이다. **어느 해든 한 팩에서 3~4개씩만 뽑은 묶음이다.**
+
+| 해 | 크기 | 파일 / 팩 | 얼음·유리 | 전기 | 불 | 마법 | 타격 | 괴물 | UI | 우리에게 쓸모 있는 팩(각 3~4개) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2020 | 48.2GB(14개) | 1,465 / 439 | 28 | 56 | 17 | 29 | 98 | 52 | 77 | David Dumais Audio의 Ice & Frost Magic 1·Electricity Magic 1·Air Magic 1·Spells Magic 1·Magic Sound FX Pack 1·Weapon Swings·Monster Pack 1·UI Menu, Sound Spark의 Electric Arcs and Energy, Articulated Sounds의 Magic Elements 2, PMSFX의 Shattering Bricks, Glassware, 가죽 소리(Quirboilly) |
+| 2018 | 29.3GB(8개) | 984 / 263 | 29 | 36 | 14 | 4 | 59 | 29 | 42 | Gregor Quendel의 Designed Ice·Designed Fire, FLYSOUND의 Ice Fury, Kopeikin의 Dry Ice, High Voltage Electricity, Electrostatic Field, Gamemaster Audio의 Magic and Spell Sounds·Punch and Combat, SoundMorph의 Gore, Books & Magazines, COINAGE |
+| 2019 | 26.2GB(8개) | 1,127 / 336 | 31 | 55 | 4 | 12 | 86 | 16 | 57 | Sound Spark의 Magic Spells Buffs and Attacks, Articulated Sounds의 Magic Elements 1, Sorcery, Elements Glass, 3maze의 FINAL IMPACT·IMPACTUS, Shapeforms의 The Mint |
+| 2024(2021~2023 표와 같은 시트) | 23.5GB(9개) | 854 / 252 | 23 | 44 | 10 | 16 | 42 | 19 | 33 | Bluezone의 Ice Cracking·Broken Glass, David Dumais Audio의 Magic Sound FX Pack 2·Melee Weapons 1, Rogue Waves의 Druid Magic, 344 Audio의 Epic Impacts·Flesh Bones & Gore, Turning The Page |
+| 2017 | 19.2GB(9개) | 805 / 222 | 37 | 27 | 8 | 2 | 62 | 9 | 36 | Thin Ice, Glacier Ice, Shards(깨진 유리), Punch Sound Pack, Medieval Armor and Impacts, Latchlocker(걸쇠) |
+| 2016 | 12.9GB(6개) | 637 / 203 | 24 | 14 | 12 | 0 | 48 | 14 | 17 | Ice SFX, ICE BLOCK, Just Gore, Wooden Staffs and Sword Fight |
+
+"전기"에는 전자기장 녹음·모터·천둥이, "불"에는 총기·불꽃놀이·자동차 시동이 많이 섞여 있다. 주문에 바로 쓸 소리는 표의 숫자보다 훨씬 적다.
+
+- **권고**: 2020을 먼저, 그다음 2018. 2020에 얼음·전기·공기 마법 팩의 맛보기가 한꺼번에 있고, 2018에 설계된 얼음·불과 고전압 전기가 있다. 합쳐 77.5GB(D 드라이브 여유 약 181GB).
+- **받는 법**: 스크립트로 필요한 파일만 골라 받는 것은 실패했다(공식 주소는 자동 요청을 403으로 막고, 공식 미러는 응답이 없었다). 막힌 것을 돌아가지 않는다. 2026 묶음처럼 사용자가 브라우저로 `https://sonniss.com/gameaudiogdc/`에서 받거나 공식 토렌트를 쓴다.
+- **맛보기의 한계와 그다음**: 팩마다 3~4개라 변형을 여러 벌 만들기에는 모자란다. 들어 보고 마음에 드는 팩이 나오면 그 팩의 본편을 낱개로 사는 것이 다음 단계다(David Dumais Audio의 마법 팩들은 낱개로 판다. 값은 아직 확인하지 않았다).
+
 ## 사용자가 승인해야 할 것
 
 내려받기·가입·결제는 이 조사에서 하나도 하지 않았다. 아래는 모두 사용자 승인이 필요하다.
