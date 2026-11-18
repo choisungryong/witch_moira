@@ -128,9 +128,18 @@ func setup__cloister(view: Node3D) -> void:
 func _bar(color: Color, height: float) -> ProgressBar:
 	return UiStyle.bar(color,height)
 
+# ---- write-on-change helpers (T2b A-1) ----
+# Setting a label's text, a theme colour or a position to the value it already has still costs the engine a layout pass
+# (a theme override always announces "theme changed"). Every visible piece is composed once per frame in _compose_frame and
+# goes through these, so an unchanged frame writes nothing.
+var _frame_growth: Dictionary={}
+var _toast_y_last := -1.0e9
+var _route_state_last: Array[int]=[-1,-1,-1]
+func _set_text(control: Control,value: String) -> void:
+	if control.text!=value:control.text=value
+
 func sync__cloister(run: RefCounted, delta: float) -> void:
 	_toast_left=maxf(0,_toast_left-delta)
-	toast.visible=_toast_left>0
 	var signature: String=run.mode
 	if run.mode=="choice": signature+=str(run.get_offer().get("token",""))
 	if run.mode=="inventory": signature+=str(run.equipped)+str(run.inventory.size())+str(_selected_item)
@@ -143,29 +152,16 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	# update. Refresh their final values immediately instead of retaining old HP.
 	if not mode_changed and run.tick-_last_hud_tick<6 and run.tick>=_last_hud_tick:return
 	_last_hud_tick=run.tick
-	var g: Dictionary=run.growth.snapshot()
-	status.text="생명력 %d / %d   ·   레벨 %d" % [ceili(float(run.hero.hp_raw)/256.0),ceili(float(run.hero.max_hp_raw)/256.0),g.level]
-	hp.max_value=run.hero.max_hp_raw;hp.value=run.hero.hp_raw
-	var thresholds: Array=run.growth.xp_thresholds()
-	var index := mini(int(g.level)-1,thresholds.size()-1)
-	xp.max_value=thresholds[index+1]-thresholds[index] if index<thresholds.size()-1 else 1
-	xp.value=g.xp-thresholds[index] if index<thresholds.size()-1 else 1
+	# The old bottom dock (status, hp, xp, level38, life_seal38, dash and the skill chips) is hidden for good since the combat
+	# bar replaced it (_build_combat_bar), and nothing shows it again, so it is no longer written. The hidden summary
+	# label and the F1 diagnostic keep their six-tick refresh.
+	var g: Dictionary=_frame_growth
 	var texts: Array[String]=[]
-	for id_ in skill_labels:skill_labels[id_].text=SKILL_NAMES[id_]+"\n미습득"
 	for id_ in g.ranks:
 		var d: Dictionary=run.effective_skill(id_)
 		texts.append((Loc.t(String(d.name_key)) if d.evolved else SKILL_NAMES.get(id_,id_))+" %d" % d.rank)
-		if skill_labels.has(id_):skill_labels[id_].text=(Loc.t(String(d.name_key)) if d.evolved else SKILL_NAMES.get(id_,id_))+"\n"+("진화 · " if d.evolved else "")+"랭크 %d" % d.rank
-	skills.text="   /   ".join(texts)
-	var elite_alive := false
-	for e in run.enemies.values():
-		if e.elite and e.hp_raw>0:
-			elite_alive=true
-			objective.text="회랑 수호자  %d / %d" % [ceili(float(e.hp_raw)/256),ceili(float(e.max_hp_raw)/256)]
-	if not elite_alive:
-		objective.text="잿빛 회랑  ·  %02d:%02d  ·  %d 처치" % [run.tick/3600,(run.tick/60)%60,run.kills]
-	dash.text="Space 회피 준비" if run.tick>=run.get_next_dash_tick() else "회피 %.1f초" % (float(run.get_next_dash_tick()-run.tick)/60)
-	debug.text="tick %d · alive %d · projectiles %d · XP %d\nF1 진단 화면" % [run.tick,run.alive_count(),run.projectiles.size(),g.xp]
+	_set_text(skills,"   /   ".join(texts))
+	if debug.visible:_set_text(debug,"tick %d · alive %d · projectiles %d · XP %d\nF1 진단 화면" % [run.tick,run.alive_count(),run.projectiles.size(),g.xp])
 
 func notify(text: String) -> void:
 	toast.text=text;_toast_left=2.5
@@ -339,18 +335,8 @@ func setup__chapter(view: Node3D) -> void:
 	boss_name.offset_left=-_boss_width()*.5;boss_name.offset_right=_boss_width()*.5;boss_name.offset_top=_boss_top()-28.0+(_boss_name_shift() if UiStyle.bound() else 0.0);boss_name.offset_bottom=_boss_top()-3.0+(_boss_name_shift() if UiStyle.bound() else 0.0)
 	boss_name.visible=false;root.add_child(boss_name)
 func sync__chapter(run: RefCounted,delta: float) -> void:
+	# The goal plate, the champion bar and the dock text are composed once per frame in _compose_frame (called from sync()).
 	sync__cloister(run,delta)
-	if run.hero.is_empty():return
-	var goal: Dictionary=run.objective()
-	objective.text="%s · %02d:%02d\n%s"%[_goal_title(goal),run.tick/3600,(run.tick/60)%60,_goal_text(goal)]
-	dash.text=("Space 회피 준비" if run.tick>=run.get_next_dash_tick() else "회피 %.1f초"%(float(run.get_next_dash_tick()-run.tick)/60))+"  ·  Q 회복약 %d / %d"%[run.potions,int(run.tuning.potion.carry_max)]
-	for def in run.RITUALS:
-		if def.zone==run.zone and run.rituals[def.id].state=="ready" and run.hero.position.distance_squared_to(def.position)<=3*3:
-			objective.text+="\n[E] "+Loc.t("ritual.%s.name"%def.id)+" · 선택 보상"
-	boss_bar.visible=run._champion_id>0 and run.enemies.has(run._champion_id)
-	if boss_bar.visible:
-		var e: Dictionary=run.enemies[run._champion_id];boss_bar.max_value=e.max_hp_raw;boss_bar.value=e.hp_raw
-	if not run.pending_rewards.is_empty():objective.text+=" · 보관 대기 %d"%run.pending_rewards.size()
 func _stats__chapter(stats: Dictionary) -> String:
 	var lines: Array[String]=[]
 	for pair in [["damage_bps","피해"],["cooldown_bps","시전 속도"],["slow_bps","냉기 감속"],["fire_damage_bps","화염 피해"],["arc_damage_bps","번개 피해"]]:
@@ -540,7 +526,7 @@ func sync__q20(run: RefCounted,delta: float) -> void:
 	_discovery.visible=_discovery_left>0
 	if _discovery.visible:
 		_discovery.modulate.a=minf(clampf((3.2-_discovery_left)/.18,0,1),clampf(_discovery_left/.4,0,1))
-		if toast.text.begins_with("획득:") and toast.text.contains(_discovery20_name):toast.visible=false
+		# (the toast that repeats the discovery card is hidden in _sync_chrome, once per frame)
 func _show_discovery(item: Dictionary) -> void:
 	_queue_discovery20(item)
 func _queue_discovery20(item: Dictionary) -> void:
@@ -592,17 +578,12 @@ func setup__q23(view: Node3D) -> void:
 	dash.custom_minimum_size=Vector2(150,46)
 func sync__q23(run: RefCounted,delta: float) -> void:
 	sync__q20(run,delta)
-	if run.hero.is_empty():return
-	var remaining := maxf(0,float(run.get_next_dash_tick()-run.tick)/60.0)
-	var evade := "Space 회피 준비" if remaining<=0 else "Space 회피 %.1f초"%remaining
-	dash.text=evade+"\nQ 회복약 %d / %d"%[run.potions,int(run.tuning.potion.carry_max)]
 
 # ---- chapter1/view/chapter_hud_quality27.gd ----
 ## Keep temporary combat messages below the champion/boss health bar.
 func sync__q27(run: RefCounted,delta: float) -> void:
 	sync__q23(run,delta)
-	if boss_bar==null or toast==null:return
-	toast.position.y= maxf(80.0,boss_bar.get_rect().end.y+10.0) if boss_bar.visible else 80.0
+	# The toast position is placed once per frame at the end of _sync_chrome.
 
 # ---- chapter1/view/chapter_hud_quality35.gd ----
 const PaintedSigil35=preload("res://chapter1/view/equipment_sigil_quality35.gd")
@@ -713,14 +694,7 @@ func _backplate38() -> PanelContainer:
 
 func sync__q38(run: RefCounted,delta: float) -> void:
 	sync__q27(run,delta)
-	# The padded transient message must also clear the inherited discovery card.
-	if is_instance_valid(_discovery) and _discovery.visible and toast.visible:
-		toast.position.y=maxf(toast.position.y,_discovery.get_rect().end.y+10)
-	if run.hero.is_empty():return
-	life_seal38.fraction=float(run.hero.hp_raw)/maxf(1,float(run.hero.max_hp_raw))
-	status.text="생명  %d / %d"%[ceili(float(run.hero.hp_raw)/256),ceili(float(run.hero.max_hp_raw)/256)]
-	var growth: Dictionary=run.growth.snapshot()
-	level38.text="레벨 %d    경험치 %d / %d"%[growth.level,int(xp.value),int(xp.max_value)]
+	# (The old dock's life seal, status and level lines are hidden and no longer written; the toast is placed once in _sync_chrome.)
 
 func _build_modal__q38(run: RefCounted) -> void:
 	var previous := overlay.visible
@@ -899,17 +873,7 @@ func sync__q40(run: RefCounted,delta: float) -> void:
 	if run.mode=="victory" and not stash_open and overlay.visible and not overlay_was_visible:
 		_focus_modal38.call_deferred()
 	_route40.visible=not run.hero.is_empty() and run.mode=="playing"
-	if not _route40.visible:return
-	var goal: Dictionary=run.objective()
-	for i in 3:
-		var cleared: bool=i<run.seals.size() and bool(run.seals[i].get("cleared",false))
-		var current: bool=i==int(goal.zone)
-		_route_labels40[i].text=("✓ " if cleared else ("◆ " if current else "○ "))+Loc.t("zone.%d.name"%i)
-		_route_labels40[i].add_theme_color_override("font_color",Color("a8baaa") if cleared else (Color("efdaa6") if current else Palette.INK_DIM))
-	if not bool(goal.entered):
-		var destination: Vector2=goal.destination
-		_route_hint40.text=Loc.t("hud.route.next_seal",{"meters":"%.0f"%run.hero.position.distance_to(destination)})
-	else:_route_hint40.text=Loc.t("hud.route.last_seal") if int(goal.boss_phase)>0 else Loc.t("hud.route.break_seal")
+	# The route labels and the hint are composed in _compose_frame (only while this plate is visible).
 
 func _build_modal__q40(run: RefCounted) -> void:
 	_build_modal__q38(run)
@@ -1260,8 +1224,10 @@ func setup(view: Node3D) -> void:
 	root.add_child(_locator46);root.move_child(overlay,root.get_child_count()-1)
 
 func _sync_locator46(run: RefCounted,low: bool) -> void:
+	var was_shown := _locator46.visible
 	_locator46.visible=run.mode=="playing" and not overlay.visible and run.hero.hp_raw>0
 	if not _locator46.visible:return
+	if not was_shown:_locator46.queue_redraw()
 	var view := _view46.get_ref() as Node3D
 	if view==null:_locator46.hide();return
 	var camera := view.get_viewport().get_camera_3d()
@@ -1269,20 +1235,18 @@ func _sync_locator46(run: RefCounted,low: bool) -> void:
 	var at: Vector3=view.actors.hero.global_position
 	if camera.is_position_behind(at):_locator46.hide();return
 	var inverse := root.get_global_transform_with_canvas().affine_inverse()
-	_locator46.feet=inverse*camera.unproject_position(at+Vector3.UP*0.08)
-	_locator46.crown=inverse*camera.unproject_position(at+Vector3.UP*2.15)
-	_locator46.danger=low;_locator46.queue_redraw()
+	var feet: Vector2=inverse*camera.unproject_position(at+Vector3.UP*0.08)
+	var crown: Vector2=inverse*camera.unproject_position(at+Vector3.UP*2.15)
+	# Redraw only when a mark moved or the danger colour flipped.
+	if feet==_locator46.feet and crown==_locator46.crown and low==_locator46.danger:return
+	_locator46.feet=feet;_locator46.crown=crown;_locator46.danger=low;_locator46.queue_redraw()
 
 func sync__q46(run: RefCounted,delta: float) -> void:
 	sync__q40(run,delta)
 	if run.hero.is_empty():return
 	var low: bool= run.hero.hp_raw>0 and float(run.hero.hp_raw)/maxf(1,float(run.hero.max_hp_raw))<=0.35
 	_sync_locator46(run,low)
-	status.text=("위험 · " if low else "")+status.text
-	status.add_theme_color_override("font_color",Color("ffb3a3") if low else Palette.INK)
-	if run.potions==0:dash.text+=" · 회복약 없음"
-	elif low:dash.text+=" · Q로 회복"
-	dash.add_theme_color_override("font_color",Color("ffcc9e") if low or run.potions==0 else Palette.INK)
+	# (The old dock's status and dash lines, and their colours, are hidden and no longer written.)
 
 func _build_result40(run: RefCounted) -> void:
 	_build_result40__q40(run)
@@ -1304,17 +1268,7 @@ func _rewrite_diagnostic46(node: Node) -> void:
 ## Expose existing potion eligibility; never buffer input or alter cooldown.
 func sync__q47(run: RefCounted,delta: float) -> void:
 	sync__q46(run,delta)
-	if run.hero.is_empty():return
-	if run.mode=="playing" and run._champion_id>0 and run.enemies.has(run._champion_id):
-		var champion: Dictionary=run.enemies[run._champion_id]
-		boss_bar.visible=champion.hp_raw>0
-		if champion.hp_raw>0:
-			_route_hint40.text=Loc.t("hud.route.champion",{"name":_champion_title(champion,Loc.t("hud.champion.short"))})
-			objective.text=Loc.t("hud.objective.champion_status",{"title":_champion_title(champion,Loc.t("hud.champion.fallback")),"time":"%02d:%02d"%[run.tick/3600,(run.tick/60)%60],"hp":str(ceili(float(champion.hp_raw)/256)),"max":str(ceili(float(champion.max_hp_raw)/256))})
-	var remaining: int=maxi(0,int(run._next_potion)-int(run.tick))
-	if run.potions>0 and remaining>0:
-		dash.text=dash.text.replace(" · Q로 회복","")
-		dash.text+=" · 회복 대기 %.1f초"%(float(remaining)/60.0)
+	# (The potion wait text belonged to the hidden dash label; the visible plates are composed in _compose_frame.)
 
 func _build_modal(run: RefCounted) -> void:
 	_build_modal__q45(run)
@@ -1332,16 +1286,70 @@ func _label(text: String,size: int=18,color: Color=Color("e0d8c7")) -> Label:
 # ---- chapter1/view/ui51/chapter_hud_quality51.gd ----
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
 func sync(run: RefCounted,delta: float) -> void:
+	# One growth snapshot (a deep copy) per frame, shared with the combat bar and the six-tick summary.
+	_frame_growth=run.growth.snapshot() if not run.hero.is_empty() else {}
 	sync__q47(run,delta)
+	_compose_frame(run)
 	_sync_flow(run,delta)
 	if is_instance_valid(skill_panel) and skill_panel.visible and run.mode not in ["menu","victory","defeat"]:skill_panel.visible=false
 	_sync_upgrade(run,delta)
-	if is_instance_valid(combat_bar):combat_bar.sync(run,delta)
+	if is_instance_valid(combat_bar):combat_bar.sync(run,delta,_frame_growth)
 	_sync_chrome(run)
-	if run.hero.is_empty() or run.mode!="playing" or run.objective().entered:return
-	var waypoint_: Dictionary=Route51.waypoint(run)
-	var target: Vector2=waypoint_.position
-	_route_hint40.text=Loc.t("hud.route.waypoint",{"stage":String(waypoint_.stage),"meters":"%.0f"%run.hero.position.distance_to(target)})
+
+## The visible plates, composed once per frame from the final values and written only when they differ from what is
+## on screen: the goal plate, the champion bar, the route labels and hint. The text and the priority between the old
+## layers are the ones the stacked sync__q* functions used to produce (a later layer overrode an earlier one):
+## goal plate: goal line, plus the ritual prompt and the pending-rewards note, replaced by the champion line (playing,
+## champion alive); route hint: seal distance or last-seal line < champion line (playing, champion alive) < waypoint
+## (playing, zone not entered).
+func _compose_frame(run: RefCounted) -> void:
+	if run.hero.is_empty():return
+	var goal: Dictionary=run.objective()
+	var playing: bool=run.mode=="playing"
+	var champion: Dictionary={}
+	var champion_here: bool=run._champion_id>0 and run.enemies.has(run._champion_id)
+	if champion_here:champion=run.enemies[run._champion_id]
+	var champion_live: bool=playing and champion_here and champion.hp_raw>0
+	var minutes: String="%02d:%02d"%[run.tick/3600,(run.tick/60)%60]
+	# Goal plate.
+	var objective_text: String
+	if champion_live:
+		objective_text=Loc.t("hud.objective.champion_status",{"title":_champion_title(champion,Loc.t("hud.champion.fallback")),"time":minutes,"hp":str(ceili(float(champion.hp_raw)/256)),"max":str(ceili(float(champion.max_hp_raw)/256))})
+	else:
+		objective_text="%s · %s\n%s"%[_goal_title(goal),minutes,_goal_text(goal)]
+		for def in run.RITUALS:
+			if def.zone==run.zone and run.rituals[def.id].state=="ready" and run.hero.position.distance_squared_to(def.position)<=3*3:
+				objective_text+="\n[E] "+Loc.t("ritual.%s.name"%def.id)+" · 선택 보상"
+		if not run.pending_rewards.is_empty():objective_text+=" · 보관 대기 %d"%run.pending_rewards.size()
+	_set_text(objective,objective_text)
+	# Champion bar: the visible flag and the value are final here (the champion's hp is zero for a moment before it is removed).
+	var bar_visible: bool=champion_here and (champion.hp_raw>0 if playing else true)
+	if boss_bar.visible!=bar_visible:boss_bar.visible=bar_visible
+	if champion_here:
+		if boss_bar.max_value!=champion.max_hp_raw:boss_bar.max_value=champion.max_hp_raw
+		if boss_bar.value!=champion.hp_raw:boss_bar.value=champion.hp_raw
+	# Route plate: three names (text and colour change only when a seal opens or the zone changes) and the hint line.
+	if not _route40.visible:return
+	for i in 3:
+		var cleared: bool=i<run.seals.size() and bool(run.seals[i].get("cleared",false))
+		var current: bool=i==int(goal.zone)
+		var state: int=2 if cleared else (1 if current else 0)
+		if state!=_route_state_last[i]:
+			_route_state_last[i]=state
+			_route_labels40[i].text=("✓ " if cleared else ("◆ " if current else "○ "))+Loc.t("zone.%d.name"%i)
+			_route_labels40[i].add_theme_color_override("font_color",Color("a8baaa") if cleared else (Color("efdaa6") if current else Palette.INK_DIM))
+	var hint: String
+	if playing and not bool(goal.entered):
+		var waypoint_: Dictionary=Route51.waypoint(run)
+		var target: Vector2=waypoint_.position
+		hint=Loc.t("hud.route.waypoint",{"stage":String(waypoint_.stage),"meters":"%.0f"%run.hero.position.distance_to(target)})
+	elif champion_live:
+		hint=Loc.t("hud.route.champion",{"name":_champion_title(champion,Loc.t("hud.champion.short"))})
+	elif not bool(goal.entered):
+		var destination: Vector2=goal.destination
+		hint=Loc.t("hud.route.next_seal",{"meters":"%.0f"%run.hero.position.distance_to(destination)})
+	else:hint=Loc.t("hud.route.last_seal") if int(goal.boss_phase)>0 else Loc.t("hud.route.break_seal")
+	_set_text(_route_hint40,hint)
 
 ## Screen furniture that depends on the mode: the in-play plates are hidden on the title menu and the stash, the champion bar
 ## carries its name, and the toast keeps below the champion bar.
@@ -1373,9 +1381,16 @@ func _sync_chrome(run: RefCounted) -> void:
 	if is_instance_valid(boss_name):
 		boss_name.visible=boss_bar.visible and run.mode=="playing"
 		if boss_name.visible and run._champion_id>0 and run.enemies.has(run._champion_id):
-			boss_name.text=_champion_title(run.enemies[run._champion_id],Loc.t("hud.champion.fallback"))
-	if is_instance_valid(boss_bar) and is_instance_valid(toast):
-		toast.position.y=maxf(80.0,(boss_name.get_rect().end.y+12.0 if UiStyle.bound() else boss_bar.get_rect().end.y+10.0)) if boss_bar.visible else 80.0
+			_set_text(boss_name,_champion_title(run.enemies[run._champion_id],Loc.t("hud.champion.fallback")))
+	if is_instance_valid(toast):
+		# The toast: shown while its time runs, except when it only repeats the discovery card; kept below the champion bar.
+		var toast_shown: bool=_toast_left>0
+		if toast_shown and run.mode=="playing" and is_instance_valid(_discovery) and _discovery.visible and toast.text.begins_with("획득:") and toast.text.contains(_discovery20_name):toast_shown=false
+		if toast.visible!=toast_shown:toast.visible=toast_shown
+		if is_instance_valid(boss_bar):
+			var toast_y: float=maxf(80.0,(boss_name.get_rect().end.y+12.0 if UiStyle.bound() else boss_bar.get_rect().end.y+10.0)) if boss_bar.visible else 80.0
+			if toast_y!=_toast_y_last:
+				_toast_y_last=toast_y;toast.position.y=toast_y
 
 func _style_boss_bar() -> void:
 	boss_bar.add_theme_stylebox_override("fill",UiStyle.boss_fill());boss_bar.add_theme_stylebox_override("background",UiStyle.boss_back())

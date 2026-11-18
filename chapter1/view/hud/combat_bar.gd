@@ -76,7 +76,8 @@ func _ready() -> void:
 		add_child(seal)
 		_seals.append(seal)
 
-func sync(run: RefCounted, delta: float) -> void:
+## `snapshot` is the growth snapshot the HUD took this frame (one deep copy shared by its pieces); without it the bar takes its own.
+func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
 	_playing = run.mode == "playing"
 	if _playing: _clock += delta
 	if run.hero.is_empty():
@@ -84,7 +85,7 @@ func sync(run: RefCounted, delta: float) -> void:
 	visible = true
 	_life = clampf(float(run.hero.hp_raw)/maxf(1.0,float(run.hero.max_hp_raw)),0,1)
 	_life_text = "%d / %d" % [ceili(float(run.hero.hp_raw)/256.0),ceili(float(run.hero.max_hp_raw)/256.0)]
-	var growth: Dictionary = run.growth.snapshot()
+	var growth: Dictionary = snapshot if not snapshot.is_empty() else run.growth.snapshot()
 	_level = int(growth.level)
 	var thresholds: Array = run.growth.xp_thresholds()
 	var index := _level-1
@@ -121,7 +122,22 @@ func sync(run: RefCounted, delta: float) -> void:
 	_in_ward = false
 	for hazard in run.get("chapter_hazards"):
 		if run.hero.position.distance_to(hazard.position) <= float(hazard.radius): _in_ward = true; break
-	queue_redraw()
+	# Redraw only when something the picture is made of changed (see _draw_key). A low life pulses with time, so it redraws
+	# every frame, and so does the old look, which the key does not cover.
+	var key := _draw_key()
+	if _life < LOW_LIFE or not UiStyle.bound() or key != _drawn_key:
+		_drawn_key = key
+		queue_redraw()
+
+var _drawn_key: Array = []
+
+## Every value _draw_bound reads. Exact values, not rounded ones: the cooldown sweeps and the seconds follow the tick, so
+## the bar redraws while anything is cooling down and stands still when nothing moves.
+func _draw_key() -> Array:
+	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable]
+	for state in _skill_state:
+		parts.append(state.rank); parts.append(state.evolved); parts.append(state.wait); parts.append(state.seconds)
+	return parts
 
 func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0, outline: int = 4) -> void:
 	var font := Loc.font("number")
