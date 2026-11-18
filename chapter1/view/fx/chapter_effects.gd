@@ -129,6 +129,57 @@ func _batch(shape: Mesh, capacity: int) -> MultiMeshInstance3D:
 	view.add_child(node)
 	return node
 
+## One-call MultiMesh writes (A-2). Each batch keeps a float buffer in the engine's own layout
+## (12 transform floats, then 4 colour floats if use_colors, then 4 custom floats if use_custom_data)
+## and hands it over with one multimesh_set_buffer call instead of 3 calls per instance.
+## Channels an effect never writes keep the engine's initial values (the buffer starts from multimesh.buffer).
+const MM_STRIDE := 20
+const MM_COLOR := 12
+const MM_CUSTOM := 16
+var _mm_bufs: Dictionary={}
+var _mm_last: Dictionary={}
+## Dev switches for the two A-2 experiments (default off; see the user args below).
+##   --chapter1-fx-hide-empty : MultiMeshInstance3D batches with nothing to draw are set invisible.
+var fx_hide_empty := false
+
+func _read_fx_switches() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg=="--chapter1-fx-hide-empty":fx_hide_empty=true
+
+func _mmbuf(mm: MultiMesh) -> PackedFloat32Array:
+	var id := mm.get_instance_id()
+	var stride := 12+(4 if mm.use_colors else 0)+(4 if mm.use_custom_data else 0)
+	var need := mm.instance_count*stride
+	var b: PackedFloat32Array=_mm_bufs.get(id,PackedFloat32Array())
+	if b.size()!=need:
+		b=mm.buffer
+		if b.size()!=need:b.resize(need)
+		_mm_bufs[id]=b
+	return b
+
+## Upload the filled buffer. An empty batch that was already empty is not uploaded again.
+func _mmflush(mm: MultiMesh,b: PackedFloat32Array,visible_count: int) -> void:
+	mm.visible_instance_count=visible_count
+	var id := mm.get_instance_id()
+	if visible_count==0 and int(_mm_last.get(id,-1))==0:return
+	_mm_last[id]=visible_count
+	RenderingServer.multimesh_set_buffer(mm.get_rid(),b)
+
+## Experiment: hide a batch node while it has nothing to draw. Off unless fx_hide_empty.
+func _mm_show(node: MultiMeshInstance3D,count: int) -> void:
+	if not fx_hide_empty:return
+	var show_ := count>0
+	if node.visible!=show_:node.visible=show_
+
+static func _wx(b: PackedFloat32Array,o: int,t: Transform3D) -> void:
+	var bs := t.basis;var org := t.origin
+	b[o]=bs.x.x;b[o+1]=bs.y.x;b[o+2]=bs.z.x;b[o+3]=org.x
+	b[o+4]=bs.x.y;b[o+5]=bs.y.y;b[o+6]=bs.z.y;b[o+7]=org.y
+	b[o+8]=bs.x.z;b[o+9]=bs.y.z;b[o+10]=bs.z.z;b[o+11]=org.z
+
+static func _wc(b: PackedFloat32Array,o: int,c: Color) -> void:
+	b[o]=c.r;b[o+1]=c.g;b[o+2]=c.b;b[o+3]=c.a
+
 func _shadow_key(e: Dictionary) -> String:
 	var ck: int=(int(e.generation)<<32)|int(e.id)
 	var s: Variant=_key_cache.get(ck)
@@ -205,7 +256,8 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	var hero_at := Vector3(run.hero.position.x,.006,run.hero.position.y)
 	if actor_view!=null:hero_at=actor_view.hero.position;hero_at.y=.006
 	var msh: MultiMesh=shadows.multimesh
-	msh.set_instance_transform(0,Transform3D(Basis.IDENTITY,hero_at))
+	var sbuf := _mmbuf(msh)
+	_wx(sbuf,0,Transform3D(Basis.IDENTITY,hero_at))
 	var shadow_count := 1
 	_enemies_frame=run.enemies.values()
 	var actor_map: Dictionary={}
@@ -216,11 +268,13 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var at := Vector3(e.position.x,.005,e.position.y)
 		var key: String=_shadow_key(e)
 		if actor_view!=null and actor_map.has(key):at=actor_map[key].position;at.y=.005
-		msh.set_instance_transform(shadow_count,Transform3D(Basis.IDENTITY.scaled(Vector3(size_,1,size_)),at))
+		_wx(sbuf,shadow_count*MM_STRIDE,Transform3D(Basis.IDENTITY.scaled(Vector3(size_,1,size_)),at))
 		shadow_count+=1
-	msh.visible_instance_count=shadow_count
+	_mmflush(msh,sbuf,shadow_count)
 	var mm: MultiMesh=projectiles.multimesh
 	var mfp: MultiMesh=_frost39_projectiles.multimesh
+	var pbuf := _mmbuf(mm)
+	var fpbuf := _mmbuf(mfp)
 	var index := 0
 	_routed_p=0
 	var right := Vector2(_cam_basis.x.x,_cam_basis.x.z).normalized()
@@ -241,26 +295,29 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var custom := Color((angle+PI)/TAU,element_code,-1.0 if child else (1.0 if evolved else .20),float(int(p.uid)%17)/17.0)
 		# Frost bolts (element code .5) go to the replacement batch; their original keeps a zero-scaled twin.
 		if element_code>.3 and element_code<.8:
-			mfp.set_instance_transform(_routed_p,xf)
-			mfp.set_instance_custom_data(_routed_p,custom)
-			mfp.set_instance_color(_routed_p,color)
+			var fo := _routed_p*MM_STRIDE
+			_wx(fpbuf,fo,xf);_wc(fpbuf,fo+MM_CUSTOM,custom);_wc(fpbuf,fo+MM_COLOR,color)
 			_routed_p+=1
 			xf.basis=xf.basis.scaled(Vector3.ZERO)
-		mm.set_instance_transform(index,xf)
-		mm.set_instance_color(index,color)
-		mm.set_instance_custom_data(index,custom)
+		var po := index*MM_STRIDE
+		_wx(pbuf,po,xf);_wc(pbuf,po+MM_COLOR,color);_wc(pbuf,po+MM_CUSTOM,custom)
 		index+=1
-	mm.visible_instance_count=index
-	mfp.visible_instance_count=_routed_p
+	_mmflush(mm,pbuf,index)
+	_mmflush(mfp,fpbuf,_routed_p)
+	_mm_show(projectiles,index)
+	_mm_show(_frost39_projectiles,_routed_p)
 	mm=gems.multimesh
+	var gbuf := _mmbuf(mm)
 	index=0
 	var orb_basis := Basis(Vector3.UP,float(run.tick)*.03)
 	for orb in run.orbs:
 		if index>=mm.instance_count: break
-		mm.set_instance_transform(index,Transform3D(orb_basis,Vector3(orb.position.x,.18,orb.position.y)))
-		mm.set_instance_color(index,ORB_COLOR)
+		var go := index*MM_STRIDE
+		_wx(gbuf,go,Transform3D(orb_basis,Vector3(orb.position.x,.18,orb.position.y)))
+		_wc(gbuf,go+MM_COLOR,ORB_COLOR)
 		index+=1
-	mm.visible_instance_count=index
+	_mmflush(mm,gbuf,index)
+	_mm_show(gems,index)
 	var lines := _line_mesh
 	var vertices := 0
 	var fill := _fill_mesh
@@ -335,6 +392,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	var mi: MultiMesh=impacts.multimesh
 	var mfi: MultiMesh=_frost39_impacts.multimesh
 	var mpl: MultiMesh=plumes.multimesh
+	var ibuf := _mmbuf(mi)
+	var fibuf := _mmbuf(mfi)
+	var plbuf := _mmbuf(mpl)
 	var cam_basis := _cam_basis
 	var last_color: Variant=null
 	_routed_i=0
@@ -367,14 +427,12 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 				var age := 1.0-float(stroke.life)/float(stroke.duration)
 				var icustom := Color(age,stroke.element,0,1)
 				if float(stroke.element)>.3 and float(stroke.element)<.8:
-					mfi.set_instance_transform(_routed_i,ixf)
-					mfi.set_instance_custom_data(_routed_i,icustom)
-					mfi.set_instance_color(_routed_i,stroke.color)
+					var fio := _routed_i*MM_STRIDE
+					_wx(fibuf,fio,ixf);_wc(fibuf,fio+MM_CUSTOM,icustom);_wc(fibuf,fio+MM_COLOR,stroke.color)
 					_routed_i+=1
 					ixf.basis=ixf.basis.scaled(Vector3.ZERO)
-				mi.set_instance_transform(impact_count,ixf)
-				mi.set_instance_color(impact_count,stroke.color)
-				mi.set_instance_custom_data(impact_count,icustom)
+				var io := impact_count*MM_STRIDE
+				_wx(ibuf,io,ixf);_wc(ibuf,io+MM_COLOR,stroke.color);_wc(ibuf,io+MM_CUSTOM,icustom)
 				if float(stroke.element)<.25 and plume_count<MAX_IMPACTS:
 					var scale_ := float(stroke.radius)*.70
 					# The fire-bloom squash (.85/.52/.85, origin.y*.52) is applied here, in the one write.
@@ -382,8 +440,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					plume_basis=plume_basis.scaled(Vector3(.85,.52,.85))
 					var plume_at := Vector3(stroke.at.x,scale_*.65,stroke.at.y)
 					plume_at.y*=.52
-					mpl.set_instance_transform(plume_count,Transform3D(plume_basis,plume_at))
-					mpl.set_instance_custom_data(plume_count,Color(age,0,0,float(impact_count%7)/7.0))
+					var plo := plume_count*MM_STRIDE
+					_wx(plbuf,plo,Transform3D(plume_basis,plume_at))
+					_wc(plbuf,plo+MM_CUSTOM,Color(age,0,0,float(impact_count%7)/7.0))
 					plume_count+=1
 				impact_count+=1
 		else:
@@ -409,9 +468,12 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		for i in 3:flash.surface_add_vertex(Vector3(0,-20,0))
 		flash.surface_end();beams.mesh=flash;_flash_blank=true;_flash_blank_color=last_color
 	strokes=stroke_live
-	mi.visible_instance_count=impact_count
-	mfi.visible_instance_count=_routed_i
-	mpl.visible_instance_count=plume_count
+	_mmflush(mi,ibuf,impact_count)
+	_mmflush(mfi,fibuf,_routed_i)
+	_mmflush(mpl,plbuf,plume_count)
+	_mm_show(impacts,impact_count)
+	_mm_show(_frost39_impacts,_routed_i)
+	_mm_show(plumes,plume_count)
 	var wanted: Dictionary={}
 	for item in run.items:
 		wanted[item.uid]=true
@@ -432,6 +494,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	for uid in item_nodes.keys():
 		if not wanted.has(uid): item_nodes[uid].queue_free();item_nodes.erase(uid)
 	mm=shards.multimesh
+	var shbuf := _mmbuf(mm)
 	index=0
 	var playing: bool=run.mode=="playing"
 	var kept := 0
@@ -446,14 +509,16 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		if life<=0 or index>=MAX_PARTICLES: continue
 		var size_: float=_d_size[i]
 		var basis := Basis(Vector3.UP,life*15).scaled(Vector3.ONE*size_)
-		mm.set_instance_transform(index,Transform3D(basis,pos))
+		var sho := index*MM_STRIDE
+		_wx(shbuf,sho,Transform3D(basis,pos))
 		var faded: Color=_d_color[i];faded.a=clampf(life/.12,0,1)
-		mm.set_instance_color(index,faded)
+		_wc(shbuf,sho+MM_COLOR,faded)
 		index+=1
 		# compact the survivors in place
 		_d_life[kept]=life;_d_p[kept]=pos;_d_v[kept]=vel;_d_size[kept]=size_;_d_color[kept]=_d_color[i];kept+=1
 	_d_life.resize(kept);_d_p.resize(kept);_d_v.resize(kept);_d_size.resize(kept);_d_color.resize(kept)
-	mm.visible_instance_count=index
+	_mmflush(mm,shbuf,index)
+	_mm_show(shards,index)
 
 func _ribbon(mesh: ImmediateMesh, a: Vector3, b: Vector3, width: float) -> int:
 	var side := (b-a).cross(_cam_z).normalized()*width
@@ -572,6 +637,8 @@ func sync__q10(run: RefCounted,delta: float) -> void:
 	var index := 0
 	var mc: MultiMesh=contact_batch.multimesh
 	var mfc: MultiMesh=_frost39_contacts.multimesh
+	var cbuf := _mmbuf(mc)
+	var fcbuf := _mmbuf(mfc)
 	var cb := _cam_basis
 	_routed_c=0
 	for hit in contacts:
@@ -588,15 +655,18 @@ func sync__q10(run: RefCounted,delta: float) -> void:
 		var cxf := Transform3D(cbasis,at)
 		var ccustom := Color(hit.age/hit.duration,hit.element,hit.angle,1)
 		if element>.3 and element<.8:
-			mfc.set_instance_transform(_routed_c,cxf)
-			mfc.set_instance_custom_data(_routed_c,ccustom)
-			mfc.set_instance_color(_routed_c,Color(0,0,0,0))
+			var fco := _routed_c*MM_STRIDE
+			_wx(fcbuf,fco,cxf);_wc(fcbuf,fco+MM_CUSTOM,ccustom);_wc(fcbuf,fco+MM_COLOR,Color(0,0,0,0))
 			_routed_c+=1
 			cxf.basis=cxf.basis.scaled(Vector3.ZERO)
-		mc.set_instance_transform(index,cxf)
-		mc.set_instance_custom_data(index,ccustom)
+		var co := index*MM_STRIDE
+		_wx(cbuf,co,cxf);_wc(cbuf,co+MM_CUSTOM,ccustom)
 		index+=1
-	contacts=live;mc.visible_instance_count=index;mfc.visible_instance_count=_routed_c
+	contacts=live
+	_mmflush(mc,cbuf,index)
+	_mmflush(mfc,fcbuf,_routed_c)
+	_mm_show(contact_batch,index)
+	_mm_show(_frost39_contacts,_routed_c)
 
 func reset__q10() -> void:
 	reset__chapter();contacts.clear();_contact_last_seq=-1
@@ -727,7 +797,7 @@ func _sync_ice__q14(run: RefCounted,delta: float) -> void:
 	for e in _enemies_frame:
 		if e.hp_raw>0 and run.tick<int(e.frozen_until):eligible.append(e)
 	if eligible.is_empty() and ice_targets.is_empty():
-		mm.visible_instance_count=0;return
+		mm.visible_instance_count=0;_mm_show(ice_batch,0);return
 	if eligible.size()>1:
 		eligible.sort_custom(func(a: Dictionary,b: Dictionary)->bool:
 			if bool(a.elite)!=bool(b.elite):return bool(a.elite)
@@ -754,6 +824,7 @@ func _sync_ice__q14(run: RefCounted,delta: float) -> void:
 			if ice_targets.size()<=ICE_STATE_CAP:break
 			if not wanted.has(key):ice_targets.erase(key);ordered.erase(key)
 	var index := 0
+	var icebuf := _mmbuf(mm)
 	for key in ordered:
 		if index>=ICE_TARGET_CAP*4:break
 		var record: Dictionary=ice_targets[key];var strength: float=record.strength
@@ -767,13 +838,16 @@ func _sync_ice__q14(run: RefCounted,delta: float) -> void:
 			var basis := Basis.from_euler(Vector3(sin(angle)*.18,angle,-cos(angle)*.18)).scaled(Vector3(.20,.80+float(i%3)*.23,.20)*size_*maxf(.01,strength))
 			# Narrow asymmetric blades, not an opaque shell over the whole actor (applied in the one write).
 			basis=basis.scaled(Vector3(.80,.88 if index%2==0 else .68,.52))
-			mm.set_instance_transform(index,Transform3D(basis,at))
-			mm.set_instance_color(index,Color(.72,.92,1,strength*.60));index+=1
-	mm.visible_instance_count=index
+			var ico := index*MM_STRIDE
+			_wx(icebuf,ico,Transform3D(basis,at))
+			_wc(icebuf,ico+MM_COLOR,Color(.72,.92,1,strength*.60));index+=1
+	_mmflush(mm,icebuf,index)
+	_mm_show(ice_batch,index)
 
 func _sync_fragments__q14(run: RefCounted,delta: float) -> void:
 	var live: Array[Dictionary]=[];var index := 0
 	var mm: MultiMesh=ice_fragment_batch.multimesh
+	var fgbuf := _mmbuf(mm)
 	for shard in ice_fragments:
 		if run.mode=="playing":shard.age+=delta;shard.position+=shard.velocity*delta;shard.velocity.y-=delta*8
 		if shard.age>=shard.duration:continue
@@ -782,9 +856,12 @@ func _sync_fragments__q14(run: RefCounted,delta: float) -> void:
 		var basis := Basis.from_euler(Vector3(shard.age*7,shard.angle,shard.age*4)).scaled(Vector3(.55,1,.55)*float(shard.size))
 		# Broad splinters contrast with the upright frozen state (applied in the one write).
 		basis=basis.scaled(Vector3(1.45,.68,.42))
-		mm.set_instance_transform(index,Transform3D(basis,shard.position))
-		mm.set_instance_color(index,Color(.58,.88,1,fade));index+=1
-	ice_fragments=live;mm.visible_instance_count=index
+		var fgo := index*MM_STRIDE
+		_wx(fgbuf,fgo,Transform3D(basis,shard.position))
+		_wc(fgbuf,fgo+MM_COLOR,Color(.58,.88,1,fade));index+=1
+	ice_fragments=live
+	_mmflush(mm,fgbuf,index)
+	_mm_show(ice_fragment_batch,index)
 
 func _crystal_mesh() -> ArrayMesh:
 	var vertices := PackedVector3Array();var normals := PackedVector3Array();var colors := PackedColorArray()
@@ -851,6 +928,7 @@ func setup__q22(owner_view: Node3D) -> void:
 # ---- chapter1/view/chapter_elements_quality26.gd ----
 ## Nearby ground names retain their drop beams and original 8m visibility rule.
 ## Size and separation are presentation only; collection stays in the core.
+const LOOT26_PRIORITY := {"unique":0,"legendary":0,"rare":1,"magic":2,"common":3}
 const LOOT26_FONT := 36
 const LOOT26_NOMINAL_PIXELS := 15.0
 var _loot26_font: Font
@@ -885,8 +963,7 @@ func sync__q26(run: RefCounted,delta: float) -> void:
 	_loot26_blank=false
 	_loot26_mesh.clear_surfaces();_loot26_leaders.visible=false
 	candidates.sort_custom(func(a,b):
-		var priority := {"unique":0,"legendary":0,"rare":1,"magic":2,"common":3}
-		var ap: int=priority.get(a.quality,3);var bp: int=priority.get(b.quality,3)
+		var ap: int=LOOT26_PRIORITY.get(a.quality,3);var bp: int=LOOT26_PRIORITY.get(b.quality,3)
 		return ap<bp if ap!=bp else int(a.uid)<int(b.uid))
 	var occupied: Array[Rect2]=[]
 	var line_count := 0
@@ -1007,9 +1084,11 @@ func sync__q36(run: RefCounted,delta: float) -> void:
 		stunned.append(id_)
 	if stunned.is_empty():
 		_stun36_sparks.multimesh.visible_instance_count=0
+		_mm_show(_stun36_sparks,0)
 		return
 	stunned.sort()
 	var msp: MultiMesh=_stun36_sparks.multimesh
+	var spbuf := _mmbuf(msp)
 	for id_ in stunned:
 		var entity: Dictionary=enemies[id_]
 		if stun36_visible>=STUN36_VISIBLE_CAP:break
@@ -1017,9 +1096,10 @@ func sync__q36(run: RefCounted,delta: float) -> void:
 		for point in 3:
 			var angle: float=float(run.tick)*.22+TAU*float(point)/3.0
 			var position := Vector3(entity.position.x+cos(angle)*.28,height+sin(angle*2.0)*.08,entity.position.y+sin(angle)*.28)
-			msp.set_instance_transform(stun36_visible*3+point,Transform3D(Basis.IDENTITY,position))
+			_wx(spbuf,(stun36_visible*3+point)*12,Transform3D(Basis.IDENTITY,position))
 		stun36_visible+=1
-	msp.visible_instance_count=stun36_visible*3
+	_mmflush(msp,spbuf,stun36_visible*3)
+	_mm_show(_stun36_sparks,stun36_visible*3)
 func reset__q36() -> void:
 	reset__q26();stun36_visible=0
 	if is_instance_valid(_stun36_sparks):_stun36_sparks.multimesh.visible_instance_count=0
@@ -1146,15 +1226,18 @@ func sync(run: RefCounted,delta: float) -> void:
 	frost39_contact_count=_routed_c
 	frost39_cast_count=0
 	var mk: MultiMesh=_frost39_casts.multimesh
+	var kbuf := _mmbuf(mk)
 	var cast_basis := _cam_basis
 	for stroke in strokes:
 		if stroke.type!="frost39_cast":continue
 		if frost39_cast_count>=MAX_STROKES:break
 		var at := Vector3(stroke.at.x,1.05,stroke.at.y)
-		mk.set_instance_transform(frost39_cast_count,Transform3D(cast_basis,at))
-		mk.set_instance_custom_data(frost39_cast_count,Color(1.0-float(stroke.life)/float(stroke.duration),0,0,1))
+		var ko := frost39_cast_count*MM_STRIDE
+		_wx(kbuf,ko,Transform3D(cast_basis,at))
+		_wc(kbuf,ko+MM_CUSTOM,Color(1.0-float(stroke.life)/float(stroke.duration),0,0,1))
 		frost39_cast_count+=1
-	mk.visible_instance_count=frost39_cast_count
+	_mmflush(mk,kbuf,frost39_cast_count)
+	_mm_show(_frost39_casts,frost39_cast_count)
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
@@ -1199,3 +1282,4 @@ func setup(owner_view: Node3D) -> void:
 	var contact := ShaderMaterial.new()
 	contact.shader=preload("res://chapter1/view/arc_contact_quality44.gdshader")
 	contact_batch.material_override=contact
+	_read_fx_switches()

@@ -80,6 +80,14 @@ var _number_cell := PackedInt32Array()
 var _number_next := 0
 var _heavy_next := 0
 var _sparks: MultiMeshInstance3D
+## Spark pool written through one float buffer (transform 12 + colour 4 floats per instance), uploaded once
+## per frame while any spark is alive or just died. Same values as the per-instance calls it replaced.
+const SPARK_STRIDE := 16
+var _spark_buf := PackedFloat32Array()
+var _spark_dirty := false
+## Experiment (off by default): --chapter1-fx-fade-transparency fades damage numbers with
+## GeometryInstance3D.transparency instead of re-tinting modulate/outline_modulate every frame.
+var fade_by_transparency := false
 var _spark_life := PackedFloat32Array()
 var _spark_total := PackedFloat32Array()
 var _spark_size := PackedFloat32Array()
@@ -118,6 +126,8 @@ func setup(owner_view: Node3D) -> void:
 	_flash_at.resize(FLASH_SLOTS); _flash_time.resize(FLASH_SLOTS)
 	_flash_time.fill(-10.0)
 	_mark_expiry.resize(MARK_POOL)
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--chapter1-fx-fade-transparency": fade_by_transparency = true
 	_build_numbers(); _build_sparks(); _build_marks(); _build_bursts(); _build_lights()
 
 func _additive(billboard: bool) -> StandardMaterial3D:
@@ -175,6 +185,9 @@ func _build_sparks() -> void:
 	_sparks = _pool(quad,SPARK_POOL,_additive(true),"HitFlashes")
 	_spark_life.resize(SPARK_POOL); _spark_total.resize(SPARK_POOL); _spark_size.resize(SPARK_POOL)
 	_spark_at.resize(SPARK_POOL); _spark_color.resize(SPARK_POOL)
+	var spark_mm := _sparks.multimesh
+	_spark_buf = spark_mm.buffer
+	if _spark_buf.size() != SPARK_POOL*SPARK_STRIDE: _spark_buf.resize(SPARK_POOL*SPARK_STRIDE)
 
 func _build_marks() -> void:
 	var plane := PlaneMesh.new(); plane.size = Vector2.ONE
@@ -367,6 +380,7 @@ func _number(at: Vector2, amount: int, color: Color, heavy: bool, target: int) -
 	if label.text != text: label.text = text
 	label.modulate = Color.WHITE.lerp(color,.20) if not heavy else Color("ffffff")
 	label.outline_modulate = Color(0,0,0,.9)
+	if fade_by_transparency and label.transparency != 0.0: label.transparency = 0.0
 	var offset := Vector3(_rng.randf_range(-.35,.35),1.5+_rng.randf_range(0,.25),_rng.randf_range(-.2,.2))
 	var position_ := Vector3(at.x,0,at.y)+offset
 	label.position = position_
@@ -462,6 +476,7 @@ func sync(run: RefCounted, delta: float) -> void:
 		var label := _numbers[index]
 		if life <= 0:
 			label.visible = false
+			if fade_by_transparency: label.transparency = 0.0
 			_number_active[at] = _number_active[_number_active.size()-1]; _number_active.resize(_number_active.size()-1)
 			continue
 		var age := 1.0-life/_number_total[index]
@@ -472,26 +487,42 @@ func sync(run: RefCounted, delta: float) -> void:
 		label.position = position_
 		if life < NUMBER_FADE:
 			var alpha := clampf(life/NUMBER_FADE,0,1)
-			var tint := label.modulate; tint.a = alpha; label.modulate = tint
-			var outline := label.outline_modulate; outline.a = alpha*.9; label.outline_modulate = outline
+			if fade_by_transparency:
+				# modulate.a stays 1 and outline_modulate.a stays .9 (set when the label is taken); the
+				# instance transparency multiplies both by the same alpha.
+				label.transparency = 1.0-alpha
+			else:
+				var tint := label.modulate; tint.a = alpha; label.modulate = tint
+				var outline := label.outline_modulate; outline.a = alpha*.9; label.outline_modulate = outline
 		at += 1
-	var mm := _sparks.multimesh
+	var buf := _spark_buf
 	at = 0
 	while at < _spark_active.size():
 		var index := _spark_active[at]
 		var life := _spark_life[index]-delta
 		_spark_life[index] = life
 		if life <= 0:
-			mm.set_instance_color(index,Color(0,0,0,0))
+			var dead := index*SPARK_STRIDE+12
+			buf[dead] = 0.0; buf[dead+1] = 0.0; buf[dead+2] = 0.0; buf[dead+3] = 0.0
+			_spark_dirty = true
 			_spark_active[at] = _spark_active[_spark_active.size()-1]; _spark_active.resize(_spark_active.size()-1)
 			continue
 		var age := 1.0-life/_spark_total[index]
 		var size := _spark_size[index]*(.45+age*.9)
-		mm.set_instance_transform(index,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size),_spark_at[index]))
+		var o := index*SPARK_STRIDE
+		var org := _spark_at[index]
+		# Basis.scaled(ONE*size) of the identity is a diagonal matrix; the transform floats are row-major.
+		buf[o] = size; buf[o+1] = 0.0; buf[o+2] = 0.0; buf[o+3] = org.x
+		buf[o+4] = 0.0; buf[o+5] = size; buf[o+6] = 0.0; buf[o+7] = org.y
+		buf[o+8] = 0.0; buf[o+9] = 0.0; buf[o+10] = size; buf[o+11] = org.z
 		var color := _spark_color[index]
 		color.a = (1.0-age)*(1.0-age)*.7
-		mm.set_instance_color(index,color)
+		buf[o+12] = color.r; buf[o+13] = color.g; buf[o+14] = color.b; buf[o+15] = color.a
+		_spark_dirty = true
 		at += 1
+	if _spark_dirty:
+		_spark_dirty = false
+		RenderingServer.multimesh_set_buffer(_sparks.multimesh.get_rid(),buf)
 	at = 0
 	while at < _light_active.size():
 		var index := _light_active[at]
@@ -513,8 +544,13 @@ func reset() -> void:
 	_flash_time.fill(-10.0); _flash_next = 0; _mark_expiry.fill(0.0)
 	for index in _numbers.size():
 		_number_life[index] = 0.0; _numbers[index].visible = false
+		if fade_by_transparency: _numbers[index].transparency = 0.0
 	for index in SPARK_POOL:
-		_spark_life[index] = 0.0; _sparks.multimesh.set_instance_color(index,Color(0,0,0,0))
+		_spark_life[index] = 0.0
+		var o := index*SPARK_STRIDE+12
+		_spark_buf[o] = 0.0; _spark_buf[o+1] = 0.0; _spark_buf[o+2] = 0.0; _spark_buf[o+3] = 0.0
+	RenderingServer.multimesh_set_buffer(_sparks.multimesh.get_rid(),_spark_buf)
+	_spark_dirty = false
 	for index in MARK_POOL:
 		_marks.multimesh.set_instance_color(index,Color(0,0,0,0)); _marks.multimesh.set_instance_custom_data(index,Color(0,0,0,0))
 	for index in LIGHT_POOL:
