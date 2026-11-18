@@ -7,6 +7,9 @@ const PATH := "res://chapter1/art/quality03_audio/"
 const COUNTS := {"fire":3,"cold":2,"lightning":1,"impact":3,"death":3,"explosion":1,"hurt":1,"drop":1,"pickup":1,"equip":1,"step":2,"jewel":1,"legend":1}
 const COOLDOWNS := {"fire":10,"cold":14,"lightning":14,"impact":7,"death":10,"explosion":14,"hurt":18,"drop":18,"pickup":8,"equip":4,"step":18,"jewel":6,"legend":6}
 const GAINS := {"fire":.8,"cold":.72,"lightning":.82,"impact":.9,"death":.65,"explosion":1.0,"hurt":1.0,"drop":.8,"pickup":.65,"equip":.75,"step":.38,"jewel":.95,"legend":1.0}
+## Cues that stay silent until their sound is replaced. User, 2026-11-18: the lightning cast grates (it plays 6 to 8 dB above
+## the fire and cold casts, centred near 400 Hz); it is to become a running-current sound. Until then it makes no sound.
+const SILENT: Array[String] = ["lightning"]
 var voices: Array[AudioStreamPlayer]=[]
 var streams: Dictionary={}
 var ambience: AudioStreamWAV
@@ -54,7 +57,7 @@ func play_ui(cue: String,tick: int) -> void:
 	_play_cue(cue,tick,true)
 
 func _play_cue(cue: String,tick: int,ui: bool) -> void:
-	if muted or (paused and not ui) or not streams.has(cue):return
+	if muted or (paused and not ui) or not streams.has(cue) or cue in SILENT:return
 	if tick>=0 and tick-int(last_cue_tick.get(cue,-100000))<int(COOLDOWNS[cue]):return
 	# Two final voices remain available for player hurt and important loot/UI cues.
 	var critical: bool=cue in ["hurt","drop","equip","pickup","jewel","legend"]
