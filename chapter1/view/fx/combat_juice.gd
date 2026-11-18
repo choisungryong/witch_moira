@@ -13,6 +13,8 @@ const SPARK_POOL := 128
 const MARK_POOL := 64
 const BURST_POOL := 16
 const LIGHT_POOL := 6
+## Look 2: effect lights reach further into the darker floor.
+const LIGHT_GAIN := 1.6
 const NUMBERS_PER_FRAME := 5
 const SPARKS_PER_FRAME := 20
 const BURSTS_PER_FRAME := 5
@@ -244,15 +246,15 @@ func apply_look(world: RefCounted) -> void:
 	if environment_node == null or environment_node.environment == null: return
 	var environment: Environment = environment_node.environment
 	environment.glow_enabled = true
-	environment.glow_intensity = .62
-	environment.glow_bloom = .08
+	environment.glow_intensity = .95
+	environment.glow_bloom = .12
 	environment.glow_strength = 1.0
-	environment.glow_hdr_threshold = 1.15
+	environment.glow_hdr_threshold = .9
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	environment.adjustment_enabled = true
-	environment.adjustment_contrast = 1.14
-	environment.adjustment_saturation = 1.16
-	environment.adjustment_brightness = .97
+	environment.adjustment_contrast = 1.34
+	environment.adjustment_saturation = 1.34
+	environment.adjustment_brightness = 1.04
 
 func _find_environment(node: Node) -> WorldEnvironment:
 	if node is WorldEnvironment: return node
@@ -445,6 +447,7 @@ func _burst(at: Vector2, color: Color, count: int) -> void:
 		stats.bursts += 1
 
 func _light(at: Vector2, color: Color, energy: float, range_: float, seconds: float) -> void:
+	energy *= LIGHT_GAIN
 	if reduced_flash: energy *= .5
 	# Arc's pale #b9caff lights read as a white wash on the stone floor; light with the saturated arc blue.
 	if color.is_equal_approx(COLORS["chapter1.skill.arc"]): color = ARC_LIGHT_COLOR; energy *= .8

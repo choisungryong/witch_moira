@@ -39,13 +39,14 @@ func setup__q03(view: Node3D) -> void:
 	environment.background_color=Color("0e141a")
 	environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color=Color("8594a6")
-	environment.ambient_light_energy=.34
+	# Look 2 (2026-11-18, BENCHMARK-TRAILERS 3): a dark floor, so that spells and torches carry the light.
+	environment.ambient_light_energy=.11
 	environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC
 	environment.glow_enabled=true;environment.glow_intensity=.45;environment.glow_bloom=.13
 	environment.fog_enabled=true;environment.fog_light_color=Color("162027");environment.fog_density=.0025
 	var environment_node := WorldEnvironment.new();environment_node.environment=environment;view.add_child(environment_node)
 	var moon := DirectionalLight3D.new()
-	moon.rotation_degrees=Vector3(-54,-34,0);moon.light_color=Color("b7c5d7");moon.light_energy=.88
+	moon.rotation_degrees=Vector3(-54,-34,0);moon.light_color=Color("b7c5d7");moon.light_energy=.46
 	# There are no solid 3D casters in this decorative impostor scene. Actors use
 	# their bounded contact-shadow batch; props retain their authored shading.
 	moon.shadow_enabled=false;view.add_child(moon)
@@ -166,7 +167,7 @@ func _compose_verges__q03() -> void:
 func _brazier(at: Vector3) -> void:
 	_prop("brazier",at,2.0,Color(.88,.8,.67))
 	var light := OmniLight3D.new();light.position=at+Vector3.UP*1.5
-	light.light_color=Color("ffad66");light.light_energy=2.8;light.omni_range=7.0;light.shadow_enabled=false
+	light.light_color=Color("ffad66");light.light_energy=4.5;light.omni_range=7.0;light.shadow_enabled=false
 	root.add_child(light);_warm_lights.append(light);_warm_base.append(2.8)
 
 func _bake_props() -> void:
