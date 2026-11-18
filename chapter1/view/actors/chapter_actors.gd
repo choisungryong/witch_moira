@@ -246,7 +246,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		wanted[key]=true
 		if not actors.has(key):
 			actors[key]=_create(e.kind)
-			view.add_child(actors[key])
+			if actors[key].get_parent()==null:view.add_child(actors[key])
 		var actor: Node3D=actors[key]
 		actor.position=_present_position(actor,e.position,run.tick,active)
 		var dead: bool=e.hp_raw<=0
@@ -1212,6 +1212,11 @@ func _demon19_materials(node: Node,materials: Array[StandardMaterial3D],kind: St
 ## Recycle only ordinary role presenters after their core entity is gone.
 ## Boss/elite ownership and all retained corpses keep their original lifetime.
 const POOL25_CAP := 224
+## A reused presenter is re-sampled at idle/0 right after the take-out although its first pose update samples again.
+## --chapter1-pool-no-resample skips it (saves about 0.2 ms per reuse). Off by default: visible actors and bones came out
+## identical in the 2026-11-18 dumps, but a presenter that is taken out and stashed again without a pose (a stun hold
+## returns before sampling) then keeps its previous life's clip instead of idle/0, which the old code never showed.
+var pool_reuse_resample := true
 var _pool25: Dictionary={}
 var _pool25_root: Node3D
 var pool25_hits := 0
@@ -1256,15 +1261,22 @@ func _pool25_key(actor: Node3D) -> String:
 func _stash25(actor: Node3D) -> bool:
 	var key := _pool25_key(actor)
 	if key.is_empty() or (key not in ["elite","boss"] and _pool25_size()>=POOL25_CAP):return false
-	if actor.get_parent()!=null:actor.get_parent().remove_child(actor)
-	_pool25_root.add_child(actor)
+	if pool_hide:
+		# Test switch (--chapter1-pool-hide): the dormant presenter stays under `view`, only hidden and not processed.
+		if actor.get_parent()==null:view.add_child(actor)
+		actor.visible=false;actor.process_mode=Node.PROCESS_MODE_DISABLED
+	else:
+		if actor.get_parent()!=null:actor.get_parent().remove_child(actor)
+		_pool25_root.add_child(actor)
 	var entries: Array=_pool25.get(key,[]);entries.append(actor);_pool25[key]=entries
 	return true
 func _create__q25b(kind: String) -> Node3D:
 	var key := kind if kind!="elite" else ("boss" if _create_zone()==2 else "elite")
 	var entries: Array=_pool25.get(key,[])
 	if key in ["walker","ranged","charger","elite","boss"] and not entries.is_empty():
-		var actor: Node3D=entries.pop_back();_pool25_root.remove_child(actor)
+		var actor: Node3D=entries.pop_back()
+		if pool_hide:actor.process_mode=Node.PROCESS_MODE_INHERIT
+		else:_pool25_root.remove_child(actor)
 		for name_ in actor.get_meta_list():
 			if name_ not in ["kind","minion19","role21","enemy_rig"]:actor.remove_meta(name_)
 		actor.transform=Transform3D.IDENTITY;actor.visible=true
@@ -1273,7 +1285,8 @@ func _create__q25b(kind: String) -> Node3D:
 			rig_state.owner_fade=1.0
 			rig_state.model.position=Vector3.ZERO;rig_state.model.rotation=Vector3.ZERO
 			rig_state.skeleton.reset_bone_poses()
-			rig_state.player.stop();rig_state.player.play("idle",0);rig_state.player.seek(0,true);rig_state.player.advance(0)
+			if pool_reuse_resample:
+				rig_state.player.stop();rig_state.player.play("idle",0);rig_state.player.seek(0,true);rig_state.player.advance(0)
 			for material_ in rig_state.materials:material_.albedo_color=material_.get_meta("warden_tint")
 			pool25_hits+=1
 			return actor
@@ -1283,7 +1296,8 @@ func _create__q25b(kind: String) -> Node3D:
 		state.model.position=Vector3.ZERO;state.model.rotation=Vector3.ZERO
 		state.erase("staff21_time");state.erase("staff21_clip")
 		state.skeleton.reset_bone_poses()
-		state.player.stop();state.player.play("idle",0);state.player.seek(0,true);state.player.advance(0)
+		if pool_reuse_resample:
+			state.player.stop();state.player.play("idle",0);state.player.seek(0,true);state.player.advance(0)
 		if state.has("staff21"):state.staff21.position=Vector3.ZERO
 		for material_ in state.materials:material_.albedo_color=material_.get_meta("demon19_tint")
 		pool25_hits+=1
@@ -1301,6 +1315,80 @@ func reset__q25b() -> void:
 	for key in actors.keys():
 		if _stash25(actors[key]):actors.erase(key)
 	reset__q20()
+
+# ---- Pool prewarm (T2b A-3) ----
+# Pool presenters are built before the menu but never played or attached to the visible tree. The first time one is
+# taken out costs several ms more than a later reuse (about 6.8 ms against 0.6 ms in the 2026-11-18 measurement:
+# animation cache and skeleton first use). The prewarm takes every pool presenter out once before the menu, attaches it
+# to `view`, samples each of its clips and puts it back in its rest state, so that cost is not paid in a fight.
+# Test switches, read only in debug/qa builds:
+#   --chapter1-pool-prewarm=off|w1|w2   off: no prewarm; w1 (default): script side; w2: w1 + the batch is shown for one
+#                                       frame in front of the camera (renders each model once), then put back
+#   --chapter1-pool-hide                dormant presenters stay under `view` (visible=false, process disabled) instead of
+#                                       moving between `view` and the hidden pool root
+var pool_prewarm_mode := "w1"
+var pool_hide := false
+var pool_prewarm_usec := 0
+var pool_prewarm_count := 0
+var _w2_batch: Array[Node3D]=[]
+func _pool_switches() -> void:
+	if not (OS.is_debug_build() or OS.has_feature("qa")):return
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--chapter1-pool-prewarm="):pool_prewarm_mode=arg.trim_prefix("--chapter1-pool-prewarm=")
+		elif arg=="--chapter1-pool-hide":pool_hide=true
+		elif arg=="--chapter1-pool-no-resample":pool_reuse_resample=false
+## The pooled presenter's player and skeleton (minion19 models and the Warden rig keep them in different metas).
+func _pool_rig(actor: Node3D) -> Dictionary:
+	if actor.has_meta("minion19"):return actor.get_meta("minion19")
+	if actor.has_meta("enemy_rig"):return actor.get_meta("enemy_rig")
+	return {}
+func _prewarm_pool() -> void:
+	if pool_prewarm_mode=="off":return
+	var started := Time.get_ticks_usec()
+	var shown: Array[Node3D]=[]
+	for key in ["walker","ranged","charger","elite","boss"]:
+		for actor in _pool25.get(key,[]):
+			var rig_state := _pool_rig(actor)
+			if rig_state.is_empty():continue
+			# Same take-out path as _create__q25b/sync: out of the pool root, under `view`, visible.
+			if pool_hide:actor.process_mode=Node.PROCESS_MODE_INHERIT
+			else:
+				_pool25_root.remove_child(actor);view.add_child(actor)
+			actor.visible=true
+			var player: AnimationPlayer=rig_state.player
+			for clip in player.get_animation_list():
+				if clip=="RESET":continue
+				player.play(clip,0);player.seek(float(player.get_animation(clip).length)*.5,true);player.advance(0)
+			# Back to the state the presenter had when it was built: rest bones, idle at 0.
+			rig_state.skeleton.reset_bone_poses()
+			player.play("idle",0);player.seek(0,true);player.advance(0)
+			pool_prewarm_count+=1
+			if pool_prewarm_mode=="w2" and not pool_hide and shown.size()<_W2_MAX:
+				shown.append(actor)
+				continue
+			_prewarm_put_back(actor)
+	if not shown.is_empty():_w2_show(shown)
+	pool_prewarm_usec=Time.get_ticks_usec()-started
+func _prewarm_put_back(actor: Node3D) -> void:
+	if pool_hide:
+		actor.visible=false;actor.process_mode=Node.PROCESS_MODE_DISABLED
+	else:
+		view.remove_child(actor);_pool25_root.add_child(actor)
+const _W2_MAX := 48
+## W2: the batch stands for one frame in front of the camera, then goes back (the next process frame).
+func _w2_show(batch: Array[Node3D]) -> void:
+	var camera := view.get_viewport().get_camera_3d()
+	var center := Vector3.ZERO
+	if camera!=null:center=camera.global_position-camera.global_basis.z*8.0
+	for i in batch.size():
+		batch[i].position=center+Vector3((i%8)-3.5,0,floorf(i/8.0)-3.0)*.6
+	_w2_batch=batch
+	view.get_tree().process_frame.connect(_w2_hide,CONNECT_ONE_SHOT)
+func _w2_hide() -> void:
+	for actor in _w2_batch:
+		if is_instance_valid(actor):
+			actor.transform=Transform3D.IDENTITY;_prewarm_put_back(actor)
+	_w2_batch.clear()
 
 # ---- chapter1/view/chapter_actors_quality28.gd ----
 ## Authored upper-body hit poses, sampled once before the menu.
@@ -1376,7 +1464,8 @@ func _update_pose__q28(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 ## No extra light, mesh, actor, collision or simulation state.
 func setup__q29(owner_view: Node3D) -> void:
 	setup__q28(owner_view)
-	for actor in _pool25_root.get_children():_enable_actor29(actor)
+	for key in _pool25:
+		for actor in _pool25[key]:_enable_actor29(actor)
 	for actor in actors.values():_enable_actor29(actor)
 func _create__q29(kind: String) -> Node3D:
 	var actor := _create__q25b(kind)
@@ -1554,6 +1643,7 @@ var replacements34 := 0
 func _is34(actor: Node3D) -> bool:
 	return actor.has_meta("minion19") and bool(actor.get_meta("minion19").get("family34",false))
 func setup(owner_view: Node3D) -> void:
+	_pool_switches()
 	# Existing Mophs pose caches are built before replacing only the walker models.
 	setup__q32b(owner_view)
 	for actor in _pool25.walker:_replace34(actor)
@@ -1570,6 +1660,7 @@ func setup(owner_view: Node3D) -> void:
 		_hit34_frames.append(poses)
 	state.player.play("idle",0);state.player.seek(0,true);state.player.advance(0)
 	_capture_menu_rest()
+	_prewarm_pool()
 func _replace34(actor: Node3D) -> void:
 	if _is34(actor):return
 	var old: Dictionary=actor.get_meta("minion19")
