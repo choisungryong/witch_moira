@@ -11,7 +11,12 @@ const KINDS := ["walker","ranged","charger"]
 const STAGES := ["r1","r2","r3","r4","evo"]
 const SECONDARY_KEYS := ["damage_bps","hit_budget_bps","cooldown_bps","max_chain_targets","max_branches"]
 ## Values that stay floats after normalisation; every other integral number becomes an int.
-const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m"]
+const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
+## Optional block (D11 A6): a document without it runs the plain spawn rules, and so does one with "enabled": false.
+const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
+const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
+const BEAT_OPTIONAL := ["ranged_from_ticks","charger_from_ticks","taste_crest"]
+const TRIAL_KEYS := ["enabled","hold_ticks","radius_m","amount","interval_ticks","alive_cap","hp_bps","mix","clear_ticks"]
 var errors: Array[String] = []
 var _document: Dictionary = {}
 
@@ -36,7 +41,12 @@ static func number_array(v: Variant, size: int, low: float, high: float) -> bool
 ## Every problem found, as short paths. Empty means the document is usable.
 static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectiles: int) -> Array[String]:
 	var issues: Array[String] = []
-	if not v is Dictionary or not GrowthCatalog.keys_match(v,ROOT_KEYS): return ["root keys"]
+	if not v is Dictionary: return ["root keys"]
+	var base_keys: Dictionary = v
+	if v.has("rhythm"):
+		base_keys = v.duplicate()
+		base_keys.erase("rhythm")
+	if not GrowthCatalog.keys_match(base_keys,ROOT_KEYS): return ["root keys"]
 	if not integer(v.schema_version,1,1) or v.provenance != "independent_design": issues.append("version/provenance")
 	if not integer(v.alive_cap,1,max_alive-2): issues.append("alive_cap")
 	if not integer(v.friendly_projectile_cap,0,max_projectiles): issues.append("friendly_projectile_cap")
@@ -69,6 +79,76 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	issues.append_array(_heavy_issues(v.heavy_hit))
 	if not v.final_level_on_boss_spawn is bool: issues.append("final_level_on_boss_spawn")
 	if not v.hero_shot is Dictionary or not GrowthCatalog.keys_match(v.hero_shot,["spread_mrad"]) or not integer(v.hero_shot.spread_mrad,0,1000): issues.append("hero_shot")
+	if v.has("rhythm"):
+		# The per-beat alive_cap is bounded by the document's own alive_cap, so that one has to be sound first.
+		issues.append_array(_rhythm_issues(v.rhythm,int(v.alive_cap) if integer(v.alive_cap,1,100000) else 1))
+	return issues
+
+static func _mix_valid(mix: Variant) -> bool:
+	if not mix is Dictionary or not GrowthCatalog.keys_match(mix,["walker","ranged","charger"]): return false
+	for kind in KINDS:
+		if not integer(mix[kind],0,100): return false
+	return int(mix.walker)+int(mix.ranged)+int(mix.charger) >= 1
+
+static func _fan_valid(entry: Variant, keys: Array) -> bool:
+	return entry is Dictionary and GrowthCatalog.keys_match(entry,keys) and integer(entry.count,1,40) and integer(entry.arc_deg,10,360)
+
+## D11 A6 ranges. Every problem is one short path; an empty list means the block is usable.
+static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
+	if not r is Dictionary or not GrowthCatalog.keys_match(r,RHYTHM_KEYS): return ["rhythm keys"]
+	var issues: Array[String] = []
+	if not r.enabled is bool: issues.append("rhythm enabled")
+	if not integer(r.initial_pack,0,40): issues.append("rhythm initial_pack")
+	if not integer(r.gate_rest_ticks,0,3600): issues.append("rhythm gate_rest_ticks")
+	if not r.beats is Array or r.beats.size() < 1 or r.beats.size() > 8: issues.append("rhythm beats");return issues
+	var seen_ids := {}
+	var previous_zone := 0
+	var previous_from := -1
+	for index in r.beats.size():
+		var b: Variant = r.beats[index]
+		var tag := "rhythm beat %d " % index
+		if not b is Dictionary: issues.append(tag+"entry");continue
+		var ok_keys := true
+		for key in BEAT_KEYS:
+			if not b.has(key): ok_keys = false
+		for key in b:
+			if not key in BEAT_KEYS and not key in BEAT_OPTIONAL: ok_keys = false
+		if not ok_keys: issues.append(tag+"keys");continue
+		if not b.id is String or String(b.id).is_empty() or b.id in ["trial","boss"] or seen_ids.has(b.id): issues.append(tag+"id")
+		else: seen_ids[b.id] = true
+		if not integer(b.zone,0,2) or int(b.zone) < previous_zone: issues.append(tag+"zone");continue
+		# from_bps rises beat by beat inside one zone; a new zone starts the order again. The first beat covers progress 0 of zone 0.
+		if not integer(b.from_bps,0,9999) or (int(b.zone) == previous_zone and index > 0 and int(b.from_bps) <= previous_from) or (index == 0 and (int(b.zone) != 0 or int(b.from_bps) != 0)): issues.append(tag+"from_bps")
+		previous_zone = int(b.zone)
+		previous_from = int(b.from_bps) if integer(b.from_bps,0,9999) else previous_from
+		if not integer(b.max_ticks,60,108000): issues.append(tag+"max_ticks")
+		if not integer(b.amount,0,30): issues.append(tag+"amount")
+		if not integer(b.interval_ticks,12,600): issues.append(tag+"interval_ticks")
+		if not integer(b.alive_cap,1,alive_cap): issues.append(tag+"alive_cap")
+		if not int_array(b.hp_bps,2,5000,80000): issues.append(tag+"hp_bps")
+		if not _mix_valid(b.mix): issues.append(tag+"mix")
+		for key in ["ranged_from_ticks","charger_from_ticks"]:
+			if b.has(key) and not integer(b[key],0,108000): issues.append(tag+key)
+		if b.has("taste_crest") and not (_fan_valid(b.taste_crest,["at_ticks","count","arc_deg"]) and integer(b.taste_crest.at_ticks,0,108000)): issues.append(tag+"taste_crest")
+		if b.wave != null:
+			var w: Variant = b.wave
+			if not w is Dictionary or not GrowthCatalog.keys_match(w,["period_ticks","lull_ticks","lull_amount_bps","lull_cap_bps","crest"]): issues.append(tag+"wave keys");continue
+			if not integer(w.period_ticks,60,36000) or not integer(w.lull_ticks,0,36000) or int(w.period_ticks) <= int(w.lull_ticks): issues.append(tag+"wave period/lull")
+			if not integer(w.lull_amount_bps,0,10000) or not integer(w.lull_cap_bps,0,10000): issues.append(tag+"wave lull bps")
+			if not _fan_valid(w.crest,["count","arc_deg"]): issues.append(tag+"wave crest")
+	var t: Variant = r.trial
+	if not t is Dictionary or not GrowthCatalog.keys_match(t,TRIAL_KEYS): issues.append("rhythm trial keys")
+	else:
+		if not t.enabled is bool: issues.append("rhythm trial enabled")
+		if not integer(t.hold_ticks,600,5400): issues.append("rhythm trial hold_ticks")
+		if not number(t.radius_m,4.0,19.0): issues.append("rhythm trial radius_m")
+		if not integer(t.amount,0,30): issues.append("rhythm trial amount")
+		if not integer(t.interval_ticks,12,600): issues.append("rhythm trial interval_ticks")
+		if not integer(t.alive_cap,1,alive_cap): issues.append("rhythm trial alive_cap")
+		if not integer(t.hp_bps,5000,80000): issues.append("rhythm trial hp_bps")
+		if not _mix_valid(t.mix): issues.append("rhythm trial mix")
+		if not integer(t.clear_ticks,0,1800): issues.append("rhythm trial clear_ticks")
+	if not r.boss is Dictionary or not GrowthCatalog.keys_match(r.boss,["phase_break_ticks"]) or not integer(r.boss.phase_break_ticks,0,600): issues.append("rhythm boss")
 	return issues
 
 static func _heavy_issues(rule: Variant) -> Array[String]:

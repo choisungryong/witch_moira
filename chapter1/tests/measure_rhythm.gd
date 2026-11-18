@@ -19,10 +19,14 @@ const BEATS := [
 	{"name": "전B", "from": 345.0, "to": 390.0, "alive_avg": [70, 100], "alive_max": 100, "kpm": [700, 1100], "hits_pm": [8, 14], "dmg30": 0.70},
 	{"name": "전C", "from": 390.0, "to": 1.0e9, "alive_avg": [10, 25], "alive_max": 30, "kpm": null, "hits_pm": null, "dmg30": null},
 ]
+## Core beat ids (combat_tuning.json rhythm.beats, plus the trial and the boss) -> the names of the A2 table above.
+const BEAT_NAMES := {"gi": "기", "seung1": "승1", "seung2": "승2", "jeon_a": "전A", "trial": "전B", "boss": "전C"}
 const METRICS := ["alive_avg", "alive_max", "kpm", "hits_pm", "dmg30"]
 const MIN_TICKS := 300
 
 var bin_s := 30.0
+## --rhythm-on: test switch. The shipped document is read, rhythm.enabled and trial.enabled are set in memory only.
+var rhythm_on := false
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -40,6 +44,7 @@ func execute() -> void:
 			for p in arg.trim_prefix("--primaries=").split(","):
 				prims.append(p if p.begins_with("chapter1.skill.") else "chapter1.skill." + p)
 		elif arg.begins_with("--out="): out = arg.trim_prefix("--out=")
+		elif arg == "--rhythm-on": rhythm_on = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
 	if not out.begins_with("_local/") or out.contains("..") or out.contains(":") or out.begins_with("/"):
 		push_error("measure_rhythm: --out must be a relative path under _local/ (got %s)" % out)
@@ -103,7 +108,7 @@ func add_event(a: Dictionary, ev: Dictionary, run, prim: String) -> void:
 		"wave_crest": a.waves += 1
 		_:
 			var t := String(ev.type)
-			if t.begins_with("ritual") or t.begins_with("chest") or t.begins_with("shrine") or t == "wave_lull" or t == "carrier_kill":
+			if t.begins_with("ritual") or t.begins_with("chest") or t.begins_with("shrine") or t.begins_with("trial") or t == "lull_started" or t == "carrier_kill":
 				a.extras[t] = int(a.extras.get(t, 0)) + 1
 
 func beat_name_by_time(sec: float) -> String:
@@ -117,6 +122,13 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var pilot = Pilot.new()
 	pilot.run = run
 	run.first_boss_kill = true
+	if rhythm_on:
+		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
+		doc.rhythm.enabled = true
+		doc.rhythm.trial.enabled = true
+		if not run.set_tuning(doc):
+			push_error("measure_rhythm: rhythm document rejected %s" % str(run.errors))
+			return {}
 	if not run.start(seed_, prim):
 		push_error("measure_rhythm: start failed %s" % str(run.errors))
 		return {}
@@ -149,7 +161,8 @@ func play(seed_: int, prim: String) -> Dictionary:
 			var esec: float = float(ev.tick) / 60.0
 			if String(ev.type) == "beat_started":
 				event_beats = true
-				cur_beat = str(ev.get("beat", ev.get("name", "beat%d" % beat_order.size())))
+				cur_beat = str(ev.get("id", ev.get("beat", ev.get("name", "beat%d" % beat_order.size()))))
+				cur_beat = String(BEAT_NAMES.get(cur_beat, cur_beat))
 			match String(ev.type):
 				"gate_opened": marks.append("%.0fs gate%d" % [esec, int(ev.get("zone", 0))])
 				"chapter_champion": marks.append("%.0fs champ%d" % [esec, int(ev.get("zone", 0))])

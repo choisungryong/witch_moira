@@ -59,5 +59,31 @@
   "marks": {"mark_bps": 9000, "mark_ticks": 360},
   "heavy_hit": {"heavy_bps": 2000, "gap_ticks": 120, "iframe_ticks": 45, "graze_bps": 1000, "ward_gap_ticks": 60},
   "final_level_on_boss_spawn": true,
-  "hero_shot": {"spread_mrad": 160}
+  "hero_shot": {"spread_mrad": 160},
+  "rhythm": {
+    "enabled": false,
+    "initial_pack": 6,
+    "gate_rest_ticks": 480,
+    "beats": [
+      {"id": "gi", "zone": 0, "from_bps": 0, "max_ticks": 4200,
+       "amount": 2, "interval_ticks": 60, "alive_cap": 18, "hp_bps": [10000, 12000],
+       "mix": {"walker": 92, "ranged": 8, "charger": 0}, "ranged_from_ticks": 2400,
+       "taste_crest": {"at_ticks": 2400, "count": 8, "arc_deg": 60}, "wave": null},
+      {"id": "seung1", "zone": 0, "from_bps": 3400, "max_ticks": 4800,
+       "amount": 5, "interval_ticks": 45, "alive_cap": 45, "hp_bps": [14000, 22000],
+       "mix": {"walker": 82, "ranged": 13, "charger": 5}, "charger_from_ticks": 5400,
+       "wave": {"period_ticks": 2400, "lull_ticks": 720, "lull_amount_bps": 3000, "lull_cap_bps": 5500, "crest": {"count": 10, "arc_deg": 70}}},
+      {"id": "seung2", "zone": 1, "from_bps": 0, "max_ticks": 9000,
+       "amount": 7, "interval_ticks": 40, "alive_cap": 75, "hp_bps": [16000, 30000],
+       "mix": {"walker": 74, "ranged": 18, "charger": 8},
+       "wave": {"period_ticks": 2400, "lull_ticks": 720, "lull_amount_bps": 3000, "lull_cap_bps": 6000, "crest": {"count": 14, "arc_deg": 80}}},
+      {"id": "jeon_a", "zone": 2, "from_bps": 0, "max_ticks": 4800,
+       "amount": 9, "interval_ticks": 36, "alive_cap": 100, "hp_bps": [22000, 36000],
+       "mix": {"walker": 69, "ranged": 20, "charger": 11},
+       "wave": {"period_ticks": 2100, "lull_ticks": 480, "lull_amount_bps": 3500, "lull_cap_bps": 6500, "crest": {"count": 18, "arc_deg": 90}}}
+    ],
+    "trial": {"enabled": false, "hold_ticks": 2700, "radius_m": 12.0, "amount": 10, "interval_ticks": 30,
+              "alive_cap": 100, "hp_bps": 38000, "mix": {"walker": 66, "ranged": 20, "charger": 14}, "clear_ticks": 180},
+    "boss": {"phase_break_ticks": 120}
+  }
 }

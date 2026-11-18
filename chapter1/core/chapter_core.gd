@@ -85,6 +85,20 @@ var _mark_owners: Array[String] = []
 ## Tick of the latest floor-strike burst (ward_gap_ticks keeps the boss's next wind-up end clear of it). Not in the snapshot.
 var _last_ward_burst := -100000
 const MARK_KEYS := ["mark_until_a","mark_until_b"]
+## Run rhythm (D11 A). All of it stays at its zero value while tuning.rhythm.enabled is false, and only an enabled
+## run puts it into snapshot().
+var _rhythm_on := false
+var _beat_index := -1
+var _beat_tick := 0
+var _wave_index := -1
+var _in_lull := false
+var _taste_done := false
+var _rest_until := 0
+var _spawn_hp_bps := 10000
+var _trial_phase := ""
+var _trial_until := 0
+var _trial_clear_until := 0
+var _trial_center := Vector2.ZERO
 
 ## Replace the tuning of this run (before start()). A rejected document changes nothing.
 func set_tuning(candidate: Dictionary) -> bool:
@@ -124,6 +138,9 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	_hazard_sequence=0;_potion_sequence=0;_zone_entered=true;_normal_drop_sequence=0;_ritual_spawn_tick=0
 	seals.clear();history.clear();potion_pickups.clear();pending_rewards.clear();chapter_hazards.clear();rituals.clear()
 	if _build_potions>0:potions=mini(int(tuning.potion.carry_max),potions+_build_potions)
+	_rhythm_on=tuning.has("rhythm") and bool(tuning.rhythm.enabled)
+	_beat_index=-1;_beat_tick=0;_wave_index=-1;_in_lull=false;_taste_done=false;_rest_until=0;_spawn_hp_bps=10000
+	_trial_phase="";_trial_until=0;_trial_clear_until=0;_trial_center=Vector2.ZERO
 	for i in 3:seals.append({"kills":0,"champion_spawned":false,"cleared":false})
 	for def in RITUALS:rituals[def.id]={"state":"ready","progress":0,"started_tick":-1,"completed_tick":-1}
 	if not super.start(seed_,primary):return false
@@ -362,7 +379,16 @@ func _record(type: String) -> void:
 	history.append({"type":type,"tick":tick,"zone":zone,"kills":kills,"zone_kills":zone_kills,"hp_raw":hero.get("hp_raw",0)})
 
 func _initial_pack_count() -> int:
-	return 12
+	return int(tuning.rhythm.initial_pack) if _rhythm_on else 12
+
+## The trial keeps the hero inside its circle; everything else is the zone's walls.
+func _clamp_hero(point: Vector2) -> Vector2:
+	var inside := _clamp_point(point)
+	if _trial_phase!="hold":return inside
+	var offset := inside-_trial_center
+	var radius := float(tuning.rhythm.trial.radius_m)
+	if offset.length_squared()>radius*radius:inside=_trial_center+offset.normalized()*radius
+	return inside
 
 func _clamp_point(point: Vector2) -> Vector2:
 	var best := Vector2.ZERO
@@ -397,6 +423,7 @@ func _spawn(kind: String,point: Vector2) -> bool:
 		var rules: Dictionary=tuning.enemies[kind]
 		var z := clampi(zone,0,2)
 		var hp := int(rules.hp[z])
+		if _rhythm_on:hp=maxi(1,hp*_spawn_hp_bps/10000)
 		var bps := int(tuning.hp_time_bps_per_s)
 		if kind=="walker" and tick<int(rules.opening_until_s)*HZ:hp=int(rules.opening_hp)
 		elif bps>0 and tick>=int(tuning.hp_time_from_s)*HZ:hp=maxi(1,hp*(10000+bps*(tick/HZ))/10000)
@@ -409,10 +436,11 @@ func _enemy_definition(e: Dictionary) -> Dictionary:
 	return e.get("definition",ENEMY_DEFS[e.kind])
 
 func _spawn_wave() -> void:
+	if _rhythm_on:_rhythm_tick()
 	if not _zone_entered:
 		if hero.position.distance_squared_to(ZONES[zone])>18.0*18.0:return
 		_zone_entered=true;_record("zone_entered");_emit("zone_entered",ZONES[zone],{"zone":zone})
-	if not seals[zone].champion_spawned and zone_kills>=int(tuning.seal_kills[zone]):
+	if not seals[zone].champion_spawned and zone_kills>=int(tuning.seal_kills[zone]) and not _trial_holds_boss():
 		if _spawn("elite",_spawn_point(8,9)):
 			seals[zone].champion_spawned=true;_champion_id=_enemy_sequence
 			var e: Dictionary=enemies[_champion_id]
@@ -425,6 +453,8 @@ func _spawn_wave() -> void:
 			_record("boss_spawned" if zone==2 else "champion_spawned")
 			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id})
 			if zone==2 and tuning.final_level_on_boss_spawn:_seal_grace()
+			if zone==2 and _rhythm_on:_spawn_hp_bps=10000;_emit("beat_started",hero.position,{"id":"boss"})
+	if _rhythm_on and not (zone==2 and _champion_id>0):_spawn_rhythm_wave();return
 	if tick<_next_spawn:return
 	# Frequent weak bodies provide sweepable packs, mixed with bounded specialists.
 	var wave: Dictionary=tuning.spawn.zones[zone]
@@ -444,6 +474,139 @@ func _spawn_wave() -> void:
 		if tick>=int(mix.charger_from_s)*HZ and roll>=(int(mix.charger_roll)-zone*int(mix.zone_step)):kind="charger"
 		elif tick>=int(mix.ranged_from_s)*HZ and roll>=(int(mix.ranged_roll)-zone*int(mix.zone_step)):kind="ranged"
 		if _spawn(kind,_spawn_point(ring_min,ring_max)):count+=1
+
+# ---------------------------------------------------------------- run rhythm (D11 A)
+
+## Progress of the seal of the current zone, in ten-thousandths (10000 once the guardian has been called).
+func _zone_bps() -> int:
+	if seals[zone].champion_spawned:return 10000
+	return clampi(zone_kills*10000/maxi(1,int(tuning.seal_kills[zone])),0,10000)
+
+## Beat bookkeeping, once per tick before anything spawns: the beat starts at its zone and seal progress (from_bps),
+## or when its time limit has run out (the next beat's rules take over; the seal still opens by kills only).
+func _rhythm_tick() -> void:
+	var beats: Array=tuning.rhythm.beats
+	var bps := _zone_bps()
+	var candidate := 0
+	for i in beats.size():
+		var beat: Dictionary=beats[i]
+		if int(beat.zone)<zone or (int(beat.zone)==zone and bps>=int(beat.from_bps)):candidate=i
+	var target := _beat_index
+	if candidate>_beat_index:target=candidate
+	elif _beat_index>=0 and _beat_index+1<beats.size() and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
+	if target!=_beat_index:
+		_beat_index=target;_beat_tick=tick;_wave_index=-1;_in_lull=false;_taste_done=false
+		_emit("beat_started",hero.position,{"id":String(beats[target].id)})
+	_spawn_hp_bps=_beat_hp_bps(beats,bps)
+
+## Health factor of what spawns now: the beat's [start,end] rises linearly with seal progress, from the beat's own
+## from_bps to the next beat's in the same zone (or the full seal). The trial has one value; the boss's escorts none.
+func _beat_hp_bps(beats: Array,bps: int) -> int:
+	if _trial_phase=="hold":return int(tuning.rhythm.trial.hp_bps)
+	if zone==2 and _champion_id>0:return 10000
+	var beat: Dictionary=beats[_beat_index]
+	var from_bps := int(beat.from_bps)
+	var to_bps := 10000
+	if _beat_index+1<beats.size() and int(beats[_beat_index+1].zone)==int(beat.zone):to_bps=int(beats[_beat_index+1].from_bps)
+	var along := clampi((bps-from_bps)*10000/maxi(1,to_bps-from_bps),0,10000)
+	var ends: Array=beat.hp_bps
+	return int(ends[0])+(int(ends[1])-int(ends[0]))*along/10000
+
+## The trial stands between the last seal and the boss. Returns true while it holds the boss back.
+func _trial_holds_boss() -> bool:
+	if not _rhythm_on or zone!=2 or not bool(tuning.rhythm.trial.enabled):return false
+	var trial: Dictionary=tuning.rhythm.trial
+	if _trial_phase=="":
+		_trial_phase="hold";_trial_until=tick+int(trial.hold_ticks);_trial_center=hero.position
+		_record("trial_started")
+		_emit("beat_started",hero.position,{"id":"trial"})
+		_emit("trial_started",_trial_center,{"until_tick":_trial_until,"radius_m":float(trial.radius_m)})
+		return true
+	if _trial_phase=="hold":
+		if tick<_trial_until:return true
+		_trial_phase="clear";_trial_clear_until=tick+int(trial.clear_ticks)
+		_record("trial_completed");_emit("trial_completed",hero.position,{})
+	if _trial_phase=="clear":
+		if tick<_trial_clear_until:return true
+		_trial_phase="done"
+	return false
+
+func _rhythm_mix_kind(rule: Dictionary) -> String:
+	var mix: Dictionary=rule.mix
+	var walker := int(mix.walker);var ranged := int(mix.ranged);var charger := int(mix.charger)
+	var roll := _spawn_rng.randi_range(0,walker+ranged+charger-1)
+	if roll<walker:return "walker"
+	if roll<walker+ranged:return "ranged" if tick>=int(rule.get("ranged_from_ticks",0)) else "walker"
+	return "charger" if tick>=int(rule.get("charger_from_ticks",0)) else "walker"
+
+## A pack that comes in from one direction: one angle from _spawn_rng, then every body inside the fan around it.
+func _spawn_crest(rule: Dictionary,fan: Dictionary,cap: int) -> void:
+	var heading := _spawn_rng.randf_range(0,TAU)
+	var half := deg_to_rad(float(fan.arc_deg))*.5
+	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
+	var count := alive_count();var placed := 0
+	for i in int(fan.count):
+		if count>=cap:break
+		var kind := _rhythm_mix_kind(rule)
+		var point := Vector2.ZERO;var found := false
+		for attempt in 8:
+			var angle := heading+_spawn_rng.randf_range(-half,half)
+			point=_clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_spawn_rng.randf_range(ring_min,ring_max))
+			if point.distance_squared_to(hero.position)>=ring_min*ring_min*.64:found=true;break
+		if not found:point=_spawn_point(ring_min,ring_max)
+		if _spawn(kind,point):count+=1;placed+=1
+	if placed>0:_emit("wave_crest",hero.position,{"beat":"trial" if _trial_phase=="hold" else String(rule.id),"direction":Vector2(cos(heading),sin(heading)),"count":placed})
+
+## Spawning under the beat table (or the trial's rule): amount per interval, a cap per beat, waves and lulls.
+func _spawn_rhythm_wave() -> void:
+	if tick<_rest_until or _trial_phase=="clear" or _beat_index<0:return
+	var rhythm: Dictionary=tuning.rhythm
+	var trial := _trial_phase=="hold"
+	var rule: Dictionary=rhythm.trial if trial else rhythm.beats[_beat_index]
+	var cap := mini(int(rule.alive_cap),int(tuning.alive_cap))
+	var amount := int(rule.amount)
+	var wave: Variant=null if trial else rule.wave
+	if wave is Dictionary:
+		var relative := tick-_beat_tick
+		var period := int(wave.period_ticks)
+		var lull: bool=relative%period>=period-int(wave.lull_ticks)
+		if lull!=_in_lull:
+			_in_lull=lull
+			if lull:_emit("lull_started",hero.position,{"beat":String(rule.id)})
+		if relative/period>_wave_index:
+			_wave_index=relative/period
+			if not lull:_spawn_crest(rule,wave.crest,cap)
+		if lull:
+			cap=cap*int(wave.lull_cap_bps)/10000
+			if amount>0:amount=maxi(1,amount*int(wave.lull_amount_bps)/10000)
+	elif not trial and rule.get("taste_crest")!=null and not _taste_done and tick>=int(rule.taste_crest.at_ticks):
+		_taste_done=true;_spawn_crest(rule,rule.taste_crest,cap)
+	if tick<_next_spawn:return
+	_next_spawn=tick+int(rule.interval_ticks)
+	var count := alive_count()
+	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
+	for i in amount:
+		if count>=cap:break
+		var kind := _rhythm_mix_kind(rule)
+		if _spawn(kind,_spawn_point(ring_min,ring_max)):count+=1
+
+## Read-only picture for the progress bar. Works with the rhythm off too (then from zone and seal progress alone).
+## phase: "surge" | "lull" | "rest" (no spawning: gate walk, after a guardian, the trial's clearing) | "trial" | "boss".
+func run_progress() -> Dictionary:
+	var phase := "surge"
+	var beat_id := ""
+	var boss_alive := zone==2 and _champion_id>0 and enemies.has(_champion_id)
+	if _rhythm_on and _beat_index>=0:beat_id=String(tuning.rhythm.beats[_beat_index].id)
+	if boss_alive:phase="boss";beat_id="boss" if _rhythm_on else beat_id
+	elif _trial_phase=="hold":phase="trial";beat_id="trial"
+	elif _trial_phase=="clear":phase="rest";beat_id="trial"
+	elif not _zone_entered or tick<_rest_until:phase="rest"
+	elif _in_lull:phase="lull"
+	var markers: Array[Dictionary]=[]
+	for i in 2:markers.append({"id":"gate%d"%(i+1),"kind":"gate","zone":i,"done":zone>i})
+	if _rhythm_on and bool(tuning.rhythm.trial.enabled):markers.append({"id":"trial","kind":"trial","zone":2,"done":_trial_phase=="clear" or _trial_phase=="done"})
+	markers.append({"id":"boss","kind":"boss","zone":2,"done":seals[2].cleared})
+	return {"beat_id":beat_id,"zone":zone,"zone_bps":_zone_bps(),"phase":phase,"markers":markers}
 
 func _step_enemies() -> void:
 	# ward_gap_ticks: a floor strike already telegraphed is never moved (the player has read it). Instead the
@@ -504,6 +667,7 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	else:
 		for i in int(tuning.potion.seal_drops):_drop_potion(e.position+Vector2(.4*i,0))
 		zone+=1;zone_kills=0;_zone_entered=false
+		if _rhythm_on:_rest_until=tick+int(tuning.rhythm.gate_rest_ticks)
 		_emit("gate_opened",ZONES[zone]-Vector2(24,0),{"zone":zone})
 		_record("gate_opened")
 
@@ -535,26 +699,28 @@ func _maybe_drop_item(e: Dictionary) -> void:
 		var boss: bool=e.get("chapter_boss",false)
 		var drops: Array[Dictionary]=[]
 		if boss and first_boss_kill:drops.append_array(loot.roll_class(_loot_rng,"boss_first_kill",level,primary_))
+		var first_kill_drops := drops.size()
 		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_))
 		var marked := false
-		for item in drops:
+		for index in drops.size():
+			var item: Dictionary=drops[index]
 			# The objective slot carries the most notable reward: a unique if any, else the first item.
 			var notable: bool=not marked and (item.quality=="unique" or item==drops[drops.size()-1] or not _has_unique(drops))
 			if notable:marked=true
-			_publish_item(item,e.position,true,notable)
+			_publish_item(item,e.position,true,notable,"first_kill" if index<first_kill_drops else ("boss" if boss else "champion"))
 		return
 	# Early guaranteed pieces keep the first minute from being empty-handed.
 	var forced_slots := ["weapon","body","hands","feet"]
 	var thresholds := [6,35,90,160]
 	if _guaranteed_drops<thresholds.size() and kills>=thresholds[_guaranteed_drops]:
 		if items.size()<MAX_GROUND_ITEMS and inventory.size()<MAX_INVENTORY:
-			_publish_item(loot.roll_item(_loot_rng,level,"magic",forced_slots[_guaranteed_drops]),e.position,false)
+			_publish_item(loot.roll_item(_loot_rng,level,"magic",forced_slots[_guaranteed_drops]),e.position,false,false,"forced")
 		_guaranteed_drops+=1
 		return
 	for item in loot.roll_class(_loot_rng,"normal",level,primary_):
 		if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
 			metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
-		_publish_item(item,e.position,false)
+		_publish_item(item,e.position,false,false,"normal")
 
 ## The run ends with the boss: gear still lying on the ground is gathered, not lost.
 func _sweep_ground_items() -> void:
@@ -571,10 +737,11 @@ func _has_unique(drops: Array[Dictionary]) -> bool:
 		if item.quality=="unique":return true
 	return false
 
-func _publish_item(item: Dictionary,point: Vector2,direct: bool,boss_reward: bool=false) -> void:
+## `source` (D11 D5) only names where the drop came from on the event; it is never written into the item.
+func _publish_item(item: Dictionary,point: Vector2,direct: bool,boss_reward: bool=false,source: String="") -> void:
 	_item_sequence+=1;item.uid=_item_sequence;item.position=point;item.collected=direct;item.drop_tick=tick
 	item.objective_reward=boss_reward;metrics.dropped_items+=1
-	_emit("item_drop",point,{"item":item.duplicate(true)})
+	_emit("item_drop",point,{"item":item.duplicate(true),"source":source})
 	if direct:
 		if inventory.size()<MAX_INVENTORY or (boss_reward and inventory.size()<MAX_INVENTORY+1):
 			inventory.append(item);metrics.picked_items+=1
@@ -715,7 +882,7 @@ func _step_rituals() -> void:
 		var target := 25*HZ if def.kind=="hold" else 60
 		if state.progress>=target:
 			state.state="completed";state.completed_tick=tick;_record("ritual_completed:"+def.id)
-			_publish_item(loot.roll_item(_loot_rng,ZONE_LEVELS[zone],"rare"),def.position,true)
+			_publish_item(loot.roll_item(_loot_rng,ZONE_LEVELS[zone],"rare"),def.position,true,false,"ritual")
 			_drop_potion(def.position);_emit("ritual_completed",def.position,{"id":def.id})
 
 func _step_chapter_hazards() -> void:
@@ -724,6 +891,8 @@ func _step_chapter_hazards() -> void:
 	if boss.hp_raw<=0:return
 	if _boss_phase==1 and int(boss.hp_raw)*2<=int(boss.max_hp_raw):
 		_boss_phase=2;boss.definition.recover=65;_next_ward=mini(_next_ward,tick+HZ)
+		# The half-health change leaves a breath without floor strikes (D11 A2, rhythm.boss.phase_break_ticks).
+		if _rhythm_on:_next_ward=maxi(_next_ward,tick+int(tuning.rhythm.boss.phase_break_ticks))
 		_record("boss_phase2");_emit("boss_phase",boss.position,{"phase":2})
 	if tick>=_next_ward:
 		# The floor strike must not burst within ward_gap_ticks of the end of the boss's own wind-up
@@ -772,9 +941,12 @@ func objective() -> Dictionary:
 	var destination: Vector2=ZONES[zone]
 	var result := {"zone":zone,"kind":"seal_kills","done":mini(zone_kills,seal_kills),"total":seal_kills,"hp":0,"hp_max":0,"title_key":"","destination":destination,"boss_phase":_boss_phase,"entered":_zone_entered}
 	if not _zone_entered:result.kind="move"
+	elif _trial_phase=="hold" or _trial_phase=="clear":
+		# done = ticks left of the holding (0 while the arena is being cleared); only an enabled trial gets here.
+		result.kind="trial";result.done=maxi(0,_trial_until-tick);result.total=int(tuning.rhythm.trial.hold_ticks)
 	elif _champion_id>0 and enemies.has(_champion_id):
 		var e: Dictionary=enemies[_champion_id]
-		result.kind="champion";result.hp=ceili(float(e.hp_raw)/UNIT);result.hp_max=ceili(float(e.max_hp_raw)/UNIT);result.title_key=String(e.get("title_key",""))
+		result.kind="boss" if _rhythm_on and zone==2 else "champion";result.hp=ceili(float(e.hp_raw)/UNIT);result.hp_max=ceili(float(e.max_hp_raw)/UNIT);result.title_key=String(e.get("title_key",""))
 	return result
 
 func snapshot() -> Dictionary:
@@ -782,6 +954,10 @@ func snapshot() -> Dictionary:
 	result.chapter={"zone":zone,"zone_kills":zone_kills,"seals":seals.duplicate(true),"potions":potions,"pending_rewards":pending_rewards.duplicate(true),"rituals":rituals.duplicate(true),"history":history.duplicate(true),"boss_phase":_boss_phase,"hazards":chapter_hazards.duplicate(true)}
 	result.world_uniques36=_world_uniques36.keys()
 	result.world_uniques36.sort()
+	# Rhythm state exists in the snapshot only while the rhythm is on; a run without it keeps the old snapshot.
+	if _rhythm_on:
+		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
+			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
 	# Build keys exist only in a run that was given a build; without one the snapshot is the old one.
 	if _build_active:
 		var pairs: Array=[];var ids: Array=_build.ranks.keys();ids.sort()
@@ -829,7 +1005,8 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 				e.frozen_until=tick+(12 if e.elite else 75);e.freeze_stacks=0
 	var cold_death: bool=evolved_cold and e.hp_raw<=0 and depth==0 and int(effect.proc_depth)>0
 	var shatter: bool=int(effect.shatter_count)>0 and (was_frozen or cold_death)
-	var hit_details := {"target_id":id_,"skill_id":context.skill_id,"damage_raw":int(result.total_raw),"frozen":tick<int(e.frozen_until),"shatter":shatter,
+	# dealt_raw is the life really taken off (the overflow past death is not in it); damage_raw stays the full figure.
+	var hit_details := {"target_id":id_,"skill_id":context.skill_id,"damage_raw":int(result.total_raw),"dealt_raw":int(result.hp_before_raw)-int(result.hp_after_raw),"frozen":tick<int(e.frozen_until),"shatter":shatter,
 		"radius_cm":int(effect.radius_cm),"blast_radius_cm":int(effect.radius_cm)if context.skill_id=="chapter1.skill.ember"else 0,"cast_uid":context.uid,"evolved":context.evolved}
 	if not assisting.is_empty():
 		# The extra damage (HP really removed beyond the unmarked hit) is credited to the marking skills, remainder to the first.

@@ -470,7 +470,7 @@ func step(move: Vector2 = Vector2.ZERO) -> void:
 	if direction.length_squared() > .001: hero.direction = direction.normalized()
 	var displacement: Vector2 = direction*float(hero.speed)*STEP
 	if tick <= _dash_until: displacement = _dash_direction*13.5*STEP
-	hero.position = _clamp_point(hero.position+displacement)
+	hero.position = _clamp_hero(hero.position+displacement)
 	_spawn_wave()
 	_step_enemies()
 	if _terminal_mode == "defeat": return
@@ -487,6 +487,10 @@ func step(move: Vector2 = Vector2.ZERO) -> void:
 
 func _clamp_point(point: Vector2) -> Vector2:
 	return Vector2(clampf(point.x,-BOUND,BOUND),clampf(point.y,-BOUND,BOUND))
+
+## Where the hero may stand. The chapter core adds the trial circle here; enemies and hazards keep using _clamp_point.
+func _clamp_hero(point: Vector2) -> Vector2:
+	return _clamp_point(point)
 
 func _spawn(kind: String, point: Vector2) -> bool:
 	if enemies.size() >= MAX_ENTITIES: return false
