@@ -61,6 +61,7 @@ func _user_args() -> PackedStringArray:
 func _ready__chapter() -> void:
 	DisplayServer.window_set_title("잿빛 회랑 · Chapter 1")
 	world.setup(self)
+	actors.vat_walker_enabled="--chapter1-vat-walker" in _user_args()
 	actors.setup(self)
 	effects.setup(self)
 	if not "--chapter1-no-juice" in _user_args():

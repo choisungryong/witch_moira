@@ -268,6 +268,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var at := Vector3(e.position.x,.005,e.position.y)
 		var key: String=_shadow_key(e)
 		if actor_view!=null and actor_map.has(key):at=actor_map[key].position;at.y=.005
+		elif actor_view!=null and actor_view.vat_crowd!=null:
+			var baked_at: Variant=actor_view.presented_position(key)
+			if baked_at!=null:at=baked_at;at.y=.005
 		_wx(sbuf,shadow_count*MM_STRIDE,Transform3D(Basis.IDENTITY.scaled(Vector3(size_,1,size_)),at))
 		shadow_count+=1
 	_mmflush(msh,sbuf,shadow_count)

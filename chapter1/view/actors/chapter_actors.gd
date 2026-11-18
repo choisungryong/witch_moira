@@ -131,7 +131,9 @@ func consume__cloister(events: Array) -> void:
 	# both endpoints here, including ticks with no events, rather than sampling
 	# only render frames (which can skip multiple ticks on a slower renderer).
 	var run: Variant=view.get("run")
-	if run!=null and not run.hero.is_empty():_capture_motion(run)
+	if run!=null and not run.hero.is_empty():
+		_capture_motion(run)
+		if vat_crowd!=null:vat_crowd.capture(run)
 	for event in events:
 		# Runtime events are retained across modal callbacks. Replaying a seq must
 		# not restart recovery/recoil. Seq-less synthetic fixtures remain supported.
@@ -236,6 +238,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		hero_sprite.scale=Vector3.ONE*1.10
 	_hero_overlapped=false
 	var camera := view.get_viewport().get_camera_3d()
+	if vat_crowd!=null:vat_crowd.begin_frame(run,delta,camera,hero.global_position,view.global_transform,active)
 	for id_ in _enemy_hit_until.keys():
 		if run.tick>=int(_enemy_hit_until[id_]):_enemy_hit_until.erase(id_)
 	for id_ in _enemy_recoil.keys():
@@ -243,6 +246,10 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	var wanted: Dictionary={}
 	for e in run.enemies.values():
 		var key: String=frame_keys[e.id]
+		if vat_crowd!=null and e.kind=="walker":
+			# --chapter1-vat-walker: walkers are drawn by the baked crowd, not by a presenter node.
+			if vat_crowd.track(e,key):_hero_overlapped=true
+			continue
 		wanted[key]=true
 		if not actors.has(key):
 			actors[key]=_create(e.kind)
@@ -1347,6 +1354,8 @@ func _prewarm_pool() -> void:
 	var started := Time.get_ticks_usec()
 	var shown: Array[Node3D]=[]
 	for key in ["walker","ranged","charger","elite","boss"]:
+		# --chapter1-vat-walker: walkers never leave the pool (the crowd draws them), so they are not warmed.
+		if vat_walker_enabled and key=="walker":continue
 		for actor in _pool25.get(key,[]):
 			var rig_state := _pool_rig(actor)
 			if rig_state.is_empty():continue
@@ -1661,6 +1670,7 @@ func setup(owner_view: Node3D) -> void:
 	state.player.play("idle",0);state.player.seek(0,true);state.player.advance(0)
 	_capture_menu_rest()
 	_prewarm_pool()
+	if vat_walker_enabled:_setup_vat_walker()
 func _replace34(actor: Node3D) -> void:
 	if _is34(actor):return
 	var old: Dictionary=actor.get_meta("minion19")
@@ -1890,6 +1900,7 @@ func sync(run: RefCounted,delta: float) -> void:
 		var key: String="%d:%d"%[e.generation,e.id]
 		frame_keys[e.id]=key;_entities[key]=e
 	sync__q25b(run,delta)
+	if vat_crowd!=null:vat_crowd.end_frame(_hero_overlapped and not run.hero.is_empty() and run.hero.hp_raw>0,1-smoothstep(.12,.62,_victory20_age) if _victory20_active else 1.0)
 	_overlap42_active=false
 	_overlap42_ready=false
 	_overlap42_camera_id=0
@@ -1926,6 +1937,7 @@ func reset() -> void:
 	_overlap42_active=false
 	_overlap42_ready=false
 	_overlap42_camera_id=0
+	if vat_crowd!=null:vat_crowd.reset()
 	reset__q25b()
 
 # Menu rest pose (D4 return to menu). reset() clears pools and timers only; the hero model keeps the last
@@ -1985,3 +1997,25 @@ func rest_for_menu() -> void:
 
 func _set_color42(material: StandardMaterial3D,color: Color) -> void:
 	if material.albedo_color!=color:material.albedo_color=color
+
+# ---- Baked walker crowd (T2b B-b, --chapter1-vat-walker, default off) ----
+# With the switch on, walkers are not presenter nodes: view/actors/vat/walker_crowd.gd draws all of them as one MultiMesh of
+# vertex animation (baked on the spot before the menu, nothing stored). Ranged, charger, elite and boss presenters are unchanged.
+# Readers of a walker's node position or bones and what replaces them (the crowd keeps the same state per key):
+#   _capture_motion (consume)      -> vat_crowd.capture            _present_position       -> crowd._present
+#   sync__cloister enemy loop      -> vat_crowd.track              _update_pose/_pose_due  -> crowd._pose (every frame)
+#   _overlaps_hero / _hero_overlapped -> crowd._overlaps (baked spine/head positions)
+#   _sync_hero_rim fade, sync__chapterx colour, sync__q16 cold age, sync__q20 victory fade -> crowd.end_frame
+#   chapter_effects contact shadow -> presented_position(key)      sync__q25b stash / pool take-out -> not used for walkers
+const WalkerCrowd := preload("res://chapter1/view/actors/vat/walker_crowd.gd")
+var vat_walker_enabled := false
+var vat_crowd: RefCounted = null
+func _setup_vat_walker() -> void:
+	var crowd := WalkerCrowd.new()
+	crowd.setup(view,_enemy_hit_until,_enemy_recoil,_demon19_attacks,_cold_corpses)
+	vat_crowd=crowd
+	print("CHAPTER1_VAT_WALKER ",JSON.stringify({"bake_ms":snappedf(float(crowd.bake_usec)/1000.0,.1),"rows":crowd.baked.total_rows,"vertices":crowd.baked.vertex_count}))
+## The interpolated position a baked walker is shown at (view-local), or null when this key has no presenter node of its own.
+func presented_position(key: String) -> Variant:
+	if vat_crowd==null:return null
+	return vat_crowd.presented_position(key)
