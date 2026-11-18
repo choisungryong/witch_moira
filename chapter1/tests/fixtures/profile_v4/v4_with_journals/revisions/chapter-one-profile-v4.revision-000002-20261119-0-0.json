@@ -1,0 +1,189 @@
+{
+  "best_ticks": 20000,
+  "characters": {
+    "chapter1.character.frost": {
+      "depth_cleared": {
+
+      },
+      "first_rewards": [],
+      "loadout": {
+
+      },
+      "ranks": {
+
+      },
+      "respecs": 0,
+      "story": {
+        "duel_cleared": false,
+        "final_cleared": false,
+        "found": [],
+        "seen": []
+      },
+      "tree_reset": {
+        "granted": [],
+        "used": []
+      },
+      "tree_revision": 1,
+      "wardrobe": {
+        "owned": [],
+        "worn": ""
+      },
+      "xp": 300
+    }
+  },
+  "codex": {
+    "legendaries": [],
+    "set_pieces": [],
+    "uniques": []
+  },
+  "completed_runs": 1,
+  "essence": 0,
+  "gambles": 0,
+  "items": [
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "soul",
+            "id": "gleaning",
+            "stat": "soul_gain_bps",
+            "value": 1418
+          },
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 3836
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 783
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "grammar": 2,
+        "item_level": 6,
+        "quality": "rare",
+        "rare_words": [
+          "f02",
+          "s06"
+        ],
+        "required_level": 3,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 1083,
+          "max_hp_raw": 3836,
+          "soul_gain_bps": 1418
+        }
+      },
+      "storage_id": 1
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "shape",
+            "id": "pierce",
+            "stat": "pierce",
+            "value": 1
+          }
+        ],
+        "base_id": "chapter1.full.cinder_staff",
+        "grammar": 2,
+        "item_level": 6,
+        "quality": "magic",
+        "required_level": 3,
+        "slot": "weapon",
+        "stats": {
+          "damage_bps": 800,
+          "pierce": 1,
+          "projectiles": 1
+        }
+      },
+      "storage_id": 2
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "ward",
+            "id": "ward",
+            "stat": "damage_reduction_bps",
+            "value": 468
+          },
+          {
+            "group": "health",
+            "id": "vigor",
+            "stat": "max_hp_raw",
+            "value": 6317
+          }
+        ],
+        "base_id": "chapter1.full.iron_vest",
+        "grammar": 2,
+        "item_level": 7,
+        "quality": "rare",
+        "rare_words": [
+          "f08",
+          "s07"
+        ],
+        "required_level": 4,
+        "slot": "body",
+        "stats": {
+          "cooldown_bps": -500,
+          "damage_reduction_bps": 1068,
+          "max_hp_raw": 15277
+        }
+      },
+      "storage_id": 3
+    },
+    {
+      "item": {
+        "affixes": [
+          {
+            "group": "health",
+            "id": "vigor2",
+            "stat": "max_hp_raw",
+            "value": 8323
+          },
+          {
+            "group": "haste",
+            "id": "haste",
+            "stat": "cooldown_bps",
+            "value": 1176
+          }
+        ],
+        "base_id": "chapter1.full.ash_hood",
+        "grammar": 2,
+        "item_level": 7,
+        "quality": "magic",
+        "required_level": 4,
+        "slot": "head",
+        "stats": {
+          "cooldown_bps": 1476,
+          "max_hp_raw": 8323
+        }
+      },
+      "storage_id": 4
+    }
+  ],
+  "next_id": 5,
+  "origin": {
+    "at_unix": 1795025139,
+    "from_file": "",
+    "from_revision": 0,
+    "from_schema": 0
+  },
+  "quarantine": [],
+  "receipts": [
+    "s0v4-j-1",
+    "s0v4-j-2"
+  ],
+  "revision": 2,
+  "schema_version": 4,
+  "shared_story": {
+    "seen": [],
+    "true_ending": false
+  }
+}
