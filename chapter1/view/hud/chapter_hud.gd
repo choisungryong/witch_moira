@@ -1665,6 +1665,8 @@ func _request_tree(character_id: String) -> void:
 func _ensure_skill_panel() -> void:
 	if is_instance_valid(skill_panel):return
 	skill_panel=SkillTreePanel.new();skill_panel.name="SkillTreePanel";skill_panel.visible=false
+	# The menu portrait draws its veil, effects and snow at z 7..10; the panel has to sit above them.
+	skill_panel.z_index=20
 	root.add_child(skill_panel)
 	skill_panel.commit_requested.connect(func(ranks: Dictionary):skill_tree_commit.emit(_skill_character,ranks))
 	skill_panel.respec_requested.connect(func():skill_tree_respec.emit(_skill_character))
