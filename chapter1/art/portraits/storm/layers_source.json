@@ -1,0 +1,157 @@
+{
+ "source": "_local/art/drafts/storm_witch_pose/p3-r1.png",
+ "canvas": [
+  1024,
+  1536
+ ],
+ "note": "Every layer is a 1024x1536 RGBA PNG at the same position as the original. Stack bottom to top. Elemental effects are removed; the engine redraws them.",
+ "layers": [
+  {
+   "id": "L0_background",
+   "file": "out/L0_background.png",
+   "z": 0,
+   "content": "background with the figure and the lightning between the hands removed (filled); storm sky lightning kept"
+  },
+  {
+   "id": "L1_cape_back",
+   "file": "out/L1_cape_back.png",
+   "z": 1,
+   "content": "wide translucent skirt flare (behind the legs and arms)"
+  },
+  {
+   "id": "L2b_leg_left",
+   "file": "out/L2b_leg_left.png",
+   "z": 2,
+   "content": "viewer-left leg: bare thigh, knee and boot"
+  },
+  {
+   "id": "L2c_leg_right",
+   "file": "out/L2c_leg_right.png",
+   "z": 3,
+   "content": "viewer-right leg: trousers and boot"
+  },
+  {
+   "id": "L2_body",
+   "file": "out/L2_body.png",
+   "z": 4,
+   "content": "neck, collar, torso with veins, waist; hidden hip under belt filled with cloth colour; lightning across the torso removed and filled"
+  },
+  {
+   "id": "L3_skirt_front",
+   "file": "out/L3_skirt_front.png",
+   "z": 5,
+   "content": "belt, front straps, chains and the dark front panels"
+  },
+  {
+   "id": "L3b_bells",
+   "file": "out/L3b_bells.png",
+   "z": 6,
+   "content": "three bells with chains"
+  },
+  {
+   "id": "L6_left_arm",
+   "file": "out/L6_left_arm.png",
+   "z": 7,
+   "content": "viewer-left arm with bracer and open hand (veins kept, lightning removed)"
+  },
+  {
+   "id": "L7_right_arm",
+   "file": "out/L7_right_arm.png",
+   "z": 8,
+   "content": "viewer-right arm with bracer and open hand (veins kept, lightning removed)"
+  },
+  {
+   "id": "L5a_hair_left",
+   "file": "out/L5a_hair_left.png",
+   "z": 9,
+   "content": "left wind-blown hair mass"
+  },
+  {
+   "id": "L5b_hair_right",
+   "file": "out/L5b_hair_right.png",
+   "z": 10,
+   "content": "right wind-blown hair mass"
+  },
+  {
+   "id": "L4_head",
+   "file": "out/L4_head.png",
+   "z": 11,
+   "content": "face and top hair, earrings (original pixels)"
+  }
+ ],
+ "pivots_original_coords": {
+  "neck": [
+   525,
+   222
+  ],
+  "shoulder_viewer_left": [
+   440,
+   290
+  ],
+  "shoulder_viewer_right": [
+   612,
+   290
+  ],
+  "elbow_viewer_left": [
+   330,
+   420
+  ],
+  "elbow_viewer_right": [
+   740,
+   420
+  ],
+  "wrist_viewer_left": [
+   170,
+   440
+  ],
+  "wrist_viewer_right": [
+   870,
+   470
+  ],
+  "pelvis": [
+   540,
+   600
+  ],
+  "hip_left_leg": [
+   430,
+   640
+  ],
+  "hip_right_leg": [
+   600,
+   640
+  ],
+  "knee_left_leg": [
+   395,
+   1000
+  ],
+  "knee_right_leg": [
+   650,
+   1000
+  ],
+  "ankle_left_leg": [
+   330,
+   1390
+  ],
+  "ankle_right_leg": [
+   700,
+   1400
+  ],
+  "hair_left_root": [
+   485,
+   100
+  ],
+  "hair_right_root": [
+   575,
+   100
+  ],
+  "bells_root": [
+   480,
+   650
+  ]
+ },
+ "recompose_error": {
+  "mean": 0.9274459481239319,
+  "frac8": 0.0151519775390625,
+  "frac24": 0.010565439860026041
+ }
+}

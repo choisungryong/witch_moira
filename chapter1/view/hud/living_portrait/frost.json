@@ -1,0 +1,124 @@
+{
+	"id": "frost",
+	"canvas": [
+		1024,
+		1536
+	],
+	"layer_dir": "res://chapter1/art/portraits/frost/layers/",
+	"theme": "frost",
+	"snow": true,
+	"rig": {
+		"y_hip": 470,
+		"y_chest": 300,
+		"split_x": 470,
+		"neck": [
+			492,
+			178
+		]
+	},
+	"motion_gain": 1.56,
+	"motion": {
+		"chest_rise": 7.5,
+		"pelvis_x": 8.0,
+		"pelvis_y": 5.0,
+		"knee": 5.0,
+		"tilt_deg": 1.2,
+		"arm_extra": 1.5,
+		"head_deg": 0.7,
+		"head_dx": 1.2,
+		"head_dy": 0.8,
+		"tilt_event_deg": 0.9,
+		"head_extra": 4.0,
+		"head_nod_deg": 0.8,
+		"shoulder_open": 3.0,
+		"arm_breath_deg": 1.5,
+		"body_period": 3.4,
+		"shift_period": 8.3
+	},
+	"layers": [
+		{
+			"id": "L0_background",
+			"kind": "static"
+		},
+		{
+			"id": "L1_cape_back",
+			"kind": "cloth",
+			"y0": 250,
+			"y1": 1500,
+			"amp": 16,
+			"lag": 0.55,
+			"phase": 0.0
+		},
+		{
+			"id": "L2_body_legs",
+			"kind": "field",
+			"legs": true,
+			"y_ankle": 1380,
+			"y_knee": 870
+		},
+		{
+			"id": "L3_skirt_front",
+			"kind": "cloth",
+			"y0": 469,
+			"y1": 720,
+			"amp": 9,
+			"lag": 0.45,
+			"phase": 0.8
+		},
+		{
+			"id": "L4_head",
+			"kind": "head"
+		},
+		{
+			"id": "L5_braid",
+			"kind": "spring",
+			"root": [
+				410,
+				190
+			],
+			"amp_deg": 3.5,
+			"phase": 0.0,
+			"period": 4.3
+		},
+		{
+			"id": "L6_left_arm",
+			"kind": "field",
+			"arm_extra": true
+		},
+		{
+			"id": "L7_right_arm",
+			"kind": "arm",
+			"pivot": [
+				675,
+				425
+			],
+			"rot_deg": 0.4,
+			"rot_period": 11.0,
+			"glow": "ice",
+			"breath_pivot": [
+				595,
+				262
+			],
+			"breath_deg": -1.5,
+			"open": 1
+		}
+	],
+	"eyes": {
+		"half": "res://chapter1/art/portraits/frost/frost_eyes_half.png",
+		"closed": "res://chapter1/art/portraits/frost/frost_eyes_closed.png",
+		"pos": [
+			440,
+			66
+		]
+	},
+	"effects": [
+		{
+			"type": "snowflake",
+			"follow": "L7_right_arm",
+			"pos": [
+				808,
+				112
+			]
+		}
+	]
+}

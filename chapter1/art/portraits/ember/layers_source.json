@@ -1,0 +1,147 @@
+{
+ "source": "_local/art/drafts/ember_witch_pose/p2-r1.png",
+ "canvas": [
+  1024,
+  1536
+ ],
+ "note": "Every layer is a 1024x1536 RGBA PNG at the same position as the original. Stack bottom to top. Elemental effects are removed; the engine redraws them.",
+ "layers": [
+  {
+   "id": "L0_background",
+   "file": "out/L0_background.png",
+   "z": 0,
+   "content": "background with figure, cape, sparks, fire ribbon and lantern smoke removed (filled)"
+  },
+  {
+   "id": "L1_cape_back",
+   "file": "out/L1_cape_back.png",
+   "z": 1,
+   "content": "sheer cape: left wing and long drape, flowing right cloth tip"
+  },
+  {
+   "id": "L2b_leg_back",
+   "file": "out/L2b_leg_back.png",
+   "z": 2,
+   "content": "right-hand (viewer) leg: thigh + boot, heel lifted"
+  },
+  {
+   "id": "L2c_leg_front",
+   "file": "out/L2c_leg_front.png",
+   "z": 3,
+   "content": "left-hand (viewer) leg: thigh + boot, planted"
+  },
+  {
+   "id": "L2_body",
+   "file": "out/L2_body.png",
+   "z": 4,
+   "content": "neck, collar, shoulders, torso, waist; hidden hip under skirt filled with cloth colour"
+  },
+  {
+   "id": "L3_skirt_front",
+   "file": "out/L3_skirt_front.png",
+   "z": 5,
+   "content": "skirt, belts, chains, lantern and tassel"
+  },
+  {
+   "id": "L6_left_arm",
+   "file": "out/L6_left_arm.png",
+   "z": 6,
+   "content": "pauldron, chain and coal arm with hand (cracks and glow kept)"
+  },
+  {
+   "id": "L7_right_arm",
+   "file": "out/L7_right_arm.png",
+   "z": 7,
+   "content": "arm with armband, bracer and open hand (viewer right)"
+  },
+  {
+   "id": "L5a_hair_left",
+   "file": "out/L5a_hair_left.png",
+   "z": 8,
+   "content": "lower left hair mass (tips)"
+  },
+  {
+   "id": "L5b_hair_right",
+   "file": "out/L5b_hair_right.png",
+   "z": 9,
+   "content": "lower right hair mass (tips)"
+  },
+  {
+   "id": "L4_head",
+   "file": "out/L4_head.png",
+   "z": 10,
+   "content": "face and upper hair, earrings (original pixels)"
+  }
+ ],
+ "pivots_original_coords": {
+  "neck": [
+   540,
+   205
+  ],
+  "shoulder_viewer_left": [
+   420,
+   300
+  ],
+  "shoulder_viewer_right": [
+   655,
+   270
+  ],
+  "elbow_viewer_left": [
+   300,
+   430
+  ],
+  "elbow_viewer_right": [
+   720,
+   430
+  ],
+  "wrist_viewer_left": [
+   100,
+   580
+  ],
+  "wrist_viewer_right": [
+   850,
+   540
+  ],
+  "pelvis": [
+   540,
+   560
+  ],
+  "hip_front_leg": [
+   470,
+   640
+  ],
+  "hip_back_leg": [
+   600,
+   640
+  ],
+  "knee_front_leg": [
+   480,
+   930
+  ],
+  "knee_back_leg": [
+   595,
+   940
+  ],
+  "ankle_front_leg": [
+   480,
+   1400
+  ],
+  "ankle_back_leg": [
+   610,
+   1290
+  ],
+  "hair_left_root": [
+   450,
+   150
+  ],
+  "hair_right_root": [
+   620,
+   150
+  ]
+ },
+ "recompose_error": {
+  "mean": 1.8429712057113647,
+  "frac8": 0.042392730712890625,
+  "frac24": 0.02386792500813802
+ }
+}

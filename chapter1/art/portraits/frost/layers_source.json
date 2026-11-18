@@ -1,0 +1,24 @@
+{
+ "source": "chapter1/art/characters/frost_witch_v02.png",
+ "canvas": [1024, 1536],
+ "note": "Every layer is a 1024x1536 RGBA PNG at the same position as the original. Stack bottom to top. Effects (snowflake disc, rings) are removed; the engine redraws them.",
+ "layers": [
+  {"id": "L0_background", "file": "out/L0_background.png", "z": 0, "content": "background with the figure and the snowflake effect removed (figure area filled)"},
+  {"id": "L1_cape_back", "file": "out/L1_cape_back.png", "z": 1, "content": "sheer cape / train, left drape, right hem, veil between the legs"},
+  {"id": "L2_body_legs", "file": "out/L2_body_legs.png", "z": 2, "content": "fur collar, neck, torso, hips, legs, boots; filled under head/braid/arms/skirt"},
+  {"id": "L3_skirt_front", "file": "out/L3_skirt_front.png", "z": 3, "content": "skirt, belt chain, lantern"},
+  {"id": "L4_head", "file": "out/L4_head.png", "z": 4, "content": "face and hair down to the jaw (original pixels)"},
+  {"id": "L5_braid", "file": "out/L5_braid.png", "z": 5, "content": "braid and tip strands"},
+  {"id": "L6_left_arm", "file": "out/L6_left_arm.png", "z": 6, "content": "arm on the hip (viewer's left), bracer, hand"},
+  {"id": "L7_right_arm", "file": "out/L7_right_arm.png", "z": 7, "content": "ice arm and hand, without the snowflake effect"}
+ ],
+ "pivots_original_coords": {
+  "neck": [492, 178],
+  "shoulder_left": [255, 335],
+  "shoulder_right": [595, 262],
+  "elbow_left": [176, 392],
+  "elbow_right": [675, 425],
+  "braid_root": [410, 190],
+  "waist": [492, 470]
+ }
+}

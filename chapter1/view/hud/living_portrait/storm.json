@@ -1,0 +1,218 @@
+{
+	"id": "storm",
+	"canvas": [
+		1024,
+		1536
+	],
+	"layer_dir": "res://chapter1/art/portraits/storm/layers/",
+	"theme": "storm",
+	"snow": false,
+	"pose": "p3: front view, both arms out to the sides, lightning between the open hands across the torso",
+	"rig": {
+		"y_hip": 600,
+		"y_chest": 300,
+		"split_x": 530,
+		"neck": [
+			525,
+			222
+		]
+	},
+	"motion_gain": 1.56,
+	"motion": {
+		"chest_rise": 7.0,
+		"pelvis_x": 7.0,
+		"pelvis_y": 4.5,
+		"knee": 5.0,
+		"tilt_deg": 0.9,
+		"arm_extra": 1.5,
+		"head_deg": 0.5,
+		"head_dx": 0.8,
+		"head_dy": 0.5,
+		"tilt_event_deg": 0.6,
+		"head_extra": 3.5,
+		"head_nod_deg": 0.7,
+		"shoulder_open": 3.0,
+		"arm_breath_deg": 1.5,
+		"body_period": 3.0,
+		"shift_period": 9.0
+	},
+	"layers": [
+		{
+			"id": "L0_background",
+			"kind": "static"
+		},
+		{
+			"id": "L1_cape_back",
+			"kind": "cloth",
+			"y0": 560,
+			"y1": 1210,
+			"amp": 16,
+			"lag": 0.4,
+			"phase": 0.0,
+			"period": 2.5,
+			"period2": 4.2
+		},
+		{
+			"id": "L2b_leg_left",
+			"kind": "field",
+			"legs": true,
+			"side": 0,
+			"y_ankle": 1340,
+			"y_knee": 985
+		},
+		{
+			"id": "L2c_leg_right",
+			"kind": "field",
+			"legs": true,
+			"side": 1,
+			"y_ankle": 1340,
+			"y_knee": 990
+		},
+		{
+			"id": "L2_body",
+			"kind": "field",
+			"glow": "storm"
+		},
+		{
+			"id": "L3_skirt_front",
+			"kind": "cloth",
+			"y0": 540,
+			"y1": 790,
+			"amp": 7,
+			"lag": 0.35,
+			"phase": 0.8,
+			"period": 2.6,
+			"period2": 4.4
+		},
+		{
+			"id": "L3b_bells",
+			"kind": "pendulum",
+			"root": [
+				480,
+				650
+			],
+			"amp_deg": 7.0,
+			"period": 2.0
+		},
+		{
+			"id": "L6_left_arm",
+			"kind": "arm",
+			"pivot": [
+				440,
+				290
+			],
+			"rot_deg": 0.6,
+			"rot_period": 7.0,
+			"glow": "storm",
+			"breath_pivot": [
+				440,
+				290
+			],
+			"breath_deg": 1.5,
+			"open": -1
+		},
+		{
+			"id": "L7_right_arm",
+			"kind": "arm",
+			"pivot": [
+				612,
+				290
+			],
+			"rot_deg": 0.6,
+			"rot_period": 8.5,
+			"glow": "storm",
+			"breath_pivot": [
+				612,
+				290
+			],
+			"breath_deg": -1.5,
+			"open": 1
+		},
+		{
+			"id": "L5a_hair_left",
+			"kind": "spring",
+			"follow": "head",
+			"root": [
+				490,
+				100
+			],
+			"amp_deg": 6.0,
+			"phase": 0.0,
+			"period": 2.1
+		},
+		{
+			"id": "L5b_hair_right",
+			"kind": "spring",
+			"follow": "head",
+			"root": [
+				570,
+				100
+			],
+			"amp_deg": 5.5,
+			"phase": 1.4,
+			"period": 2.6
+		},
+		{
+			"id": "L4_head",
+			"kind": "head"
+		}
+	],
+	"effects": [
+		{
+			"type": "arc",
+			"follow": "L6_left_arm",
+			"follow2": "L7_right_arm",
+			"from": [
+				150,
+				410
+			],
+			"to": [
+				895,
+				415
+			],
+			"sag": 18
+		},
+		{
+			"type": "embers",
+			"follow": "L6_left_arm",
+			"tint": [
+				0.6,
+				0.5,
+				1.0
+			],
+			"emitters": [
+				[
+					135,
+					410,
+					30,
+					10
+				]
+			]
+		},
+		{
+			"type": "embers",
+			"follow": "L7_right_arm",
+			"tint": [
+				0.6,
+				0.5,
+				1.0
+			],
+			"emitters": [
+				[
+					905,
+					410,
+					30,
+					10
+				]
+			]
+		}
+	],
+	"eyes": {
+		"half": "res://chapter1/art/portraits/storm/storm_eyes_half.png",
+		"closed": "res://chapter1/art/portraits/storm/storm_eyes_closed.png",
+		"pos": [
+			466,
+			137
+		]
+	}
+}

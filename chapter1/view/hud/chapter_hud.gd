@@ -1063,9 +1063,29 @@ func _build_result40__q40(run: RefCounted) -> void:
 # ---- chapter1/view/ui41/chapter_hud_quality41.gd ----
 ## Menu-only portrait successor. The inherited start/stash callbacks stay on
 ## their existing controls. This 2D concept does not replace the 3D actor.
-const OathPortrait41=preload("res://chapter1/art/characters/frost_witch_v02.png")
-## One witch per starting school, in the order of the three start buttons.
-const WitchPortraits=[preload("res://chapter1/art/characters/ember_witch_v02.png"),OathPortrait41,preload("res://chapter1/art/characters/storm_witch_v02.png")]
+## The big picture is a living portrait (view/hud/living_portrait/, A4 12). It reads nothing from the game state.
+const LivingPortrait=preload("res://chapter1/view/hud/living_portrait/living_portrait.gd")
+## One witch per starting school, in the order of the three start buttons (START_SKILLS).
+const WITCH_IDS: Array[String]=["ember","frost","storm"]
+
+## The one place that gives the portrait its motion amount. 1.0 is the chosen amount, 0.0 the still picture.
+## A "reduce motion" setting (A4 12.7) gets wired here and nowhere else.
+func _portrait_motion_scale() -> float:
+	return 1.0
+
+## Fit the portrait to its host (the host's size changes with the window and the layout).
+func _fit_menu_portrait() -> void:
+	if is_instance_valid(_living_portrait) and is_instance_valid(_menu_portrait):
+		_living_portrait.set_rect(Rect2(Vector2.ZERO,_menu_portrait.size))
+
+## Only the title menu, in view, runs the portrait. Anything else (play, stash, the tree panel over the menu) stops it,
+## and a portrait whose menu was rebuilt or freed is let go so no node keeps processing.
+func _sync_portrait(run: RefCounted) -> void:
+	if _living_portrait==null:return
+	if not is_instance_valid(_living_portrait) or _living_portrait.is_queued_for_deletion():
+		_living_portrait=null;return
+	var want: bool=run.mode=="menu" and not stash_open and overlay.visible and not (is_instance_valid(skill_panel) and skill_panel.visible)
+	if _living_portrait.active!=want:_living_portrait.set_active(want)
 
 func _build_modal__q41(run: RefCounted) -> void:
 	_build_modal__q40(run)
@@ -1116,14 +1136,18 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 	var portrait_style := _style(Color("111416"),Palette.BRASS_DIM)
 	portrait_style.set_content_margin_all(12);portrait_style.border_width_top=1
 	portrait_frame.add_theme_stylebox_override("panel",portrait_style);left.add_child(portrait_frame)
-	var portrait := TextureRect.new();portrait.name="PortraitTexture41"
-	portrait.texture=WitchPortraits[_menu_witch];portrait.custom_minimum_size=Vector2(280,420)
-	# Official4.5 TextureRect: IGNORE_SIZE permits the source1024x1536 to
-	# shrink; KEEP_ASPECT_CENTERED shows the whole portrait without distortion.
-	# https://docs.godotengine.org/en/4.5/classes/class_texturerect.html
-	portrait.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# The host is a plain clipped Control of the old picture's size (2:3, the art's ratio); the living portrait is fitted to it.
+	var portrait := Control.new();portrait.name="PortraitHost41"
+	portrait.custom_minimum_size=Vector2(280,420);portrait.clip_contents=true
 	portrait.mouse_filter=Control.MOUSE_FILTER_IGNORE;portrait_frame.add_child(portrait)
+	_living_portrait=LivingPortrait.new();_living_portrait.name="LivingPortrait"
+	portrait.add_child(_living_portrait)
+	_living_portrait.set_seed(7+_menu_witch)
+	_living_portrait.set_motion_scale(_portrait_motion_scale())
+	_living_portrait.select_witch(WITCH_IDS[_menu_witch]);_portrait_witch=_menu_witch
+	portrait.resized.connect(_fit_menu_portrait)
+	_menu_portrait=portrait;_fit_menu_portrait()
+	_living_portrait.play_intro()
 	var body := VBoxContainer.new();body.name="StartChoices41"
 	body.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation",12);row.add_child(body)
@@ -1149,7 +1173,7 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 		button.reparent(choices);button.custom_minimum_size.y=88
 		_two_line_choice(button,String(button.text).replace("연쇄 전류으로 시작","연쇄 전류로 시작"),summaries[i],tints[i])
 		button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	_menu_portrait=portrait;_menu_starts.clear()
+	_menu_starts.clear()
 	for start_button in starts:_menu_starts.append(start_button as Button)
 	_build_witch_summary(left)
 	var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;body.add_child(space)
@@ -1338,6 +1362,7 @@ func _goal_text(goal: Dictionary) -> String:
 	return Loc.t("hud.objective.seal_kills",{"done":str(int(goal.done)),"total":str(int(goal.total))})
 
 func _sync_chrome(run: RefCounted) -> void:
+	_sync_portrait(run)
 	var mark := 0
 	if run.seals.size()>2 and bool(run.seals[2].get("cleared",false)):mark=2
 	elif run._champion_id>0 and run.zone==2 and run.enemies.has(run._champion_id):mark=1
@@ -1542,7 +1567,9 @@ var skill_panel: Control
 var _skill_character := ""
 var _menu_witch := 0
 var _menu_starts: Array[Button]=[]
-var _menu_portrait: TextureRect
+var _menu_portrait: Control
+var _living_portrait: Node2D
+var _portrait_witch := -1
 var _menu_tree_button: Button
 var _menu_badge: Label
 var _menu_name: Label
@@ -1568,7 +1595,9 @@ func menu_select_skill(skill_id: String) -> void:
 	var index := START_SKILLS.find(skill_id)
 	if index<0:return
 	_menu_witch=index
-	if is_instance_valid(_menu_portrait):_menu_portrait.texture=WitchPortraits[index]
+	if is_instance_valid(_living_portrait) and index!=_portrait_witch:
+		_portrait_witch=index
+		_living_portrait.select_witch(WITCH_IDS[index]);_living_portrait.play_intro()
 	_refresh_witch_summary()
 
 func _build_witch_summary(column: VBoxContainer) -> void:

@@ -1,0 +1,365 @@
+{
+	"id": "ember",
+	"canvas": [
+		1024,
+		1536
+	],
+	"layer_dir": "res://chapter1/art/portraits/ember/layers/",
+	"theme": "ember",
+	"snow": false,
+	"pose": "p2: a step forward, coal arm held out, flame ribbon curling back from the arm; back heel lifted",
+	"rig": {
+		"y_hip": 520,
+		"y_chest": 300,
+		"split_x": 540,
+		"neck": [
+			540,
+			205
+		]
+	},
+	"motion_gain": 1.56,
+	"motion": {
+		"chest_rise": 7.5,
+		"pelvis_x": 8.0,
+		"pelvis_y": 5.0,
+		"knee": 5.0,
+		"tilt_deg": 1.0,
+		"arm_extra": 1.5,
+		"head_deg": 0.7,
+		"head_dx": 1.0,
+		"head_dy": 0.6,
+		"tilt_event_deg": 0.9,
+		"head_extra": 4.0,
+		"head_nod_deg": 0.8,
+		"shoulder_open": 3.0,
+		"arm_breath_deg": 1.5,
+		"body_period": 3.6,
+		"shift_period": 11.0
+	},
+	"layers": [
+		{
+			"id": "L0_background",
+			"kind": "static"
+		},
+		{
+			"id": "L1_cape_back",
+			"kind": "cloth",
+			"y0": 330,
+			"y1": 1000,
+			"amp": 16,
+			"lag": 0.6,
+			"phase": 0.0,
+			"period": 3.1,
+			"period2": 5.3,
+			"glow": "ember_hem"
+		},
+		{
+			"id": "L2b_leg_back",
+			"kind": "field",
+			"legs": true,
+			"side": 1,
+			"y_ankle": 1300,
+			"y_knee": 940
+		},
+		{
+			"id": "L2c_leg_front",
+			"kind": "field",
+			"legs": true,
+			"side": 0,
+			"y_ankle": 1400,
+			"y_knee": 930
+		},
+		{
+			"id": "L2_body",
+			"kind": "field"
+		},
+		{
+			"id": "L3_skirt_front",
+			"kind": "cloth",
+			"y0": 500,
+			"y1": 880,
+			"amp": 8,
+			"amp_max": 9.6,
+			"lag": 0.5,
+			"phase": 0.8,
+			"period": 3.3,
+			"period2": 5.7,
+			"glow": "ember_lamp"
+		},
+		{
+			"id": "L6_left_arm",
+			"kind": "arm",
+			"pivot": [
+				420,
+				300
+			],
+			"rot_deg": 0.9,
+			"rot_period": 6.1,
+			"glow": "ember",
+			"breath_pivot": [
+				420,
+				300
+			],
+			"breath_deg": 1.5,
+			"open": -1
+		},
+		{
+			"id": "L7_right_arm",
+			"kind": "arm",
+			"pivot": [
+				720,
+				430
+			],
+			"rot_deg": 0.5,
+			"rot_period": 9.3,
+			"breath_pivot": [
+				655,
+				270
+			],
+			"breath_deg": -1.2,
+			"open": 1
+		},
+		{
+			"id": "L5a_hair_left",
+			"kind": "spring",
+			"follow": "head",
+			"root": [
+				470,
+				150
+			],
+			"amp_deg": 4.5,
+			"phase": 0.0,
+			"period": 3.6
+		},
+		{
+			"id": "L5b_hair_right",
+			"kind": "spring",
+			"follow": "head",
+			"root": [
+				610,
+				160
+			],
+			"amp_deg": 4.2,
+			"phase": 1.1,
+			"period": 4.2
+		},
+		{
+			"id": "L4_head",
+			"kind": "head"
+		}
+	],
+	"effects": [
+		{
+			"type": "ribbon",
+			"follow": "L6_left_arm",
+			"ribbons": [
+				{
+					"pts": [
+						[
+							70,
+							595
+						],
+						[
+							25,
+							560
+						],
+						[
+							12,
+							490
+						],
+						[
+							30,
+							420
+						],
+						[
+							80,
+							365
+						],
+						[
+							150,
+							335
+						],
+						[
+							230,
+							330
+						],
+						[
+							300,
+							345
+						]
+					],
+					"width": 30.0,
+					"speed": 0.7
+				},
+				{
+					"pts": [
+						[
+							60,
+							640
+						],
+						[
+							75,
+							680
+						],
+						[
+							130,
+							705
+						],
+						[
+							200,
+							715
+						],
+						[
+							270,
+							712
+						],
+						[
+							320,
+							700
+						]
+					],
+					"width": 24.0,
+					"speed": 0.55
+				},
+				{
+					"pts": [
+						[
+							78,
+							585
+						],
+						[
+							40,
+							545
+						],
+						[
+							30,
+							480
+						],
+						[
+							50,
+							415
+						],
+						[
+							100,
+							372
+						],
+						[
+							165,
+							348
+						],
+						[
+							235,
+							345
+						]
+					],
+					"width": 15.0,
+					"speed": 0.9
+				}
+			]
+		},
+		{
+			"type": "embers",
+			"follow": "L6_left_arm",
+			"emitters": [
+				[
+					60,
+					610,
+					30,
+					14
+				],
+				[
+					18,
+					500,
+					14,
+					7
+				],
+				[
+					60,
+					380,
+					14,
+					6
+				],
+				[
+					200,
+					335,
+					14,
+					5
+				],
+				[
+					180,
+					715,
+					14,
+					5
+				]
+			]
+		},
+		{
+			"type": "embers",
+			"follow": "L1_cape_back",
+			"emitters": [
+				[
+					172,
+					900,
+					20,
+					8
+				],
+				[
+					270,
+					990,
+					20,
+					6
+				],
+				[
+					190,
+					560,
+					20,
+					5
+				]
+			]
+		},
+		{
+			"type": "embers",
+			"follow": "L3_skirt_front",
+			"emitters": [
+				[
+					780,
+					835,
+					20,
+					7
+				],
+				[
+					690,
+					720,
+					24,
+					8
+				]
+			]
+		},
+		{
+			"type": "embers",
+			"follow": "L4_head",
+			"emitters": [
+				[
+					415,
+					225,
+					26,
+					6
+				],
+				[
+					665,
+					215,
+					26,
+					6
+				]
+			]
+		}
+	],
+	"eyes": {
+		"half": "res://chapter1/art/portraits/ember/ember_eyes_half.png",
+		"closed": "res://chapter1/art/portraits/ember/ember_eyes_closed.png",
+		"pos": [
+			485,
+			82
+		]
+	}
+}
