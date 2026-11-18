@@ -1,6 +1,7 @@
 shader_type spatial;
 // Godot 4.5 spatial shader built-ins and sampler syntax:
 // https://docs.godotengine.org/en/4.5/tutorials/shaders/shader_reference/spatial_shader.html
+#include "res://chapter1/view/hero_light.gdshaderinc"
 uniform sampler2D flagstone : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D soil : source_color, filter_linear_mipmap, repeat_enable;
 uniform bool has_flagstone = false;
@@ -43,8 +44,9 @@ void fragment() {
  vec3 stone=has_flagstone?stone_sample(p*.175):vec3(.24,.25,.25);
  vec3 earth=has_soil?texture(soil,p*.21+vec2(.13,.37)).rgb:vec3(.14,.16,.13);
  // The terrain is quiet enough for warm fire and icy silhouettes to carry combat.
- stone=mix(vec3(dot(stone,vec3(.3,.59,.11))),stone,.72)*vec3(.64,.68,.71);
- earth=mix(vec3(dot(earth,vec3(.3,.59,.11))),earth,.7)*vec3(.72,.76,.66);
+ // Look 2 raised saturation and the moon/ambient are blue: the stone is pushed to grey/earth so the floor does not go blue.
+ stone=mix(vec3(dot(stone,vec3(.3,.59,.11))),stone,.5)*vec3(.74,.69,.62);
+ earth=mix(vec3(dot(earth,vec3(.3,.59,.11))),earth,.95)*vec3(.74,.80,.60);
  // Damp moss joins the cutout foliage to the soil without a flat black verge.
  float moss=smoothstep(.43,.76,noise21(p*.44+41.))*smoothstep(.24,.7,coarse);
  earth=mix(earth,earth*vec3(.79,1.10,.72),moss*.48);
@@ -56,7 +58,8 @@ void fragment() {
   float ring_reach=1.-smoothstep(7.,9.,length(p));
   surface=mix(surface*vec3(.9,.91,1.04),vec3(.24,.20,.13),rings*.13*paving*ring_reach);
  }
- ALBEDO=surface;
+ // The hero is the centre of the light; effect lights lift it again (hero_light.gdshaderinc).
+ ALBEDO=surface*lit_field(world_xz);
 	// Small lighting relief from the independently generated stone image. This
 	// changes only shading; the walkable floor remains the Chapter09 plane.
 	float h=dot(stone,vec3(.3,.59,.11))*.12*paving;

@@ -3,6 +3,7 @@ shader_type spatial;
 // Alpha scissor keeps depth ownership deterministic without transparent sorting.
 // https://docs.godotengine.org/en/4.5/tutorials/shaders/shader_reference/spatial_shader.html
 render_mode unshaded, cull_disabled;
+#include "res://chapter1/view/hero_light.gdshaderinc"
 uniform sampler2D atlas_texture : source_color, filter_linear_mipmap;
 uniform vec2 hero_position = vec2(0.0);
 varying vec2 world_xz;
@@ -20,7 +21,7 @@ void fragment() {
   warmth=max(warmth,max(pool(world_xz,vec2(x,-14.0)),max(pool(world_xz,vec2(x,2.0)),pool(world_xz,vec2(x,18.0)))));
  }
  vec3 light_tint=mix(vec3(.87,.93,1.0),vec3(1.28,1.08,.81),warmth*.78);
- ALBEDO=tex.rgb*COLOR.rgb*light_tint;
+ ALBEDO=tex.rgb*COLOR.rgb*light_tint*lit_field(world_xz);
  // Only tall perimeter art uses a bounded screen-door fade around the hero.
  // Low nonblocking foliage retains its density; no transparent sorting pass.
  float fade=COLOR.a*(1.0-smoothstep(.65,1.8,distance(world_xz,hero_position)))*.76;

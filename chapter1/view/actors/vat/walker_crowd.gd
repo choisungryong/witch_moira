@@ -26,8 +26,11 @@ const IDLE_LENGTH := 128.0 / 60.0
 const CORPSE_FINAL_AGE := 1.60
 const OVERLAP_CULL_SQ := 30.25
 const OVERLAP_CULL_MIN_SIN := .70
-const ICE := Color(.48, .86, 1.16)
 const FLASH := Color(1.3, 1.2, 1.05)
+## Element tint (the colours live in walker_vat.gdshader). Same timing as chapter_actors.gd FX_ICE_RISE / FX_ICE_FALL / FX_FIRE_TICKS.
+const FX_ICE_RISE := 14.0
+const FX_ICE_FALL := 5.0
+const FX_FIRE_TICKS := 30
 const NON_TICKING_MODES := ["paused", "choice", "inventory", "equipment"]
 const MIN_ALPHA := .002                 ## an instance fainter than this is not drawn at all
 
@@ -57,6 +60,8 @@ class Walker:
 	var overlap := false
 	var icy := false
 	var flash := false
+	var ice_k := 0.0
+	var fire_k := 0.0
 	var xf := Transform3D.IDENTITY
 
 var view: Node3D
@@ -82,6 +87,7 @@ var _hit_until: Dictionary
 var _recoil: Dictionary
 var _attacks: Dictionary
 var _cold: Dictionary
+var _fire_until: Dictionary = {}
 # frame state
 var _frame := 0
 var _open := false
@@ -103,7 +109,8 @@ var _hero_radius := 0.0
 
 ## Bakes the walker on the CPU (headless-safe, about one second) and builds the MultiMesh under owner_view.
 ## The four dictionaries are the presenter's event tables, shared by reference (they are only cleared, never replaced).
-func setup(owner_view: Node3D, hit_until: Dictionary, recoil: Dictionary, attacks: Dictionary, cold: Dictionary) -> void:
+func setup(owner_view: Node3D, hit_until: Dictionary, recoil: Dictionary, attacks: Dictionary, cold: Dictionary, fire_until: Dictionary = {}) -> void:
+	_fire_until = fire_until
 	view = owner_view
 	_hit_until = hit_until
 	_recoil = recoil
@@ -237,7 +244,15 @@ func track(e: Dictionary, key: String) -> bool:
 	_pose(w, e, direction, e.state == "move", dead, tick, playing, hit)
 	# Tint decision (sync__chapterx): cold corpse or frozen = ice, else the hit flash of the first three ticks.
 	w.icy = w.cold != null or (not dead and frozen)
-	w.flash = (not w.icy) and tick < int(_hit_until.get(id, -1)) - 9
+	# Element tint: ice rises while frozen and falls back over .2 s; fire is full on a fire hit and fades over FX_FIRE_TICKS.
+	if w.icy:
+		w.ice_k = minf(1.0, w.ice_k + _delta * FX_ICE_RISE)
+	elif w.ice_k > 0.0:
+		w.ice_k = maxf(0.0, w.ice_k - _delta * FX_ICE_FALL)
+	var fire_left := int(_fire_until.get(id, 0)) - tick
+	var fire_t := clampf(float(fire_left) / float(FX_FIRE_TICKS), 0.0, 1.0)
+	w.fire_k = 0.0 if w.icy else fire_t * fire_t * (3.0 - 2.0 * fire_t)
+	w.flash = w.ice_k <= 0.0 and w.fire_k <= 0.0 and tick < int(_hit_until.get(id, -1)) - 9
 	w.xf = Transform3D(Basis(Vector3.UP, w.yaw).scaled(Vector3.ONE * w.scale_), pos)
 	w.overlap = false
 	if not dead and _overlaps(w):
@@ -382,11 +397,7 @@ func end_frame(overlapping: bool, victory_alpha: float) -> void:
 		var r := Spec.TINT.r
 		var g := Spec.TINT.g
 		var bl := Spec.TINT.b
-		if w.icy:
-			r *= ICE.r
-			g *= ICE.g
-			bl *= ICE.b
-		elif w.flash:
+		if w.flash:
 			r *= FLASH.r
 			g *= FLASH.g
 			bl *= FLASH.b
@@ -412,7 +423,7 @@ func end_frame(overlapping: bool, victory_alpha: float) -> void:
 		buf[o + 16] = w.row
 		buf[o + 17] = w.hit_row
 		buf[o + 18] = w.hit_weight
-		buf[o + 19] = 0.0
+		buf[o + 19] = w.ice_k if w.ice_k > 0.0 else -w.fire_k
 		n += 1
 	_buf = buf
 	_mm.visible_instance_count = n

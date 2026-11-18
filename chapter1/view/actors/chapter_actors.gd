@@ -17,6 +17,21 @@ var _cast_until := -1
 var _hit_until := -1
 var _textures: Dictionary={}
 var _enemy_hit_until: Dictionary={}
+## Whole-body tint of a hit enemy (BENCHMARK-TRAILERS 2-5): frozen = vivid blue for as long as it is frozen, a fire hit =
+## orange that fades over FX_FIRE_TICKS. Mixed into the albedo and added as a faint emission, so it still reads on a dark floor.
+## Presentation only: reads frozen_until and hit events, writes nothing to the core.
+const FX_FIRE_TICKS := 30
+const FX_ICE_RISE := 14.0   # per second; 1 -> 0 on release takes FX_ICE_FALL^-1 s
+const FX_ICE_FALL := 5.0
+const FX_ICE_ALBEDO := Color(.30,.62,1.0)
+const FX_ICE_MIX := .80
+const FX_ICE_GLOW := Color(.08,.34,.95)
+const FX_FIRE_ALBEDO := Color(1.0,.50,.14)
+const FX_FIRE_MIX := .60
+const FX_FIRE_GLOW := Color(1.0,.34,.04)
+## Every enemy keeps this fraction of its colour as emission, so a body at the dark screen edge still reads as a silhouette.
+const FX_FLOOR_GLOW := .20
+var _enemy_fire_until: Dictionary={}
 var raw_texture_fallbacks: Array[String]=[]
 var _cast_moving_until := -1
 var _cast_direction := Vector2.DOWN
@@ -146,6 +161,7 @@ func consume__cloister(events: Array) -> void:
 		elif event.type=="hero_hit":_hit_until=int(event.tick)+6
 		elif event.type=="hit":
 			_enemy_hit_until[event.target_id]=int(event.tick)+12
+			if String(event.get("skill_id","")).contains("ember"):_enemy_fire_until[event.target_id]=int(event.tick)+FX_FIRE_TICKS
 			# Cosmetic recoil is < .08m, substantially smaller than the .30m
 			# smallest core radius; physics positions and hitboxes are never changed.
 			var away: Vector2=event.position-Vector2(hero.position.x,hero.position.z)
@@ -241,6 +257,8 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	if vat_crowd!=null:vat_crowd.begin_frame(run,delta,camera,hero.global_position,view.global_transform,active)
 	for id_ in _enemy_hit_until.keys():
 		if run.tick>=int(_enemy_hit_until[id_]):_enemy_hit_until.erase(id_)
+	for id_ in _enemy_fire_until.keys():
+		if run.tick>=int(_enemy_fire_until[id_]):_enemy_fire_until.erase(id_)
 	for id_ in _enemy_recoil.keys():
 		if run.tick>=int(_enemy_recoil[id_].until):_enemy_recoil.erase(id_)
 	var wanted: Dictionary={}
@@ -396,7 +414,7 @@ func reset__cloister() -> void:
 	actors.clear()
 	_hero_previous=Vector2.INF;_hero_move_until=-1
 	_cast_until=-1;_hit_until=-1
-	_enemy_hit_until.clear()
+	_enemy_hit_until.clear();_enemy_fire_until.clear()
 	_cast_moving_until=-1;_cast_direction=Vector2.DOWN;_enemy_recoil.clear()
 	_last_event=-1;_cast_tick=-100;_hero_overlapped=false;_hero_rim_frame=null
 	if hero.has_meta("motion_sample"):hero.remove_meta("motion_sample")
@@ -951,13 +969,15 @@ func sync__chapterx(run: RefCounted,delta: float) -> void:
 			alpha*=1-smoothstep(.025,.22,float(record.age))
 		# The tint choice does not depend on the material; decide it once per actor.
 		var icy: bool=cold or (e.hp_raw>0 and run.tick<int(e.frozen_until))
-		var flash: bool=(not icy) and run.tick<int(_enemy_hit_until.get(e.id,-1))-9
 		var shown_alpha: float=alpha*float(state.fade)
+		var ice_k := _fx_ice(actor,icy,delta)
+		var fire_k := _fx_fire(e.id,run.tick) if not icy else 0.0
+		# The old three-tick white-hot flash stays for hits that carry no element tint.
+		var flash: bool=ice_k<=0.0 and fire_k<=0.0 and run.tick<int(_enemy_hit_until.get(e.id,-1))-9
 		for mat in state.materials:
-			var color: Color=mat.get_meta("demon19_tint")
-			if icy:color*=Color(.48,.86,1.16)
-			elif flash:color*=Color(1.3,1.2,1.05)
-			color.a=shown_alpha;_set_color42(mat,color)
+			var base: Color=mat.get_meta("demon19_tint")
+			if flash:base*=Color(1.3,1.2,1.05)
+			_fx_material(mat,base,ice_k,fire_k,shown_alpha)
 func _overlaps_hero__chapterx(actor: Node3D,camera: Camera3D) -> bool:
 	if not actor.has_meta("minion19"):return _overlaps_hero__q12(actor,camera)
 	if camera==null or (actor.global_position-hero.global_position).dot(camera.global_basis.z)<=.04:return false
@@ -989,11 +1009,13 @@ func _sync_hero_rim(camera: Camera3D,overlapping: bool) -> void:
 			if state.owner_fade>.995:state.owner_fade=1.0
 			var corpse_alpha := 1.0
 			if not entity.is_empty() and entity.hp_raw<=0:corpse_alpha=1.0-clampf(float(view.run.tick-int(entity.dead_tick)-36)/39.0,0,1)
+			var warden_frozen: bool=not entity.is_empty() and entity.hp_raw>0 and view.run.tick<int(entity.frozen_until)
+			var warden_ice := _fx_ice(actor,warden_frozen,_render_delta)
+			var warden_fire := 0.0 if entity.is_empty() or warden_frozen else _fx_fire(entity.id,view.run.tick)
 			for material in state.materials:
 				var color: Color=material.get_meta("warden_tint",Color(.52,.55,.51))
-				if not entity.is_empty() and entity.hp_raw>0 and view.run.tick<int(entity.frozen_until):color*=Color(.60,.90,1.16)
-				elif _warden_phase>=2:color*=Color(1.03,.89,.88)
-				color.a=state.owner_fade*corpse_alpha;material.albedo_color=color
+				if not warden_frozen and _warden_phase>=2:color*=Color(1.03,.89,.88)
+				_fx_material(material,color,warden_ice,warden_fire,state.owner_fade*corpse_alpha)
 		if actor.has_meta("minion19"):
 			var state: Dictionary=actor.get_meta("minion19")
 			state.fade=lerpf(float(state.fade),.4 if overlapping and _overlaps_hero(actor,camera) else 1.0,blend)
@@ -1998,6 +2020,39 @@ func rest_for_menu() -> void:
 func _set_color42(material: StandardMaterial3D,color: Color) -> void:
 	if material.albedo_color!=color:material.albedo_color=color
 
+## Ice amount of one actor, 0..1: rises in ~.07 s while frozen, falls back in .2 s after the thaw. Kept on the actor node.
+func _fx_ice(actor: Node3D,frozen: bool,delta: float) -> float:
+	var k: float=actor.get_meta("fx_ice",0.0)
+	if frozen:
+		if k<1.0:k=minf(1.0,k+delta*FX_ICE_RISE);actor.set_meta("fx_ice",k)
+	elif k>0.0:
+		k=maxf(0.0,k-delta*FX_ICE_FALL);actor.set_meta("fx_ice",k)
+	return k
+## Fire amount of one enemy, 0..1: full on a fire hit, then an eased fade over FX_FIRE_TICKS.
+func _fx_fire(id_: int,tick: int) -> float:
+	var left: int=int(_enemy_fire_until.get(id_,0))-tick
+	if left<=0:return 0.0
+	var t := float(left)/float(FX_FIRE_TICKS)
+	return t*t*(3.0-2.0*t)
+## Body colour of an enemy material: tint mixed toward the element colour plus emission (the element glow and a small own-colour floor).
+## Writes only when the value changed.
+func _fx_material(material: StandardMaterial3D,base: Color,ice: float,fire: float,alpha: float) -> void:
+	if not material.has_meta("fx_init"):
+		material.set_meta("fx_init",true)
+		material.emission_enabled=true;material.emission_energy_multiplier=1.0
+		material.rim_enabled=true;material.rim=maxf(material.rim,.5);material.rim_tint=maxf(material.rim_tint,.3)
+	var color := base
+	var glow := Color(base.r*FX_FLOOR_GLOW,base.g*FX_FLOOR_GLOW,base.b*FX_FLOOR_GLOW,1.0)
+	if ice>0.0:
+		color=color.lerp(FX_ICE_ALBEDO,FX_ICE_MIX*ice)
+		glow=Color(glow.r+FX_ICE_GLOW.r*ice,glow.g+FX_ICE_GLOW.g*ice,glow.b+FX_ICE_GLOW.b*ice,1.0)
+	if fire>0.0:
+		color=color.lerp(FX_FIRE_ALBEDO,FX_FIRE_MIX*fire)
+		glow=Color(glow.r+FX_FIRE_GLOW.r*fire,glow.g+FX_FIRE_GLOW.g*fire,glow.b+FX_FIRE_GLOW.b*fire,1.0)
+	color.a=alpha
+	if material.albedo_color!=color:material.albedo_color=color
+	if material.emission!=glow:material.emission=glow
+
 # ---- Baked walker crowd (T2b B-b, --chapter1-vat-walker, default off) ----
 # With the switch on, walkers are not presenter nodes: view/actors/vat/walker_crowd.gd draws all of them as one MultiMesh of
 # vertex animation (baked on the spot before the menu, nothing stored). Ranged, charger, elite and boss presenters are unchanged.
@@ -2012,7 +2067,7 @@ var vat_walker_enabled := false
 var vat_crowd: RefCounted = null
 func _setup_vat_walker() -> void:
 	var crowd := WalkerCrowd.new()
-	crowd.setup(view,_enemy_hit_until,_enemy_recoil,_demon19_attacks,_cold_corpses)
+	crowd.setup(view,_enemy_hit_until,_enemy_recoil,_demon19_attacks,_cold_corpses,_enemy_fire_until)
 	vat_crowd=crowd
 	print("CHAPTER1_VAT_WALKER ",JSON.stringify({"bake_ms":snappedf(float(crowd.bake_usec)/1000.0,.1),"rows":crowd.baked.total_rows,"vertices":crowd.baked.vertex_count}))
 ## The interpolated position a baked walker is shown at (view-local), or null when this key has no presenter node of its own.

@@ -7,6 +7,16 @@ extends RefCounted
 ## ArrayMesh follows the documented 4.5 array/UV/color surface pattern:
 ## https://docs.godotengine.org/en/4.5/classes/class_arraymesh.html
 const CAMERA_OFFSET := Vector3(11,19,14)
+## The hero is the centre of the light (BENCHMARK-TRAILERS 2-5). Ground, grass and props share one falloff
+## (hero_light.gdshaderinc): HERO_LIGHT_NEAR times brightness inside INNER metres, HERO_LIGHT_FAR times beyond OUTER.
+## Lit models (enemies, hero, masonry) get the same shape from one OmniLight3D at the hero. Tune the look here.
+const HERO_LIGHT_INNER := 3.5
+const HERO_LIGHT_OUTER := 15.0
+const HERO_LIGHT_NEAR := 1.4
+const HERO_LIGHT_FAR := .82
+const HERO_OMNI_ENERGY := 1.15
+const HERO_OMNI_RANGE := 10.0
+const HERO_OMNI_COLOR := Color("ffe3bd")
 const ART_BASE := "res://chapter1/art/quality03/"
 var root: Node3D
 var camera: Camera3D
@@ -17,6 +27,8 @@ var _prop_texture: Texture2D
 var _prop_textures: Dictionary={}
 var _prop_entries: Array[Dictionary]=[]
 var _prop_materials: Array[ShaderMaterial]=[]
+var _light_materials: Array[ShaderMaterial]=[]
+var _hero_omni: OmniLight3D
 var _warm_lights: Array[OmniLight3D]=[]
 var _warm_base: Array[float]=[]
 var _age := 0.0
@@ -209,7 +221,7 @@ func _bake_prop_surface__q03(entries: Array[Dictionary], texture: Texture2D, lab
 	arrays[Mesh.ARRAY_VERTEX]=verts;arrays[Mesh.ARRAY_TEX_UV]=uvs;arrays[Mesh.ARRAY_COLOR]=colors
 	var shape := ArrayMesh.new();shape.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
 	var mat := ShaderMaterial.new();mat.shader=load("res://chapter1/view/cloister_props_quality03.gdshader");mat.set_shader_parameter("atlas_texture",texture)
-	_prop_materials.append(mat)
+	_prop_materials.append(mat);_register_light_material(mat)
 	var node := MeshInstance3D.new();node.name=label;node.mesh=shape;node.material_override=mat
 	node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(node)
 
@@ -246,6 +258,7 @@ func update_camera__q03(hero: Vector2, delta: float) -> void:
 	_camera_trauma=maxf(0,_camera_trauma-delta*5)
 	var target := Vector3(hero.x,0,hero.y)
 	for mat in _prop_materials:mat.set_shader_parameter("hero_position",Vector2(hero.x,hero.y))
+	_move_hero_light(hero)
 	var desired := target+CAMERA_OFFSET
 	# Derive an unshaken base from the target; feedback never accumulates drift.
 	_camera_base=_camera_base.lerp(desired,1.0-exp(-delta*8.0))
@@ -354,9 +367,27 @@ var _grass_colors := PackedColorArray()
 var _grass_uv := PackedVector2Array()
 var _grass_blades := 0
 
+## Ground, grass and props use the shared hero light field. Written once here; the hero position every frame.
+func _register_light_material(mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("hero_lit",Vector4(0,0,HERO_LIGHT_INNER,HERO_LIGHT_OUTER))
+	mat.set_shader_parameter("hero_lit_level",Vector2(HERO_LIGHT_NEAR,HERO_LIGHT_FAR))
+	_light_materials.append(mat)
+
+func _move_hero_light(hero: Vector2) -> void:
+	var lit := Vector4(hero.x,hero.y,HERO_LIGHT_INNER,HERO_LIGHT_OUTER)
+	for mat in _light_materials:mat.set_shader_parameter("hero_lit",lit)
+	if _hero_omni!=null:_hero_omni.position=Vector3(hero.x,2.6,hero.y)
+
+## Effect lights (combat_juice) lift the darkness where they reach: 6 x (x, z, reach, strength). Called only when it changed.
+func set_spell_lights(data: PackedVector4Array) -> void:
+	for mat in _light_materials:mat.set_shader_parameter("spell_lit",data)
+
 func setup__q10(view: Node3D) -> void:
 	setup__chapter(view)
 	_bake_grass()
+	_hero_omni=OmniLight3D.new();_hero_omni.name="HeroLight";_hero_omni.light_color=HERO_OMNI_COLOR
+	_hero_omni.light_energy=HERO_OMNI_ENERGY;_hero_omni.omni_range=HERO_OMNI_RANGE;_hero_omni.omni_attenuation=1.3;_hero_omni.shadow_enabled=false
+	root.add_child(_hero_omni)
 	for child in view.get_children():
 		if child is DirectionalLight3D:child.shadow_enabled=true;child.light_cull_mask=3
 
@@ -365,6 +396,7 @@ func _ground_material() -> Material:
 	for pair in [["flagstone","ground_flagstone_v01.png"],["soil","ground_soil_v01.png"]]:
 		var texture := _texture(ART_BASE+pair[1])
 		if texture:mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true);art_status.ground.append(pair[1])
+	_register_light_material(mat)
 	return mat
 
 func _prop__q10(id_: String,at: Vector3,height: float=0.0,tint: Color=Color.WHITE,mirror: bool=false) -> void:
@@ -422,7 +454,7 @@ func _bake_grass() -> void:
 	var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX]=_grass_vertices;arrays[Mesh.ARRAY_NORMAL]=_grass_normals;arrays[Mesh.ARRAY_COLOR]=_grass_colors;arrays[Mesh.ARRAY_TEX_UV]=_grass_uv
 	var mesh := ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
-	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader")
+	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader");_register_light_material(_grass_material)
 	var node := MeshInstance3D.new();node.name="TaperedGrass";node.mesh=mesh;node.material_override=_grass_material;node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(node)
 	_grass_vertices.clear();_grass_normals.clear();_grass_colors.clear();_grass_uv.clear()
 	print("CHAPTER1_GRASS_ART ",JSON.stringify({"patches":art_status.grass_patches,"blades":_grass_blades,"surfaces":1,"collision":false,"source":"independent code geometry"}))

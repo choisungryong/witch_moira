@@ -11,7 +11,8 @@ shader_type spatial;
 //   INSTANCE_CUSTOM.x  base row: integer part = row, fraction = blend toward the next row
 //   INSTANCE_CUSTOM.y  hit row (same encoding), < 0 = none
 //   INSTANCE_CUSTOM.z  hit weight (.85 * sin(pi * age)), 0 = none
-//   INSTANCE_CUSTOM.w  reserved
+//   INSTANCE_CUSTOM.w  element tint: > 0 = ice amount 0..1, < 0 = fire amount 0..1 (negated), 0 = none.
+//                      Same mix and glow as chapter_actors.gd _fx_material (FX_* constants there).
 // Mesh: UV2.x = texture column of the vertex, UV2.y = upper-body weight (sum of weights on the 10 HIT34 bones).
 render_mode depth_prepass_alpha;
 
@@ -24,7 +25,14 @@ uniform float metallic_value = 0.03;
 uniform float rim_amount = 0.18;
 uniform float rim_tint_amount = 0.12;
 
+const vec3 FX_ICE_ALBEDO = vec3(0.30, 0.62, 1.0);
+const vec3 FX_ICE_GLOW = vec3(0.08, 0.34, 0.95);
+const vec3 FX_FIRE_ALBEDO = vec3(1.0, 0.50, 0.14);
+const vec3 FX_FIRE_GLOW = vec3(1.0, 0.34, 0.04);
+const float FX_FLOOR_GLOW = 0.20;
+
 varying vec4 inst_color;
+varying float inst_fx;
 
 vec3 srgb_to_linear(vec3 c) {
 	return mix(pow((c + vec3(0.055)) * (1.0 / 1.055), vec3(2.4)), c * (1.0 / 12.92), lessThan(c, vec3(0.04045)));
@@ -59,11 +67,20 @@ void vertex() {
 	VERTEX = p + pos_center;
 	NORMAL = normalize(n);
 	inst_color = COLOR;
+	inst_fx = INSTANCE_CUSTOM.w;
 }
 
 void fragment() {
 	vec4 a = texture(albedo_tex, UV);
-	ALBEDO = a.rgb * srgb_to_linear(max(inst_color.rgb, vec3(0.0)));
+	float ice = max(inst_fx, 0.0);
+	float fire = max(-inst_fx, 0.0);
+	vec3 tint = max(inst_color.rgb, vec3(0.0));
+	vec3 glow = tint * FX_FLOOR_GLOW;
+	tint = mix(tint, FX_ICE_ALBEDO, 0.8 * ice);
+	tint = mix(tint, FX_FIRE_ALBEDO, 0.6 * fire);
+	glow += FX_ICE_GLOW * ice + FX_FIRE_GLOW * fire;
+	ALBEDO = a.rgb * srgb_to_linear(tint);
+	EMISSION = srgb_to_linear(glow);
 	ALPHA = a.a * inst_color.a;
 	ROUGHNESS = roughness_value;
 	METALLIC = metallic_value;

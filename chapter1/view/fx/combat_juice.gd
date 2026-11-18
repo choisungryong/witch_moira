@@ -107,6 +107,13 @@ var _lights: Array[OmniLight3D] = []
 var _light_life := PackedFloat32Array()
 var _light_total := PackedFloat32Array()
 var _light_energy := PackedFloat32Array()
+## The same lights, as the "darkness lifted here" field read by the ground, grass and prop shaders:
+## per slot (x, z, reach in metres, strength 0..1). Handed to the world only when a slot changed.
+const SPELL_LIFT_REACH := 1.1
+const SPELL_LIFT_PER_ENERGY := .22
+var _lift := PackedVector4Array()
+var _lift_dirty := false
+var _lift_world: RefCounted
 var _light_active := PackedInt32Array()
 var _light_next := 0
 var _flash_at := PackedVector2Array()
@@ -236,9 +243,11 @@ func _build_lights() -> void:
 		holder.add_child(light)
 		_lights.append(light)
 	_light_life.resize(LIGHT_POOL); _light_total.resize(LIGHT_POOL); _light_energy.resize(LIGHT_POOL)
+	_lift.resize(LIGHT_POOL)
 
 ## Glow, contrast and camera distance. Called once after the world exists.
 func apply_look(world: RefCounted) -> void:
+	_lift_world = world if world != null and world.has_method("set_spell_lights") else null
 	var camera: Camera3D = world.get("camera")
 	if camera != null and camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
 		camera.size = 19.5
@@ -458,6 +467,7 @@ func _light(at: Vector2, color: Color, energy: float, range_: float, seconds: fl
 	light.light_color = color; light.omni_range = range_; light.light_energy = energy; light.visible = true
 	if _light_life[index] <= 0: _light_active.append(index)
 	_light_life[index] = seconds; _light_total[index] = seconds; _light_energy[index] = energy
+	_lift[index] = Vector4(at.x,at.y,range_*SPELL_LIFT_REACH,clampf(energy*SPELL_LIFT_PER_ENERGY,0,1)); _lift_dirty = true
 	stats.lights += 1
 
 ## Only live entries are visited. Nothing is rewritten for a paused frame, and the pool
@@ -534,10 +544,16 @@ func sync(run: RefCounted, delta: float) -> void:
 		var light := _lights[index]
 		if life <= 0:
 			light.visible = false; light.light_energy = 0
+			_lift[index] = Vector4.ZERO; _lift_dirty = true
 			_light_active[at] = _light_active[_light_active.size()-1]; _light_active.resize(_light_active.size()-1)
 			continue
-		light.light_energy = _light_energy[index]*pow(life/_light_total[index],1.6)
+		var fade := pow(life/_light_total[index],1.6)
+		light.light_energy = _light_energy[index]*fade
+		var lift := _lift[index]; lift.w = clampf(_light_energy[index]*fade*SPELL_LIFT_PER_ENERGY,0,1); _lift[index] = lift; _lift_dirty = true
 		at += 1
+	if _lift_dirty and _lift_world != null:
+		_lift_dirty = false
+		_lift_world.set_spell_lights(_lift)
 
 func reset() -> void:
 	_last_seq = -1
@@ -557,6 +573,8 @@ func reset() -> void:
 	for index in MARK_POOL:
 		_marks.multimesh.set_instance_color(index,Color(0,0,0,0)); _marks.multimesh.set_instance_custom_data(index,Color(0,0,0,0))
 	for index in LIGHT_POOL:
-		_light_life[index] = 0.0; _lights[index].visible = false
+		_light_life[index] = 0.0; _lights[index].visible = false; _lift[index] = Vector4.ZERO
+	if _lift_world != null: _lift_world.set_spell_lights(_lift)
+	_lift_dirty = false
 	for particles in _bursts: particles.emitting = false
 	for key in stats: stats[key] = 0
