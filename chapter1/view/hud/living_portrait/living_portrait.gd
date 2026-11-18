@@ -9,7 +9,7 @@ extends Node2D
 ##   add_child(p)
 ##   p.set_rect(Rect2(x, y, w, h))      # fit: the portrait is fitted to the height of this rectangle and centred in it
 ##                                      #      (call again whenever the screen is resized; optional zoom, zoom_center args)
-##   p.set_motion_scale(1.0)            # motion: 1.0 is the chosen amount (json "motion_gain" 1.56 is baked in);
+##   p.set_motion_scale(1.0)            # motion: 1.0 is the chosen amount (json "motion_gain" is baked in);
 ##                                      #         0.0 is the still picture (reduce-motion setting), 0.5 is half the amplitude.
 ##                                      #         Speed does not change. Needs no reload; may be called at any time.
 ##   p.select_witch("frost")            # pick: "ember" | "frost" | "storm" (WITCHES); replaces the one shown. Returns false if unknown.
@@ -436,10 +436,10 @@ func _wave(t: float) -> float:
 	var period := _m("body_period", 3.4)
 	var cyc := int(floor(t / period))
 	var u := fposmod(t / period, 1.0)
-	# in-breath is the shorter part (4 : 6), an occasional deep breath is 1.5 times as high
+	# in-breath is the shorter part (4 : 6), an occasional deep breath is 1.25 times as high
 	var f := 0.5 - 0.5 * cos(PI * u / 0.4) if u < 0.4 else 0.5 + 0.5 * cos(PI * (u - 0.4) / 0.6)
 	if _deep.has(cyc):
-		f *= 1.5
+		f *= 1.25
 	return 0.9 * f + 0.1 * (0.5 + 0.5 * sin(TAU * t / 11.3))
 
 
