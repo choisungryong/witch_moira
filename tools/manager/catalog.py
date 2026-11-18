@@ -3,7 +3,7 @@
 Everything shown is read from the repository's current files. "Used by the game" is only
 what a static scan of res:// references from chapter1/ChapterOne.tscn can see.
 """
-import json, re, time
+import json, re, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1036,7 +1036,25 @@ def build_entities(c):
 
 
 # ------------------------------------------------------------------ entry
+RETRIES = 2          # extra passes when a pass reports warnings
+RETRY_PAUSE = 0.7    # seconds; lets an editor/Godot finish rewriting a file we caught half-written
+
+
 def generate():
+    """One pass takes several seconds while other tools may be rewriting files in the working folder
+    (a half-written JSON/docs file shows up as a read warning). A warning is therefore re-checked after a
+    short pause; only warnings that survive every pass are reported. Earlier passes go to stderr."""
+    result = generate_once()
+    for attempt in range(RETRIES):
+        if not result['warnings']:
+            break
+        print('catalog: pass %d reported %d warning(s), retrying: %s' % (attempt + 1, len(result['warnings']), ' | '.join(result['warnings'])[:600]), file=sys.stderr)
+        time.sleep(RETRY_PAUSE)
+        result = generate_once()
+    return result
+
+
+def generate_once():
     c = Catalog()
     warnings = c.warnings
     steps = [('한 판의 기술', growth_entities), ('영구 성장', perm_entities), ('전투 수치', combat_entities), ('장비', gear_entities),
