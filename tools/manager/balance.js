@@ -64,7 +64,7 @@
     const cur = r.key in changes ? changes[r.key] : r.value;
     return `<tr data-row="${esc(r.key)}" class="${r.key in changes ? 'chg' : ''}"><td class="bl-l">${esc(r.label)}<small>${esc(r.path || r.key)}</small></td><td class="bl-o">${esc(fmtVal(r.value))}</td><td><input type="number" step="any" data-bk="${esc(r.key)}" value="${esc(fmtVal(cur))}" aria-label="${esc(r.label)}"></td><td><button type="button" class="bl-rs" data-reset="${esc(r.key)}" title="원래 값으로">↺</button></td></tr>`;
   }
-  const tableHtml = rows => `<table class="bl-vt"><thead><tr><th>값</th><th>원래</th><th>실험</th><th></th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table>`;
+  const tableHtml = rows => `<div class="table-wrap"><table class="bl-vt"><thead><tr><th>값</th><th>원래</th><th>실험</th><th></th></tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`;
   function group(id, title, sub, rows, openIt) {
     if (!rows.length) return '';
     return `<details class="bl-g" data-grp="${esc(id)}" ${openIt ? 'open' : ''}><summary><b>${esc(title)}</b> <small>${esc(sub || '')}</small> <span class="bl-cnt"></span></summary>${tableHtml(rows)}</details>`;
@@ -81,11 +81,11 @@
     const wit = m.witches.map(w => `<label><input type="checkbox" data-wit="${esc(w.id)}" ${sel.witches.includes(w.id) ? 'checked' : ''}> ${esc(w.label)} <small>${esc(w.id)}</small></label>`).join('');
     const calib = (m.calibration.params || []).map(r => ({key: r.key, path: r.name, label: r.name, value: r.value, editable: true}));
     const src = Object.entries(m.calibration.source_counts || {}).map(([k, v]) => `${esc(k)} ${v}`).join(' · ');
-    return `${(m.warnings || []).map(w => `<p class="g-warn">${esc(w)}</p>`).join('')}
+    return `${(m.warnings || []).map(w => `<p class="alert warn">${esc(w)}</p>`).join('')}
 <section class="bl-box"><h3>1. 바탕</h3><label>주문 묶음<select id="bl-file">${files}</select></label><label>프리셋<select id="bl-preset">${presets}</select></label>
 <p class="bl-help">프리셋이 정한 값(봉인 처치 수 등)이 「원래」 열에 들어 있습니다. 주문 묶음이나 프리셋을 바꾸면 바꾼 값은 비워집니다.</p></section>
 <section class="bl-box"><h3>2. 스킬 값 <small id="bl-total"></small></h3><p class="bl-help">숫자 칸을 고치면 「바꾼 값」으로 표시되고 원래 값은 옆에 남습니다. ↺은 되돌리기입니다.</p>
-<button type="button" id="bl-clear" class="quiet">바꾼 값 모두 되돌리기</button>${spells}${group('sp-common', '공통 규칙(축·진화·상태 등)', 'axis · evolve · statuses …', m.spell_common, false)}<div id="bl-orphans"></div></section>
+<button type="button" id="bl-clear" class="danger">바꾼 값 모두 되돌리기</button>${spells}${group('sp-common', '공통 규칙(축·진화·상태 등)', 'axis · evolve · statuses …', m.spell_common, false)}<div id="bl-orphans"></div></section>
 <section class="bl-box"><h3>3. 적(리듬) 쪽 값</h3><p class="bl-help">마디마다 나오는 수, 간격, 체력 배율입니다. 게임의 전투 수치 파일을 읽은 값에 프리셋을 얹은 것입니다.</p>${m.rhythm.map(g => group('rh-' + g.id, g.title, '', g.rows, false)).join('')}</section>
 <section class="bl-box"><h3>4. 모델 상수 <small>가설 포함</small></h3><p class="bl-help">시뮬레이터 안의 계산용 상수입니다. 출처: ${src || '-'} (fit=실측에 맞춤, spec=명세, hypo=가설, guess=추정). 게임 값이 아닙니다.</p>${group('calib', '모델 상수 보기', '', calib, false)}
 ${(m.calibration.report_lines || []).length ? `<details class="bl-g"><summary>맞춤 때 시뮬레이터가 낸 글 일부 <small>이 툴이 잰 값이 아님</small></summary><ul class="text-lines">${m.calibration.report_lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></details>` : ''}</section>
@@ -126,7 +126,7 @@ ${(m.calibration.report_lines || []).length ? `<details class="bl-g"><summary>�
   function deathsText(cell) { return (cell.deaths || []).slice(0, 2).map(d => `${d.beat}(${d.cause}) ${d.count}`).join(', '); }
 
   function resultHtml() {
-    if (!last) return '<p class="g-empty">왼쪽에서 값을 고르고 「실행」을 누르면 이곳에 결과가 나옵니다. 처음에는 아무것도 바꾸지 않고 눌러 기준 결과를 보세요.</p>';
+    if (!last) return '<p class="empty">왼쪽에서 값을 고르고 「실행」을 누르면 이곳에 결과가 나옵니다. 처음에는 아무것도 바꾸지 않고 눌러 기준 결과를 보세요.</p>';
     const a = last.data.analysis, pa = prev ? prev.data.analysis : null, v = a.verdict;
     const pcells = pa ? pa.cells : {};
     const head = `<div class="bl-verdict ${v.ok ? 'ok' : 'bad'}" role="status"><span class="bl-vtag">${v.ok ? '서열 성립' : '서열 깨짐'}</span><b>${esc(v.headline)}</b>${pa ? `<small>직전: ${esc(pa.verdict.ok ? '성립' : '깨짐')} → 지금: ${esc(v.ok ? '성립' : '깨짐')}${pa.verdict.ok !== v.ok ? ' (바뀜)' : ''}</small>` : ''}</div>`;
@@ -183,7 +183,7 @@ ${(m.calibration.report_lines || []).length ? `<details class="bl-g"><summary>�
 <span class="bl-ea"><button type="button" class="link-button" data-load="${esc(e.id)}">값 불러오기</button><button type="button" class="link-button" data-export="${esc(e.id)}">내보내기</button></span></li>`;
     }).join('');
     const cmp = compareOn && pick.length === 2 ? compareHtml(exps.find(e => e.id === pick[0]), exps.find(e => e.id === pick[1])) : '';
-    return `<h3>저장한 실험 <small>${exps.length}개 · _local/balance-lab/experiments/</small></h3>${notice ? `<p class="g-warn">${esc(notice)}</p>` : ''}${list ? `<ul class="bl-exps">${list}</ul>` : '<p class="g-empty">저장한 실험이 없습니다.</p>'}
+    return `<h3>저장한 실험 <small>${exps.length}개 · _local/balance-lab/experiments/</small></h3>${notice ? `<p class="alert warn">${esc(notice)}</p>` : ''}${list ? `<ul class="bl-exps">${list}</ul>` : '<p class="empty">저장한 실험이 없습니다.</p>'}
 <div class="bl-actions"><button type="button" id="bl-compare" ${pick.length === 2 ? '' : 'disabled'}>고른 둘 나란히 견주기${pick.length === 2 ? '' : ' (둘을 고르세요)'}</button><span class="bl-help">실험 저장은 모델의 값만 남깁니다. 게임 데이터는 바뀌지 않습니다.</span><span id="bl-exp-fb" role="status"></span></div>${cmp}`;
   }
 
@@ -206,7 +206,7 @@ ${(m.calibration.report_lines || []).length ? `<details class="bl-g"><summary>�
     const clRows = Object.entries(cl).map(([c, [x, y]]) => { const d = x && y && x.mean !== null && y.mean !== null ? (y.mean - x.mean) * 100 : null; return `<tr><td>${esc((x || y).label)}</td><td>${pct(x ? x.mean : null)}</td><td>${pct(y ? y.mean : null)}</td><td>${d === null ? '-' : d === 0 ? '＝' : `<span class="bl-d ${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'}${Math.abs(Math.round(d))}%p</span>`}</td></tr>`; }).join('');
     const sameSetup = A.settings.preset === B.settings.preset && A.settings.spells === B.settings.spells && A.settings.seeds === B.settings.seeds;
     return `<div class="bl-cmpbox"><h3>견주기</h3><div class="bl-two"><div class="bl-verdict ${sa.ok ? 'ok' : 'bad'}"><span class="bl-vtag">A</span><b>${esc(A.name)}</b><small>${esc(sa.headline || '결과 요약 없음')}</small></div><div class="bl-verdict ${sb.ok ? 'ok' : 'bad'}"><span class="bl-vtag">B</span><b>${esc(B.name)}</b><small>${esc(sb.headline || '결과 요약 없음')}</small></div></div>
-${sameSetup ? '' : '<p class="g-warn">두 실험의 프리셋·주문 묶음·판 수가 다릅니다. 승률 차가 값 때문인지 설정 때문인지 가려 보세요.</p>'}
+${sameSetup ? '' : '<p class="alert warn">두 실험의 프리셋·주문 묶음·판 수가 다릅니다. 승률 차가 값 때문인지 설정 때문인지 가려 보세요.</p>'}
 <h4>바뀐 값 (A와 B가 다른 줄은 강조)</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>값</th><th>A</th><th>B</th></tr></thead><tbody>${setRows || '<tr><td colspan="3">두 실험 모두 바꾼 값이 없습니다.</td></tr>'}</tbody></table></div>
 <h4>종류별 평균 승률 (A → B)</h4><div class="table-wrap"><table class="data-table"><thead><tr><th>종류</th><th>A</th><th>B</th><th>차</th></tr></thead><tbody>${clRows}</tbody></table></div>
 <details class="bl-g"><summary>칸별 승률 (A → B)</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>칸</th><th>A</th><th>B</th><th>차</th></tr></thead><tbody>${cRows}</tbody></table></div></details></div>`;
@@ -232,8 +232,8 @@ ${sameSetup ? '' : '<p class="g-warn">두 실험의 프리셋·주문 묶음·�
     document.dispatchEvent(new CustomEvent('view-open', {detail: 'balance'}));
     document.querySelectorAll('[data-category],[data-all]').forEach(b => b.classList.remove('active'));
     if (!meta) {
-      $('#balance').innerHTML = '<p class="g-empty">시뮬레이터에 값을 묻는 중… (몇 초 걸립니다)</p>';
-      try { await Promise.all([loadMeta(), loadExps()]); } catch (e) { $('#balance').innerHTML = `<p class="g-empty">균형 실험실을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
+      $('#balance').innerHTML = '<p class="empty">시뮬레이터에 값을 묻는 중… (몇 초 걸립니다)</p>';
+      try { await Promise.all([loadMeta(), loadExps()]); } catch (e) { $('#balance').innerHTML = `<p class="empty">균형 실험실을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
     }
     render();
   }

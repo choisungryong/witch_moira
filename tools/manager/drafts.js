@@ -36,7 +36,7 @@
       $('#gallery-count').textContent = data.items.length + data.canonical.length;
       if (open && changed && !modal) render();
     } catch (e) {
-      if ($('#gallery')) $('#gallery').innerHTML = '<p class="g-empty">시안을 불러오지 못했습니다. ' + esc(e.message) + '</p>';
+      if ($('#gallery')) $('#gallery').innerHTML = '<p class="empty">시안을 불러오지 못했습니다. ' + esc(e.message) + '</p>';
     }
   }
 
@@ -64,7 +64,7 @@
     if (!data) return;
     const items = data.items.filter(visible);
     let html = `<div class="g-bar"><h2>원화 시안</h2><div class="g-seg" role="group" aria-label="상태별 보기">${Object.entries(filters).map(([k, v]) => `<button type="button" data-gfilter="${k}" class="${filter === k ? 'on' : ''}">${v}</button>`).join('')}</div><button type="button" id="g-reload" class="quiet">시안 다시 읽기</button><span>${items.length} / ${data.items.length}장${data.thumbnails ? '' : ' · 작은 그림을 만들 수 없어 원본을 그대로 씁니다(Pillow 없음)'}</span></div>`;
-    html += (data.warnings || []).map(w => `<p class="g-warn">${esc(w)}</p>`).join('') + waitingView() + summaryView();
+    html += (data.warnings || []).map(w => `<p class="alert warn">${esc(w)}</p>`).join('') + waitingView() + summaryView();
     if (data.canonical.length && !groupFilter) html += `<h3 class="g-group">확정 원화 · 비교 기준</h3><div class="g-grid">${data.canonical.map(card).join('')}</div>`;
     const groups = [];
     data.characters.forEach(c => { if (!groups.includes(c.group)) groups.push(c.group); });
@@ -77,8 +77,8 @@
       }).join('');
       if (body) html += `<h3 class="g-group">${esc(gr)}</h3>` + body;
     });
-    if (!data.items.length) html += '<p class="g-empty">아직 시안이 없습니다. 색인(_local/art/drafts/index.json)에 항목이 생기면 여기에 나타납니다.</p>';
-    else if (!items.length) html += '<p class="g-empty">이 조건에 맞는 시안이 없습니다. 위에서 「전체」를 골라 보세요.</p>';
+    if (!data.items.length) html += '<p class="empty">아직 시안이 없습니다. 색인(_local/art/drafts/index.json)에 항목이 생기면 여기에 나타납니다.</p>';
+    else if (!items.length) html += '<p class="empty">이 조건에 맞는 시안이 없습니다. 위에서 「전체」를 골라 보세요.</p>';
     const top = g.scrollTop;
     g.innerHTML = html;
     g.scrollTop = top;
@@ -119,12 +119,12 @@
 <div class="g-body"><div class="g-stage">${p && p.id !== e.id ? fig(p, '고정') : ''}${fig(e, p && p.id !== e.id ? '지금' : '')}</div>
 <aside class="g-side"><h3>${esc(e.title)}</h3><dl><dt>상태</dt><dd>${esc(e.status)}</dd><dt>구분</dt><dd>${esc(e.group)}</dd>${e.tool ? `<dt>도구</dt><dd>${esc(e.tool)}</dd>` : ''}${e.model ? `<dt>모델</dt><dd>${esc(e.model)}</dd>` : ''}${e.created ? `<dt>만든 때</dt><dd>${esc(e.created)}</dd>` : ''}<dt>메모(색인)</dt><dd>${esc(e.note) || '—'}</dd></dl>
 ${e.has_prompt ? '<details id="g-prompt"><summary>프롬프트 전문</summary><pre>불러오는 중…</pre></details>' : ''}
-${e.group === '확정 원화' ? '' : `<h3 style="font-size:15px;margin-top:14px">고르기 표시 <small>(이 도구의 selection.json에 저장)</small></h3><div class="row" role="group" aria-label="고르기 표시">${Object.entries(marks).map(([k, v]) => `<button type="button" data-mark="${k}" class="${mark(e.id) === k ? 'on' : ''}">${v}</button>`).join('')}<button type="button" data-mark="">표시 해제</button></div>`}
-<h3 style="font-size:15px;margin-top:14px">내 판정과 메모</h3>
+${e.group === '확정 원화' ? '' : `<h3 class="g-sub">고르기 표시 <small>(이 도구의 selection.json에 저장)</small></h3><div class="row" role="group" aria-label="고르기 표시">${Object.entries(marks).map(([k, v]) => `<button type="button" data-mark="${k}" class="${mark(e.id) === k ? 'on' : ''}">${v}</button>`).join('')}<button type="button" data-mark="">표시 해제</button></div>`}
+<h3 class="g-sub">내 판정과 메모</h3>
 <div class="row" role="group" aria-label="내 판정">${Object.entries(verdicts).map(([k, v]) => `<button type="button" data-verdict="${k}" class="${m.verdict === k ? 'on' : ''}">${v}</button>`).join('')}<button type="button" data-verdict="">해제</button></div>
 <textarea id="g-notes" maxlength="10000" placeholder="이 시안에 대한 생각을 적어 두세요.">${esc(m.notes)}</textarea>
 <div class="row"><button type="button" data-g="savenote">메모 저장</button><span id="g-feedback" role="status" aria-live="polite"></span></div>
-<p style="color:#9aa496;font-size:12px">판정과 메모는 이 도구의 로컬 기록에만 저장됩니다. 색인과 그림은 바뀌지 않습니다.</p></aside></div>`;
+<p class="g-fine">판정과 메모는 이 도구의 로컬 기록에만 저장됩니다. 색인과 그림은 바뀌지 않습니다.</p></aside></div>`;
     const d = $('#g-prompt');
     if (d) d.addEventListener('toggle', async () => {
       if (!d.open || d.dataset.loaded) return;

@@ -45,11 +45,12 @@ function render() {
   $('#view-context').textContent = cat ? cat.name : '전체';
   $('#view-title').textContent = cat ? cat.name : '게임에 들어 있는 것';
   $('#result-count').textContent = `${rows.length} / ${catalog.entities.length}개`;
-  document.querySelectorAll('[data-category]').forEach(b => b.classList.toggle('active', b.dataset.category === category));
+  document.querySelectorAll('[data-category]').forEach(b => { const on = b.dataset.category === category; b.classList.toggle('active', on); b.toggleAttribute('aria-current', on); });
   document.querySelector('[data-all]').classList.toggle('active', !category);
+  document.querySelector('[data-all]').toggleAttribute('aria-current', !category);
   $('#list').innerHTML = rows.length ? rows.map(e => {
     const r = record(e);
-    return `<button class="entity-row ${selected === e.id ? 'selected' : ''}" data-id="${esc(e.id)}"><span><span class="row-name">${esc(e.name)}</span><span class="row-sub">${esc(e.type)} · ${esc(e.summary)}</span></span><span class="row-meta"><span class="badge ${esc(r.status)}">${esc(statuses[r.status] || r.status)}</span></span></button>`;
+    return `<button class="entity-row ${selected === e.id ? 'selected' : ''}" ${selected === e.id ? 'aria-current="true"' : ''} data-id="${esc(e.id)}"><span><span class="row-name">${esc(e.name)}</span><span class="row-sub">${esc(e.type)} · ${esc(e.summary)}</span></span><span class="row-meta"><span class="badge ${esc(r.status)}">${esc(statuses[r.status] || r.status)}</span></span></button>`;
   }).join('') : '<p class="empty">일치하는 항목이 없습니다.<br>검색어를 줄이거나 거르기를 전체로 바꿔 보세요.</p>';
 }
 
@@ -148,7 +149,7 @@ function select(id) {
   if (saving) return;
   if (dirty && !confirm('저장하지 않은 메모를 버리고 다른 항목을 열까요?')) return;
   dirty = false; inspect(id); $('#inspector').scrollTop = 0; render();
-  if (matchMedia('(max-width:800px)').matches) $('#inspector').scrollIntoView({block: 'start'});
+  if (matchMedia('(max-width:1100px)').matches) $('#inspector').scrollIntoView({block: 'start'});
 }
 
 document.addEventListener('click', e => {

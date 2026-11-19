@@ -35,10 +35,10 @@
     const p = $('#audit');
     if (!data) return;
     const res = data.result;
-    const head = `<h2>점검</h2><p class="tl-note">${esc(res ? res.notice : '이 점검은 기록의 유무와 일치만 본다. 품질·재미·저작권의 실제 여부는 보지 않는다.')}</p>`;
+    const head = `<h2>점검</h2><p class="alert info">${esc(res ? res.notice : '이 점검은 기록의 유무와 일치만 본다. 품질·재미·저작권의 실제 여부는 보지 않는다.')}</p>`;
     const bar = `<div class="au-bar"><button id="au-run" class="primary" type="button" ${running || data.running ? 'disabled' : ''}>${running || data.running ? '점검하는 중…(1분쯤 걸립니다)' : '다시 돌리기'}</button><span class="bl-help">${esc(message)}</span></div>`;
     if (!res) {
-      p.innerHTML = head + bar + '<p class="g-empty">아직 점검 기록이 없습니다. 「다시 돌리기」를 누르면 첫 기록(기준선)을 만듭니다. 명령: <code>python tools/dev/audit.py</code></p>';
+      p.innerHTML = head + bar + '<p class="empty">아직 점검 기록이 없습니다. 「다시 돌리기」를 누르면 첫 기록(기준선)을 만듭니다. 명령: <code>python tools/dev/audit.py</code></p>';
       return;
     }
     const worse = res.worse || [];
@@ -68,8 +68,8 @@
     document.dispatchEvent(new CustomEvent('view-open', {detail: 'audit'}));
     document.querySelectorAll('[data-category],[data-all]').forEach(b => b.classList.remove('active'));
     if (!data) {
-      $('#audit').innerHTML = '<p class="g-empty">점검 기록을 읽는 중…</p>';
-      try { await load(); } catch (e) { $('#audit').innerHTML = `<p class="g-empty">점검 기록을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
+      $('#audit').innerHTML = '<p class="empty">점검 기록을 읽는 중…</p>';
+      try { await load(); } catch (e) { $('#audit').innerHTML = `<p class="empty">점검 기록을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
     }
     render();
   }

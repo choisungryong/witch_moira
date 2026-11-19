@@ -25,13 +25,13 @@
   const saveDraft = () => { try { localStorage.setItem(DRAFT, JSON.stringify(form)); } catch { /* 저장 공간이 없으면 임시 저장만 건너뛴다 */ } };
 
   async function load() {
-    $('#playlog').innerHTML = '<p class="g-empty">불러오는 중…</p>';
+    $('#playlog').innerHTML = '<p class="empty">불러오는 중…</p>';
     try {
       data = await req('/api/playtests');
       if (!form) form = loadDraft() || blank();
       $('#playlog-count').textContent = data.records.length;
     } catch (e) {
-      $('#playlog').innerHTML = '<p class="g-empty">플레이 기록을 불러오지 못했습니다. ' + esc(e.message) + '</p>';
+      $('#playlog').innerHTML = '<p class="empty">플레이 기록을 불러오지 못했습니다. ' + esc(e.message) + '</p>';
       data = null;
     }
   }
@@ -59,12 +59,12 @@
     const legend = Object.entries(data.scale).map(([k, v]) => k + ' ' + v).join(' · ');
     return `<form id="pl-form" novalidate><p class="pl-help">한 판을 끝낸 뒤 바로 적으세요. 점수는 질문에 대한 느낌입니다(${esc(legend)}). 모르겠으면 비워 두세요. 판 결과는 직접 고릅니다. 게임 저장 폴더는 읽지 않습니다.</p>${head}${groups}
 <label class="pl-memo">자유 메모<textarea data-f="memo" maxlength="10000" placeholder="그 밖에 느낀 것, 막힌 곳, 버그">${esc(form.memo)}</textarea></label>
-<div class="pl-actions"><button type="submit" class="primary">기록 저장</button><button type="button" id="pl-reset" class="quiet">양식 비우기</button><span id="pl-feedback" role="status" aria-live="polite"></span></div></form>`;
+<div class="pl-actions"><button type="submit" class="primary">기록 저장</button><button type="button" id="pl-reset" class="danger">양식 비우기</button><span id="pl-feedback" role="status" aria-live="polite"></span></div></form>`;
   }
 
   const stars = n => n ? n + '점' : '미응답';
   function listView() {
-    if (!data.records.length) return '<p class="g-empty">아직 저장된 기록이 없습니다. 「새 기록」에서 한 판을 적어 보세요.</p>';
+    if (!data.records.length) return '<p class="empty">아직 저장된 기록이 없습니다. 「새 기록」에서 한 판을 적어 보세요.</p>';
     return data.records.map(r => {
       const b = r.build || {}, ans = Object.values(r.answers || {});
       const head = [data.options.witch[r.witch] || '', data.options.result[r.result] || '', r.minutes != null ? r.minutes + '분' : '', r.sound ? '소리 ' + (data.options.sound[r.sound] || '') : '', r.resolution].filter(Boolean).join(' · ');
@@ -76,7 +76,7 @@ ${r.memo ? `<p class="pl-memo-text">${esc(r.memo)}</p>` : ''}</details>`;
   }
 
   function trendView() {
-    if (!data.trend.length) return '<p class="g-empty">점수를 매긴 기록이 생기면 질문별 변화가 여기에 나옵니다.</p>';
+    if (!data.trend.length) return '<p class="empty">점수를 매긴 기록이 생기면 질문별 변화가 여기에 나옵니다.</p>';
     const rows = data.trend.map(t => {
       const s = t.points.map(p => p.score), last = s[s.length - 1], prev = s.length > 1 ? s[s.length - 2] : null;
       const arrow = prev === null ? '' : last > prev ? ' <span class="up">▲</span>' : last < prev ? ' <span class="down">▼</span>' : ' <span>＝</span>';
@@ -89,7 +89,7 @@ ${r.memo ? `<p class="pl-memo-text">${esc(r.memo)}</p>` : ''}</details>`;
     const p = $('#playlog');
     if (!data) return;
     const tabs = [['new', '새 기록'], ['list', '지난 기록 (' + data.records.length + ')'], ['trend', '점수 변화']];
-    const warn = (data.warnings || []).map(w => `<p class="g-warn">${esc(w)}</p>`).join('');
+    const warn = (data.warnings || []).map(w => `<p class="alert warn">${esc(w)}</p>`).join('');
     const body = tab === 'new' ? formView() : tab === 'list' ? listView() : trendView();
     const top = p.scrollTop;
     p.innerHTML = `<div class="g-bar"><h2>플레이 기록</h2><div class="g-seg" role="group" aria-label="보기">${tabs.map(([k, v]) => `<button type="button" data-ptab="${k}" class="${tab === k ? 'on' : ''}">${esc(v)}</button>`).join('')}</div></div>${warn}${body}`;

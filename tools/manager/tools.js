@@ -25,8 +25,8 @@
     const q = query.toLocaleLowerCase();
     const roles = data.roles.map(r => ({...r, shown: r.tools.filter(t => matches(t, q))})).filter(r => r.shown.length || (!q && !r.tools.length));
     const unm = data.unmapped.filter(t => matches(t, q));
-    p.innerHTML = `<h2>도구</h2><p class="tl-note">${esc(data.caveat)}</p>
-${(data.warnings || []).map(w => `<p class="g-warn">${esc(w)}</p>`).join('')}
+    p.innerHTML = `<h2>도구</h2><p class="alert info">${esc(data.caveat)}</p>
+${(data.warnings || []).map(w => `<p class="alert warn">${esc(w)}</p>`).join('')}
 ${data.reminders.length ? `<section class="tl-remind"><h3>이미 있는데 놓치기 쉬운 것</h3><ul>${data.reminders.map(r => `<li>${esc(r.text)}${r.path ? ` <code>${esc(r.path)}</code>` : ''}</li>`).join('')}</ul></section>` : ''}
 <div class="tl-bar"><label>도구 찾기<input id="tl-q" type="search" value="${esc(query)}" placeholder="이름, 하는 일, 명령 일부" autocomplete="off"></label><span class="bl-help">도구 ${data.tool_count}개 · ${esc(data.generated_at)}에 읽음 · 문서로 내보내기: <code>python tools/manager/catalog.py --tools-index</code></span></div>
 ${roles.map(r => `<details class="tl-role" ${q || r.id === 'everyone' ? 'open' : ''}><summary>${esc(r.label)}<small>${r.shown.length}개</small></summary>${r.about ? `<p class="bl-help">${esc(r.about)}</p>` : ''}${r.shown.map(toolHtml).join('')}</details>`).join('')}
@@ -45,8 +45,8 @@ ${unm.length ? `<details class="tl-role" ${q ? 'open' : ''}><summary>아직 역�
     document.dispatchEvent(new CustomEvent('view-open', {detail: 'tools'}));
     document.querySelectorAll('[data-category],[data-all]').forEach(b => b.classList.remove('active'));
     if (!data) {
-      $('#tools').innerHTML = '<p class="g-empty">도구 목록을 읽는 중…</p>';
-      try { await load(); } catch (e) { $('#tools').innerHTML = `<p class="g-empty">도구 색인을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
+      $('#tools').innerHTML = '<p class="empty">도구 목록을 읽는 중…</p>';
+      try { await load(); } catch (e) { $('#tools').innerHTML = `<p class="empty">도구 색인을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
     }
     render();
   }
