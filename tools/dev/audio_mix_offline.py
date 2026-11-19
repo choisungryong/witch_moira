@@ -39,6 +39,8 @@ def parse_rules(player=am.PLAYER):
         'master': float(re.search(r'var master_volume\s*:?=\s*([\d.]+)', text).group(1)), 'pitches': pitches,
         'one_shot_gain': float(re.search(r'\.11\b', text).group()),
         'ambience_gain': float(re.search(r'\.025\b', text).group()),
+        # cues that make no sound until replaced (combat_audio.gd SILENT); the game returns before cooldown and voice
+        'silent': re.findall(r'"(\w+)"', (re.search(r'const SILENT\b[^=]*=\s*\[([^\]]*)\]', text) or [None, ''])[1]),
     }
 
 
@@ -60,6 +62,9 @@ def simulate(requests, rules, src):
         tick, cue, ui, playing = int(req[0]), req[1], int(req[2]), int(req[3])
         st = stats.setdefault(cue, {'requested': 0, 'paused_skip': 0, 'cooldown_skip': 0, 'no_voice': 0, 'played': 0})
         st['requested'] += 1
+        if cue in rules.get('silent', ()):
+            st['silent_skip'] = st.get('silent_skip', 0) + 1
+            continue
         if not playing and not ui:
             st['paused_skip'] += 1
             continue

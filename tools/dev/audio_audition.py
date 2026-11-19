@@ -166,12 +166,17 @@ measure.md          측정표. 읽지 않으셔도 됩니다.
 """
 
 
-def build_blind(src_dir, out_dir, notes, rng):
-    order = BLIND_POOL + BLIND_REPEATS
+def blind_order(items, rng):
+    """Shuffle in place (rng is a random.Random) until no two neighbours are the same item. Returns the list.
+    Shared by the P1 bundle and audio_scene_audition.py, so the blind order is made one way."""
     while True:
-        rng.shuffle(order)
-        if all(a != b for a, b in zip(order, order[1:])):
-            break
+        rng.shuffle(items)
+        if all(a != b for a, b in zip(items, items[1:])):
+            return items
+
+
+def build_blind(src_dir, out_dir, notes, rng):
+    order = blind_order(BLIND_POOL + BLIND_REPEATS, rng)
     answers = []
     for i, name in enumerate(order, 1):
         x = match(mono(src_dir / (name + '.wav')), 'mmax', -23.0, name)

@@ -526,6 +526,38 @@
           0.6
         ]
       ]
+    },
+    {
+      "file": "jewel_0.wav",
+      "duration": 0.75,
+      "frames": 36000,
+      "rate": 48000,
+      "channels": 1,
+      "peak": 0.66,
+      "rms": 0.11911631521223148,
+      "clipped_samples": 0,
+      "sha256": "67a73219a712285d90e8457eca3f5bce9f7268693ba450da4bd08e37a45861b8",
+      "pack": "none (project synthesis)",
+      "origin": "synthesized",
+      "license": "project-owned, no third-party source (sine partials)",
+      "processing": "tools/dev/make_drop_sounds.py renders sine partials; re-running it reproduces this file bit for bit (checked 2026-11-19). See SYNTHESIZED.ko.md. Not Kenney material, unlike the top-level creator/license fields.",
+      "layers": []
+    },
+    {
+      "file": "legend_0.wav",
+      "duration": 1.6,
+      "frames": 76800,
+      "rate": 48000,
+      "channels": 1,
+      "peak": 0.66,
+      "rms": 0.13411700483600505,
+      "clipped_samples": 0,
+      "sha256": "4d9b50a4578ec8947e0cbd63d543deddd15aab748c4eed6a8c73f204c0765999",
+      "pack": "none (project synthesis)",
+      "origin": "synthesized",
+      "license": "project-owned, no third-party source (sine partials)",
+      "processing": "tools/dev/make_drop_sounds.py renders sine partials; re-running it reproduces this file bit for bit (checked 2026-11-19). See SYNTHESIZED.ko.md. Not Kenney material, unlike the top-level creator/license fields.",
+      "layers": []
     }
   ],
   "actual_hearing": "Not certified by waveform validation; needs real listening in game."
