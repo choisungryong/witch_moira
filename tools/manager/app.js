@@ -16,6 +16,26 @@ async function request(url, options) {
   return data;
 }
 
+// 서버는 시작할 때의 코드를 그대로 쓴다. 화면 파일은 디스크에서 바로 읽지만 파이썬 코드가 바뀌었거나
+// (또는 이 점검 자체를 모르는 오래된 서버면) 새 기능이 빠져 있을 수 있어 머리에 알린다.
+async function checkServer() {
+  const box = $('#stale-banner');
+  if (!box) return;
+  let text = '';
+  try {
+    const r = await fetch('/api/server');
+    if (r.status === 404) text = '서버가 낡았습니다. 새 화면 기능 일부가 비어 있을 수 있으니 서버를 끄고 다시 시작하세요.';
+    else if (r.ok) {
+      const s = await r.json();
+      if (s.stale) text = '서버가 낡았습니다. 서버 코드가 바뀐 뒤 다시 시작하지 않았습니다(' + [...s.changed, ...s.added, ...s.removed].join(', ') + '). 서버를 끄고 다시 시작하세요.';
+    }
+  } catch { /* 연결 문제는 아래 불러오기 안내가 따로 알린다 */ }
+  box.textContent = text;
+  box.hidden = !text;
+}
+checkServer();
+setInterval(checkServer, 60000);
+
 async function load(refresh) {
   if (dirty && !confirm('저장하지 않은 메모를 버리고 다시 읽을까요?')) return;
   $('#notice').textContent = '불러오는 중…';

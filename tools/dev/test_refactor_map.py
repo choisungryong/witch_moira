@@ -78,6 +78,14 @@ def make_project(root):
     put(root, "docs/ignored.gd", 'preload("res://game/lonely.gd")\n')
     put(root, "docs/note.md", "see res://game/lonely.gd here\n")
     put(root, "_local/.gdignore", "")
+    # T7-2: files named only by a table JSON (paths relative to chapter1/art, no res://)
+    put(root, "chapter1/art/asset_slots.json", '{"slots":{"a.b":{"kind":"sprite_sheet","file":"x/only_slot.png","meta":"x/side.json"}}}')
+    put(root, "chapter1/art/x/only_slot.png", "png")
+    put(root, "chapter1/art/x/side.json", '{"overlay":"x/only_in_side.png"}')
+    put(root, "chapter1/art/x/only_in_side.png", "png")
+    put(root, "chapter1/art/x/nobody.png", "png")
+    put(root, "chapter1/data/audio_map.json", '{"cues":{"hit":{"file":"audio/hit.wav"}}}')
+    put(root, "chapter1/art/audio/hit.wav", "wav")
     put(root, "game/lonely.gd.uid", "uid://lonely\n")
     put(root, "game/fx.gdshader.uid", "uid://shd1\n")
 
@@ -208,6 +216,13 @@ class RefMapTest(unittest.TestCase):
         self.assertEqual(res["edits"][0]["edit"], "res://game/ui38/panel.gd -> res://game/ui/panel.gd")
         res = rm.rename_check(self.g, "game/dyn/x1.json", "game/other/x1.json")
         self.assertTrue(res["dynamic_prefix"])
+
+    def test_files_named_only_by_the_slot_table_or_sound_table_have_referrers(self):
+        self.assertIn(("chapter1/art/asset_slots.json", "slot-path"), self.refs("chapter1/art/x/only_slot.png"))
+        self.assertIn(("chapter1/art/asset_slots.json", "slot-path"), self.refs("chapter1/art/x/side.json"))
+        self.assertIn(("chapter1/art/x/side.json", "json-path"), self.refs("chapter1/art/x/only_in_side.png"))
+        self.assertIn(("chapter1/data/audio_map.json", "slot-path"), self.refs("chapter1/art/audio/hit.wav"))
+        self.assertEqual(self.refs("chapter1/art/x/nobody.png"), set())
 
     def test_out_must_be_under_local(self):
         self.assertIsNone(rm.resolve_out(self.root, "docs/x"))

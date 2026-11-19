@@ -7,6 +7,8 @@ import json, re, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tools' / 'art'))
+import slot_paths  # noqa: E402  reads asset_slots.json / audio_map.json (T7-2); the same module the tools under tools/ use
 ENTRY = 'chapter1/ChapterOne.tscn'
 UNIT = 256  # chapter1/core/combat_core.gd: const UNIT := 256 (raw life/damage per displayed point)
 TICKS = 60
@@ -352,6 +354,35 @@ def growth_entities(c):
           src(p37))
 
 
+def run_spells_entities(c):
+    """chapter1/data/run_spells.json: the in-run spell composition. Shows what the file says (including its own `enabled`
+    flag) and which files name it; it does not say whether the running game uses it."""
+    p = 'chapter1/data/run_spells.json'
+    d = read_json(p)
+    txt = read(p)
+    readers = sorted(x.relative_to(ROOT).as_posix() for x in (ROOT / 'chapter1').rglob('*.gd') if 'run_spells.json' in x.read_text(encoding='utf-8', errors='replace'))
+    trial = ''
+    app = ROOT / 'chapter1' / 'app' / 'chapter_one.gd'
+    if app.is_file() and '--chapter1-trial=' in app.read_text(encoding='utf-8', errors='replace'):
+        trial = 'chapter1/app/chapter_one.gd'
+    spells = d.get('spells', {})
+    on = d.get('enabled')
+    state = '켜짐' if on is True else ('꺼짐' if on is False else '표시 없음')
+    c.add('run:spells', 'run', '규칙', '판 안 스킬 구성(run_spells) — 데이터에서는 %s' % state,
+          '데이터 파일의 enabled 값: %s. 주문 %d개, 조합 %d쌍, 슬롯 %s' % (state, len(spells), len(d.get('pairs', [])), d.get('slots', '?')),
+          [pairs('데이터 파일이 말하는 것', [('enabled', on), ('슬롯 수', d.get('slots', '?')), ('균형 상태(파일 표기)', d.get('balance_status', '?')),
+                                       ('울림 표시', d.get('marks_resonance', '?'))]),
+           table('주문', ['식별자', '역할', '원소', '소유자'],
+                 [[k, v.get('role', '?'), v.get('element', '?'), v.get('owner', '-')] for k, v in spells.items()]),
+           table('조합', ['식별자', '종류', '앞', '뒤', '상태'],
+                 [[x.get('id', '?'), x.get('kind', '?'), x.get('a', '?'), x.get('b', '?'), x.get('status', '-')] for x in d.get('pairs', [])]),
+           pairs('읽는 곳', [('이 파일 이름을 적은 코드', ', '.join(readers) or '찾지 못함'),
+                            ('시험판 인수(--chapter1-trial=spells,rhythm)를 처리하는 코드', trial or '찾지 못함')]),
+           lines('읽는 법', ['꺼진 값은 파일에 적힌 것이고, 시험판 인수나 도구(hud_dump --run-spells=on)로 그 실행에서만 켤 수 있습니다. '
+                          '이 화면은 어느 쪽으로 게임이 도는지 확인하지 않았습니다.'])],
+          src(p, txt, '"enabled"'))
+
+
 # ------------------------------------------------------------------ permanent growth
 def perm_entities(c):
     pp, tp = 'chapter1/data/character_progression.json', 'chapter1/data/skill_trees.json'
@@ -602,6 +633,18 @@ LIT = re.compile(r'"([^"\\\n]*)"')
 SCAN_EXT = {'.gd', '.tscn', '.gdshader', '.tres', '.json'}
 
 
+def table_paths(cur):
+    """[(repo path, why)] a table JSON names: asset_slots.json (file/meta/extra/fallback), audio_map.json, and the side JSON
+    of a slot (strings that are files). Empty for any other file."""
+    if cur == slot_paths.SLOTS_REL:
+        return [(rel, 'slot %s' % sid) for sid, _, rel in slot_paths.slot_refs(ROOT)]
+    if cur == slot_paths.AUDIO_MAP_REL:
+        return [(rel, 'cue %s' % cue) for cue, rel in slot_paths.audio_map_refs(ROOT)]
+    if cur in slot_paths.meta_files(ROOT):
+        return [(rel, '곁 JSON') for rel in slot_paths.sidecar_refs(ROOT, cur)]
+    return []
+
+
 def scan_references():
     """Follow res:// strings from the entry. Returns (reached files, direct refs, folder refs, literals)."""
     def abspath(res):
@@ -625,6 +668,17 @@ def scan_references():
             continue
         text = f.read_text(encoding='utf-8', errors='replace')
         local_dirs = []
+        if suffix == '.json':
+            # Paths written without res:// (the slot table, the sound table, side JSON of a slot) count as references
+            # from that file; the file itself was reached because the game's code names it.
+            for rel, why in table_paths(cur):
+                if why == '곁 JSON' and 'res://' + rel in text:
+                    continue  # already seen as a res:// string below, with its line number
+                if (ROOT / rel).is_file():
+                    direct.setdefault(rel, []).append((cur + ' · ' + why, 0))
+                    if rel not in reached:
+                        reached.add(rel)
+                        queue.append(rel)
         for n, line in enumerate(text.split('\n'), 1):
             for m in RES.finditer(line):
                 rel = abspath(m.group())
@@ -1058,7 +1112,7 @@ def generate():
 def generate_once():
     c = Catalog()
     warnings = c.warnings
-    steps = [('한 판의 기술', growth_entities), ('영구 성장', perm_entities), ('전투 수치', combat_entities), ('장비', gear_entities),
+    steps = [('한 판의 기술', growth_entities), ('판 안 스킬 구성', run_spells_entities), ('영구 성장', perm_entities), ('전투 수치', combat_entities), ('장비', gear_entities),
              ('에셋', asset_entities), ('코드 구성', code_entities), ('에이전트', agent_entities), ('문서', doc_entities),
              ('번역', i18n_entities), ('빌드와 검사 목록', build_entities)]
     for label, fn in steps:

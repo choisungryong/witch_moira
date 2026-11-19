@@ -38,9 +38,47 @@ class CatalogTests(unittest.TestCase):
     def test_usage_scan(self):
         by = {e['id']: e for e in self.c['entities']}
         self.assertEqual(by['asset:chapter1/art/characters/frost_witch_v02.png']['usage'], 'direct')
-        self.assertEqual(by['asset:chapter1/art/actors/hero.png']['usage'], 'composed')
+        # hero.png used to be "composed" (folder + name); it is now named by the slot table (asset_slots.json), which the code reads
+        self.assertEqual(by['asset:chapter1/art/actors/hero.png']['usage'], 'direct')
+        self.assertTrue(any('asset_slots.json' in n for n in by['asset:chapter1/art/actors/hero.png']['usage_notes']))
         self.assertEqual(by['asset:chapter1/art/quality03_audio/fire_0.wav']['usage'], 'composed')
         self.assertEqual(by['asset:chapter1/art/quality03/ground_flagstone_v01.png']['usage'], 'direct')
+
+    def test_files_named_only_by_the_slot_table_count_as_reached(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            def put(rel, text):
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_text(text, encoding='utf-8')
+            put('chapter1/ChapterOne.tscn', '[ext_resource path="res://chapter1/view/resolver.gd"]\n')
+            put('chapter1/view/resolver.gd', 'const T := "res://chapter1/art/asset_slots.json"\n')
+            put('chapter1/art/asset_slots.json', json.dumps({'slots': {'a.b': {'kind': 'sprite_sheet', 'file': 'x/only_slot.png', 'meta': 'x/side.json'}}}))
+            put('chapter1/art/x/only_slot.png', 'png')
+            put('chapter1/art/x/side.json', json.dumps({'overlay': 'x/only_in_side.png'}))
+            put('chapter1/art/x/only_in_side.png', 'png')
+            put('chapter1/art/x/nobody.png', 'png')
+            put('chapter1/data/audio_map.json', json.dumps({'cues': {'hit': {'file': 'audio/hit.wav'}}}))
+            put('chapter1/art/audio/hit.wav', 'wav')
+            original = catalog.ROOT
+            catalog.ROOT = root
+            try:
+                reached, direct, _, _ = catalog.scan_references()
+            finally:
+                catalog.ROOT = original
+            self.assertIn('chapter1/art/x/only_slot.png', direct)
+            self.assertIn('chapter1/art/x/only_in_side.png', reached)   # named by a side JSON of a slot
+            self.assertNotIn('chapter1/art/x/nobody.png', reached)
+            self.assertNotIn('chapter1/art/audio/hit.wav', reached)     # audio_map.json is not read by anything here
+
+    def test_run_spells_entity_reads_the_data_file(self):
+        e = next(e for e in self.c['entities'] if e['id'] == 'run:spells')
+        data = json.loads((catalog.ROOT / 'chapter1/data/run_spells.json').read_text(encoding='utf-8'))
+        self.assertEqual(e['category'], 'run')
+        self.assertIn('꺼짐' if data['enabled'] is False else '켜짐', e['name'])
+        spells = next(s for s in e['sections'] if s['title'] == '주문')
+        self.assertEqual(len(spells['rows']), len(data['spells']))
+        pairs = next(s for s in e['sections'] if s['title'] == '조합')
+        self.assertEqual(len(pairs['rows']), len(data['pairs']))
 
     def test_gd_const_parser(self):
         text = 'const A := [Vector2(0,0),Vector2(48,0)]\nconst B := ["x","y"]\nconst C := [{"id":"r","n":1,"p":Vector2(8,-7)}]\n'
@@ -212,6 +250,47 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(self.get(p)[0], 200, p)
         self.assertEqual(self.get('/local-state.json')[0], 404)
         self.assertEqual(self.get('/server.py')[0], 404)
+
+    def test_every_page_asset_is_served(self):
+        import re
+        html = (server.APP / 'index.html').read_text(encoding='utf-8')
+        for ref in re.findall(r'(?:src|href)="/([^"#]+)"', html):
+            self.assertEqual(self.get('/' + ref)[0], 200, ref)
+
+    def test_new_static_file_served_without_restart(self):
+        with tempfile.TemporaryDirectory() as d:
+            app = Path(d)
+            (app / 'index.html').write_text('x', encoding='utf-8')
+            (app / 'server.py').write_text('x', encoding='utf-8')
+            (app / 'local-state.json').write_text('{}', encoding='utf-8')
+            original = server.APP
+            server.APP = app
+            try:
+                self.assertEqual(self.get('/later.js')[0], 404)
+                (app / 'later.js').write_text('1', encoding='utf-8')   # appears after the server started
+                self.assertEqual(self.get('/later.js')[0], 200)
+                self.assertEqual(self.get('/server.py')[0], 404)
+                self.assertEqual(self.get('/local-state.json')[0], 404)
+                self.assertEqual(self.get('/..%2Fserver.py')[0], 404)
+            finally:
+                server.APP = original
+        self.assertIn('tools.js', server.static_names())
+        self.assertNotIn('server.py', server.static_names())
+
+    def test_stale_server_report(self):
+        with tempfile.TemporaryDirectory() as d:
+            app = Path(d)
+            (app / 'catalog.py').write_text('a = 1', encoding='utf-8')
+            started = server.code_snapshot(app)
+            self.assertFalse(server.stale_report(started, app)['stale'])
+            (app / 'catalog.py').write_text('a = 22', encoding='utf-8')
+            (app / 'new_module.py').write_text('', encoding='utf-8')
+            report = server.stale_report(started, app)
+            self.assertTrue(report['stale'])
+            self.assertEqual((report['changed'], report['added']), (['catalog.py'], ['new_module.py']))
+        status, body = self.get('/api/server')
+        self.assertEqual(status, 200)
+        self.assertFalse(json.loads(body)['stale'])
 
     def test_files_allow_list_and_escape(self):
         self.assertEqual(self.get('/files/chapter1/art/characters/frost_witch_v02.png')[0], 200)

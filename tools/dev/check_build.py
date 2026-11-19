@@ -28,7 +28,9 @@ from pathlib import Path
 import argparse, datetime, json, os, re, subprocess, sys, tempfile, time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'art'))
 import build as build_tool
+import slot_paths  # reads asset_slots.json / audio_map.json (T7-2)
 from isolated_env import isolated_env
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +39,9 @@ ANSI = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
 ERROR_LINE = re.compile(r'^\s*(SCRIPT ERROR|USER SCRIPT ERROR|USER ERROR|ERROR)\s*:|Parse Error', re.I)
 REQUIRED_IN_PCK = (
     'res://chapter1/data/combat_tuning.json', 'res://chapter1/data/loot.json', 'res://chapter1/data/skill_trees.json',
-    'res://chapter1/data/character_progression.json', 'res://chapter1/i18n/ko.po', 'res://chapter1/i18n/en.po',
+    'res://chapter1/data/character_progression.json', 'res://chapter1/data/growth.json', 'res://chapter1/data/growth_quality36.json',
+    'res://chapter1/data/growth_quality37.json', 'res://chapter1/data/outfits.json', 'res://chapter1/data/run_spells.json',
+    'res://chapter1/i18n/ko.po', 'res://chapter1/i18n/en.po',
     'res://chapter1/i18n/locales.json', 'res://chapter1/ChapterOne.tscn.remap', 'res://chapter1/app/chapter_one.gd.remap',
 )
 # Spec 2.5: names that must not appear inside assert(...). Second list: looks state-changing, reported as WARN.
@@ -140,13 +144,17 @@ def source_texts():
     return texts
 
 
-def unreferenced_data_files(files):
+def unreferenced_data_files(files, root=None):
     """Data files in the pck (json/txt/md/csv/cfg under art, data, i18n) whose file name appears in no runtime source
     line other than a print(). A heuristic: names built at run time are not seen, so this is a list to review."""
     texts = source_texts()
+    # Paths written only in the slot table, the sound table or a side JSON named by a slot count as read (T7-2).
+    table_refs = slot_paths.all_refs(root or ROOT)
     result = []
     for name in files:
         if not name.startswith('res://chapter1/art/') or not name.endswith(('.json', '.txt', '.csv', '.md', '.cfg')):
+            continue
+        if name[len('res://'):] in table_refs:
             continue
         base = name.rsplit('/', 1)[-1]
         folder_concat = re.compile(re.escape(name.rsplit('/', 1)[0] + '/') + r'"\s*\+')  # "res://.../actors/"+kind: name built at run time
@@ -173,6 +181,13 @@ def suggest_filter(paths):
         else:
             patterns.add(relative)
     return sorted(patterns)
+
+
+def data_files_not_listed(data_dir=None, listed=REQUIRED_IN_PCK):
+    """chapter1/data/*.json on disk that REQUIRED_IN_PCK does not name: a new data file must be added to that list
+    (then a build that drops it from the pck is caught)."""
+    data_dir = data_dir or ROOT / 'chapter1' / 'data'
+    return sorted('res://chapter1/data/' + p.name for p in data_dir.glob('*.json') if 'res://chapter1/data/' + p.name not in listed)
 
 
 def evaluate_pck(files):
@@ -210,6 +225,9 @@ def check_pck(report, build_dir, inject):
             problems.append('required missing: ' + ', '.join(missing))
         if note:
             problems.append(note.strip())
+        unlisted = data_files_not_listed()
+        if unlisted:
+            problems.append('chapter1/data file not in REQUIRED_IN_PCK (add it to tools/dev/check_build.py): ' + ', '.join(unlisted))
         report.add('pck', 'FAIL' if problems else 'PASS', '%s: files=%d %s' % (kind, len(files), '; '.join(problems)))
     # B3 report (same list for both presets; read from the store exe)
     exe = build_dir / 'store' / build_tool.EXE_NAME
@@ -526,6 +544,20 @@ def self_test(report):
         else:
             ok = len(sites) == 1 and [s for s in sites[0]['fail']] == want_fail and sites[0]['warn'] == want_warn
         cases.append(('assert scan: ' + source, ok))
+    with tempfile.TemporaryDirectory() as folder:
+        (Path(folder) / 'chapter1' / 'art' / 'x').mkdir(parents=True)
+        (Path(folder) / 'chapter1' / 'art' / 'x' / 'only_in_table.json').write_text('{}', encoding='utf-8')
+        (Path(folder) / 'chapter1' / 'art' / 'x' / 'nobody.json').write_text('{}', encoding='utf-8')
+        (Path(folder) / 'chapter1' / 'art' / 'asset_slots.json').write_text(json.dumps({'slots': {'a.b': {'kind': 'atlas', 'file': 'x/a.png', 'meta': 'x/only_in_table.json'}}}), encoding='utf-8')
+        names = ['res://chapter1/art/x/only_in_table.json', 'res://chapter1/art/x/nobody.json']
+        cases.append(('slot table: a data file named only by the slot table is not listed as unread',
+                      unreferenced_data_files(names, Path(folder)) == ['res://chapter1/art/x/nobody.json']))
+    cases.append(('data list: every chapter1/data/*.json is in REQUIRED_IN_PCK', data_files_not_listed() == []))
+    with tempfile.TemporaryDirectory() as folder:
+        for name in ('a.json', 'brand_new.json'):
+            (Path(folder) / name).write_text('{}', encoding='utf-8')
+        found = data_files_not_listed(Path(folder), ('res://chapter1/data/a.json',))
+        cases.append(('data list: a new data file missing from the list is reported', found == ['res://chapter1/data/brand_new.json']))
     for name, ok in cases:
         report.add('self_test', 'PASS' if ok else 'FAIL', name)
 

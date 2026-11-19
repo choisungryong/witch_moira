@@ -58,11 +58,19 @@ def line_asset_ledger(ctx):
     if not (errors and summary and unfit):
         raise Unseen('출력을 읽지 못했다(종료 %d) %s' % (code, (err or out).strip()[-120:]))
     items, complete, ready, unknown = (int(x) for x in summary.groups())
-    return {'metrics': [metric('errors', '원장 오류', int(errors.group(1))),
-                        metric('unknown', '미확인 칸이 있는 항목', unknown),
-                        metric('not_ready', '배포 불가로 보는 항목', int(unfit.group(1))),
-                        metric('ready', '배포 가능(사람이 확인한 것)', ready, HIGHER),
-                        metric('items', '원장 항목', items, INFO)],
+    metrics = [metric('errors', '원장 오류', int(errors.group(1))),
+               metric('unknown', '미확인 칸이 있는 항목', unknown),
+               metric('not_ready', '배포 불가로 보는 항목', int(unfit.group(1))),
+               metric('ready', '배포 가능(사람이 확인한 것)', ready, HIGHER),
+               metric('items', '원장 항목', items, INFO)]
+    # 자리표(asset_slots.json)와 원장의 대조(T7-2). 자리표가 없거나 옛 출력이면 이 줄들은 없다.
+    slot_warn = re.search(r'== 자리표·소리 표 경고[^:\n]*: (\d+)', out)
+    slotless = re.search(r'== 자리 없음[^:\n]*: (\d+)', out)
+    if slot_warn:
+        metrics.append(metric('slot_warnings', '자리표가 가리키는데 원장에 없거나 파일이 없는 것', int(slot_warn.group(1))))
+    if slotless:
+        metrics.append(metric('slotless', '원장에는 있는데 어느 자리에도 없는 파일(안 쓰임 후보일 뿐)', int(slotless.group(1)), INFO))
+    return {'metrics': metrics,
             'detail': ['출처 기록을 갖춘 항목 %d. "미확인"은 구멍이지 오류가 아니다(에셋을 바꿀 계획이라 지금 메우지 않는다).' % complete]}
 
 

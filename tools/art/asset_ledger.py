@@ -5,6 +5,7 @@
 
   python tools/art/asset_ledger.py check            # 구멍 목록. 오류가 있으면 종료 코드 1
   python tools/art/asset_ledger.py check --strict   # 구멍(미확인·배포 불가)도 종료 코드 2
+                                                    # (자리표 대조의 경고와 "자리 없음" 목록은 종료 코드에 영향이 없다)
   python tools/art/asset_ledger.py add PATH --source-type ai_generated --origin ... --license ... \
         --model ... --prompt-file P.txt --date 2026-11-19 --postprocess ...
   python tools/art/asset_ledger.py migrate          # quality03 옛 기록 + 폴더별 ATTRIBUTION 에서 원장을 만든다
@@ -24,6 +25,9 @@ import json
 import struct
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import slot_paths  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 ASSET_EXT = {
@@ -147,6 +151,37 @@ def release_blockers(e):
 
 # ---------------------------------------------------------------- check
 
+def slot_report(root, ledger_paths):
+    """자리표·소리 표와 원장의 대조(T7-2). 경고와 목록만 만든다(오류가 아니다: 출처 구멍은 지금 개발을 막지 않는다).
+    ledger_paths: 원장 항목의 path(chapter1/art 기준) 모음. 자리표가 없으면 {"present": False}."""
+    table, err = slot_paths.load_slots(root)
+    audio = slot_paths.audio_map_refs(root)
+    if not table and not audio:
+        return {"present": False, "error": err}
+    prefix = slot_paths.ART_REL + "/"
+    base = art_dir(root)
+    used, warnings = set(), []
+    pairs = [("자리표 %s (%s)" % (sid, role), p, role) for sid, role, p in slot_paths.slot_refs(root)]
+    pairs += [("소리 표 %s" % cue, p, "file") for cue, p in audio]
+    for who, p, role in pairs:
+        ext = Path(p).suffix.lower()
+        if not p.startswith(prefix):
+            if role in ("file", "extra", "fallback") and ext in ASSET_EXT:
+                warnings.append("%s: chapter1/art 밖의 파일이라 원장이 덮지 않는다: %s" % (who, p))
+            continue
+        rel = p[len(prefix):]
+        used.add(rel)
+        if role == "meta" or ext not in ASSET_EXT:
+            continue
+        if not (base / rel).is_file():
+            warnings.append("%s: 가리키는 파일이 없다: %s" % (who, rel))
+        elif rel not in ledger_paths:
+            warnings.append("%s: 원장에 없는 파일이다: %s" % (who, rel))
+    no_slot = sorted(x for x in ledger_paths if x not in used)
+    return {"present": True, "slots": len(table), "planned": sum(1 for s in table.values() if not s.get("file")),
+            "audio_refs": len(audio), "warnings": warnings, "no_slot": no_slot, "error": err}
+
+
 def run_check(root, ledger_path):
     errors, holes, notbl = [], [], []
     if not Path(ledger_path).is_file():
@@ -200,7 +235,7 @@ def run_check(root, ledger_path):
               "provenance_complete": sum(1 for e in entries if not provenance_blockers(e)),
               "release_ready": sum(1 for e in entries if not release_blockers(e)),
               "ignored_by_ext": ignored_files(root)}
-    return {"errors": errors, "holes": holes, "release": notbl, "counts": counts}
+    return {"errors": errors, "holes": holes, "release": notbl, "counts": counts, "slots": slot_report(root, set(seen))}
 
 
 def _group(pairs, per_file):
@@ -239,6 +274,17 @@ def cmd_check(a):
         print("== 배포 불가로 봐야 하는 항목 %d (출처 기록 부족 + 사람 확인 전 포함)" % len(res["release"]))
         for key, paths in _group([(p, "; ".join(w)) for p, w in res["release"]], a.per_file):
             print("  NO   [%d] %s :: %s" % (len(paths), key, _fold(paths)))
+        sl = res.get("slots") or {"present": False}
+        if not sl["present"]:
+            print("== 자리표 대조: 자리표 없음(chapter1/art/asset_slots.json%s)" % (" 읽기 실패: " + sl["error"] if sl.get("error") else ""))
+        else:
+            print("== 자리표 대조: 자리 %d(파일 아직 없는 계획 자리 %d), 소리 표가 가리키는 파일 %d" % (sl["slots"], sl["planned"], sl["audio_refs"]))
+            print("== 자리표·소리 표 경고(원장에 없거나 파일이 없음, 종료 코드에 영향 없음): %d" % len(sl["warnings"]))
+            for m in sl["warnings"]:
+                print("  WARN", m)
+            print("== 자리 없음(원장에는 있는데 어느 자리·소리 표에도 없는 파일, 안 쓰임 후보일 뿐 단정하지 않음): %d" % len(sl["no_slot"]))
+            if sl["no_slot"]:
+                print("  SLOTLESS", _fold(sl["no_slot"]))
         c = res["counts"]
         if c:
             print("== 요약: 항목 %d, 출처 기록 갖춤 %d, 배포 가능 %d, 미확인 있음 %d" % (

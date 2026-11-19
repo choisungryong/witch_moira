@@ -20,6 +20,9 @@ import re
 import sys
 from collections import defaultdict
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "art"))
+import slot_paths  # noqa: E402  자리표·소리 표·곁 JSON 안의 경로를 읽는 공용 모듈(T7-2)
+
 BLIND_SPOTS = (
     "이 지도가 보지 못하는 것: 변수·문자열 조립으로 만든 경로(\"res://\"+이름), 데이터(JSON) 안의 ID로 고르는 파일, "
     "런타임에 폴더를 훑어 찾는 파일, 문자열 이름 호출의 실제 대상 객체(이름만 대조), 에디터에서 설정한 속성, "
@@ -37,7 +40,7 @@ DYN_ARG_RE = re.compile(r"\b(has_method|call_deferred|callv|call_group)\(\s*(?!&
 PATH_REL_RE = re.compile(r"^(?:chapter1|combat)/[^\s%{}*\"']*\.[A-Za-z0-9]+$")
 RES_ANY_RE = re.compile(r"res://[^\s\"'%{}]+")
 STRONG_KINDS = {"preload", "load", "extends", "class_name", "ext_resource", "include", "uid",
-                "path-string", "path-rel", "json-path"}
+                "path-string", "path-rel", "json-path", "slot-path"}
 
 
 # ---------------------------------------------------------------- 파일 수집
@@ -283,6 +286,16 @@ class Graph:
                 self._scan_json(f, text)
 
     def _scan_json(self, f, text):
+        # 경로가 res:// 없이 chapter1/art 기준으로 적힌 표: 자리표와 소리 표(꼴은 slot_paths.py), 자리표가 가리키는 곁 JSON(T7-2)
+        if f == slot_paths.SLOTS_REL:
+            for sid, role, rel in slot_paths.slot_refs(self.root):
+                self.add_edge(f, "res://" + rel, "slot-path", 1)
+        elif f == slot_paths.AUDIO_MAP_REL:
+            for cue, rel in slot_paths.audio_map_refs(self.root):
+                self.add_edge(f, "res://" + rel, "slot-path", 1)
+        elif f in slot_paths.meta_files(self.root):
+            for rel in slot_paths.sidecar_refs(self.root, f):
+                self.add_edge(f, "res://" + rel, "json-path", 1)
         for i, line in enumerate(text.split("\n"), 1):
             for m in re.finditer(r'"(res://[^"\s]+|(?:chapter1|combat)/[^"\s]+)"', line):
                 lit = m.group(1)

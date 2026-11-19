@@ -86,9 +86,9 @@ CHANGE_TABLE = [
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
-    'app': ['loc', 'app-guard', 'app-loadout', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'app': ['loc', 'app-guard', 'app-loadout', 'playlog', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
     'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger'],
@@ -97,11 +97,12 @@ SELECTIONS = {
     'none': [],
 }
 # Rough seconds, only used to start the long checks first when --jobs is above 1.
-WEIGHTS = {'run-spells-full': 1100, 'run-spells': 300, 'golden': 120, 'core-text-tail': 15, 'loot-sim': 90, 'rhythm': 45, 'run-record': 60, 'manager': 30, 'chapter': 20}
+WEIGHTS = {'run-spells-full': 1100, 'run-spells': 300, 'golden': 120, 'core-text-tail': 15, 'loot-sim': 90, 'rhythm': 45, 'run-record': 60, 'playlog': 30, 'manager': 30, 'chapter': 20}
 
 
-def godot_check(name, script, marker, extra=(), timeout=120, slow=False):
-    return {'name': name, 'kind': 'godot', 'script': script, 'marker': marker, 'extra': list(extra), 'timeout': timeout, 'slow': slow}
+def godot_check(name, script, marker, extra=(), timeout=120, slow=False, plain=False):
+    """plain=True: the script prints `<marker> pass` or `<marker> fail [..]` instead of a JSON result line (test_playlog.gd)."""
+    return {'name': name, 'kind': 'godot', 'script': script, 'marker': marker, 'extra': list(extra), 'timeout': timeout, 'slow': slow, 'plain': plain}
 
 
 def checks():
@@ -125,6 +126,8 @@ def checks():
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.
         godot_check('run-spells', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--fast'], timeout=900),
         godot_check('run-spells-full', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--runs-only'], timeout=2400, slow=True),
+        # Plays a 90 s pilot run and checks the play log file (about 30 s, so it stays in --quick).
+        godot_check('playlog', 'res://chapter1/tests/test_playlog.gd', 'TEST_PLAYLOG', plain=True),
         godot_check('app-loadout', 'res://chapter1/tests/test_profile_app_loadout.gd', 'CHAPTER1_APP_LOADOUT_RESULT'),
         # These three are run together by build_tasks() (one play of each case); the literals here are what tools/manager reads.
         godot_check('golden', 'res://chapter1/tests/golden_core.gd', 'GOLDEN_RESULT', timeout=600, slow=True),
@@ -168,6 +171,15 @@ def parse_godot(check, proc):
     if proc['timeout']:
         return False, timeout_detail(proc)
     text = proc['text']
+    if check.get('plain'):
+        passed = re.search(r'^' + re.escape(check['marker']) + r' pass(?![A-Za-z])', text, re.M)
+        failed = re.search(r'^' + re.escape(check['marker']) + r' fail (.*)', text, re.M)
+        script_error = re.search(r'SCRIPT ERROR: (.+)', text)
+        if script_error:
+            return False, 'SCRIPT ERROR: ' + script_error.group(1).strip()
+        if failed:
+            return False, 'fail ' + failed.group(1).strip()[:200]
+        return proc['code'] == 0 and bool(passed), 'pass' if passed else 'no result line'
     found = re.search(re.escape(check['marker']) + r'\S* (\{.*\})', text)
     detail = ''
     if found:

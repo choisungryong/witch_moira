@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "about": "Sample slot table for the tool self tests (tools/art/test_slot_paths.py). Same shape as chapter1/art/asset_slots.json. The files it names are built by the tests in a temporary folder.",
+  "slots": {
+    "actor.sample.model": {
+      "kind": "model",
+      "file": "samples/rig.glb",
+      "contract": {
+        "scale": 1.0,
+        "bones": {"spine": "ORG-spine", "head": "ORG-head", "hand": "hand.R"},
+        "bone_groups": {"hit": ["spine", "head"], "upper_prefixes": ["ORG-"]},
+        "clips": {"idle": "idle", "walk": "walk"},
+        "tick_hz": 60,
+        "timing_ticks": {"walk_cycle": 60}
+      }
+    },
+    "actor.sample.sheet": {
+      "kind": "sprite_sheet",
+      "file": "samples/sheet.png",
+      "meta": "samples/sheet.json",
+      "extra_files": ["samples/sheet_actions.png"],
+      "contract": {"size": [8, 4], "alpha": true, "states": ["idle", "cast"], "directions": ["south", "north"]}
+    },
+    "actor.sample.twin": {"kind": "model", "inherit": "actor.sample.model", "contract": {"scale": 2.0}},
+    "icon.sample.square": {"kind": "texture", "file": "samples/icon.svg", "contract": {"square": true}},
+    "ui.sample.planned": {"kind": "texture", "file": "", "planned": true, "contract": {}}
+  }
+}

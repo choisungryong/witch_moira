@@ -15,11 +15,35 @@ STATE = APP / 'local-state.json'
 LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
-STATIC = {'index.html', 'app.js', 'drafts.js', 'playlog.js', 'balance.js', 'tools.js', 'audit.js', 'app.css', 'vendor/model-viewer.min.js'}
+STATIC_SUFFIXES = {'.html', '.js', '.css'}
+STATIC_EXTRA = {'vendor/model-viewer.min.js'}
 FILE_TYPES = {'.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
               '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
               '.md': 'text/plain; charset=utf-8', '.po': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.gd': 'text/plain; charset=utf-8',
               '.gdshader': 'text/plain; charset=utf-8'}
+
+
+def static_names(app=None):
+    """Screen files served right now: top-level .html/.js/.css next to server.py, read from disk on every
+    request (so a screen file added after the server started is still served), plus the vendored viewer."""
+    app = app or APP
+    names = {p.name for p in app.iterdir() if p.is_file() and p.suffix in STATIC_SUFFIXES}
+    return names | {x for x in STATIC_EXTRA if (app / x).is_file()}
+
+
+def code_snapshot(app=None):
+    """{file name: (mtime_ns, size)} of the Python modules this process imported at startup."""
+    app = app or APP
+    return {p.name: (p.stat().st_mtime_ns, p.stat().st_size) for p in app.glob('*.py') if not p.name.startswith('test_')}
+
+
+def stale_report(started, app=None):
+    """Python code is loaded once at startup; report modules that changed, appeared or vanished since then."""
+    now = code_snapshot(app)
+    changed = sorted(n for n in now if started.get(n) != now[n] and n in started)
+    added = sorted(set(now) - set(started))
+    removed = sorted(set(started) - set(now))
+    return {'stale': bool(changed or added or removed), 'changed': changed, 'added': added, 'removed': removed}
 
 
 def load_state(path=None):
@@ -146,6 +170,8 @@ class Handler(BaseHTTPRequestHandler):
             if 'refresh' in parse_qs(parts.query):
                 return self.send_json(200, refresh(self.server))
             return self.send_json(200, self.server.catalog)
+        if route == '/api/server':
+            return self.send_json(200, stale_report(self.server.code_started))
         if route == '/api/management':
             return self.send_json(200, load_state())
         if route == '/api/drafts':
@@ -172,7 +198,7 @@ class Handler(BaseHTTPRequestHandler):
             mime = FILE_TYPES.get(p.suffix.lower()) if p else None
         else:
             name = unquote(route.lstrip('/') or 'index.html')
-            p = (APP / name) if name in STATIC else None
+            p = (APP / name) if name in static_names() else None
             mime = mimetypes.guess_type(name)[0] or 'application/octet-stream'
             if name.endswith('.js'):
                 mime = 'text/javascript; charset=utf-8'
@@ -234,6 +260,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def make_server(port=8781):
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    server.code_started = code_snapshot()
     refresh(server)
     return server
 

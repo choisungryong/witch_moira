@@ -7,6 +7,11 @@
     {"text": "코어 없이 화면만 띄우는 선례: skill_tree_preview.gd", "path": "chapter1/tests/skill_tree_preview.gd"},
     {"text": "회귀는 --only(일부), --quick(골든 제외), --json 이 있다", "path": "tools/dev/run_all.py"},
     {"text": "회귀가 통과·실패를 본다면 audit.py는 구멍의 수를 세고 지난번과 견준다(종료 코드는 나빠진 줄이 있을 때만 1)", "path": "tools/dev/audit.py"},
+    {"text": "판 안 스킬 구성(run_spells.json, 꺼진 채 들어옴)을 켠 판을 보려면: hud_dump.gd --run-spells=on [--spells-pick=synergy] (이 실행에서만 켬, 데이터·앱은 그대로)", "path": "chapter1/tests/hud_dump.gd"},
+    {"text": "스킬 구성의 성장 카드 화면은 픽스처로: scene_shot.gd --scenes=boon_spells (--variants=arc,ember는 다른 두 마녀. 최종 확인은 실제 판 캡처)", "path": "chapter1/tests/scene_shot.gd"},
+    {"text": "게임을 띄워 시험 플레이할 때 꺼진 장치를 이 실행에서만 켜기: --chapter1-trial=spells,rhythm (--chapter1-profile-off와 함께일 때만, 저장에 쓰지 않음)", "path": "chapter1/app/chapter_one.gd"},
+    {"text": "새 그림·모델을 넣기 전에 계약 대조: asset_intake.py <파일> --slot <자리 id>. 묶음은 --slot 'actor.walker.*' --dir <새 폴더>. 파일 없이 부르면 지금 자리의 파일을 대조", "path": "tools/art/asset_intake.py"},
+    {"text": "서버가 낡았는지는 화면 머리가 알린다(서버를 띄운 뒤 파이썬 코드가 바뀌면 「서버가 낡았습니다」). 화면 파일(js·css)은 다시 시작하지 않아도 새로 생긴 것까지 준다", "path": "tools/manager/server.py"},
     {"text": "소리: audio_mix_offline.py --stats, audio_measure.py --compare-s1", "path": "tools/dev/audio_measure.py"},
     {"text": "새 이름·글을 짓기 전에 낱말 검사기를, 새 결정 번호를 붙이기 전에 결정 번호 장부를 돌려 본다", "path": "tools/dev/wording_lint.py"}
   ],
@@ -72,6 +77,8 @@
       {"path": "chapter1/tests/skill_tree_preview.gd", "use": "코어 없이 기술 트리 화면만 띄워 캡처"},
       {"path": "chapter1/tests/hud_dump.gd", "use": "Control 사각형 덤프(겹침·잘림 점검 재료)와 캡처"},
       {"path": "chapter1/tests/portrait_select_shots.gd", "use": "제목 화면 살아 있는 초상 캡처"},
+      {"path": "chapter1/tests/scene_shot.gd", "use": "화면 하나를 정해진 데이터로 띄워 캡처(boon_spells = 스킬 구성의 성장 카드). 최종 확인은 실제 판 캡처"},
+      {"path": "tools/dev/hud_layout_check.py", "use": "scene_shot·hud_dump의 Control 덤프에서 겹침·잘림 점검"},
       {"path": "tools/dev/check_glyphs.py", "use": "새 글자의 글꼴 확인"},
       {"path": "tools/dev/i18n_scan.py", "use": "한글 리터럴을 번역 틀로 옮겼는지"}
     ]},
@@ -90,14 +97,19 @@
       {"path": "chapter1/tests/vat_preview.gd", "use": "구운 결과를 뼈 애니메이션과 나란히"}
     ]},
     {"id": "asset-producer", "label": "에셋 제작(asset-producer)", "about": "그림 후처리.", "tools": [
-      {"path": "tools/art/make_equipment_icons.py", "use": "생성된 장비 아이콘을 게임 크기로 가공"}
+      {"path": "tools/art/make_equipment_icons.py", "use": "생성된 장비 아이콘을 게임 크기로 가공"},
+      {"path": "tools/art/asset_intake.py", "use": "새 파일을 넣기 전에 자리표(asset_slots.json)의 계약과 대조"},
+      {"path": "tools/art/asset_ledger.py", "use": "출처 원장 확인·등록. check는 자리표와 원장을 맞춰 본다"},
+      {"path": "tools/art/slot_paths.py", "use": "자리표·소리 표·곁 JSON이 가리키는 파일을 읽는 공용 모듈(다른 도구가 불러 씀, 따로 돌리지 않음)"},
+      {"path": "tools/dev/asset_usage_report.py", "use": "한 판에서 실제로 로드·그려진 에셋 표(hud_dump --asset-usage 결과를 합침)"}
     ]},
     {"id": "sound", "label": "소리(audio-lead · sound-designer)", "about": "소리 측정과 비교.", "tools": [
       {"path": "tools/dev/audio_measure.py", "use": "소리 파일 측정(길이·피크·음량·무음·대역). --compare-s1로 기준표 대조"},
       {"path": "tools/dev/audio_audition.py", "use": "후보 비교 묶음(음량 맞춤, 정답표 따로)"},
       {"path": "tools/dev/audio_mix_offline.py", "use": "녹음한 한 판에 지금의 재생 규칙을 적용해 WAV로"},
       {"path": "chapter1/tests/report_audio_requests.gd", "use": "한 판에서 게임이 내는 소리 요청 기록"},
-      {"path": "tools/dev/make_drop_sounds.py", "use": "허가된 원본이 없는 드랍 소리 합성"}
+      {"path": "tools/dev/make_drop_sounds.py", "use": "허가된 원본이 없는 드랍 소리 합성"},
+      {"path": "tools/dev/audio_ledger_check.py", "use": "소리 출처 기록과 큐 표가 맞는지(AU-run-spells-sound의 새 큐도 이 표에 올린다)"}
     ]},
     {"id": "manager-tools", "label": "관리 툴(manager-tools)", "about": "이 화면과 그 뒷면.", "tools": [
       {"path": "tools/manager/catalog.py", "use": "카탈로그 생성. --tools-index로 이 색인을 docs/TOOLS-INDEX.ko.md로 내보냄"},
