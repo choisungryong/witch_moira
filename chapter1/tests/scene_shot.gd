@@ -22,7 +22,7 @@ extends SceneTree
 ## composition on, RS0 of docs/specs/A6-run-spells-screen: how the screen draws the cards of the composition NOW; the fixture
 ## names the state to give the run and the card ids to show, and the cards are the ones the core builds for that state), equipment (in-run compare), stash, result
 ## (victory window with the permanent-growth box), pause, abandon_confirm, combat_record (the battle record over the result
-## window: normal = a won run, defeat = a lost run, long = a lost run with every zone and the longest rows; scrolled = the same scrolled to its end; the "defeat" and "scrolled" variants exist for this scene only). The skill tree draws itself (no child Controls),
+## window: normal = a won run, defeat = a lost run, long = a lost run with every zone and the longest rows; scrolled = the same scrolled to its end; the "defeat" and "scrolled" variants exist for this scene only); boon_spells has two more, "arc" and "ember" (RS3: the other two witches' ring cards and a borrowed spell). The skill tree draws itself (no child Controls),
 ## so its dump holds the panel only; judge it on the picture.
 ##
 ## HOW TO ADD A SCENE (a screen that exists in the game):
@@ -38,7 +38,7 @@ const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
 const SCENES := ["title","skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record"]
-const VARIANTS := ["normal","long","defeat","scrolled"]
+const VARIANTS := ["normal","long","defeat","scrolled","arc","ember"]
 const START_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 
 ## The core with the two answers a fixture needs to control. Everything else is the real core.
@@ -287,6 +287,8 @@ func _scene_boon_spells(fx: Dictionary) -> bool:
 			_fail("boon_spells","card %s is not in the pool of the given state (pool: %s)" % [wanted,", ".join(pool.map(func(c): return String(c.id)))])
 			return false
 	run.fx_offer = {"token":"fixture-spells","level":int(fx.level),"cards":cards}
+	# The offer is also the growth's own drawn offer, so run_spells_view().offer (pairs_if_taken) answers as it does in a real run.
+	run.growth._offer = run.fx_offer.duplicate(true)
 	run.mode = "choice"
 	hud.invalidate()
 	await _frames(10)

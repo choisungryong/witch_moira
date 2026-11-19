@@ -1,0 +1,22 @@
+{
+ "scene": "boon_spells",
+ "note": "RS3: arc witch with the ember basic spell borrowed (slots 2 of 3): her ring (three control parts and the strong-enemy line), the frost spell as a second borrowed one (two pair lines, the first with two controls: the widest card) and an ember damage point. The cards are the real ones the core builds for that state.",
+ "primary": "chapter1.skill.arc",
+ "level": 4,
+ "give": {
+  "chapter1.skill.arc": {
+   "damage": 1,
+   "reach": 0
+  },
+  "chapter1.skill.ember": {
+   "damage": 0,
+   "reach": 0
+  }
+ },
+ "passives": [],
+ "cards": [
+  "unlock:chapter1.skill.arc_ring",
+  "unlock:chapter1.skill.frost",
+  "axis:chapter1.skill.ember:damage"
+ ]
+}

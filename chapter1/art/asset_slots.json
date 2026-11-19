@@ -6,7 +6,8 @@
     "ui.medal.<tree>.<node>",
     "icon.shrine.<kind>",
     "portrait.<witch>.outfit.<outfit>",
-    "actor.<new kind>.*"
+    "actor.<new kind>.*",
+    "icon.spell.<spell>"
   ],
   "slots": {
     "actor.hero.model": {
@@ -489,6 +490,90 @@
       "planned": true,
       "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
       "contract": {}
+    },
+    "icon.spell.ember": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.spell.frost": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.spell.arc": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.spell.ember_ring": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.spell.frost_ring": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.spell.arc_ring": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A6-RS RS3 and RS4 (spell icon; the card and the combat bar draw a placeholder mark until a file is set)",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
     }
   }
 }

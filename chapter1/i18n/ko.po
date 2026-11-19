@@ -925,3 +925,262 @@ msgstr "처치 {n}"
 #. Beat table. {n}: number
 msgid "record.beats.taken"
 msgstr "받은 피해 {n}"
+
+#. TEMP, narrative-lead to confirm (RS3, 2026-11-19): all hud.spell.* texts and the three ring spell names
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.ember_ring.name"
+msgstr "잿불 울타리"
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.frost_ring.name"
+msgstr "서리 울타리"
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.arc_ring.name"
+msgstr "전류 울타리"
+
+#. Card kind line of a ring spell
+msgid "hud.spell.kind.ring"
+msgstr "새 기술"
+
+#. Card kind line of another element's basic spell
+msgid "hud.spell.kind.borrow"
+msgstr "새 기술 · 거래"
+
+#. Card kind line: damage axis of a basic spell
+msgid "hud.spell.kind.basic_damage"
+msgstr "강화 · 피해"
+
+#. Card kind line: reach axis of a basic spell
+msgid "hud.spell.kind.basic_reach"
+msgstr "강화 · 넓이"
+
+#. Card kind line: damage axis of a ring spell
+msgid "hud.spell.kind.ring_damage"
+msgstr "강화 · 피해"
+
+#. Card kind line: reach axis of a ring spell
+msgid "hud.spell.kind.ring_reach"
+msgstr "강화 · 차단"
+
+
+#. Ring card numbers. {r}: metres, {t}: seconds, {d}: damage
+msgid "hud.spell.ring.stats"
+msgstr "반경 {r}m · {t}초마다 · 한 번 {d}"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.stagger"
+msgstr "경직 {t}초"
+
+#. Ring control part
+msgid "hud.spell.ring.cut"
+msgstr "공격 준비를 끊음"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.freeze"
+msgstr "빙결 {t}초"
+
+#. Ring control part. {p}: percent
+msgid "hud.spell.ring.slow"
+msgstr "감속 {p}%"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.stun"
+msgstr "기절 {t}초"
+
+#. Ring control part. {n}: count
+msgid "hud.spell.ring.targets"
+msgstr "최대 {n}대상"
+
+#. Ring card line. {p}: percent
+msgid "hud.spell.ring.strong"
+msgstr "강한 적은 현재 생명의 {p}%"
+
+#. Ring card warning (D12 B0.13)
+msgid "hud.spell.ring.limit"
+msgstr "멀리 선 적과 날아오는 탄은 막지 못한다."
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.damage"
+msgstr "피해 {a} → {b}"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.interval"
+msgstr "간격 {a} → {b}초"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.radius"
+msgstr "반경 {a} → {b}m"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.projectiles"
+msgstr "투사체 {a} → {b}발"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.pierce"
+msgstr "관통 {a} → {b}"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.targets"
+msgstr "대상 {a} → {b}"
+
+#. Axis card row when no listed value changes
+msgid "hud.spell.axis.nothing"
+msgstr "이 단계는 수치가 바뀌지 않는다."
+
+#. Axis name of a basic spell
+msgid "hud.spell.axis.damage_basic"
+msgstr "피해"
+
+#. Axis name of a basic spell
+msgid "hud.spell.axis.reach_basic"
+msgstr "넓이"
+
+#. Axis name of a ring spell
+msgid "hud.spell.axis.damage_ring"
+msgstr "피해"
+
+#. Axis name of a ring spell
+msgid "hud.spell.axis.reach_ring"
+msgstr "차단"
+
+#. Axis levels after the card. {dd}, {rd}: filled and empty dots
+msgid "hud.spell.axis.dots"
+msgstr "{d} {dd} · {r} {rd}"
+
+#. Passive card text of a run with spell composition
+msgid "hud.spell.passive.body"
+msgstr "진화 조건: 강화 {axis}번 · 이 은총 · 짝 기술 강화 {partner}번"
+
+#. Evolution progress line. {parts}: pieces joined by dots
+msgid "hud.spell.evo.line"
+msgstr "진화까지: {parts}"
+
+#. Evolution progress piece
+msgid "hud.spell.evo.axis"
+msgstr "강화 {have}/{need}"
+
+#. Evolution progress piece shown on the card that raises it
+msgid "hud.spell.evo.axis_to"
+msgstr "강화 {have} → {next}/{need}"
+
+#. Evolution progress piece. {mark}: check or cross
+msgid "hud.spell.evo.passive"
+msgstr "은총 {mark}"
+
+#. Evolution progress piece shown on the passive card
+msgid "hud.spell.evo.passive_to"
+msgstr "은총 ✗ → ✓"
+
+#. Evolution progress piece: axis total of the partner spell
+msgid "hud.spell.evo.partner"
+msgstr "짝 {have}/{need}"
+
+#. Evolution card: the partner spell
+msgid "hud.spell.evolve.partner"
+msgstr "짝 기술: {name}"
+
+#. Evolution card line. {x}: multiplier
+msgid "hud.spell.evolve.boost"
+msgstr "진화하면 이 조합의 터뜨림이 ×{x}"
+
+#. Card section title
+msgid "hud.spell.pair.title"
+msgstr "조합"
+
+#. Card section title on a new spell
+msgid "hud.spell.pair.title_new"
+msgstr "고르면 조합"
+
+#. Card section when the spell pairs with none owned
+msgid "hud.spell.pair.none"
+msgstr "가진 기술과 조합 없음"
+
+#. Detonation pair line. {a}: marking spell, {b}: ring, {n}: percent
+msgid "hud.spell.pair.detonate"
+msgstr "{status} 적 터뜨림 +{n}%"
+
+#. Detonation pair line part. {x}: multiplier
+msgid "hud.spell.pair.block"
+msgstr " · {ctl} {x}배"
+
+#. Detonation pair line part. {n}: count
+msgid "hud.spell.pair.block_targets"
+msgstr " · 대상 +{n}"
+
+#. Interlock pair line. {a}: controlling spell, {b}: hitting spell, {via}: control word, {n}: percent
+msgid "hud.spell.pair.interlock"
+msgstr "{a|가} {verb} 적에게 {b} +{n}%"
+
+
+
+
+
+#. Ring card: what the ember ring does
+msgid "hud.spell.ring.role.ember"
+msgstr "가까이 오는 적을 세게 쳐서 공격을 끊는다."
+
+#. Ring card: what the frost ring does
+msgid "hud.spell.ring.role.frost"
+msgstr "가까이 오는 적을 세게 쳐서 얼린다."
+
+#. Ring card: what the arc ring does
+msgid "hud.spell.ring.role.arc"
+msgstr "가까이 오는 적 여럿을 세게 쳐서 기절시킨다."
+
+#. Pair lines that did not fit
+msgid "hud.spell.pair.more"
+msgstr "외 {n}개"
+
+#. Short subject for the ring spell in a pair line
+msgid "hud.spell.pair.ring_short"
+msgstr "울타리"
+
+#. Second control of an interlock pair line
+msgid "hud.spell.pair.second"
+msgstr "\n{verb} 적 +{n}%"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.frozen"
+msgstr "얼린"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.stunned"
+msgstr "기절시킨"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.staggered"
+msgstr "경직시킨"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.slowed"
+msgstr "늦춘"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.heat"
+msgstr "그을린"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.chill"
+msgstr "냉각된"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.shock"
+msgstr "감전된"
+
+#. Control word of the ember ring
+msgid "hud.spell.ctl.ember"
+msgstr "경직"
+
+#. Control word of the frost ring
+msgid "hud.spell.ctl.frost"
+msgstr "빙결"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.blast"
+msgstr "폭발 반경 {a} → {b}m"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.branches"
+msgstr "갈래 {a} → {b}"

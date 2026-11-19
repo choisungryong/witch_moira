@@ -27,6 +27,14 @@ func _initialize() -> void:
 		return
 	view = (load("res://chapter1/ChapterOne.tscn") as PackedScene).instantiate()
 	root.add_child(view)
+	# Optional: the run with the spell composition on (this tool only; the data file stays off). The run has not started yet here.
+	if "--run-spells=on" in OS.get_cmdline_user_args():
+		var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
+		if not doc is Dictionary:
+			print("MODAL_INPUT_ARGS ",JSON.stringify({"error":"run_spells.json unreadable"}));quit(2);return
+		doc["enabled"] = true
+		if not view.run.set_run_spells(doc):
+			print("MODAL_INPUT_ARGS ",JSON.stringify({"error":"run_spells refused","errors":view.run.errors}));quit(2);return
 
 func _find_buttons(node: Node, prefix: String, out: Array) -> void:
 	if node is Button and String(node.text).begins_with(prefix): out.append(node)

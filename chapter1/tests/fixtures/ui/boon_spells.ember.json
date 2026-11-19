@@ -1,0 +1,22 @@
+{
+ "scene": "boon_spells",
+ "note": "RS3: ember witch at level 2 with the frost basic spell borrowed: her ring, a reach point of the primary and a damage point of the borrowed spell.",
+ "primary": "chapter1.skill.ember",
+ "level": 2,
+ "give": {
+  "chapter1.skill.ember": {
+   "damage": 0,
+   "reach": 1
+  },
+  "chapter1.skill.frost": {
+   "damage": 1,
+   "reach": 0
+  }
+ },
+ "passives": [],
+ "cards": [
+  "unlock:chapter1.skill.ember_ring",
+  "axis:chapter1.skill.ember:damage",
+  "axis:chapter1.skill.frost:reach"
+ ]
+}

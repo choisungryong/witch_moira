@@ -1183,6 +1183,14 @@ func _growth_cards38(run: RefCounted) -> void:
 		var spacer := column.get_child(4) as Control
 		spacer.size_flags_vertical=Control.SIZE_FILL
 		spacer.custom_minimum_size.y=8
+	# A run with the spell composition on: its own card lines (name, kind, changes, interlocks). Off: nothing below runs.
+	var spell_view: Dictionary=run.run_spells_view()
+	if bool(spell_view.get("enabled",false)):
+		var cards_offered: Array=run.get_offer().get("cards",[])
+		for i in mini(cards.get_child_count(),cards_offered.size()):
+			SpellCard.dress(self,cards.get_child(i),cards_offered[i],run,spell_view)
+		# Spell cards carry more lines: the window is a little taller (still inside the 900 canvas, clear of the top bar).
+		modal.offset_top=-356;modal.offset_bottom=356
 
 func _build_modal__q45(run: RefCounted) -> void:
 	_build_modal__q41(run)
@@ -1818,6 +1826,7 @@ func _add_growth_box(run: RefCounted) -> void:
 # ---- D4-U run flow (pause, result buttons, confirm windows) and D5-U refused-save notice ----
 ## Presentation only. Every button asks through a signal; chapter_one.gd decides and acts. All text here is a key (Loc.t).
 const Loc=preload("res://chapter1/view/loc.gd")
+const SpellCard=preload("res://chapter1/view/hud/spell_card.gd")
 const FlowDialog=preload("res://chapter1/view/hud/flow_dialog.gd")
 const CombatRecordView=preload("res://chapter1/view/hud/combat_record_view.gd")
 ## The defeat window comes up this long after the fall (the scene stays on screen). An abandoned run shows it at once.

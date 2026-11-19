@@ -920,3 +920,262 @@ msgstr "Kills {n}"
 #. Beat table. {n}: number
 msgid "record.beats.taken"
 msgstr "Taken {n}"
+
+#. TEMP, narrative-lead to confirm (RS3, 2026-11-19): all hud.spell.* texts and the three ring spell names
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.ember_ring.name"
+msgstr "Ember Fence"
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.frost_ring.name"
+msgstr "Frost Fence"
+
+#. Ring spell name (source: run_spells data)
+msgid "skill.chapter1.skill.arc_ring.name"
+msgstr "Current Fence"
+
+#. Card kind line of a ring spell
+msgid "hud.spell.kind.ring"
+msgstr "New skill"
+
+#. Card kind line of another element's basic spell
+msgid "hud.spell.kind.borrow"
+msgstr "New skill · Bargain"
+
+#. Card kind line: damage axis of a basic spell
+msgid "hud.spell.kind.basic_damage"
+msgstr "Upgrade · Damage"
+
+#. Card kind line: reach axis of a basic spell
+msgid "hud.spell.kind.basic_reach"
+msgstr "Upgrade · Reach"
+
+#. Card kind line: damage axis of a ring spell
+msgid "hud.spell.kind.ring_damage"
+msgstr "Upgrade · Damage"
+
+#. Card kind line: reach axis of a ring spell
+msgid "hud.spell.kind.ring_reach"
+msgstr "Upgrade · Guard"
+
+
+#. Ring card numbers. {r}: metres, {t}: seconds, {d}: damage
+msgid "hud.spell.ring.stats"
+msgstr "Radius {r} m · every {t} s · {d} per hit"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.stagger"
+msgstr "Stagger {t} s"
+
+#. Ring control part
+msgid "hud.spell.ring.cut"
+msgstr "breaks the attack"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.freeze"
+msgstr "Freeze {t} s"
+
+#. Ring control part. {p}: percent
+msgid "hud.spell.ring.slow"
+msgstr "slow {p}%"
+
+#. Ring control part. {t}: seconds
+msgid "hud.spell.ring.stun"
+msgstr "Stun {t} s"
+
+#. Ring control part. {n}: count
+msgid "hud.spell.ring.targets"
+msgstr "up to {n} targets"
+
+#. Ring card line. {p}: percent
+msgid "hud.spell.ring.strong"
+msgstr "Strong enemies lose {p}% of current life"
+
+#. Ring card warning (D12 B0.13)
+msgid "hud.spell.ring.limit"
+msgstr "Does not stop distant enemies or projectiles."
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.damage"
+msgstr "Damage {a} → {b}"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.interval"
+msgstr "Interval {a} → {b} s"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.radius"
+msgstr "Radius {a} → {b} m"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.projectiles"
+msgstr "Projectiles {a} → {b}"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.pierce"
+msgstr "Pierce {a} → {b}"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.targets"
+msgstr "Targets {a} → {b}"
+
+#. Axis card row when no listed value changes
+msgid "hud.spell.axis.nothing"
+msgstr "This step changes no numbers."
+
+#. Axis name of a basic spell
+msgid "hud.spell.axis.damage_basic"
+msgstr "Damage"
+
+#. Axis name of a basic spell
+msgid "hud.spell.axis.reach_basic"
+msgstr "Reach"
+
+#. Axis name of a ring spell
+msgid "hud.spell.axis.damage_ring"
+msgstr "Damage"
+
+#. Axis name of a ring spell
+msgid "hud.spell.axis.reach_ring"
+msgstr "Guard"
+
+#. Axis levels after the card. {dd}, {rd}: filled and empty dots
+msgid "hud.spell.axis.dots"
+msgstr "{d} {dd} · {r} {rd}"
+
+#. Passive card text of a run with spell composition
+msgid "hud.spell.passive.body"
+msgstr "Evolution needs: {axis} upgrades · this grace · {partner} upgrades on the partner skill"
+
+#. Evolution progress line. {parts}: pieces joined by dots
+msgid "hud.spell.evo.line"
+msgstr "To evolve: {parts}"
+
+#. Evolution progress piece
+msgid "hud.spell.evo.axis"
+msgstr "upgrades {have}/{need}"
+
+#. Evolution progress piece shown on the card that raises it
+msgid "hud.spell.evo.axis_to"
+msgstr "upgrades {have} → {next}/{need}"
+
+#. Evolution progress piece. {mark}: check or cross
+msgid "hud.spell.evo.passive"
+msgstr "grace {mark}"
+
+#. Evolution progress piece shown on the passive card
+msgid "hud.spell.evo.passive_to"
+msgstr "grace ✗ → ✓"
+
+#. Evolution progress piece: axis total of the partner spell
+msgid "hud.spell.evo.partner"
+msgstr "partner {have}/{need}"
+
+#. Evolution card: the partner spell
+msgid "hud.spell.evolve.partner"
+msgstr "Partner skill: {name}"
+
+#. Evolution card line. {x}: multiplier
+msgid "hud.spell.evolve.boost"
+msgstr "Evolving makes this pair's detonation ×{x}"
+
+#. Card section title
+msgid "hud.spell.pair.title"
+msgstr "Pairs"
+
+#. Card section title on a new spell
+msgid "hud.spell.pair.title_new"
+msgstr "Pairs if taken"
+
+#. Card section when the spell pairs with none owned
+msgid "hud.spell.pair.none"
+msgstr "No pairs with your skills"
+
+#. Detonation pair line. {a}: marking spell, {b}: ring, {n}: percent
+msgid "hud.spell.pair.detonate"
+msgstr "{status} enemies detonate +{n}%"
+
+#. Detonation pair line part. {x}: multiplier
+msgid "hud.spell.pair.block"
+msgstr " · {ctl} ×{x}"
+
+#. Detonation pair line part. {n}: count
+msgid "hud.spell.pair.block_targets"
+msgstr " · targets +{n}"
+
+#. Interlock pair line. {a}: controlling spell, {b}: hitting spell, {via}: control word, {n}: percent
+msgid "hud.spell.pair.interlock"
+msgstr "{b} +{n}% on enemies {verb} by {a}"
+
+
+
+
+
+#. Ring card: what the ember ring does
+msgid "hud.spell.ring.role.ember"
+msgstr "Strikes enemies that come close and breaks their attack."
+
+#. Ring card: what the frost ring does
+msgid "hud.spell.ring.role.frost"
+msgstr "Strikes enemies that come close and freezes them."
+
+#. Ring card: what the arc ring does
+msgid "hud.spell.ring.role.arc"
+msgstr "Strikes several close enemies and stuns them."
+
+#. Pair lines that did not fit
+msgid "hud.spell.pair.more"
+msgstr "{n} more"
+
+#. Short subject for the ring spell in a pair line
+msgid "hud.spell.pair.ring_short"
+msgstr "The fence"
+
+#. Second control of an interlock pair line
+msgid "hud.spell.pair.second"
+msgstr "\n{verb}: +{n}%"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.frozen"
+msgstr "frozen"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.stunned"
+msgstr "stunned"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.staggered"
+msgstr "staggered"
+
+#. Control verb (adnominal) in a pair line
+msgid "hud.spell.verb.slowed"
+msgstr "slowed"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.heat"
+msgstr "Scorched"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.chill"
+msgstr "Chilled"
+
+#. Mark adjective in a pair line
+msgid "hud.spell.status.shock"
+msgstr "Shocked"
+
+#. Control word of the ember ring
+msgid "hud.spell.ctl.ember"
+msgstr "Stagger"
+
+#. Control word of the frost ring
+msgid "hud.spell.ctl.frost"
+msgstr "Freeze"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.blast"
+msgstr "Blast radius {a} → {b} m"
+
+#. Axis card row. {a}: now, {b}: next
+msgid "hud.spell.axis.branches"
+msgstr "Branches {a} → {b}"
