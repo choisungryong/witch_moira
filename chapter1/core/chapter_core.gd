@@ -110,6 +110,23 @@ var _trial_phase := ""
 var _trial_until := 0
 var _trial_clear_until := 0
 var _trial_center := Vector2.ZERO
+## Run opening (D15 B, rhythm.opening): the first minute of the first beat as steps (look, one, two, pack, around). It exists
+## only while rhythm.enabled and rhythm.opening.enabled are both true; otherwise every value below stays at rest and the
+## snapshot has no opening key. `opening_first_visit` is set by the app before start() (first_visit_only steps are skipped
+## when it is false); the app has no play counter yet, so a normal run is always the long opening.
+var opening_first_visit := true
+var _opening_on := false
+var _op_active := false
+var _op_done := false
+var _op_list: Array = []
+var _op_step := -1
+var _op_step_start := 0
+var _op_step_kills := 0
+var _op_step_spawned := 0
+var _op_crest_done := false
+var _op_prev_angle := 0.0
+var _op_heading := Vector2.ZERO
+var _op_total_kills := 0
 
 ## Replace the tuning of this run (before start()). A rejected document changes nothing.
 func set_tuning(candidate: Dictionary) -> bool:
@@ -190,6 +207,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 			_shared_tuning=loader.snapshot()
 		_install_tuning(_shared_tuning)
 	if not _prepare_spells():return false
+	if not _prepare_descent():return false
 	_activate_build()
 	_world_uniques36.clear()
 	zone=0;zone_kills=0;potions=int(tuning.potion.start);_next_potion=0;_champion_id=-1;_boss_phase=0;_next_ward=0
@@ -199,9 +217,13 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	_rhythm_on=tuning.has("rhythm") and bool(tuning.rhythm.enabled)
 	_beat_index=-1;_beat_tick=0;_wave_index=-1;_in_lull=false;_taste_done=false;_rest_until=0;_spawn_hp_bps=10000
 	_trial_phase="";_trial_until=0;_trial_clear_until=0;_trial_center=Vector2.ZERO
+	_opening_on=_rhythm_on and tuning.rhythm.has("opening") and bool(tuning.rhythm.opening.enabled)
+	_op_active=false;_op_done=false;_op_list.clear();_op_step=-1;_op_step_start=0;_op_step_kills=0;_op_step_spawned=0;_op_crest_done=false
+	_op_prev_angle=0.0;_op_heading=Vector2.ZERO;_op_total_kills=0;_spawn_tags={}
 	for i in 3:seals.append({"kills":0,"champion_spawned":false,"cleared":false})
 	for def in RITUALS:rituals[def.id]={"state":"ready","progress":0,"started_tick":-1,"completed_tick":-1}
 	if not super.start(seed_,primary):return false
+	_descent_reset()
 	_mark_owners.clear()
 	_last_ward_burst=-100000
 	for id_ in SKILL_IDS:
@@ -559,6 +581,7 @@ func _enemy_role(e: Dictionary) -> String:
 	return "champion" if e.has("title_key") else "elite"
 
 func _spawn_wave() -> void:
+	if not descent.is_empty():_step_descent()
 	if _rhythm_on:_rhythm_tick()
 	if not _zone_entered:
 		if hero.position.distance_squared_to(ZONES[zone])>18.0*18.0:return
@@ -577,6 +600,8 @@ func _spawn_wave() -> void:
 			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id})
 			if zone==2 and tuning.final_level_on_boss_spawn:_seal_grace()
 			if zone==2 and _rhythm_on:_spawn_hp_bps=10000;_emit("beat_started",hero.position,{"id":"boss"})
+	# The breath after a descent: nothing ordinary is sent in (a guardian above is not held back).
+	if tick<_d_pause_until:return
 	if _rhythm_on and not (zone==2 and _champion_id>0):_spawn_rhythm_wave();return
 	if tick<_next_spawn:return
 	# Frequent weak bodies provide sweepable packs, mixed with bounded specialists.
@@ -617,11 +642,124 @@ func _rhythm_tick() -> void:
 	var target := _beat_index
 	if candidate>_beat_index:target=candidate
 	# The time limit only hands over to the next beat of the same zone; the last beat of a zone stays (D11 A4, 2026-11-19).
-	elif _beat_index>=0 and _beat_index+1<beats.size() and int(beats[_beat_index+1].zone)==int(beats[_beat_index].zone) and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
+	# While the opening runs the first beat's clock does not (D15 O-1 rule 3): it starts when the opening ends.
+	elif _beat_index>=0 and not _op_active and _beat_index+1<beats.size() and int(beats[_beat_index+1].zone)==int(beats[_beat_index].zone) and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
 	if target!=_beat_index:
+		if _op_active:_opening_end(false)
 		_beat_index=target;_beat_tick=tick;_wave_index=-1;_in_lull=false;_taste_done=false
 		_emit("beat_started",hero.position,{"id":String(beats[target].id)})
+		if target==0 and _opening_on and not _op_done:_opening_begin()
+	if _op_active:_opening_tick()
 	_spawn_hp_bps=_beat_hp_bps(beats,bps)
+
+# ---------------------------------------------------------------- run opening (D15 B)
+
+## The steps this run plays: first_visit_only steps drop out for a returning player.
+func _opening_steps() -> Array:
+	var list: Array=[]
+	for step in tuning.rhythm.opening.steps:
+		if bool(step.first_visit_only) and not opening_first_visit:continue
+		list.append(step)
+	return list
+
+func _opening_limit(step: Dictionary) -> int:
+	if not opening_first_visit and step.has("returning_max_ticks"):return int(step.returning_max_ticks)
+	return int(step.max_ticks)
+
+func _opening_begin() -> void:
+	_op_list=_opening_steps()
+	if _op_list.is_empty():_op_done=true;return
+	_op_active=true
+	_opening_begin_step(0)
+
+## One draw from the spawn stream picks the heading of a step with choices; same / opposite of the previous step draw nothing.
+func _opening_begin_step(index: int) -> void:
+	var step: Dictionary=_op_list[index]
+	_op_step=index;_op_step_start=tick;_op_step_kills=0;_op_step_spawned=0;_op_crest_done=false
+	var heading: Dictionary=step.heading
+	var angle := _op_prev_angle
+	if heading.has("choices_deg"):
+		var choices: Array=heading.choices_deg
+		angle=deg_to_rad(float(choices[_spawn_rng.randi_range(0,choices.size()-1)]))
+	elif heading.get("opposite_of_previous",false):angle=_op_prev_angle+PI
+	_op_prev_angle=angle
+	_op_heading=Vector2(cos(angle),sin(angle)) if float(heading.arc_deg)<360.0 else Vector2.ZERO
+	if int(step.amount)>0:_next_spawn=tick
+	_emit("opening_step",hero.position,{"id":String(step.id),"index":index,"heading":_op_heading,"ring_m":[float(step.ring_m[0]),float(step.ring_m[1])]})
+
+func _opening_tick() -> void:
+	var step: Dictionary=_op_list[_op_step]
+	var need := int(step.kills)
+	if tick-_op_step_start<_opening_limit(step) and not (need>0 and _op_step_kills>=need):return
+	if _op_step+1<_op_list.size():_opening_begin_step(_op_step+1)
+	else:_opening_end(true)
+
+## `finished` false = a later beat took over before the last step ended; the opening is dropped either way.
+func _opening_end(finished: bool) -> void:
+	_op_active=false;_op_done=true
+	if finished:_beat_tick=tick
+	_emit("opening_end",hero.position,{"finished":finished,"kills":_op_total_kills})
+
+func _opening_step_now() -> Dictionary:
+	return _op_list[_op_step] if _op_active and _op_step>=0 else {}
+
+func _acquire_m() -> float:
+	var step := _opening_step_now()
+	if not step.is_empty() and step.acquire_m!=null:return float(step.acquire_m)
+	return super._acquire_m()
+
+func _orb_pull_m(fallback: float) -> float:
+	var step := _opening_step_now()
+	if not step.is_empty() and step.orb_pull_m!=null:return float(step.orb_pull_m)
+	return fallback
+
+## One body of an opening step: inside the step's fan (or anywhere on the ring when the fan is the full circle), at the step's
+## distance, walking at the step's share of the zone's speed. Draws only from _spawn_rng.
+func _opening_place(step: Dictionary,heading: Vector2,arc_deg: float) -> bool:
+	var kind := _rhythm_mix_kind(step)
+	var ring_min := float(step.ring_m[0]);var ring_max := float(step.ring_m[1])
+	var base := heading.angle()
+	var half := deg_to_rad(arc_deg)*.5
+	var point := Vector2.ZERO;var found := false
+	for attempt in 8:
+		var angle := _spawn_rng.randf_range(0,TAU) if arc_deg>=360.0 or heading==Vector2.ZERO else base+_spawn_rng.randf_range(-half,half)
+		point=_clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_spawn_rng.randf_range(ring_min,ring_max))
+		if point.distance_squared_to(hero.position)>=ring_min*ring_min*.64:found=true;break
+	if not found:point=_spawn_point(ring_min,ring_max)
+	_spawn_tags={"opening":true}
+	if _op_step_spawned==0:_spawn_tags["first_of_step"]=true
+	var made := _spawn(kind,point)
+	_spawn_tags={}
+	if not made:return false
+	_op_step_spawned+=1
+	var e: Dictionary=enemies[_enemy_sequence]
+	e.definition.speed=float(e.definition.speed)*float(step.speed_bps)/10000.0
+	return true
+
+func _opening_crest(step: Dictionary,cap: int) -> void:
+	var fan: Dictionary=step.crest
+	var heading := _op_heading
+	# A full-circle step has no heading of its own; its crest takes one angle from the spawn stream, as a taste crest does.
+	if heading==Vector2.ZERO:
+		var angle := _spawn_rng.randf_range(0,TAU)
+		heading=Vector2(cos(angle),sin(angle))
+	var count := alive_count();var placed := 0
+	for i in int(fan.count):
+		if count>=cap:break
+		if _opening_place(step,heading,float(fan.arc_deg)):count+=1;placed+=1
+	if placed>0:_emit("wave_crest",hero.position,{"beat":String(step.id),"direction":heading,"count":placed})
+
+func _spawn_opening() -> void:
+	var step: Dictionary=_op_list[_op_step]
+	var cap := mini(int(step.alive_cap),int(tuning.alive_cap))
+	if step.crest!=null and not _op_crest_done and tick-_op_step_start>=int(step.crest.at_ticks):
+		_op_crest_done=true;_opening_crest(step,cap)
+	if int(step.amount)<=0 or tick<_next_spawn:return
+	_next_spawn=tick+int(step.interval_ticks)
+	var count := alive_count()
+	for i in int(step.amount):
+		if count>=cap:break
+		if _opening_place(step,_op_heading,float(step.heading.arc_deg)):count+=1
 
 ## Health factor of what spawns now: the beat's [start,end] rises linearly with seal progress, from the beat's own
 ## from_bps to the next beat's in the same zone (or the full seal). The trial has one value; the boss's escorts none.
@@ -684,6 +822,8 @@ func _spawn_crest(rule: Dictionary,fan: Dictionary,cap: int) -> void:
 ## Spawning under the beat table (or the trial's rule): amount per interval, a cap per beat, waves and lulls.
 func _spawn_rhythm_wave() -> void:
 	if tick<_rest_until or _trial_phase=="clear" or _beat_index<0:return
+	# During the opening the first beat's own spawn rules (amount, taste crest) rest; the step's rules spawn instead.
+	if _op_active:_spawn_opening();return
 	var rhythm: Dictionary=tuning.rhythm
 	var trial := _trial_phase=="hold"
 	var rule: Dictionary=rhythm.trial if trial else rhythm.beats[_beat_index]
@@ -765,6 +905,9 @@ func _resolve_elite_attack(e: Dictionary,definition: Dictionary,distance: float)
 
 func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 	super._emit(type,position,details)
+	if type=="death" and _op_active and not details.get("elite",false):_op_step_kills+=1;_op_total_kills+=1
+	# The gauge counts events, and only while no descent is called or sweeping (it never fills itself).
+	if not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent"):_descent_score(type,details)
 	if type=="death" and _zone_entered and position.distance_squared_to(ZONES[zone])<26.0*26.0:
 		zone_kills+=1;seals[zone].kills=zone_kills
 		if _build_active:_progress_seal()
@@ -806,14 +949,17 @@ func _seal_grace() -> void:
 	_emit("seal_grace",hero.position,{"level":int(growth.snapshot().level),"amount":missing})
 
 ## The seal breaks and every orb still on the ground flows to the hero as one gain.
-func _vacuum_orbs() -> void:
+func _vacuum_orbs(by: String="") -> void:
 	var total := 0
 	for orb in orbs:total+=int(orb.amount)
 	orbs.clear()
 	if total<=0:return
 	var gained := _gain_xp(total)
-	# amount is the XP actually gained (soul bonus included); xp_pickup.amount is the orb's own face value.
-	_emit("orb_vacuum",hero.position,{"amount":gained})
+	# amount is the XP actually gained (soul bonus included); xp_pickup.amount is the orb's own face value. `by` names the
+	# one who called the vacuum when it was not a seal ("descent"); a seal's event stays as it was.
+	var details := {"amount":gained}
+	if not by.is_empty():details.by=by
+	_emit("orb_vacuum",hero.position,details)
 
 func _maybe_drop_item(e: Dictionary) -> void:
 	var level: int=ZONE_LEVELS[zone]
@@ -1181,6 +1327,412 @@ func objective() -> Dictionary:
 		result.kind="boss" if _rhythm_on and zone==2 else "champion";result.hp=ceili(float(e.hp_raw)/UNIT);result.hp_max=ceili(float(e.max_hp_raw)/UNIT);result.title_key=String(e.get("title_key",""))
 	return result
 
+# ---------------------------------------------------------------- descent (D15 A, chapter1/data/descent.json)
+# The ultimate: a gauge that only events fill, a call that holds the core still (mode "descent", no tick), and a sweep that
+# kills the ordinary enemies in reach in the shape of the element. Off (the shipped file says enabled:false) = `descent` is
+# empty, request_descent() is false, no state, no random number, no snapshot key. Nothing here draws from any random stream:
+# order is distance, then id. The crown (tree) and the grace ("descent boost") are only named in descent.json, not read.
+
+const Descent = preload("res://chapter1/core/descent.gd")
+const DESCENT_STATUSES := ["heat","chill","shock"]
+## The document of this run (validated, enabled only); {} = off.
+var descent: Dictionary = {}
+var _pending_descent: Dictionary = {}
+var _shared_descent: Dictionary = {}
+var _shared_descent_loaded := false
+var _d_element := ""
+var _d_gauge := 0
+var _d_uses := 0
+var _d_ready := false
+var _d_wasted := 0
+var _d_strong_carry := 0
+var _d_combo_tick := -1
+var _d_combo_sum := 0
+var _d_iframe_until := 0
+var _d_pause_until := 0
+var _d_sweep: Dictionary = {}
+var _d_burn: Dictionary = {}
+## What the sweep hit in the tick being processed (flushed as one descent_strike event). Not in the snapshot.
+var _d_strike_ids: Array = []
+var _d_strike_pos: Array = []
+var _d_strike_marks: Array = []
+
+## Park a descent document for the next start() (before start()). It is validated like the file; a rejected one changes nothing.
+func set_descent(candidate: Dictionary) -> bool:
+	var loader = Descent.new()
+	if not loader.replace_document(candidate):
+		errors.assign(loader.errors);return false
+	_pending_descent=loader.snapshot()
+	return true
+
+## The parked document, else the shipped file (read once; a missing file means off). Only an enabled one switches the descent on.
+func _prepare_descent() -> bool:
+	descent={}
+	var document: Dictionary=_pending_descent
+	if document.is_empty():
+		if not _shared_descent_loaded:
+			if FileAccess.file_exists(Descent.DEFAULT_PATH):
+				var loader = Descent.new()
+				if not loader.load_file(Descent.DEFAULT_PATH):
+					errors.assign(loader.errors);push_error("Descent failed to load: "+str(errors));return false
+				_shared_descent=loader.snapshot()
+			_shared_descent_loaded=true
+		document=_shared_descent
+	if document.is_empty() or not bool(document.enabled):return true
+	descent=document.duplicate(true)
+	return true
+
+func _descent_reset() -> void:
+	_d_gauge=0;_d_uses=0;_d_ready=false;_d_wasted=0;_d_strong_carry=0;_d_combo_tick=-1;_d_combo_sum=0;_d_iframe_until=0;_d_pause_until=0
+	_d_sweep={};_d_burn={};_d_element="";_d_strike_ids=[];_d_strike_pos=[];_d_strike_marks=[]
+	if descent.is_empty():return
+	_d_element=String(_primary_id).trim_prefix("chapter1.skill.")
+	if not _d_element in Descent.ELEMENTS:descent={};return
+	metrics.descent={"uses":0,"gauge_in":0,"wasted":0,"kills":0,"strong_hits":0,"strong_damage_raw":0,"marks_taken":0,"refunded":0,"ready_ticks":[],"call_ticks":[]}
+
+func _descent_cost() -> int:
+	var costs: Array=descent.cost
+	return int(costs[mini(_d_uses,costs.size()-1)])
+
+func _descent_reach() -> float:
+	return float(descent.reach_m)
+
+func _descent_boss_alive() -> bool:
+	return zone==2 and _champion_id>0 and enemies.has(_champion_id)
+
+## Read only, for the screens and the sound (D15 A6.4). Changes nothing. {"enabled":false} while off.
+## {enabled, element, gauge, cost_now, ratio_bps (0..10000), ready, state "charging"|"ready"|"hold"|"sweep", uses,
+##  first (is this the run's first descent: the one being called or swept, else the one to come), sweep_left_ticks, iframe_until_tick}
+func descent_view() -> Dictionary:
+	if descent.is_empty():return {"enabled":false}
+	var state := "charging"
+	if not _d_sweep.is_empty():state="sweep"
+	elif _descent_hold:state="hold"
+	elif _d_ready:state="ready"
+	var cost := _descent_cost()
+	var first := (_d_uses==1) if state=="sweep" else (_d_uses==0)
+	return {"enabled":true,"element":_d_element,"gauge":_d_gauge,"cost_now":cost,"ratio_bps":clampi(_d_gauge*10000/maxi(1,cost),0,10000),"ready":_d_ready,"state":state,
+		"uses":_d_uses,"first":first,"sweep_left_ticks":maxi(0,int(_d_sweep.until_tick)-tick) if state=="sweep" else 0,"iframe_until_tick":_d_iframe_until}
+
+## Call the descent. Accepted only while playing with a ready gauge and no sweep running; then the core stands still
+## (mode "descent") until release_descent(). The screen shows its cut-in in between; nothing changes meanwhile.
+func request_descent() -> bool:
+	if descent.is_empty() or mode!="playing" or not _d_ready or _descent_hold or not _d_sweep.is_empty():return false
+	var blocked: Array=descent.blocked_phases
+	if "trial" in blocked and _trial_phase=="hold":return false
+	if "boss" in blocked and _descent_boss_alive():return false
+	var normals := 0;var strongs := 0;var marks := 0
+	for id_ in _descent_in_reach(hero.position):
+		var e: Dictionary=enemies[id_]
+		if _enemy_role(e)=="normal":normals+=1
+		else:strongs+=1
+		marks+=_descent_marks_of(e)
+	_descent_hold=true
+	_refresh_mode()
+	metrics.descent.call_ticks.append(tick)
+	_emit("descent_called",hero.position,{"element":_d_element,"index":_d_uses+1,"variant":"long" if _d_uses==0 else "short","center":hero.position,"reach_m":_descent_reach(),
+		"normals_in_reach":normals,"strongs_in_reach":strongs,"marks_in_reach":marks,"in_trial":_trial_phase=="hold","boss_alive":_descent_boss_alive()})
+	return true
+
+## The cut-in is over: the gauge is spent and the sweep starts with the next tick. Only in mode "descent".
+func release_descent() -> bool:
+	if not _descent_hold or mode!="descent":return false
+	var cfg: Dictionary=descent.elements[_d_element]
+	var ticks := int(cfg.sweep_ticks)
+	var heading := Vector2.ZERO
+	if _d_element=="ember":
+		var angle := deg_to_rad(float(cfg.heading_deg))
+		heading=Vector2(cos(angle),sin(angle))
+	_descent_hold=false
+	_d_gauge=0;_d_ready=false;_d_uses+=1
+	metrics.descent.uses=_d_uses
+	_d_sweep={"element":_d_element,"center":hero.position,"start_tick":tick,"until_tick":tick+ticks,"hit_ids":[],"heading":heading,"frozen":[],
+		"kills":0,"strong_hits":0,"strong_damage_raw":0,"marks_taken":0,"trial_kills":0}
+	# No blow lands from the tick after the release until the sweep is over and for after.iframe_ticks beyond it.
+	_d_iframe_until=tick+ticks+int(descent.after.iframe_ticks)
+	_invulnerable_until=maxi(_invulnerable_until,_d_iframe_until)
+	_refresh_mode()
+	return true
+
+## Points into the gauge. Over the cost is thrown away (counted in wasted), and a full gauge takes nothing.
+func _descent_add(points: int) -> void:
+	if points<=0:return
+	var tally: Dictionary=metrics.descent
+	if _d_ready:
+		_d_wasted+=points;tally.wasted=_d_wasted;return
+	var cost := _descent_cost()
+	var taken := mini(points,cost-_d_gauge)
+	_d_gauge+=taken;tally.gauge_in=int(tally.gauge_in)+taken
+	if points>taken:_d_wasted+=points-taken;tally.wasted=_d_wasted
+	if _d_gauge>=cost:
+		_d_ready=true
+		tally.ready_ticks.append(tick)
+		_emit("descent_ready",hero.position,{"uses":_d_uses,"cost":cost})
+
+## Combination points (a basic hit on a controlled enemy, a detonation) count at most combo_cap_per_tick per tick.
+func _descent_combo(points: int) -> void:
+	if _d_combo_tick!=tick:_d_combo_tick=tick;_d_combo_sum=0
+	var room := maxi(0,int(descent.points.combo_cap_per_tick)-_d_combo_sum)
+	var counted := mini(points,room)
+	_d_combo_sum+=counted
+	_descent_add(counted)
+
+func _descent_kill_points() -> int:
+	var by_beat: Dictionary=descent.points.kill_by_beat
+	var id_ := ""
+	if _rhythm_on:
+		if _descent_boss_alive():id_="boss"
+		elif _trial_phase=="hold":id_="trial"
+		elif _beat_index>=0:id_=String(tuning.rhythm.beats[_beat_index].id)
+	return int(by_beat.get(id_,descent.points.kill_default))
+
+func _descent_score(type: String,details: Dictionary) -> void:
+	var points: Dictionary=descent.points
+	match type:
+		"death":
+			match String(details.get("role","normal")):
+				"normal":_descent_add(_descent_kill_points())
+				"elite":_descent_add(int(points.elite_kill))
+				"champion":_descent_add(int(points.champion_kill))
+		"hit":
+			if details.has("vs_cc"):_descent_combo(int(points.vs_cc_hit))
+			var target: Variant=enemies.get(int(details.get("target_id",0)))
+			if target is Dictionary and target.elite and int(target.max_hp_raw)>0:
+				# One percent of the guardian's life is worth strong_damage_per_pct; the rest is carried to the next hit.
+				_d_strong_carry+=int(details.dealt_raw)*10000/int(target.max_hp_raw)
+				var pct := _d_strong_carry/100
+				if pct>0:_d_strong_carry-=pct*100;_descent_add(pct*int(points.strong_damage_per_pct))
+		"detonate":_descent_combo(int(points.detonate))
+
+## Alive enemies within reach of a point, nearest first (equal distance: the smaller id).
+func _descent_in_reach(center: Vector2) -> Array[int]:
+	var reach := _descent_reach()
+	var limit := reach*reach
+	var found: Array[int]=[]
+	for id_ in enemies:
+		var e: Dictionary=enemies[id_]
+		if e.hp_raw>0 and e.generation==_epoch and e.position.distance_squared_to(center)<=limit:found.append(int(id_))
+	found.sort_custom(func(a: int,b: int) -> bool:
+		var da: float=enemies[a].position.distance_squared_to(center)
+		var db: float=enemies[b].position.distance_squared_to(center)
+		return a<b if is_equal_approx(da,db) else da<db)
+	return found
+
+## Stacks of heat, chill and shock still running on an enemy (only a run with the spell composition has any).
+func _descent_marks_of(e: Dictionary) -> int:
+	var table: Dictionary=e.get("status",{})
+	var n := 0
+	for key in DESCENT_STATUSES:
+		var entry: Variant=table.get(key)
+		if entry is Dictionary and int(entry.n)>0 and tick<int(entry.until):n+=int(entry.n)
+	return n
+
+func _descent_take_marks(e: Dictionary) -> int:
+	var n := _descent_marks_of(e)
+	if e.has("status"):
+		for key in DESCENT_STATUSES:e.status.erase(key)
+	return n
+
+## An enemy's windup is cut: the attack does not come, the body recovers.
+func _descent_cut_windup(e: Dictionary) -> void:
+	if e.state=="windup":
+		e.state="recover";e.state_until=tick+int(descent.strong.cut_windup_ticks);e.telegraph={}
+
+## What the element leaves on one that the sweep does not kill (a strong enemy, or an ordinary one past the trial's cap).
+func _descent_control(e: Dictionary,strong: bool) -> void:
+	var cfg: Dictionary=descent.elements[_d_element]
+	if _d_element=="frost":
+		e.frozen_until=maxi(int(e.frozen_until),tick+(int(cfg.strong_freeze_ticks) if strong else int(cfg.normal_after_freeze_ticks)))
+	elif _d_element=="arc":
+		e.stunned_until=maxi(int(e.get("stunned_until",0)),tick+(int(cfg.strong_stun_ticks) if strong else int(cfg.normal_stun_ticks)))
+
+## One blow through the normal damage path: skill_id "descent.<element>", no children, no burst, no shatter, no status.
+func _descent_blow(id_: int,amount: int) -> void:
+	_cast_sequence+=1
+	var effects := {"damage_raw":amount,"proc_depth":0,"death_burst":0,"shatter_count":0,"radius_cm":0,"slow_bps":0,"freeze_stacks":0,"pierce":0,"hit_budget":512,"cooldown_ticks":0,"projectiles":0,"chain_targets":0,"branches":0}
+	var context := {"uid":_cast_sequence,"skill_id":"descent."+_d_element,"effects":effects,"remaining_hits":512,"hit_ids":[],"evolved":false}
+	var before := kills
+	_damage_enemy(id_,context,0)
+	if kills>before:
+		_d_sweep.kills=int(_d_sweep.kills)+1;metrics.descent.kills=int(metrics.descent.kills)+1
+
+## The sweep reaches one enemy (each is reached once per sweep). Marks are taken first (they lift a strong enemy's share),
+## an ordinary one loses all it has left, a strong one a share of its maximum life.
+func _descent_hit(id_: int) -> void:
+	var sw: Dictionary=_d_sweep
+	if id_ in sw.hit_ids or not enemies.has(id_):return
+	var e: Dictionary=enemies[id_]
+	if e.hp_raw<=0:return
+	sw.hit_ids.append(id_)
+	var where: Vector2=e.position
+	var marks := _descent_take_marks(e)
+	_d_strike_ids.append(id_);_d_strike_pos.append(where)
+	if marks>0:
+		sw.marks_taken=int(sw.marks_taken)+marks;_d_strike_marks.append(where)
+		metrics.descent.marks_taken=int(metrics.descent.marks_taken)+marks
+	var role := _enemy_role(e)
+	if role=="normal":
+		if _trial_phase=="hold":
+			if int(sw.trial_kills)>=int(descent.normal.trial_kill_cap):_descent_control(e,false);return
+			sw.trial_kills=int(sw.trial_kills)+1
+		_descent_blow(id_,int(e.hp_raw))
+		return
+	var rule: Dictionary=descent.strong
+	var bps := int(rule[role+"_bps"])+mini(marks*int(rule.per_mark_bps),int(rule.marks_cap_bps))
+	var before := int(e.hp_raw)
+	_descent_cut_windup(e)
+	_descent_blow(id_,maxi(1,int(e.max_hp_raw)*bps/10000))
+	var dealt := before-maxi(0,int(e.hp_raw))
+	sw.strong_hits=int(sw.strong_hits)+1;sw.strong_damage_raw=int(sw.strong_damage_raw)+dealt
+	metrics.descent.strong_hits=int(metrics.descent.strong_hits)+1;metrics.descent.strong_damage_raw=int(metrics.descent.strong_damage_raw)+dealt
+	if e.hp_raw>0:_descent_control(e,true)
+
+func _descent_flush(phase: String,step: int) -> void:
+	if _d_strike_ids.is_empty():return
+	_emit("descent_strike",_d_sweep.center,{"element":_d_element,"phase":phase,"step":step,"positions":_d_strike_pos.slice(0,64),"target_ids":_d_strike_ids.slice(0,64),"marks_at":_d_strike_marks.slice(0,32)})
+	_d_strike_ids=[];_d_strike_pos=[];_d_strike_marks=[]
+
+## Every enemy shot in flight is removed (and forgotten by _hostile_src). Floor strikes of the boss are not shots and stay.
+func _descent_clear_shots() -> Dictionary:
+	var kept: Array[Dictionary]=[]
+	var count := 0
+	var positions: Array=[]
+	for p in projectiles:
+		if p.hostile:
+			count+=1
+			if positions.size()<64:positions.append(p.position)
+			_hostile_src.erase(int(p.uid))
+		else:kept.append(p)
+	if count>0:projectiles=kept
+	return {"count":count,"positions":positions}
+
+## Once per tick before anything moves: the sweep's step (tick - start_tick, 1 on the tick after the release).
+func _step_descent() -> void:
+	if _d_sweep.is_empty():
+		if not _d_burn.is_empty():_descent_burn_tick()
+		return
+	var sw: Dictionary=_d_sweep
+	var s := tick-int(sw.start_tick)
+	if s<1:return
+	var cfg: Dictionary=descent.elements[_d_element]
+	var cleared := _descent_clear_shots()
+	if s==1:
+		_emit("descent_released",sw.center,{"element":_d_element,"center":sw.center,"reach_m":_descent_reach(),"sweep_ticks":int(cfg.sweep_ticks),"heading":sw.heading,
+			"cleared_shots":int(cleared.count),"cleared_positions":cleared.positions})
+	match _d_element:
+		"ember":_descent_ember(s,cfg)
+		"frost":_descent_frost(s,cfg)
+		"arc":_descent_arc(s,cfg)
+	if s>=int(cfg.sweep_ticks):_descent_finish(s)
+
+## A wall of fire crosses the circle along the heading in sweep_ticks; each tick it hits what its band passed, and the last tick
+## takes whoever slipped behind it.
+func _descent_ember(s: int,cfg: Dictionary) -> void:
+	var sw: Dictionary=_d_sweep
+	var n := int(cfg.sweep_ticks)
+	var reach := _descent_reach()
+	var dir: Vector2=sw.heading
+	var low := -reach+2.0*reach*float(s-1)/float(n)
+	var high := -reach+2.0*reach*float(s)/float(n)
+	for id_ in _descent_in_reach(sw.center):
+		if id_ in sw.hit_ids:continue
+		var along: float=(enemies[id_].position-sw.center).dot(dir)
+		if along<=high and (along>low or s==1):_descent_hit(id_)
+	_descent_flush("wall",s)
+	if s>=n:
+		for id_ in _descent_in_reach(sw.center):_descent_hit(id_)
+		_descent_flush("sweep_end",s)
+
+## Everything in reach freezes (an ordinary body until the break, a strong one for strong_freeze_ticks; one that walks in during the
+## sweep freezes on the tick it enters), and at break_at_ticks all the frozen are struck at once.
+func _descent_frost(s: int,cfg: Dictionary) -> void:
+	var sw: Dictionary=_d_sweep
+	var break_at := int(cfg.break_at_ticks)
+	if s<=break_at:
+		for id_ in _descent_in_reach(sw.center):
+			if id_ in sw.frozen:continue
+			sw.frozen.append(id_)
+			var e: Dictionary=enemies[id_]
+			if _enemy_role(e)=="normal":e.frozen_until=maxi(int(e.frozen_until),int(sw.start_tick)+break_at+1)
+			else:
+				e.frozen_until=maxi(int(e.frozen_until),tick+int(cfg.strong_freeze_ticks));_descent_cut_windup(e)
+			_d_strike_ids.append(id_);_d_strike_pos.append(e.position)
+		_descent_flush("freeze",s)
+	if s==break_at:
+		for id_ in sw.frozen.duplicate():_descent_hit(int(id_))
+		_descent_flush("break",s)
+
+## A round of bolts every round_ticks: the nearest per_round enemies not yet struck, and each of them lets the bolt jump to
+## the nearest spread_count struck-nowhere-yet neighbours within spread_m. The last tick takes whoever is left.
+func _descent_arc(s: int,cfg: Dictionary) -> void:
+	var sw: Dictionary=_d_sweep
+	if s%int(cfg.round_ticks)==0:
+		var pool: Array[int]=[]
+		for id_ in _descent_in_reach(sw.center):
+			if not id_ in sw.hit_ids:pool.append(id_)
+		var order: Array[int]=[]
+		for i in mini(int(cfg.per_round),pool.size()):order.append(pool[i])
+		var spread := float(cfg.spread_m)
+		var extra: Array[int]=[]
+		for primary in order:
+			var from: Vector2=enemies[primary].position
+			var near: Array[int]=[]
+			for other in pool:
+				if not other in order and not other in extra and enemies[other].position.distance_to(from)<=spread:near.append(other)
+			near.sort_custom(func(a: int,b: int) -> bool:
+				var da: float=enemies[a].position.distance_squared_to(from)
+				var db: float=enemies[b].position.distance_squared_to(from)
+				return a<b if is_equal_approx(da,db) else da<db)
+			for k in mini(int(cfg.spread_count),near.size()):extra.append(near[k])
+		order.append_array(extra)
+		for id_ in order:_descent_hit(id_)
+		_descent_flush("bolt",s)
+	if s>=int(cfg.sweep_ticks):
+		for id_ in _descent_in_reach(sw.center):_descent_hit(id_)
+		_descent_flush("sweep_end",s)
+
+## The end tick: orbs and ground items in reach come to the hero, the report event, the spawn breath, the burn (ember), and the marks
+## it took give part of the gauge back for the next one.
+func _descent_finish(s: int) -> void:
+	var sw: Dictionary=_d_sweep
+	var cfg: Dictionary=descent.elements[_d_element]
+	_vacuum_orbs("descent")
+	var reach2 := _descent_reach()*_descent_reach()
+	var left: Array[Dictionary]=[]
+	for item in items:
+		if inventory.size()<MAX_INVENTORY and item.position.distance_squared_to(sw.center)<=reach2:
+			item.collected=true;inventory.append(item);metrics.picked_items+=1
+			_emit("item_pickup",hero.position,{"item":item.duplicate(true),"swept":true,"by":"descent"})
+		else:left.append(item)
+	items=left
+	var refund := mini(int(sw.marks_taken)*int(descent.points.marks_refund_per_stack),int(descent.points.marks_refund_cap))
+	_emit("descent_end",sw.center,{"element":_d_element,"kills":int(sw.kills),"strong_hits":int(sw.strong_hits),"strong_damage_raw":int(sw.strong_damage_raw),
+		"marks_taken":int(sw.marks_taken),"refund":refund,"duration_ticks":s})
+	_d_pause_until=tick+int(descent.after.spawn_pause_ticks)
+	# The fire stays only where a spell composition can use it: it adds heat, never damage.
+	if _d_element=="ember" and not spells.is_empty() and int(cfg.burn_heat)>0 and spells.statuses.has("heat"):
+		_d_burn={"center":sw.center,"until":tick+int(cfg.burn_ticks),"next":tick+int(cfg.burn_every_ticks)}
+	_d_sweep={}
+	metrics.descent.refunded=int(metrics.descent.refunded)+refund
+	_descent_add(refund)
+
+func _descent_burn_tick() -> void:
+	var burn: Dictionary=_d_burn
+	if tick>=int(burn.until):_d_burn={};return
+	if tick<int(burn.next):return
+	var cfg: Dictionary=descent.elements.ember
+	burn.next=int(burn.next)+int(cfg.burn_every_ticks)
+	var rule: Dictionary=spells.statuses.heat
+	for id_ in _descent_in_reach(burn.center):
+		var e: Dictionary=enemies[id_]
+		if not e.has("status"):e.status={}
+		var entry: Dictionary=e.status.get("heat",{})
+		if entry.is_empty() or tick>=int(entry.until):entry={"n":0,"src":"descent.ember","until":0,"by":{}}
+		var add := mini(int(cfg.burn_heat),maxi(0,int(rule.max)-int(entry.n)))
+		if add>0:entry.n=int(entry.n)+add;entry.by["descent.ember"]=int(entry.by.get("descent.ember",0))+add
+		entry.src="descent.ember";entry.until=tick+int(rule.expire_ticks)
+		e.status["heat"]=entry
+
 func snapshot() -> Dictionary:
 	var result: Dictionary=super.snapshot()
 	result.chapter={"zone":zone,"zone_kills":zone_kills,"seals":seals.duplicate(true),"potions":potions,"pending_rewards":pending_rewards.duplicate(true),"rituals":rituals.duplicate(true),"history":history.duplicate(true),"boss_phase":_boss_phase,"hazards":chapter_hazards.duplicate(true)}
@@ -1190,6 +1742,11 @@ func snapshot() -> Dictionary:
 	if _rhythm_on:
 		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
+		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
+	# The descent's state exists only in a run whose descent.json is on (D15 A6.2); a run without it keeps the old snapshot.
+	if not descent.is_empty():
+		result.descent={"gauge":_d_gauge,"uses":_d_uses,"cost_now":_descent_cost(),"ready":_d_ready,"hold":_descent_hold,"sweep":_d_sweep.duplicate(true),
+			"wasted":_d_wasted,"strong_carry":_d_strong_carry,"pause_until":_d_pause_until,"burn":_d_burn.duplicate(true)}
 	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
 	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
 	# The grace gap's own clock exists only while the grace block is on.

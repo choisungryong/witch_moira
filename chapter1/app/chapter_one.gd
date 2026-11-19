@@ -339,16 +339,25 @@ func _apply_trial() -> void:
 	if not "--chapter1-profile-off" in _user_args():
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
+	# The run opening (D15 B) is the long one unless asked otherwise: the app has no play counter yet (no schema change).
+	if "--chapter1-opening=returning" in _user_args():run.opening_first_visit=false
 	if "rhythm" in parts:
 		var tuning_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if tuning_doc is Dictionary and tuning_doc.get("rhythm") is Dictionary:
 			tuning_doc["rhythm"]["enabled"]=true
+			if tuning_doc["rhythm"].get("opening") is Dictionary:tuning_doc["rhythm"]["opening"]["enabled"]=true
 			if not run.set_tuning(tuning_doc):push_warning("trial rhythm refused: "+str(run.errors))
 	if "spells" in parts:
 		var spells_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
 		if spells_doc is Dictionary:
 			spells_doc["enabled"]=true
 			if not run.set_run_spells(spells_doc):push_warning("trial spells refused: "+str(run.errors))
+	# The descent has no key and no screen yet (D15 U-2): this only lets a measuring tool or a later screen find it on.
+	if "descent" in parts:
+		var descent_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/descent.json"))
+		if descent_doc is Dictionary:
+			descent_doc["enabled"]=true
+			if not run.set_descent(descent_doc):push_warning("trial descent refused: "+str(run.errors))
 func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
 	_apply_trial()

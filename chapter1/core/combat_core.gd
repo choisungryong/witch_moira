@@ -112,6 +112,9 @@ var _ring_pending: Array[Dictionary] = []
 ## Who fired each enemy projectile in flight: {projectile uid: {"id": enemy id, "kind": source kind}}. The projectile
 ## dictionary itself is in the snapshot and gets no new key, so this lives beside it (not in the snapshot, cleared by start()).
 var _hostile_src: Dictionary = {}
+## The descent (D15 A) holds the core still between request_descent() and release_descent(): mode "descent", no tick.
+## Always false in a run whose descent.json is off.
+var _descent_hold := false
 
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
@@ -147,6 +150,7 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_elite_killed = false
 	_paused = false
 	_inventory_open = false
+	_descent_hold = false
 	_terminal_mode = ""
 	_dash_direction = Vector2.ZERO
 	_dash_until = 0
@@ -192,7 +196,7 @@ func set_paused(value: bool) -> void:
 	_refresh_mode()
 
 func open_inventory() -> bool:
-	if mode == "menu" or _terminal_mode == "defeat": return false
+	if mode == "menu" or _terminal_mode == "defeat" or _descent_hold: return false
 	_inventory_open = true
 	_refresh_mode()
 	return true
@@ -217,6 +221,7 @@ func _refresh_mode() -> void:
 		mode = "inventory" if _inventory_open and _terminal_mode == "victory" else _terminal_mode
 	elif _paused: mode = "paused"
 	elif _inventory_open: mode = "inventory"
+	elif _descent_hold: mode = "descent"
 	elif not growth.snapshot().pending_levels.is_empty() and _grace_ready(): mode = "choice"
 	else: mode = "playing"
 
@@ -538,8 +543,21 @@ func _spawn(kind: String, point: Vector2) -> bool:
 		"direction":Vector2.UP,"attack_direction":Vector2.UP,"attack_kind":"","attack_index":0,"dash_until":0,"dead_tick":-1,"attacked":false}
 	enemies[entity.id] = entity
 	_alive += 1
-	_emit("spawn",entity.position,{"target_id":entity.id,"kind":kind,"elite":entity.elite})
+	var spawn_details := {"target_id":entity.id,"kind":kind,"elite":entity.elite}
+	if not _spawn_tags.is_empty(): spawn_details.merge(_spawn_tags)
+	_emit("spawn",entity.position,spawn_details)
 	return true
+
+## Extra fields for the spawn event of the body being placed right now (the opening marks its bodies). Empty in every other run.
+var _spawn_tags: Dictionary = {}
+
+## How far the basic spells look for a target (m). The chapter core narrows it during the run opening.
+func _acquire_m() -> float:
+	return 13.0
+
+## Distance inside which an experience orb is drawn to the hero; `fallback` is the plain radius + 2 m. The chapter core widens it during the opening.
+func _orb_pull_m(fallback: float) -> float:
+	return fallback
 
 func _spawn_point(min_radius: float, max_radius: float) -> Vector2:
 	# Clamping an outside ring point at a corner must not spawn on top of the hero.
@@ -814,7 +832,7 @@ func _auto_casts() -> void:
 		if _is_ring(id_):
 			_cast_ring(id_,skill)
 			continue
-		var nearest := _near(hero.position,13.0)
+		var nearest := _near(hero.position,_acquire_m())
 		if nearest.is_empty(): continue
 		var target: Dictionary = enemies[nearest[0]]
 		# With the spell composition a basic spell may aim at a far shooter or a controlled enemy first (I0, I1); without it
@@ -1231,10 +1249,11 @@ func _maybe_drop_item(e: Dictionary) -> void:
 func _collect_pickups() -> void:
 	var radius := 1.3+float(_gear_stats.get("pickup_radius_cm",0))/100.0
 	var leftover: Array[Dictionary] = []
+	var pull := _orb_pull_m(radius+2.0)
 	for orb in orbs:
 		var delta: Vector2 = hero.position-orb.position
 		var distance := delta.length()
-		if distance < radius+2.0:
+		if distance < pull:
 			orb.position += delta.normalized()*minf(distance,9.0*STEP)
 		if orb.position.distance_squared_to(hero.position) <= radius*radius:
 			# Soul gain is carried in ten-thousandths so small orbs still add up.

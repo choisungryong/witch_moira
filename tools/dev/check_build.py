@@ -41,6 +41,7 @@ REQUIRED_IN_PCK = (
     'res://chapter1/data/combat_tuning.json', 'res://chapter1/data/loot.json', 'res://chapter1/data/skill_trees.json',
     'res://chapter1/data/character_progression.json', 'res://chapter1/data/growth.json', 'res://chapter1/data/growth_quality36.json',
     'res://chapter1/data/growth_quality37.json', 'res://chapter1/data/outfits.json', 'res://chapter1/data/run_spells.json',
+    'res://chapter1/data/descent.json',
     'res://chapter1/i18n/ko.po', 'res://chapter1/i18n/en.po',
     'res://chapter1/i18n/locales.json', 'res://chapter1/ChapterOne.tscn.remap', 'res://chapter1/app/chapter_one.gd.remap',
 )

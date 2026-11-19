@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "balance_status": "가설. 균형 뒤 확정 (D15 A3·A4)",
+  "enabled": false,
+  "cost": [3000, 8000, 10000],
+  "points": {
+    "kill_by_beat": {"gi": 16, "seung1": 8, "seung2": 5, "jeon_a": 3, "trial": 2, "boss": 2},
+    "kill_default": 5,
+    "elite_kill": 400, "champion_kill": 800,
+    "strong_damage_per_pct": 10,
+    "vs_cc_hit": 20, "detonate": 30, "combo_cap_per_tick": 300,
+    "marks_refund_per_stack": 6, "marks_refund_cap": 1500
+  },
+  "reach_m": 13.0,
+  "normal": {"trial_kill_cap": 40},
+  "strong": {"elite_bps": 3500, "champion_bps": 1200, "boss_bps": 800, "per_mark_bps": 150, "marks_cap_bps": 600, "cut_windup_ticks": 30},
+  "after": {"iframe_ticks": 30, "spawn_pause_ticks": 60},
+  "elements": {
+    "ember": {"sweep_ticks": 60, "heading_deg": -38.2, "burn_ticks": 150, "burn_every_ticks": 30, "burn_heat": 1},
+    "frost": {"sweep_ticks": 45, "break_at_ticks": 45, "normal_after_freeze_ticks": 90, "strong_freeze_ticks": 30},
+    "arc":   {"sweep_ticks": 60, "round_ticks": 6, "per_round": 12, "spread_m": 3.0, "spread_count": 2, "normal_stun_ticks": 60, "strong_stun_ticks": 12}
+  },
+  "blocked_phases": [],
+  "crown": {"charge_bps": [1000, 2000, 3000], "power_bps": 12000, "reach_add_m": 1.0}
+}

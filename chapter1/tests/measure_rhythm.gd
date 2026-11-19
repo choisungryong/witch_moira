@@ -7,6 +7,7 @@ extends SceneTree
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
+const DescentPolicy = preload("res://chapter1/tests/descent_policy.gd")
 
 ## D11 A2 targets [hypothesis]. from/to are the time boundaries used when the core has no beat_started event.
 ## The guardian windows in the A2 table overlap the neighbouring beats; they are folded into those beats here.
@@ -27,6 +28,12 @@ const MIN_TICKS := 300
 var bin_s := 30.0
 ## --rhythm-on: test switch. The shipped document is read, rhythm.enabled and trial.enabled are set in memory only.
 var rhythm_on := false
+## --stop-s=N: end every run after N seconds (a short look at the first minutes, e.g. the run opening with --bin=10).
+var stop_s := 0.0
+## --descent=off|now|hold|panic: switch the descent on in memory (descent.json stays off) and let the bot use it by that rule (D15 A6.5).
+## "off" counts the gauge but never calls. --spells-on: the in-run spell composition on in memory (the pilot picks its own cards).
+var descent_policy := ""
+var spells_on := false
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -45,6 +52,14 @@ func execute() -> void:
 				prims.append(p if p.begins_with("chapter1.skill.") else "chapter1.skill." + p)
 		elif arg.begins_with("--out="): out = arg.trim_prefix("--out=")
 		elif arg == "--rhythm-on": rhythm_on = true
+		elif arg.begins_with("--stop-s="): stop_s = maxf(0.0, float(arg.trim_prefix("--stop-s=")))
+		elif arg.begins_with("--descent="):
+			descent_policy = arg.trim_prefix("--descent=")
+			if not DescentPolicy.valid(descent_policy):
+				push_error("measure_rhythm: --descent must be one of %s" % str(DescentPolicy.POLICIES))
+				quit(1)
+				return
+		elif arg == "--spells-on": spells_on = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
 	if not out.begins_with("_local/") or out.contains("..") or out.contains(":") or out.begins_with("/"):
 		push_error("measure_rhythm: --out must be a relative path under _local/ (got %s)" % out)
@@ -126,8 +141,22 @@ func play(seed_: int, prim: String) -> Dictionary:
 		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		doc.rhythm.enabled = true
 		doc.rhythm.trial.enabled = true
+		# D15 O-1: the run opening comes with the rhythm in a trial run (`--chapter1-trial=...,rhythm`), so it does here.
+		if doc.rhythm.has("opening"): doc.rhythm.opening.enabled = true
 		if not run.set_tuning(doc):
 			push_error("measure_rhythm: rhythm document rejected %s" % str(run.errors))
+			return {}
+	if spells_on:
+		var spells_doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
+		spells_doc.enabled = true
+		if not run.set_run_spells(spells_doc):
+			push_error("measure_rhythm: spells document rejected %s" % str(run.errors))
+			return {}
+	if descent_policy != "":
+		var descent_doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/descent.json"))
+		descent_doc.enabled = true
+		if not run.set_descent(descent_doc):
+			push_error("measure_rhythm: descent document rejected %s" % str(run.errors))
 			return {}
 	if not run.start(seed_, prim):
 		push_error("measure_rhythm: start failed %s" % str(run.errors))
@@ -145,8 +174,11 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var cur_beat := "(시작 전)"
 	var guard := 0
 	var all_types: Dictionary = {}
-	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60:
+	var level_first := -1.0
+	var descent_ends: Array = []
+	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
 		var mv: Vector2 = pilot.decide()
+		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
 		guard += 1
 		var adv: int = int(run.tick) - last_tick
@@ -154,7 +186,7 @@ func play(seed_: int, prim: String) -> Dictionary:
 		var sec: float = float(run.tick) / 60.0
 		var zname := "zone%d" % int(run.zone)
 		# events (by seq so a mode that does not advance the tick is never double counted)
-		for ev in run.events:
+		for ev in called_events + run.events:
 			if int(ev.seq) <= last_seq: continue
 			last_seq = int(ev.seq)
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
@@ -168,6 +200,15 @@ func play(seed_: int, prim: String) -> Dictionary:
 				"chapter_champion": marks.append("%.0fs champ%d" % [esec, int(ev.get("zone", 0))])
 				"zone_entered": marks.append("%.0fs enter%d" % [esec, int(ev.get("zone", 0))])
 				"beat_started": marks.append("%.0fs beat:%s" % [esec, cur_beat])
+				"opening_step": marks.append("%.1fs open:%s" % [esec, String(ev.get("id", ""))])
+				"opening_end": marks.append("%.1fs open:end" % esec)
+				"descent_ready": marks.append("%.0fs descent ready" % esec)
+				"descent_called": marks.append("%.0fs descent used" % esec)
+				"descent_end": descent_ends.append({"tick": int(ev.tick), "kills": int(ev.kills), "strong_hits": int(ev.strong_hits), "strong_damage_raw": int(ev.strong_damage_raw), "marks_taken": int(ev.marks_taken), "refund": int(ev.refund)})
+				"level_choice":
+					if level_first < 0.0:
+						level_first = esec
+						marks.append("%.1fs first level-up" % esec)
 			var accs := [bin_acc(bins, esec),
 				get_beat(beats, beat_order, cur_beat if event_beats else beat_name_by_time(esec), esec),
 				get_acc(zones, zname, zname, esec)]
@@ -228,10 +269,11 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var summary := {"secs": snappedf(secs, 0.1), "mode": String(run.mode), "kills": int(run.kills), "level": int(run.growth.snapshot().level),
 		"grace_count": times.size(), "grace_times": times.map(func(t): return snappedf(t, 0.1)), "grace_first_s": (snappedf(times[0], 0.1) if times.size() > 0 else -1.0),
 		"grace_longest_gap_s": snappedf(longest_gap, 0.1), "grace_last_to_end_s": (snappedf(secs - float(times[times.size() - 1]), 0.1) if times.size() > 0 else -1.0),
-		"grace_first75": first75, "worst_bin": String(worst.get("label", "")), "worst_bin_hits": int(worst.get("hits", 0)), "worst_bin_dmg": worst.get("dmg", 0.0),
+		"grace_first75": first75, "level_first_s": snappedf(level_first, 0.1), "worst_bin": String(worst.get("label", "")), "worst_bin_hits": int(worst.get("hits", 0)), "worst_bin_dmg": worst.get("dmg", 0.0),
 		"hits_total": hit_total, "events_dropped": int(run.metrics.get("events_dropped", 0)), "event_types": all_types}
 	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
+		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "view": run.descent_view()},
 		"bins": bin_list, "beats": beat_list, "zones": zone_list}
 
 func bin_acc(d: Dictionary, sec: float) -> Dictionary:
@@ -344,6 +386,13 @@ func print_run(r: Dictionary) -> void:
 	var s: Dictionary = r.summary
 	print("RUN %s seed=%d mode=%s secs=%.1f kills=%d level=%d  beats by: %s" % [r.primary, r.seed, r.mode, r.secs, r.kills, s.level, r.beat_source])
 	print("  marks: ", ", ".join(PackedStringArray(r.marks)))
+	if r.descent.policy != "":
+		var dm: Dictionary = r.descent.metrics
+		var dk := 0
+		for d in r.descent.ends: dk += int(d.kills)
+		print("  descent[%s]: uses=%d ready_at=%s used_at=%s kills_by_descent=%d gauge_in=%d wasted=%d refunded=%d strong_dmg_raw=%d" % [r.descent.policy, int(dm.get("uses", 0)),
+			str(dm.get("ready_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), str(dm.get("call_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), dk,
+			int(dm.get("gauge_in", 0)), int(dm.get("wasted", 0)), int(dm.get("refunded", 0)), int(dm.get("strong_damage_raw", 0))])
 	print("  grace: n=%d first=%.1fs longest_gap=%.1fs last_to_end=%.1fs first75=%d at %s" % [s.grace_count, s.grace_first_s, s.grace_longest_gap_s, s.grace_last_to_end_s, s.grace_first75, str(s.grace_times)])
 	print("  worst bin: %s hits=%d dmg/maxhp=%.2f   hits_total=%d events_dropped=%d" % [s.worst_bin, s.worst_bin_hits, float(s.worst_bin_dmg), s.hits_total, s.events_dropped])
 	print("  bin       | kills kpm  | alive avg p90 max | hits dmg  | atk  | pHit/kill | grace | drops(src)        | dropped_ev")

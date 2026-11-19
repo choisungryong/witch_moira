@@ -15,7 +15,8 @@ const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
 ## Optional block (D11 A6): a document without it runs the plain spawn rules, and so does one with "enabled": false.
 const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
 const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
-const BEAT_OPTIONAL := ["ranged_from_ticks","charger_from_ticks","taste_crest"]
+const OPENING_STEP_KEYS := ["id","max_ticks","kills","amount","interval_ticks","alive_cap","ring_m","heading","speed_bps","acquire_m","orb_pull_m","crest","mix","first_visit_only"]
+const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11) is checked in full; "elites" and "extras" (D13 W4/W5) are only
 ## required to be an object with a bool "enabled" until their own steps tighten them.
@@ -166,7 +167,12 @@ static func _fan_valid(entry: Variant, keys: Array) -> bool:
 
 ## D11 A6 ranges. Every problem is one short path; an empty list means the block is usable.
 static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
-	if not r is Dictionary or not GrowthCatalog.keys_match(r,RHYTHM_KEYS): return ["rhythm keys"]
+	if not r is Dictionary: return ["rhythm keys"]
+	var base_keys: Dictionary = r
+	if r.has("opening"):
+		base_keys = r.duplicate()
+		base_keys.erase("opening")
+	if not GrowthCatalog.keys_match(base_keys,RHYTHM_KEYS): return ["rhythm keys"]
 	var issues: Array[String] = []
 	if not r.enabled is bool: issues.append("rhythm enabled")
 	if not integer(r.initial_pack,0,40): issues.append("rhythm initial_pack")
@@ -220,7 +226,67 @@ static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 		if not _mix_valid(t.mix): issues.append("rhythm trial mix")
 		if not integer(t.clear_ticks,0,1800): issues.append("rhythm trial clear_ticks")
 	if not r.boss is Dictionary or not GrowthCatalog.keys_match(r.boss,["phase_break_ticks"]) or not integer(r.boss.phase_break_ticks,0,600): issues.append("rhythm boss")
+	if r.has("opening"):
+		# The opening's per-step cap is bounded by the first beat's own cap (which is bounded by the document's).
+		var first_cap := alive_cap
+		var first: Variant = r.beats[0]
+		if first is Dictionary and integer(first.get("alive_cap"),1,alive_cap): first_cap = int(first.alive_cap)
+		issues.append_array(_opening_issues(r.opening,first_cap))
 	return issues
+
+## D15 O-1 ranges. Every problem is one short path; an empty list means the block is usable.
+static func _opening_issues(o: Variant, first_cap: int) -> Array[String]:
+	if not o is Dictionary or not GrowthCatalog.keys_match(o,["enabled","steps"]): return ["rhythm opening keys"]
+	var issues: Array[String] = []
+	if not o.enabled is bool: issues.append("rhythm opening enabled")
+	if not o.steps is Array or o.steps.size() < 1 or o.steps.size() > 8: issues.append("rhythm opening steps");return issues
+	var seen := {}
+	for index in o.steps.size():
+		var s: Variant = o.steps[index]
+		var tag := "rhythm opening step %d " % index
+		if not s is Dictionary: issues.append(tag+"entry");continue
+		var ok_keys := true
+		for key in OPENING_STEP_KEYS:
+			if not s.has(key): ok_keys = false
+		for key in s:
+			if not key in OPENING_STEP_KEYS and key != "returning_max_ticks": ok_keys = false
+		if not ok_keys: issues.append(tag+"keys");continue
+		if not s.id is String or String(s.id).is_empty() or seen.has(s.id): issues.append(tag+"id")
+		else: seen[s.id] = true
+		if not integer(s.max_ticks,60,3600): issues.append(tag+"max_ticks")
+		if s.has("returning_max_ticks") and not integer(s.returning_max_ticks,60,3600): issues.append(tag+"returning_max_ticks")
+		if not integer(s.kills,0,200): issues.append(tag+"kills")
+		if not integer(s.amount,0,30): issues.append(tag+"amount")
+		if not integer(s.interval_ticks,12,600): issues.append(tag+"interval_ticks")
+		if not integer(s.alive_cap,0,first_cap) or (int(s.get("alive_cap",0)) == 0 and integer(s.get("amount"),1,30)): issues.append(tag+"alive_cap")
+		if not (s.ring_m is Array and s.ring_m.size() == 2 and number(s.ring_m[0],2.0,19.0) and number(s.ring_m[1],2.0,19.0) and float(s.ring_m[0]) <= float(s.ring_m[1])): issues.append(tag+"ring_m")
+		issues.append_array(_opening_heading_issues(s.heading,index,tag))
+		if not integer(s.speed_bps,3000,10000): issues.append(tag+"speed_bps")
+		if s.acquire_m != null and not number(s.acquire_m,6.0,13.0): issues.append(tag+"acquire_m")
+		if s.orb_pull_m != null and not number(s.orb_pull_m,2.0,20.0): issues.append(tag+"orb_pull_m")
+		if s.crest != null and not (_fan_valid(s.crest,["at_ticks","count","arc_deg"]) and integer(s.crest.at_ticks,0,3600)): issues.append(tag+"crest")
+		if not _mix_valid(s.mix): issues.append(tag+"mix")
+		if not s.first_visit_only is bool: issues.append(tag+"first_visit_only")
+	return issues
+
+## heading: {arc_deg} plus how the direction is chosen: choices_deg (one of the listed world angles), same_as_previous,
+## opposite_of_previous, or nothing at all (then the fan must be the full circle). The first step has no previous step.
+static func _opening_heading_issues(h: Variant, index: int, tag: String) -> Array[String]:
+	if not h is Dictionary or not h.has("arc_deg") or not number(h.arc_deg,1.0,360.0): return [tag+"heading"]
+	var modes := 0
+	for key in h:
+		if not key in ["arc_deg","choices_deg","same_as_previous","opposite_of_previous"]: return [tag+"heading keys"]
+		if key != "arc_deg": modes += 1
+	if modes > 1: return [tag+"heading modes"]
+	if h.has("choices_deg"):
+		var c: Variant = h.choices_deg
+		if not c is Array or c.size() < 1 or c.size() > 4: return [tag+"heading choices_deg"]
+		for angle in c:
+			if not number(angle,-180.0,180.0): return [tag+"heading choices_deg"]
+	for key in ["same_as_previous","opposite_of_previous"]:
+		if h.has(key) and (h[key] != true or index == 0): return [tag+"heading "+key]
+	if modes == 0 and float(h.arc_deg) < 360.0: return [tag+"heading needs a direction or the full circle"]
+	return []
 
 static func _heavy_issues(rule: Variant) -> Array[String]:
 	if not rule is Dictionary or not GrowthCatalog.keys_match(rule,["heavy_bps","gap_ticks","iframe_ticks","graze_bps","ward_gap_ticks"]): return ["heavy_hit keys"]
