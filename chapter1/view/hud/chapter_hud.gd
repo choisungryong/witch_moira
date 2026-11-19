@@ -567,6 +567,7 @@ func _settle_discovery20(row: Control) -> void:
 	if is_instance_valid(row) and row.get_parent()==_discovery:_place_notice(_discovery,104.0)
 func reset() -> void:
 	clear_upgrade()
+	if _playlog!=null and _view46!=null and _view46.get_ref()!=null:_playlog.begin_run(_view46.get_ref().run)
 	reset__q17();_discovery20_seeded=false;_discovery20_magic=false;_discovery20_slots.clear();_discovery20_uids.clear();_discovery20_queue.clear();_discovery20_gap=0;_discovery20_name="";discovery20_history.clear()
 	_reset_flow()
 
@@ -707,7 +708,7 @@ func _build_modal__q38(run: RefCounted) -> void:
 	if overlay.visible:
 		if run.mode=="choice" and not stash_open:
 			modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-			modal.offset_left=-630;modal.offset_right=630;modal.offset_top=-250;modal.offset_bottom=250
+			modal.offset_left=-630;modal.offset_right=630;modal.offset_top=-340;modal.offset_bottom=340
 			_growth_cards38(run)
 		elif run.mode=="inventory" and not stash_open:
 			modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -758,8 +759,10 @@ func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 	var rarity: Color=QUALITY_COLORS.get(candidate_item.quality,BRASS38)
 	var frame := _style(Color("171e21"),rarity.darkened(.3));frame.border_width_top=3
 	panel.add_theme_stylebox_override("panel",frame);comparison.add_child(panel)
-	var scroll := ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
+	# The text scrolls; the equip button sits below the scroll area so it is always on screen.
+	var outer := VBoxContainer.new();outer.add_theme_constant_override("separation",10);panel.add_child(outer)
+	var scroll := ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL
+	outer.add_child(scroll)
 	var details := VBoxContainer.new();details.size_flags_horizontal=Control.SIZE_EXPAND_FILL;details.add_theme_constant_override("separation",16);scroll.add_child(details)
 	var heading := HBoxContainer.new();heading.add_theme_constant_override("separation",18);details.add_child(heading)
 	heading.add_child(_sigil(candidate_item))
@@ -792,7 +795,7 @@ func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 	var active: bool=not run.equip_slot_of(uid).is_empty()
 	var equip_button := _button("장착 중" if active else ("레벨 부족" if not wearable else "이 장비 장착"),func():equip_item.emit(uid))
 	equip_button.disabled=active or not wearable;equip_button.size_flags_horizontal=Control.SIZE_SHRINK_END;equip_button.custom_minimum_size.x=220
-	details.add_child(equip_button)
+	outer.add_child(equip_button)
 
 func _delta_text38(stats: Dictionary) -> String:
 	if stats.is_empty():return Loc.t("hud.notice.no_change")
@@ -1168,8 +1171,17 @@ func _growth_cards38(run: RefCounted) -> void:
 	_growth_cards38__q38(run)
 	var cards := modal.get_child(0).get_child(2)
 	for panel in cards.get_children():
-		var spacer := panel.get_child(0).get_child(4) as Control
-		spacer.size_flags_vertical=Control.SIZE_EXPAND_FILL
+		var column := panel.get_child(0) as VBoxContainer
+		# The description scrolls inside the card when the window is too short for it; the pick button stays in view
+		# (a card with 8+ lines used to grow the window past the bottom of the screen). The spacer keeps child index 4.
+		var description := column.get_child(3) as Label
+		column.remove_child(description)
+		var scroll := ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.name="CardText"
+		description.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		scroll.add_child(description);column.add_child(scroll);column.move_child(scroll,3)
+		var spacer := column.get_child(4) as Control
+		spacer.size_flags_vertical=Control.SIZE_FILL
 		spacer.custom_minimum_size.y=8
 
 func _build_modal__q45(run: RefCounted) -> void:
@@ -1212,6 +1224,8 @@ class HeroLocator46 extends Control:
 		var chevron := PackedVector2Array([crown+Vector2(-7,-7),crown,crown+Vector2(7,-7)])
 		draw_polyline(chevron,shadow,5,true);draw_polyline(chevron,ink,2,true)
 var _locator46: HeroLocator46
+const PlayRecorder=preload("res://chapter1/view/hud/play_recorder.gd")
+var _playlog: Node
 var _view46: WeakRef
 func setup(view: Node3D) -> void:
 	setup__q40(view)
@@ -1222,6 +1236,8 @@ func setup(view: Node3D) -> void:
 	_locator46=HeroLocator46.new();_locator46.name="HeroLocator46"
 	_locator46.mouse_filter=Control.MOUSE_FILTER_IGNORE;_locator46.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(_locator46);root.move_child(overlay,root.get_child_count()-1)
+	# Play log (off unless --chapter1-playlog is given): a read-only child node, see play_recorder.gd.
+	_playlog=PlayRecorder.attach(root,view)
 
 func _sync_locator46(run: RefCounted,low: bool) -> void:
 	var was_shown := _locator46.visible
@@ -1289,6 +1305,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	# One growth snapshot (a deep copy) per frame, shared with the combat bar and the six-tick summary.
 	_frame_growth=run.growth.snapshot() if not run.hero.is_empty() else {}
 	sync__q47(run,delta)
+	if _playlog!=null:_playlog.observe(run,_frame_growth)
 	_compose_frame(run)
 	_sync_flow(run,delta)
 	if is_instance_valid(skill_panel) and skill_panel.visible and run.mode not in ["menu","victory","defeat"]:skill_panel.visible=false

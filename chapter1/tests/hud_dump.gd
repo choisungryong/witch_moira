@@ -39,6 +39,17 @@ extends SceneTree
 ##                                ancestors "clip", combined minimum size "min", text metrics "tw"/"th"/"lines"/"vis_lines"/"pad")
 ##                                and a "meta" entry (canvas size, window size, scale). Read by tools/dev/hud_layout_check.py.
 ##                                Without the flag the dump is byte-for-byte what it always was.
+## T7-0 / A6-0 additions (opt-in; without them the dump is byte-for-byte what it was):
+##   --asset-usage=<file under _local/>   which files under chapter1/art/ were loaded and which were really drawn or played
+##                                during this run (see chapter1/tests/asset_usage_probe.gd). Works with every mode above.
+##                                tools/dev/asset_usage_report.py merges several of these files into the table.
+##   --burst=<name,...>           after the first core event of each name, save --burst-frames (default 8) screenshots, one
+##                                every 6 ticks (0.1 s), into --shots. Name = event type, or type:value, or type:key=value
+##                                (growth, seal_grace, chapter_champion, victory, item_drop:legendary, beat_started, ...).
+##                                Names never met are listed on the last line (HUD_BURST_SUMMARY). See burst_capture.gd.
+##   --menu-tour                  (T7-0, needs --asset-usage and --profile-fixture=l8) no run: for each of the three witches select it on
+##                                the menu and open and close its skill tree, so the usage table sees every menu portrait and
+##                                every skill tree painting. Prints MENU_TOUR lines.
 ##   Missing or contradicting arguments end at once with one HUD_DUMP_ARGS line and exit code 2 (a flow that needs a
 ##   fixture never starts and waits for a window that does not come): --tree-shots needs --profile-fixture=l8,
 ##   every --profile-fixture needs --chapter1-profile-off, --shots needs a real renderer, unknown values are refused.
@@ -68,6 +79,18 @@ var flow_shots := ""
 var defeat_at := 1200
 var reject_choice := "play"
 var dump_extra := false
+var asset_usage_path := ""
+var usage: RefCounted = null
+var burst_arg := ""
+var burst_frames := 8
+var burst_frames_given := false
+var burst: RefCounted = null
+var menu_tour := false
+var mt_stage := 0
+var mt_index := 0
+var mt_next := 0
+var mt_log: Array = []
+const TOUR_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 var rj_stage := 0
 var rj_next := 0
 var rj_tabs := 0
@@ -79,6 +102,8 @@ var fl_frame0 := 0
 var fl_before: Dictionary = {}
 const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
+const UsageProbe := preload("res://chapter1/tests/asset_usage_probe.gd")
+const BurstCapture := preload("res://chapter1/tests/burst_capture.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -98,6 +123,10 @@ func _initialize() -> void:
 		elif arg.begins_with("--defeat-at="): defeat_at = int(arg.trim_prefix("--defeat-at="))
 		elif arg.begins_with("--reject-choice="): reject_choice = arg.trim_prefix("--reject-choice=")
 		elif arg == "--dump-extra": dump_extra = true
+		elif arg == "--menu-tour": menu_tour = true
+		elif arg.begins_with("--asset-usage="): asset_usage_path = arg.trim_prefix("--asset-usage=")
+		elif arg.begins_with("--burst="): burst_arg = arg.trim_prefix("--burst=")
+		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
 	var args_error := _check_args()
 	if not args_error.is_empty():
 		push_error("hud_dump: "+args_error)
@@ -114,6 +143,16 @@ func _initialize() -> void:
 		return
 	root.add_child(view)
 	_setup_profile()
+	if not asset_usage_path.is_empty():
+		usage = UsageProbe.new()
+		usage.holders = [view.get("actors"),view.get("world"),view.get("audio"),view.get("effects"),view.get("juice")]
+	if not burst_arg.is_empty():
+		var wanted: Array[String] = []
+		for part in burst_arg.split(",",false): wanted.append(part.strip_edges())
+		burst = BurstCapture.new()
+		burst.setup(wanted,burst_frames,shots_dir)
+		# Events live one tick in run.events: read them at every physics frame (before the view steps the core again).
+		physics_frame.connect(_on_physics_frame)
 
 ## One sentence for the first argument problem, or "". Runs before anything is loaded.
 func _check_args() -> String:
@@ -136,6 +175,24 @@ func _check_args() -> String:
 		return "--reject-choice only applies to --profile-fixture=rejected"
 	if not shots_dir.is_empty() and DisplayServer.get_name() == "headless":
 		return "--shots needs a real renderer: run without --headless"
+	if not asset_usage_path.is_empty():
+		if not (asset_usage_path.begins_with("_local/") or asset_usage_path.begins_with("res://_local/")):
+			return "--asset-usage=%s must be a path under _local/" % asset_usage_path
+		var usage_folder := asset_usage_path.get_base_dir()
+		if not DirAccess.dir_exists_absolute(usage_folder) and DirAccess.make_dir_recursive_absolute(usage_folder) != OK:
+			return "--asset-usage folder cannot be created: "+usage_folder
+	if menu_tour:
+		if asset_usage_path.is_empty(): return "--menu-tour needs --asset-usage"
+		if profile_fixture != "l8": return "--menu-tour needs --profile-fixture=l8"
+		if tree_shots or result_mock or not flow_shots.is_empty() or notice_shots or not burst_arg.is_empty():
+			return "--menu-tour cannot be combined with --tree-shots, --result-mock, --flow-shots, --notice-shots or --burst"
+	if burst_frames_given and burst_arg.is_empty():
+		return "--burst-frames needs --burst"
+	if not burst_arg.is_empty():
+		if shots_dir.is_empty(): return "--burst needs --shots=<dir> (the frames are screenshots)"
+		if burst_frames < 1 or burst_frames > 60: return "--burst-frames=%d is out of range (1 to 60)" % burst_frames
+		if tree_shots or result_mock or not flow_shots.is_empty() or profile_fixture == "rejected":
+			return "--burst follows the normal pilot run; it cannot be combined with --tree-shots, --result-mock, --flow-shots or --profile-fixture=rejected"
 	if not out_path.is_empty():
 		var folder := out_path.get_base_dir()
 		if not folder.is_empty() and not DirAccess.dir_exists_absolute(folder) and DirAccess.make_dir_recursive_absolute(folder) != OK:
@@ -289,6 +346,7 @@ func _dump(label: String) -> void:
 	_describe(root,0,rows)
 	dumps[label] = rows
 	order.append(label)
+	if usage != null: usage.sample(root,int(view.run.tick),String(view.run.mode),label)
 	if not shots_dir.is_empty():
 		DirAccess.make_dir_recursive_absolute(shots_dir)
 		var image := root.get_viewport().get_texture().get_image()
@@ -307,6 +365,12 @@ func _process(_delta: float) -> bool:
 	if view == null or not view.is_inside_tree(): return true
 	frame += 1
 	var run: RefCounted = view.run
+	if usage != null: _usage_step(run)
+	if burst != null:
+		burst.poll(run,frame)
+		burst.process(run,frame,func(): return root.get_viewport().get_texture().get_image())
+	if menu_tour:
+		return _menu_tour()
 	if tree_shots:
 		return _tree_flow()
 	if profile_fixture == "rejected":
@@ -364,8 +428,13 @@ func _process(_delta: float) -> bool:
 			if run.tick >= 16000 and _mark("p16000"): _dump("playing-16000")
 			if run.mode in ["victory","defeat"] and end_frames < 0: end_frames = 0
 			if until_tick > 0 and run.tick >= until_tick and end_frames < 0: end_frames = 20
+	if burst != null and burst.complete() and end_frames < 0: end_frames = 20
 	if end_frames >= 0:
 		end_frames += 1
+		# Let a burst that is still taking its frames finish before the end moment is dumped.
+		if burst != null and (end_frames == 30 or end_frames == 200) and burst.busy():
+			end_frames -= 1
+			return false
 		if end_frames == 30:
 			_dump("end-"+String(run.mode))
 			if run.mode in ["victory","defeat"]: return false
@@ -380,7 +449,28 @@ func _process(_delta: float) -> bool:
 		push_error("hud_dump timed out"); _finish(); return true
 	return false
 
+func _on_physics_frame() -> void:
+	if burst != null and view != null: burst.poll(view.run,frame)
+
+func _usage_step(run: RefCounted) -> void:
+	var interval := 10 if (tree_shots or menu_tour or result_mock or not flow_shots.is_empty() or profile_fixture == "rejected") else 30
+	if frame < 40 or frame%interval == 0:
+		var sprite_label := "tick2400" if int(run.tick) >= 2400 and _mark("usage-2400") else ""
+		usage.sample(root,int(run.tick),String(run.mode),"",sprite_label)
+	else:
+		usage.sample_audio(int(run.tick))
+
 func _finish() -> void:
+	if usage != null:
+		usage.sample(root,int(view.run.tick),String(view.run.mode),"finish","end")
+		var usage_file := FileAccess.open(asset_usage_path,FileAccess.WRITE)
+		if usage_file == null: push_error("cannot write the asset usage: "+asset_usage_path)
+		else:
+			usage_file.store_string(JSON.stringify(usage.report(view,{"primary":primary,"seed":view.seed_,"until":until_tick,"final_tick":int(view.run.tick),"mode":String(view.run.mode),
+				"flags":{"tree_shots":tree_shots,"result_mock":result_mock,"flow_shots":flow_shots,"profile_fixture":profile_fixture,"notice_shots":notice_shots}}),"  "))
+			usage_file.close()
+			print("HUD_ASSET_USAGE ",JSON.stringify({"path":asset_usage_path,"samples":usage.samples,"files":usage.files.size()}))
+	if burst != null and not shots_dir.is_empty(): burst.write_index(shots_dir.path_join("burst.json"))
 	if not scene_path.is_empty():
 		var scene_file := FileAccess.open(scene_path,FileAccess.WRITE)
 		scene_file.store_string(JSON.stringify({"order":order,"scenes":scenes}))
@@ -397,6 +487,7 @@ func _finish() -> void:
 		file.store_string(JSON.stringify(document))
 		file.close()
 	print("HUD_DUMP_RESULT ",JSON.stringify({"labels":order,"final_tick":view.run.tick,"mode":view.run.mode,"kills":view.run.kills}))
+	if burst != null: print("HUD_BURST_SUMMARY ",JSON.stringify(burst.summary()))
 
 ## The growth offer is on screen for a single frame in a pilot run (the pilot picks on the next physics step), and the
 ## dump used to fire before the HUD had built the cards. Park the pilot while the offer is dumped, then let it go on.
@@ -435,6 +526,43 @@ func _key(code: int) -> void:
 		var event := InputEventKey.new()
 		event.keycode = code as Key; event.pressed = pressed
 		view.get_window().push_input(event)
+
+## T7-0: menu -> each witch -> her skill tree -> back. Only samples the usage probe; writes nothing else.
+func _menu_tour() -> bool:
+	var hud = view.hud
+	if frame > 3000:
+		push_error("menu tour did not finish (stage %d)" % mt_stage)
+		quit(1)
+		return true
+	if frame < mt_next: return false
+	var id: String = TOUR_SKILLS[mt_index] if mt_index < TOUR_SKILLS.size() else ""
+	match mt_stage:
+		0:
+			if frame < 5: return false
+			usage.sample(root,0,String(view.run.mode),"tour-menu-start")
+			mt_stage = 1
+		1:
+			hud.menu_select_skill(id)
+			mt_next = frame+12; mt_stage = 2
+		2:
+			usage.sample(root,0,String(view.run.mode),"tour-menu-"+id)
+			_press(hud._menu_tree_button)
+			mt_next = frame+14; mt_stage = 3
+		3:
+			OS.delay_msec(300)
+			usage.sample(root,0,String(view.run.mode),"tour-tree-"+id)
+			mt_log.append({"skill":id,"tree_visible":hud.skill_panel != null and hud.skill_panel.visible})
+			print("MENU_TOUR ",JSON.stringify(mt_log[mt_log.size()-1]))
+			_key(KEY_ESCAPE)
+			mt_next = frame+8; mt_stage = 4
+		4:
+			mt_log[mt_log.size()-1]["tree_closed"] = hud.skill_panel == null or not hud.skill_panel.visible
+			mt_index += 1
+			mt_stage = 1 if mt_index < TOUR_SKILLS.size() else 5
+		5:
+			_finish()
+			return true
+	return false
 
 func _tree_flow() -> bool:
 	var hud = view.hud
