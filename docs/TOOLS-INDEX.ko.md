@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-20 03:13:40 · 도구 84개
+생성: 2026-11-20 04:05:33 · 도구 100개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -18,6 +18,7 @@
 - 스킬 구성의 성장 카드 화면은 픽스처로: scene_shot.gd --scenes=boon_spells (--variants=arc,ember는 다른 두 마녀. 최종 확인은 실제 판 캡처) (`chapter1/tests/scene_shot.gd`)
 - 게임을 띄워 시험 플레이할 때 꺼진 장치를 이 실행에서만 켜기: --chapter1-trial=spells,rhythm (--chapter1-profile-off와 함께일 때만, 저장에 쓰지 않음) (`chapter1/app/chapter_one.gd`)
 - 새 그림·모델을 넣기 전에 계약 대조: asset_intake.py <파일> --slot <자리 id>. 묶음은 --slot 'actor.walker.*' --dir <새 폴더>. 파일 없이 부르면 지금 자리의 파일을 대조 (`tools/art/asset_intake.py`)
+- 3D 캐릭터는 생성 메시 -> mesh_reduce -> rig_build -> rig_clips -> rig_parts -> rig_check -> 게임 차례. 쓰는 법 한 쪽: docs/ART-3D-PIPELINE.ko.md (`docs/ART-3D-PIPELINE.ko.md`)
 - 서버가 낡았는지는 화면 머리가 알린다(서버를 띄운 뒤 파이썬 코드가 바뀌면 「서버가 낡았습니다」). 화면 파일(js·css)은 다시 시작하지 않아도 새로 생긴 것까지 준다 (`tools/manager/server.py`)
 - 소리: audio_mix_offline.py --stats, audio_measure.py --compare-s1 (`tools/dev/audio_measure.py`)
 - 새 이름·글을 짓기 전에 낱말 검사기를, 새 결정 번호를 붙이기 전에 결정 번호 장부를 돌려 본다 (`tools/dev/wording_lint.py`)
@@ -34,7 +35,6 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/run_dev.py` | 게임을 임포트하고 띄운다 | Dev loop: import the project when needed, then run the game from the repository root. | `python tools/dev/run_dev.py -- --chapter1-start`<br>`python tools/dev/run_dev.py --resolution 1920x1080 -- --chapter1-start --chapter1-pilot --chapter1-profile-off` |
 | `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60` |
 | `tools/dev/disk_report.py` | 디스크 사용 표(저장소·worktree별 큰 폴더, 지워도 되는지). --clean은 지울 목록만, --apply를 줘야 재생성 가능한 캐시만 삭제(저장·HANDOVER·recheck·ref·24시간 내 사용·살아 있는 프로세스는 절대 안 지움) | Disk use of the repository and its .claude/worktrees: a fast size table, a worktree table, and a guarded clean-up of regenerable caches. | `python tools/dev/disk_report.py`<br>`python tools/dev/disk_report.py --worktrees` |
-| `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60 --kill-stale --dry-run` |
 | `tools/dev/repo_lock.py` | Godot 동시 실행 좌석(기계 전체, 기본 6, MOIRA_GODOT_SLOTS)과 임포트 잠금(작업 폴더별). godot.py·run_all.py·run_dev.py가 알아서 씀. 기다린다는 한 줄이 찍히면 정상 | Lock files that keep Godot processes from tripping over each other (TECH-REVIEW-20261120 M2 and M3). |  |
 
 ## 기술 관리(tech-lead)
@@ -47,7 +47,6 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/golden_core.gd` | 코어 동작이 바뀌었는지 해시로 확인 | Golden replay of the runtime core. Same seed + same input policy must give the | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd` |
 | `tools/dev/check_glyphs.py` | 화면 글자가 글꼴에 다 있는지 | L3-c: every character the game can print must exist in the bundled font chain. | `python tools/dev/check_glyphs.py`<br>`python tools/dev/check_glyphs.py --verbose` |
 | `tools/dev/i18n_scan.py` | 코드 안 한글 리터럴이 늘었는지(번역 틀 지키기) | Count Hangul string literals in product GDScript files and compare with a baseline. | `python tools/dev/i18n_scan.py`<br>`python tools/dev/i18n_scan.py --update` |
-| `tools/dev/screen_contract_check.py` | 화면 계약 검사: 픽스처가 스키마를 따르는가, 변형이 다 있는가, 화면 파일이 코어(run·사적 필드·Color 리터럴)를 읽는 수(기준선보다 늘면 실패), 글자 대비 | Screen contract checker (docs/SCREEN-DESIGN-HARNESS.ko.md 6 T-1, docs/specs/T8-screen-contract-structure-20261120.ko.md 4). | `python tools/dev/screen_contract_check.py`<br>`python tools/dev/screen_contract_check.py --dumps=<folder>` |
 | `tools/dev/check_build.py` | 만든 빌드의 점검 | Checks for a finished build (T4-Q). Nothing here opens a window and nothing touches %APPDATA%/WitchMoira. | `python tools/dev/build.py --preset qa`<br>`python tools/dev/build.py --preset store --stamp S` |
 | `tools/dev/build.py` | Windows 실행 파일 만들기(다른 에이전트가 쓰는 작업 트리에서는 돌리지 않음) | Build a Windows executable with Godot's export. | `python tools/dev/build.py --preset store`<br>`python tools/dev/build.py --preset qa` |
 
@@ -110,6 +109,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/hud_dump.gd` | 전후 HUD 노드 트리 덤프 비교 | Records the HUD's Control tree at fixed moments of a deterministic pilot run. | `python tools/dev/godot.py --headless --fixed-fps 60 --path . --script res://chapter1/tests/hud_dump.gd -- \` |
 | `chapter1/tests/golden_core.gd` | 코어 동작 불변 확인 | Golden replay of the runtime core. Same seed + same input policy must give the | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd` |
 | `tools/dev/i18n_scan.py` | 한글 리터럴 수 비교 | Count Hangul string literals in product GDScript files and compare with a baseline. | `python tools/dev/i18n_scan.py`<br>`python tools/dev/i18n_scan.py --update` |
+| `tools/dev/screen_contract_check.py` | 화면 계약 검사: 픽스처가 스키마를 따르는가, 변형이 다 있는가, 화면 파일이 코어(run·사적 필드·Color 리터럴)를 읽는 수(기준선보다 늘면 실패), 글자 대비 | Screen contract checker (docs/SCREEN-DESIGN-HARNESS.ko.md 6 T-1, docs/specs/T8-screen-contract-structure-20261120.ko.md 4). | `python tools/dev/screen_contract_check.py`<br>`python tools/dev/screen_contract_check.py --dumps=<folder>` |
 
 ## 검증·성능(qa-perf)
 
@@ -156,6 +156,13 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 |---|---|---|---|
 | `tools/dev/make_living_portrait_flake.py` | 원화에서 눈송이와 고리를 잘라 살아 있는 초상용으로 | Cuts the painted snowflake and its rings out of the original for the living portrait (v4). | `python tools/dev/make_living_portrait_flake.py` |
 | `chapter1/tests/portrait_select_shots.gd` | 초상이 제목 화면에서 어떻게 보이는지 캡처 | Captures the title menu's living portrait with the real input path (focus on a start button picks the witch). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/portrait_select_shots.gd -- --chapter1-profile-off --chapter1-qa-ignore-focus --shots=_local/shots/portrait-select --tag=1080` |
+| `tools/art/mesh_reduce.py` | 3D 1단계: 생성 도구의 고폴리 메시를 게임용(약 1만2천) 또는 크게 보일 때용(약 5만) 삼각형으로 줄이고 색·노멀을 새 UV로 굽기. 실루엣 대조 보고서(Blender) | 그림→3D 생성 도구가 준 고폴리 메시를 게임용 저폴리로 줄인다(Blender 5.3 명령줄). | `python tools/art/mesh_reduce.py --in HIGH.glb --out-glb OUT.glb --profile game [--target N] [--height 2.0] [--report r.json] [--work DIR]`<br>`python tools/art/mesh_reduce.py --in HIGH.glb --out-glb OUT.glb --profile showcase` |
+| `tools/art/rig_build.py` | 3D 2단계: 뼈 없는 인간형 메시에서 뼈 24개 뼈대와 가중치 만들기(Blender) | 뼈 없는 인간형 메시 한 덩어리에서 뼈대를 세우고 가중치를 입힌다(Blender 5.3 명령줄). | `python tools/art/rig_build.py --in MESH.glb --out-blend D:/.../rigged.blend [--config my.json] [--report report.json] [--clips]` |
+| `tools/art/rig_clips.py` | 3D 3단계: 동작 6개(idle·run·cast·hit·death·dodge, 60fps)를 코드로 찍어 glb로. --retarget-from으로 기존 동작 옮기기(Blender) | rig_build가 만든 뼈대에 동작 6개(idle, run, cast, hit, death, dodge)를 코드로 찍어 glb로 내보낸다(Blender 5.3 명령줄). | `python tools/art/rig_clips.py --blend RIGGED.blend --out-glb OUT.glb [--config my.json] [--report r.json] [--fps 60] [--preview DIR]`<br>`python tools/art/rig_clips.py --blend RIGGED.blend --out-glb OUT.glb --retarget-from SOURCE.glb [--retarget-map map.json]` |
+| `tools/art/rig_parts.py` | 3D 4단계: 같은 뼈대에 소품 메시를 뼈에 붙여 한 glb로, 단색 텍스처(Blender) | 같은 뼈대에 별도 메시(뼈에 단단히 붙는 소품)를 묶어 한 glb로 내보낸다(Blender 5.3 명령줄). | `python tools/art/rig_parts.py --blend WITH_CLIPS.blend --parts parts.json --out-glb OUT.glb [--report r.json] [--out-blend x.blend]` |
+| `tools/art/rig_check.py` | 3D 5단계: 내보낸 glb가 게임의 계약(뼈·클립·재질·삼각형·방향·크기)을 지키는지. asset_intake의 자리표 대조를 부름(Blender 필요 없음) | 내보낸 캐릭터 glb가 게임의 계약을 지키는지 검사한다(표준 라이브러리만, Blender 필요 없음). | `python tools/art/rig_check.py FILE.glb [--slot actor.hero.model] [--require-dodge] [--max-tris 15000] [--scale 1.32] [--json]` |
+| `chapter1/tests/rig_game_probe.gd` | 3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행) | 시험용 glb를 게임의 주인공 모델 자리에 끼워 한 판 앞부분을 돌리고, 지정한 동작(회피·사망 등)을 강제로 틀어 캡처한다. | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/rig_game_probe.gd -- \` |
+| `tools/art/rig_common.py` | 3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음) | 3D 캐릭터 도구 묶음(rig_build / rig_clips / rig_parts)의 공용 모듈. 따로 돌리지 않는다. |  |
 
 ## 환경 아트(environment-artist)
 
@@ -223,6 +230,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/asset_usage_probe.gd` | T7-0: which files under chapter1/art/ (and the living-portrait flake pictures) a play-through really loads and draws. |  |
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
+| `chapter1/tests/elite_sites_shot.gd` | Look study for guarded elites and the shrine/chest they guard (docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/elite_sites_shot.gd -- \` |
 | `chapter1/tests/equiv_dump.gd` | Equivalence dump for tools/dev/equiv.py (QA tool, reads presentation state only, writes no game state). | `python tools/dev/godot.py --headless --fixed-fps 60 --path <root> --script res://chapter1/tests/equiv_dump.gd -- --chapter1-pilot` |
 | `chapter1/tests/layout_dump.gd` | Control-tree dump shared by hud_dump.gd (--dump-extra) and scene_shot.gd, read by tools/dev/hud_layout_check.py. |  |
 | `chapter1/tests/make_profile_legacy_fixtures.gd` | One-shot generator (T5-S0). Run it ONCE with the schema-3 code, before schema 4 lands: | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/make_profile_legacy_fixtures.gd` |
@@ -233,9 +241,12 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/perf_probe_mark.gd` | QA-only timestamp node for perf_probe.gd. Records the time its _process ran. |  |
 | `chapter1/tests/profile_legacy_snapshot.gd` | Shared by make_profile_legacy_fixtures.gd (once) and test_profile_legacy_fixtures.gd (every run). |  |
 | `chapter1/tests/profile_v4_snapshot.gd` | Shared by make_profile_v4_fixtures.gd (once) and test_profile_v4_fixtures.gd (every run). |  |
+| `chapter1/tests/proposal_shot.gd` | Proposal renderer for the screen design harness (step 3): one proposal scene fed by contract fixtures | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/proposal_shot.gd -- \` |
+| `chapter1/tests/proposal_smoke.gd` | Headless smoke test of the screen proposals: builds every fixture, plays the intro, moves the focus, confirms, re-pulls, and | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/proposal_smoke.gd -- --proposals=growth_choice/slot_fated,growth_choice/c_two_beat` |
 | `chapter1/tests/record_input_check.gd` | Input check for the battle record window, with real GUI routing (events pushed into the window): | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_input_check.gd -- \` |
 | `chapter1/tests/record_run_shot.gd` | The battle record on a REAL run: the app plays a whole run with the built-in pilot (the core is stepped by calling the | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_run_shot.gd -- \` |
 | `chapter1/tests/sim_power.gd` | Power bench ("short proving ground", D12 P3 / P9): measures what a FIXED in-run spell build really does on the real core. |  |
+| `chapter1/tests/spells_pick.gd` | Check tool, not product code. How a tool turns the in-run spell composition ON and how it picks growth cards for it |  |
 | `tools/art/gallery.py` | Draft gallery index tool (replaces organize.py / register_*.py / reg_*.py / setpick*.py). Works on | `python tools/art/gallery.py lint  [--check-manager] [--json OUT]`<br>`python tools/art/gallery.py add` |
 | `tools/art/gen.py` | Codex image-generation batch runner (replaces the per-batch batch_*.py / run_*.py / revise.py copies). | `python tools/art/gen.py CONFIG.json`<br>`python tools/art/gen.py CONFIG.json --only a-1 a-2` |
 | `tools/art/portrait_anchor_table.py` | Eye line / head top / feet of the three witches in one table, and how far they drift when placed side by side. | `python tools/art/portrait_anchor_table.py [--heights 400,800] [--out DIR] [--slots JSON]`<br>`python tools/art/portrait_anchor_table.py --selftest` |
@@ -255,7 +266,8 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/refactor_map.py` | 참조 지도: 구조 리팩토링용 읽기 전용 정적 도구. | `python tools/dev/refactor_map.py [--out=_local/refactor-map/]`<br>`python tools/dev/refactor_map.py --rename-check <옛 경로> <새 경로>` |
 | `tools/dev/shot_review.py` | 캡처 전후 비교와 화면 측정 (이미 찍힌 그림만 본다. Godot를 돌리지 않는다). |  |
 | `tools/dev/sim_economy.py` | 경제·성장 시뮬레이터 — 판과 판 사이의 흐름(영구 경험치·레벨·스킬 포인트·트리·재·장비·상점·퀘스트·균열 깊이)을 계산하는 모델. | `python tools/dev/sim_economy.py`<br>`python tools/dev/sim_economy.py --preset now --runs 30` |
+| `tools/dev/sim_grid.py` | sim_grid.py - 시험장(chapter1/tests/sim_power.gd) 유입률 칸을 격자로 돌리고 "같은 점수 견줌" 표를 낸다. | `python tools/dev/sim_grid.py list`<br>`python tools/dev/sim_grid.py run  <exp> [--out DIR] [--jobs 2] [--seeds 11,12,13] [--witches frost,ember,arc] [--dry] [--force]` |
 | `tools/dev/snapshot_diff.py` | Compare two snapshot dumps field by field. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --case=11:chapter1.skill.frost --dump-at=1800 --dump-out=_local/diff/a.json`<br>`python tools/dev/snapshot_diff.py _local/diff/a.json _local/diff/b.json [--limit 200]` |
 | `tools/manager/audit_view.py` | 점검 화면의 뒷면: 가장 최근 audit 결과를 읽고(읽기 전용), 다시 돌리기는 audit.py 를 하위 프로세스로 부른다. |  |
 
-chapter1/tests/test_*.gd 19개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
+chapter1/tests/test_*.gd 20개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.

@@ -11,6 +11,7 @@
     {"text": "스킬 구성의 성장 카드 화면은 픽스처로: scene_shot.gd --scenes=boon_spells (--variants=arc,ember는 다른 두 마녀. 최종 확인은 실제 판 캡처)", "path": "chapter1/tests/scene_shot.gd"},
     {"text": "게임을 띄워 시험 플레이할 때 꺼진 장치를 이 실행에서만 켜기: --chapter1-trial=spells,rhythm (--chapter1-profile-off와 함께일 때만, 저장에 쓰지 않음)", "path": "chapter1/app/chapter_one.gd"},
     {"text": "새 그림·모델을 넣기 전에 계약 대조: asset_intake.py <파일> --slot <자리 id>. 묶음은 --slot 'actor.walker.*' --dir <새 폴더>. 파일 없이 부르면 지금 자리의 파일을 대조", "path": "tools/art/asset_intake.py"},
+    {"text": "3D 캐릭터는 생성 메시 -> mesh_reduce -> rig_build -> rig_clips -> rig_parts -> rig_check -> 게임 차례. 쓰는 법 한 쪽: docs/ART-3D-PIPELINE.ko.md", "path": "docs/ART-3D-PIPELINE.ko.md"},
     {"text": "서버가 낡았는지는 화면 머리가 알린다(서버를 띄운 뒤 파이썬 코드가 바뀌면 「서버가 낡았습니다」). 화면 파일(js·css)은 다시 시작하지 않아도 새로 생긴 것까지 준다", "path": "tools/manager/server.py"},
     {"text": "소리: audio_mix_offline.py --stats, audio_measure.py --compare-s1", "path": "tools/dev/audio_measure.py"},
     {"text": "새 이름·글을 짓기 전에 낱말 검사기를, 새 결정 번호를 붙이기 전에 결정 번호 장부를 돌려 본다", "path": "tools/dev/wording_lint.py"}
@@ -93,7 +94,14 @@
     ]},
     {"id": "character-artist", "label": "캐릭터 아트(character-artist)", "about": "원화 가공.", "tools": [
       {"path": "tools/dev/make_living_portrait_flake.py", "use": "원화에서 눈송이와 고리를 잘라 살아 있는 초상용으로"},
-      {"path": "chapter1/tests/portrait_select_shots.gd", "use": "초상이 제목 화면에서 어떻게 보이는지 캡처"}
+      {"path": "chapter1/tests/portrait_select_shots.gd", "use": "초상이 제목 화면에서 어떻게 보이는지 캡처"},
+      {"path": "tools/art/mesh_reduce.py", "use": "3D 1단계: 생성 도구의 고폴리 메시를 게임용(약 1만2천) 또는 크게 보일 때용(약 5만) 삼각형으로 줄이고 색·노멀을 새 UV로 굽기. 실루엣 대조 보고서(Blender)"},
+      {"path": "tools/art/rig_build.py", "use": "3D 2단계: 뼈 없는 인간형 메시에서 뼈 24개 뼈대와 가중치 만들기(Blender)"},
+      {"path": "tools/art/rig_clips.py", "use": "3D 3단계: 동작 6개(idle·run·cast·hit·death·dodge, 60fps)를 코드로 찍어 glb로. --retarget-from으로 기존 동작 옮기기(Blender)"},
+      {"path": "tools/art/rig_parts.py", "use": "3D 4단계: 같은 뼈대에 소품 메시를 뼈에 붙여 한 glb로, 단색 텍스처(Blender)"},
+      {"path": "tools/art/rig_check.py", "use": "3D 5단계: 내보낸 glb가 게임의 계약(뼈·클립·재질·삼각형·방향·크기)을 지키는지. asset_intake의 자리표 대조를 부름(Blender 필요 없음)"},
+      {"path": "chapter1/tests/rig_game_probe.gd", "use": "3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행)"},
+      {"path": "tools/art/rig_common.py", "use": "3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음)"}
     ]},
     {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [
       {"path": "chapter1/tests/bake_vat.gd", "use": "걷는 적을 정점 애니메이션으로 굽기"},

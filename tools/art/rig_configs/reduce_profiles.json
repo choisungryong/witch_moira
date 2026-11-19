@@ -1,0 +1,10 @@
+{
+  "_about": "mesh_reduce.py의 두 단계. 근거: docs/reviews/3D-GEN-TOOLS-20261117.ko.md 1.4절(삼각형 1체 15,000 이하·상한 20,000, 지금 주인공 11,014), tools/art/asset_budget.json의 hero 프로필(수치 상한은 아직 없음). showcase는 캐릭터 선택·컷인에서 3D를 크게 보일 때를 가정한 값으로, 쓸지는 정해지지 않았다.",
+  "profiles": {
+    "game": {"triangles": 12000, "triangles_min": 10000, "triangles_max": 15000, "texture": 2048, "normal": 2048, "note": "게임 안 모델. 화면 높이 약 10%에서 쓴다"},
+    "showcase": {"triangles": 50000, "triangles_min": 40000, "triangles_max": 60000, "texture": 4096, "normal": 4096, "note": "크게 보여 줄 때(미정). 게임 안 모델로는 쓰지 않는다"}
+  },
+  "height_m": 2.0,
+  "game_target_height": 2.67,
+  "silhouette_views": 8
+}

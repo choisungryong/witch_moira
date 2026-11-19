@@ -1,0 +1,8 @@
+{
+  "_about": "rig_parts.py 시험용 부품 예. 어깨 갑옷(좌우 한 메시)과 머리 위 작은 장식. 색은 단색 텍스처로 입혀진다.",
+  "parts": [
+    {"name": "acc_pauldrons", "bone": "upper_arm_cr_l", "mirror_bone": "upper_arm_cr_r", "kind": "ellipsoid",
+     "at": 0.08, "radius": [0.05, 0.055, 0.028], "offset": [0, 0, 0.012], "color": "#8a6a3a"},
+    {"name": "acc_crest", "bone": "head_cr", "kind": "ellipsoid", "at": 0.98, "radius": [0.018, 0.018, 0.022], "offset": [0, 0, 0], "color": "#c04a2a"}
+  ]
+}
