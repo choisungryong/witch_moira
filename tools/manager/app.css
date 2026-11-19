@@ -173,3 +173,13 @@ body.tools-mode .shell>main,body.tools-mode .shell>.inspector{display:none}
 .tl-tool{border-top:1px solid #e1e4d8;padding:8px 0}.tl-tool b{font-size:13px;overflow-wrap:anywhere}.tl-tool p{margin:2px 0;font-size:13px}.tl-tool .tl-hd{font-size:12px;color:var(--muted)}
 .tl-tool pre{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;background:#e9eddf;padding:5px 8px}.tl-miss{color:#a0472f;font-size:12px}
 @media(max-width:1100px){.shell>#tools{padding:14px 14px 30px}}
+/* 점검 */
+body.audit-mode .shell>main,body.audit-mode .shell>.inspector{display:none}
+.shell>#audit{grid-column:2/-1;min-height:0;min-width:0;overflow-y:auto;padding:18px 26px 40px}
+.shell>#audit[hidden]{display:none}
+.au-bar{display:flex;gap:12px;align-items:center;margin:12px 0}.au-sum{font-size:13px;margin:6px 0 12px}
+.au-line{border:1px solid var(--line);background:#fafaf5;margin:0 0 10px;padding:4px 14px 8px;min-width:0}.au-line h3{margin:6px 0;font:600 15px Batang,serif}.au-line h3 small{font:11px 'Malgun Gothic',sans-serif;color:var(--muted);margin-left:6px}
+.au-line-worse{border-color:#a0472f}.au-unseen{background:#f3ece0}.au-num{text-align:right;font-variant-numeric:tabular-nums}
+.au-worse{color:#a0472f;font-weight:600}.au-better{color:var(--green)}.au-same,.au-first{color:var(--muted)}
+.au-line details{font-size:12px}.au-line details ul{margin:4px 0;padding-left:18px;overflow-wrap:anywhere}
+@media(max-width:1100px){.shell>#audit{padding:14px 14px 30px}}

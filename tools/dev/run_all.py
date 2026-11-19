@@ -44,7 +44,8 @@ ALIASES = {
     'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
-    'tools': ['manager', 'i18n-scan', 'glyphs'],
+    'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest'],
+    'records': ['tools-selftest', 'wording', 'decisions', 'asset-ledger', 'audio-ledger'],
     'quick': None,  # every check that --quick keeps; filled in by resolve_names()
 }
 
@@ -62,10 +63,13 @@ CHANGE_TABLE = [
     ('chapter1/ChapterOne.tscn', 'app'),
     ('chapter1/app/', 'app'),
     ('chapter1/view/', 'view'),
-    ('chapter1/art/', 'view'),
+    ('chapter1/art/', 'art'),
     ('chapter1/presentation/', 'view'),
     ('chapter1/i18n/', 'text'),
     ('tools/manager/', 'manager'),
+    ('docs/story/', 'records'),
+    ('docs/reviews/', 'records'),
+    ('docs/specs/', 'records'),
     ('tools/dev/i18n_scan.py', 'text'),
     ('tools/dev/i18n_baseline.json', 'text'),
     ('tools/dev/check_glyphs.py', 'text'),
@@ -74,15 +78,18 @@ CHANGE_TABLE = [
     ('CLAUDE.md', 'docs'),
     ('AGENTS.md', 'docs'),
     ('tools/dev/', 'docs'),
-    ('tools/art/', 'none'),
+    ('tools/art/', 'tools'),
     ('art-archive/', 'none'),
     ('_local/', 'none'),
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs'],
-    'app': ['loc', 'app-guard', 'app-loadout', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs'],
-    'text': ['loc', 'i18n-scan', 'glyphs'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
+    'app': ['loc', 'app-guard', 'app-loadout', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
+    'records': ['wording', 'decisions', 'manager'],
+    'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger'],
     'manager': ['manager'],
     'docs': 'quick',
     'none': [],
@@ -122,6 +129,12 @@ def checks():
         {'name': 'manager', 'kind': 'python', 'timeout': 300, 'slow': False},
         {'name': 'i18n-scan', 'kind': 'i18n-scan', 'timeout': 60, 'slow': False},
         {'name': 'glyphs', 'kind': 'glyphs', 'timeout': 120, 'slow': False},
+        # Record checks (docs/PROCESS-CHECKS.ko.md 2). Pass/fail only; tools/dev/audit.py counts the same things and compares with last time.
+        {'name': 'tools-selftest', 'kind': 'tools-selftest', 'timeout': 600, 'slow': False},
+        {'name': 'wording', 'kind': 'wording', 'timeout': 120, 'slow': False},
+        {'name': 'decisions', 'kind': 'decisions', 'timeout': 120, 'slow': False},
+        {'name': 'asset-ledger', 'kind': 'asset-ledger', 'timeout': 120, 'slow': False},
+        {'name': 'audio-ledger', 'kind': 'audio-ledger', 'timeout': 120, 'slow': False},
     ]
 
 
@@ -218,6 +231,66 @@ def run_glyphs(check):
         return False, 'timeout after %ds' % check['timeout']
     lines = done.stdout.decode('utf-8', 'replace').strip().splitlines()
     return done.returncode == 0, (lines[0] if done.returncode else '') + (' · ' if done.returncode else '') + (lines[-1] if lines else 'no output')
+
+
+def run_tool(check, args):
+    """A python tool as a child process. (exit code, stdout text) or (None, reason) on a timeout."""
+    env = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
+    try:
+        done = subprocess.run([sys.executable] + args, cwd=ROOT, capture_output=True, timeout=check['timeout'], env=env)
+    except subprocess.TimeoutExpired:
+        return None, 'timeout after %ds' % check['timeout']
+    return done.returncode, done.stdout.decode('utf-8', 'replace') + '\n' + done.stderr.decode('utf-8', 'replace')
+
+
+def run_tools_selftest(check):
+    """Every tools/dev/test_*.py and tools/art/test_*.py, each as its own process (unittest or plain script: the exit code decides)."""
+    files = sorted(list((ROOT / 'tools' / 'dev').glob('test_*.py')) + list((ROOT / 'tools' / 'art').glob('test_*.py')))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:  # the files are independent (temp folders only); the audio one alone takes about a minute
+        results = list(pool.map(lambda path: run_tool(check, [str(path)]), files))
+    failed = [path.name + (' (' + text + ')' if code is None else '') for path, (code, text) in zip(files, results) if code != 0]
+    return not failed and bool(files), '%d files%s' % (len(files), ', failed: ' + ', '.join(failed) if failed else '')
+
+
+def run_wording(check):
+    code, text = run_tool(check, [str(ROOT / 'tools' / 'dev' / 'wording_lint.py'), '--json'])
+    if code is None:
+        return False, text
+    try:
+        result = json.loads(text[:text.rindex('}') + 1])
+    except ValueError:
+        return False, 'unreadable result (exit %d)' % code
+    return result['fail'] == 0 and code == 0, '%d texts, fail %d, warn %d, pending a decision %d' % (result['texts'], result['fail'], result['warn'], result['pending'])
+
+
+def run_decisions(check):
+    code, text = run_tool(check, [str(ROOT / 'tools' / 'dev' / 'decision_ledger.py')])
+    if code is None:
+        return False, text
+    found = re.search(r'LEDGER (PASS|FAIL) numbers=(\d+) overlaps=(\d+)', text)
+    if not found:
+        return False, 'no result line (exit %d)' % code
+    return code == 0 and found.group(1) == 'PASS', '%s numbers, %s overlaps' % (found.group(2), found.group(3))
+
+
+def run_asset_ledger(check):
+    """Errors fail; the "unconfirmed" holes are counted but are not a failure (the assets are to be replaced)."""
+    code, text = run_tool(check, [str(ROOT / 'tools' / 'art' / 'asset_ledger.py'), 'check'])
+    if code is None:
+        return False, text
+    errors = re.search(r'== 오류[^:\n]*: (\d+)', text)
+    holes = re.search(r"== 구멍: '미확인' 칸이 있는 항목 (\d+)", text)
+    if not errors:
+        return False, 'no result line (exit %d)' % code
+    return code == 0 and int(errors.group(1)) == 0, '%s errors, %s entries with unconfirmed fields (not a failure)' % (errors.group(1), holes.group(1) if holes else '?')
+
+
+def run_audio_ledger(check):
+    code, text = run_tool(check, [str(ROOT / 'tools' / 'dev' / 'audio_ledger_check.py')])
+    if code is None:
+        return False, text
+    found = re.search(r'RESULT: (.+)', text)
+    return code == 0, found.group(1).strip() if found else 'no result line (exit %d)' % code
 
 
 # ---------------------------------------------------------------------------------------------------- the golden group
@@ -331,7 +404,8 @@ def build_tasks(selected, jobs, golden_files):
             unit = (name, weight, lambda c=check: run_process(c['script'], c['extra'], c['timeout'], c['name']))
             tasks.append(Task([name], [unit], lambda outs, c=check: {c['name']: parse_godot(c, outs[0])}))
         else:
-            runner = {'python': run_manager, 'i18n-scan': run_i18n_scan, 'glyphs': run_glyphs}[check['kind']]
+            runner = {'python': run_manager, 'i18n-scan': run_i18n_scan, 'glyphs': run_glyphs, 'tools-selftest': run_tools_selftest, 'wording': run_wording,
+                      'decisions': run_decisions, 'asset-ledger': run_asset_ledger, 'audio-ledger': run_audio_ledger}[check['kind']]
             tasks.append(Task([name], [(name, weight, lambda c=check, r=runner: r(c))], lambda outs, c=check: {c['name']: outs[0]}))
     return tasks
 
