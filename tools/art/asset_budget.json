@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "about": "asset_intake.py가 읽는 모델 예산표. limit이 null이면 문서에 상한이 없다는 뜻이고 '기준 없음'으로 표시한다. reference는 문서에 적힌 현재 모델의 실측값이며 상한이 아니다. 값을 새로 정하는 일은 art-lead의 몫이다.",
+  "sources": {
+    "S1": {
+      "doc": "docs/specs/T2-perf-directives-20261118b.ko.md",
+      "where": "적 모델 표의 walker 행(2026-11-18): 해골 무법자 정점 5,375, 삼각형 6,594, 표면 2(몸·도끼), 뼈 57",
+      "kind": "현재 모델의 실측값(상한 아님)"
+    },
+    "S2": {
+      "doc": "docs/ART-PLAN.ko.md",
+      "where": "성능 행(364행 부근): '해골 한 마리 약 6,600 삼각형 x 최대 180마리', '정예·운반자는 같은 몸에 붙이는 방식으로 재질 수를 늘리지 않는다'",
+      "kind": "현재 모델의 약수와 방침(수치 상한 없음)"
+    },
+    "S3": {
+      "doc": "docs/ART-PLAN.ko.md",
+      "where": "화풍 불일치 행(362행 부근): '공개 에셋을 들일 때는 다각형 수·텍스처 밀도·명도가 지금 해골과 비슷한 것만 고른다'",
+      "kind": "방침(수치 없음). 비슷하다는 폭은 정해지지 않았다"
+    }
+  },
+  "profiles": {
+    "enemy": {
+      "label": "적 몸 모델(근접·원거리·돌진·정예·우두머리의 몸이 되는 것)",
+      "metrics": {
+        "triangles": {"limit": null, "reference": 6594, "basis": ["S1", "S2", "S3"], "note": "상한 없음. 해골과 비슷한 수준이라는 방침만 있다"},
+        "vertices": {"limit": null, "reference": 5375, "basis": ["S1"], "note": "상한 없음"},
+        "materials": {"limit": null, "reference": 2, "basis": ["S1", "S2"], "note": "방침: 변종은 같은 몸에 붙여 재질 수를 늘리지 않는다. 수치 상한 없음"},
+        "bones": {"limit": null, "reference": 57, "basis": ["S1"], "note": "상한 없음"},
+        "texture_max_px": {"limit": null, "reference": null, "basis": ["S3"], "note": "기준 없음. 문서에 텍스처 크기 수치가 없다"},
+        "texture_pixels_total": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "file_bytes": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "clips": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"}
+      }
+    },
+    "hero": {
+      "label": "주인공 모델",
+      "metrics": {
+        "triangles": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "vertices": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "materials": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "bones": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "texture_max_px": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "texture_pixels_total": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "file_bytes": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"},
+        "clips": {"limit": null, "reference": null, "basis": [], "note": "기준 없음"}
+      }
+    }
+  }
+}
