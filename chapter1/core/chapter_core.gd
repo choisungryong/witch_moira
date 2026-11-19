@@ -10,6 +10,7 @@ const Loot = preload("res://chapter1/core/loot.gd")
 const Tuning = preload("res://chapter1/core/combat_tuning.gd")
 const SkillTree = preload("res://chapter1/core/skill_tree.gd")
 const Progression = preload("res://chapter1/core/character_progression.gd")
+const RunSpells = preload("res://chapter1/core/run_spells.gd")
 ## Exact keys of a build dictionary (profile.build_for).
 const BUILD_KEYS := ["character_id","tree_id","tree_revision","ranks","character_level","character_xp"]
 ## Frost field limits (spec 3.4 R2). The summed radius is cut to the upper bound (director decision).
@@ -61,6 +62,13 @@ var _ritual_spawn_tick := 0
 ## The default tuning document is read once and shared by every run in the process.
 static var _shared_tuning: Dictionary = {}
 var _secondary_active := false
+## In-run spell composition (chapter1/data/run_spells.json). The document is read and validated once per process and shared;
+## `spells` (combat_core) is the document only while it says "enabled": true, otherwise empty and every rule stays off.
+## set_run_spells() parks a document for the next start() (tests, measurement); a rejected one changes nothing.
+static var _shared_spells: Dictionary = {}
+static var _shared_spells_loaded := false
+var _pending_spells: Dictionary = {}
+var _spell_owner_skill: Dictionary = {}
 ## Permanent build (G1). configure_build() validates and parks it in _pending_build, which survives start() like a
 ## tuning document; start() copies it into the run (_build) and compiles the tree once into the fields below.
 ## Everything here stays at its zero value without a build, so a run without one is the run it always was.
@@ -121,6 +129,52 @@ func _install_tuning(document: Dictionary) -> void:
 	var s: Dictionary=document.secondary
 	_secondary_active=not s.is_empty() and not (int(s.damage_bps)==10000 and int(s.hit_budget_bps)==10000 and int(s.cooldown_bps)==10000 and int(s.max_chain_targets)>=32 and int(s.max_branches)>=4)
 
+## Park a run_spells document for the next start() (before start()). It is validated like the file; an enabled one
+## switches the composition on for the runs that follow, a disabled one switches it off. A rejected one changes nothing.
+func set_run_spells(candidate: Dictionary) -> bool:
+	var inputs := _spell_inputs()
+	if inputs.is_empty():return false
+	var loader = RunSpells.new()
+	if not loader.replace_document(candidate,SKILL_IDS,inputs.owners,inputs.starts):
+		errors.assign(loader.errors);return false
+	_pending_spells=loader.snapshot()
+	return true
+
+## {owners: {character id: signature skill id}, starts: {skill id: catalog rank-1 effect}} for the validator; {} when unreadable.
+func _spell_inputs() -> Dictionary:
+	if not _growth_data():errors.assign(["Growth data could not be read"]);return {}
+	if _catalog.snapshot().is_empty() and not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
+		errors.assign(_catalog.errors);return {}
+	var owners := {}
+	for entry in _shared_progression.characters:owners[String(entry.id)]=String(entry.signature_skill_id)
+	var starts := {}
+	for skill in _catalog.snapshot().skills:starts[String(skill.id)]=skill.ranks[0].duplicate(true)
+	return {"owners":owners,"starts":starts}
+
+## Decide whether this run has the spell composition: the parked document, else the shipped file (read once; a missing file
+## means off). Everything the composition adds hangs on `spells` being non-empty.
+func _prepare_spells() -> bool:
+	spells={};_skill_ids=SKILL_IDS.duplicate();_spell_owner_skill={}
+	var document: Dictionary=_pending_spells
+	if document.is_empty():
+		if not _shared_spells_loaded:
+			if FileAccess.file_exists(RunSpells.DEFAULT_PATH):
+				var inputs := _spell_inputs()
+				var loader = RunSpells.new()
+				if inputs.is_empty() or not loader.load_file(RunSpells.DEFAULT_PATH,SKILL_IDS,inputs.owners,inputs.starts):
+					if not inputs.is_empty():errors.assign(loader.errors)
+					push_error("Run spells failed to load: "+str(errors));return false
+				_shared_spells=loader.snapshot()
+			_shared_spells_loaded=true
+		document=_shared_spells
+	if document.is_empty() or not bool(document.enabled):return true
+	if not _growth_data():return false
+	spells=document.duplicate(true)
+	for entry in _shared_progression.characters:_spell_owner_skill[String(entry.id)]=String(entry.signature_skill_id)
+	for id_ in spells.spells:
+		if not id_ in _skill_ids:_skill_ids.append(id_)
+	return true
+
 func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	# A build belongs to one witch and her signature skill; any other start is refused before anything changes.
 	if not _pending_build.is_empty() and _build_signature(_pending_build)!=primary:
@@ -132,6 +186,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 				errors.assign(loader.errors);push_error("Combat tuning failed to load: "+str(loader.errors));return false
 			_shared_tuning=loader.snapshot()
 		_install_tuning(_shared_tuning)
+	if not _prepare_spells():return false
 	_activate_build()
 	_world_uniques36.clear()
 	zone=0;zone_kills=0;potions=int(tuning.potion.start);_next_potion=0;_champion_id=-1;_boss_phase=0;_next_ward=0
@@ -150,6 +205,10 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		if id_!=primary and _mark_owners.size()<MARK_KEYS.size():_mark_owners.append(id_)
 	var doc: Dictionary=_catalog.snapshot();doc.xp_thresholds=tuning.xp_thresholds.duplicate()
 	if not growth.configure(doc,primary,seed_ ^ 0x47524f57):errors.assign(growth.errors);return false
+	# The spell composition (if on) comes before the build's growth options: it takes the start rank out of play.
+	if not spells.is_empty():
+		if not growth.set_spells(spells,_spell_owner_skill):errors.assign(growth.errors);return false
+		metrics.detonate={"count":0,"extra_raw":0,"pairs":{}}
 	if _build_active:
 		if _build_max_hp>0:hero.max_hp_raw=120*UNIT+_build_max_hp*UNIT;hero.hp_raw=hero.max_hp_raw
 		if not growth.set_options(_build_growth):errors.assign(growth.errors);return false
@@ -790,12 +849,15 @@ func _apply_role_tuning(id_: String,value: Dictionary) -> void:
 	var effect: Dictionary=value.effects
 	if id_==_primary_id:
 		var table: Dictionary=tuning.primary_bonus.get(id_,{})
+		# With the spell composition the axis cards replace the stage bonus: primary_bonus is not read.
+		if not spells.is_empty():effect.cooldown_ticks=maxi(12,int(effect.cooldown_ticks));return
 		if table.is_empty():return
 		var bonus: Dictionary=table.get("evo" if value.evolved else "r%d"%int(value.rank),{})
 		for stat in bonus.get("add",{}):effect[stat]=_limited(stat,int(effect[stat])+int(bonus.add[stat]))
 		for stat in bonus.get("mul_bps",{}):effect[stat]=_limited(stat,int(effect[stat])*int(bonus.mul_bps[stat])/10000)
 		if bonus.has("cooldown_bps"):effect.cooldown_ticks=maxi(12,int(effect.cooldown_ticks)*int(bonus.cooldown_bps)/10000)
-	elif _secondary_active:
+	elif _secondary_active and not _is_ring(id_):
+		# A ring is the witch's own spell and is not damped; only a borrowed basic spell is.
 		var s: Dictionary=tuning.secondary
 		effect.damage_raw=_limited("damage_raw",int(effect.damage_raw)*int(s.damage_bps)/10000)
 		effect.hit_budget=_limited("hit_budget",int(effect.hit_budget)*int(s.hit_budget_bps)/10000)
@@ -804,6 +866,50 @@ func _apply_role_tuning(id_: String,value: Dictionary) -> void:
 		effect.branches=mini(int(effect.branches),int(s.max_branches))
 	# Whatever the data says, no role may push a cast under 12 ticks.
 	effect.cooldown_ticks=maxi(12,int(effect.cooldown_ticks))
+
+# ---------------------------------------------------------------- statuses and detonation (D12 B0.9, only with `spells`)
+
+## The detonation a direct hit of `skill_id` triggers on this enemy, or {}: the first status the spell detonates that
+## other spells put on it. A status the spell applied itself never counts (each status remembers the stacks per spell).
+## {status, stacks (put there by others), src (the other spell with most of them), bonus_bps, mult_bps, consume, freeze_bonus}
+func _detonation_of(e: Dictionary,spell: Dictionary,skill_id: String) -> Dictionary:
+	if spell.detonates.is_empty():return {}
+	var table: Dictionary=e.get("status",{})
+	for status in spell.detonates:
+		var entry: Variant=table.get(status)
+		if not entry is Dictionary or int(entry.n)<=0 or tick>=int(entry.until):continue
+		var others := int(entry.n)-int(entry.by.get(skill_id,0))
+		if others<=0:continue
+		var rule: Dictionary=spell.detonates[status]
+		var bonus := int(rule.per_stack_bps)*others if rule.has("per_stack_bps") else int(rule.bonus_bps)
+		var src := "";var most := 0
+		for who in entry.by:
+			if who!=skill_id and int(entry.by[who])>most:src=String(who);most=int(entry.by[who])
+		# An evolved spell of the pair makes the pair's detonation stronger (evolve.partner_detonate_bps).
+		var pair_id := RunSpells.pair_between(spells,skill_id,src)
+		if not pair_id.is_empty() and (growth.evolve_partner_of(skill_id)==pair_id or growth.evolve_partner_of(src)==pair_id):
+			bonus=bonus*int(spells.evolve.partner_detonate_bps)/10000
+		return {"status":String(status),"stacks":others,"src":src,"bonus_bps":bonus,"mult_bps":10000+bonus,"consume":bool(rule.consume),"freeze_bonus":int(rule.get("freeze_bonus",0))}
+	return {}
+
+## A direct hit puts the spell's statuses on the enemy (count up to the status maximum, every application renews the
+## expiry and the last applier is `src`). The chill status is the freeze counter: it freezes at freeze_at (less the
+## detonation's freeze_bonus on that hit; a smaller freeze_stacks in the effect, from gear, wins) and starts over.
+func _apply_statuses(e: Dictionary,spell: Dictionary,effect: Dictionary,freeze_bonus: int,skill_id: String) -> void:
+	for status in spell.applies:
+		var rule: Dictionary=spells.statuses[status]
+		if not e.has("status"):e.status={}
+		var entry: Dictionary=e.status.get(status,{})
+		if entry.is_empty() or tick>=int(entry.until):entry={"n":0,"src":skill_id,"until":0,"by":{}}
+		var add := mini(int(spell.applies[status]),maxi(0,int(rule.max)-int(entry.n)))
+		if add>0:entry.n=int(entry.n)+add;entry.by[skill_id]=int(entry.by.get(skill_id,0))+add
+		entry.src=skill_id;entry.until=tick+int(rule.expire_ticks)
+		e.status[status]=entry
+		if status=="chill" and rule.has("freeze_at"):
+			var threshold := int(rule.freeze_at)-freeze_bonus
+			if int(effect.freeze_stacks)>0:threshold=mini(threshold,int(effect.freeze_stacks))
+			if int(entry.n)>=maxi(1,threshold):
+				e.frozen_until=tick+(12 if e.elite else 75);entry.n=0;entry.by={}
 
 func _limited(stat: String,amount: int) -> int:
 	return clampi(amount,int(GrowthCatalog.LIMITS[stat][0]),int(GrowthCatalog.LIMITS[stat][1]))
@@ -936,6 +1042,20 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 		elif tick-pickup.tick<180*HZ:live.append(pickup)
 	potion_pickups=live
 
+## Read only, for the card screen (D12 B0.11) and the measurement policies. Changes nothing. {"enabled":false} while off.
+## {enabled, slots, spells:{id:{role,element,axis:{damage,reach},pairs_owned:[pair id],evolve_progress:{axis,passive,partner}}},
+##  offer:{card id: {pairs_if_taken:[pair id]}} (the standing offer only), detonate:{count,extra_raw,pairs}}
+func run_spells_view() -> Dictionary:
+	if spells.is_empty():return {"enabled":false}
+	var owned := {}
+	for id_ in growth.owned_spells():
+		var spell: Dictionary=spells.spells[id_]
+		owned[id_]={"role":String(spell.role),"element":String(spell.element),"axis":growth.axis_levels(id_),"pairs_owned":growth.pairs_owned(id_),"evolve_progress":growth.evolve_progress(id_)}
+	var offer := {}
+	# Only an offer that was already drawn (get_offer()); this function never draws one, so it never moves the random stream.
+	for card in growth.snapshot().offer.get("cards",[]):offer[String(card.id)]={"pairs_if_taken":growth.pairs_if_taken(card)}
+	return {"enabled":true,"slots":int(spells.slots),"spells":owned,"offer":offer,"detonate":metrics.get("detonate",{}).duplicate(true)}
+
 ## What the screen needs to word the goal. `kind`: "move" (walk to the next room), "seal_kills" (done/total kills around the
 ## seal) or "champion" (hp/hp_max of the seal guardian, `title_key` names it). No sentence is made here.
 func objective() -> Dictionary:
@@ -960,6 +1080,8 @@ func snapshot() -> Dictionary:
 	if _rhythm_on:
 		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
+	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
+	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
 	# Build keys exist only in a run that was given a build; without one the snapshot is the old one.
 	if _build_active:
 		var pairs: Array=[];var ids: Array=_build.ranks.keys();ids.sort()
@@ -987,6 +1109,21 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 		damage=maxi(1,int((damage+divisor-1)/divisor))
 	# R1: the tree's guardian bonus on the signature skill, before mark resonance.
 	if _elite_bps>0 and e.elite and context.skill_id==_primary_id:damage=damage*(10000+_elite_bps)/10000
+	# Spell composition: a direct hit that finds a status another spell put on the enemy is multiplied (detonation), then a
+	# spell with vs_strong_bps deals that share to guardians. Both come before the mark so the mark credit stays exact.
+	var spell: Dictionary={}
+	var detonation: Dictionary={}
+	var detonation_extra := 0
+	if not spells.is_empty():
+		spell=spells.spells.get(context.skill_id,{})
+		if not spell.is_empty():
+			if depth==0:
+				detonation=_detonation_of(e,spell,String(context.skill_id))
+				if not detonation.is_empty():
+					var before_detonation := damage
+					damage=maxi(1,damage*int(detonation.mult_bps)/10000)
+					detonation_extra=damage-before_detonation
+			if e.elite and spell.has("vs_strong_bps"):damage=maxi(1,damage*int(spell.vs_strong_bps)/10000)
 	# Mark resonance: a primary hit on an enemy that a secondary skill marked deals mark_bps more per live mark.
 	var mark_bps := int(tuning.marks.mark_bps)
 	var assisting: Array[int]=[]
@@ -999,17 +1136,22 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	var result: Dictionary=Resolver.damage(damage,int(e.hp_raw))
 	e.hp_raw=int(result.hp_after_raw);metrics.damage_raw+=int(result.total_raw)
 	metrics.hits[context.skill_id]=int(metrics.hits.get(context.skill_id,0))+1
-	if context.skill_id=="chapter1.skill.frost":
-		e.slow_until=tick+100;e.slow_bps=int(effect.slow_bps)
-		if int(effect.freeze_stacks)>0:
+	if context.skill_id=="chapter1.skill.frost" or (not spell.is_empty() and spell.element=="frost" and int(effect.slow_bps)>0):
+		e.slow_until=tick+(int(spell.get("slow_ticks",100)) if not spell.is_empty() else 100);e.slow_bps=int(effect.slow_bps)
+		# With the composition the chill status is the freeze counter (see _apply_statuses); without it the old stacks.
+		if spell.is_empty() and int(effect.freeze_stacks)>0:
 			e.freeze_stacks+=1;e.freeze_expires=tick+180
 			if int(e.freeze_stacks)>=int(effect.freeze_stacks):
 				e.frozen_until=tick+(12 if e.elite else 75);e.freeze_stacks=0
+	if not spell.is_empty():
+		if not detonation.is_empty() and bool(detonation.consume):e.status.erase(detonation.status)
+		if depth==0 and e.hp_raw>0:_apply_statuses(e,spell,effect,int(detonation.get("freeze_bonus",0)),String(context.skill_id))
 	var cold_death: bool=evolved_cold and e.hp_raw<=0 and depth==0 and int(effect.proc_depth)>0
 	var shatter: bool=int(effect.shatter_count)>0 and (was_frozen or cold_death)
 	# dealt_raw is the life really taken off (the overflow past death is not in it); damage_raw stays the full figure.
 	var hit_details := {"target_id":id_,"skill_id":context.skill_id,"damage_raw":int(result.total_raw),"dealt_raw":int(result.hp_before_raw)-int(result.hp_after_raw),"frozen":tick<int(e.frozen_until),"shatter":shatter,
 		"radius_cm":int(effect.radius_cm),"blast_radius_cm":int(effect.radius_cm)if context.skill_id=="chapter1.skill.ember"else 0,"cast_uid":context.uid,"evolved":context.evolved}
+	if not detonation.is_empty():hit_details.detonate=true
 	if not assisting.is_empty():
 		# The extra damage (HP really removed beyond the unmarked hit) is credited to the marking skills, remainder to the first.
 		var dealt: int=mini(int(result.total_raw),hp_before)
@@ -1023,6 +1165,14 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 				metrics.assist_raw[owners[i]]=int(metrics.assist_raw.get(owners[i],0))+share
 		hit_details.assist_raw=extra;hit_details.assist_skill_ids=owners
 	_emit("hit",e.position,hit_details)
+	if not detonation.is_empty():
+		_emit("detonate",e.position,{"target_id":id_,"by_skill":context.skill_id,"status":detonation.status,"src_skill":detonation.src,"stacks":int(detonation.stacks),"cast_uid":context.uid,"extra_raw":detonation_extra})
+		var pair_id := RunSpells.pair_between(spells,String(context.skill_id),String(detonation.src))
+		var tally: Dictionary=metrics.detonate
+		tally.count=int(tally.count)+1;tally.extra_raw=int(tally.extra_raw)+detonation_extra
+		var row: Dictionary=tally.pairs.get(pair_id,{"count":0,"extra_raw":0})
+		row.count=int(row.count)+1;row.extra_raw=int(row.extra_raw)+detonation_extra
+		tally.pairs[pair_id]=row
 	if mark_bps>0 and context.skill_id!=_primary_id and e.hp_raw>0:
 		var owner_slot: int=_mark_owners.find(context.skill_id)
 		if owner_slot>=0:e[MARK_KEYS[owner_slot]]=tick+int(tuning.marks.mark_ticks)

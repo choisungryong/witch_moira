@@ -102,6 +102,13 @@ var debug_secondary_off := false
 ## core's start() from the compiled skill tree; 0 without a build, which leaves every number as it was.
 var _build_max_hp := 0
 var _build_reduction_bps := 0
+## In-run spell composition (chapter1/data/run_spells.json). Empty means off: nothing below reads it and every rule
+## stays as it was. The chapter core installs the validated document (enabled only) before start().
+var spells: Dictionary = {}
+## The spells the run may cast: SKILL_IDS, plus the ring spells while the composition is on.
+var _skill_ids: Array = SKILL_IDS.duplicate()
+## Ring pulses still to come: {due, skill_id, effects, evolved, pulse}. Empty (and never filled) while the composition is off.
+var _ring_pending: Array[Dictionary] = []
 
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
@@ -146,6 +153,7 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_alive = 0
 	_primary_id = primary
 	_pending_children.clear()
+	_ring_pending.clear()
 	_friendly_tick = -1
 	_last_heavy_tick = -1
 	_guaranteed_drops = 0
@@ -380,7 +388,7 @@ func _effects_of(equip_map: Dictionary) -> Array[Dictionary]:
 
 func _sheet_of(gear: Dictionary, equip_map: Dictionary) -> Dictionary:
 	var secondaries: Array[Dictionary] = []
-	for id_ in SKILL_IDS:
+	for id_ in _skill_ids:
 		if id_ == _primary_id: continue
 		var block := _skill_block(id_,gear,false)
 		if not block.is_empty(): secondaries.append(block)
@@ -755,11 +763,15 @@ func _near(point: Vector2, radius: float) -> Array[int]:
 	return result
 
 func _auto_casts() -> void:
-	for id_ in SKILL_IDS:
+	if not _ring_pending.is_empty(): _step_ring_pulses()
+	for id_ in _skill_ids:
 		if tick < int(_next_cast.get(id_,0)): continue
 		if debug_secondary_off and id_ != _primary_id: continue
 		var skill := effective_skill(id_)
 		if skill.is_empty(): continue
+		if _is_ring(id_):
+			_cast_ring(id_,skill)
+			continue
 		var nearest := _near(hero.position,13.0)
 		if nearest.is_empty(): continue
 		var target: Dictionary = enemies[nearest[0]]
@@ -787,6 +799,67 @@ func _auto_casts() -> void:
 				projectiles.append({"uid":_projectile_sequence,"position":hero.position,"previous":hero.position,"direction":direction.rotated(spread),
 					"speed":14.0 if id_ == "chapter1.skill.ember" else 16.0,"radius":.24 if skill.evolved else .16,"skill_id":id_,"hostile":false,
 					"damage_raw":int(effects.damage_raw),"expires":tick+100,"cast_id":int(context.uid),"pierce_left":int(effects.pierce),"hit_ids":[]})
+
+func _is_ring(id_: String) -> bool:
+	return not spells.is_empty() and String(spells.spells.get(id_,{}).get("role","")) == "ring"
+
+## True while the enemy carries this status (count above zero, not expired). Only a run with the composition has any.
+func _has_status(e: Dictionary, status: String) -> bool:
+	var entry: Variant = e.get("status",{}).get(status)
+	return entry is Dictionary and int(entry.n) > 0 and tick < int(entry.until)
+
+## Living enemies inside the ring, nearest first; the spell's preferred status first (still nearest first inside each
+## group), cut to ring_targets when the effect has one. The hit budget cuts the rest when the targets are struck.
+func _ring_targets(id_: String, effects: Dictionary) -> Array[int]:
+	var inside := _near(hero.position,float(effects.ring_radius_cm)/100.0)
+	var prefer := String(spells.spells[id_].get("prefer",""))
+	var ordered: Array[int] = []
+	if prefer.is_empty(): ordered.assign(inside)
+	else:
+		var rest: Array[int] = []
+		for target in inside:
+			if _has_status(enemies[target],prefer): ordered.append(target)
+			else: rest.append(target)
+		ordered.append_array(rest)
+	var limit := int(effects.get("ring_targets",0))
+	if limit > 0 and ordered.size() > limit: ordered.resize(limit)
+	return ordered
+
+## One ring cast. It is cast only while an enemy stands inside the ring, so the cooldown never runs idle.
+func _cast_ring(id_: String, skill: Dictionary) -> void:
+	var effects: Dictionary = skill.effects.duplicate(true)
+	var targets := _ring_targets(id_,effects)
+	if targets.is_empty(): return
+	_next_cast[id_] = tick+int(effects.cooldown_ticks)
+	metrics.casts[id_] = int(metrics.casts.get(id_,0))+1
+	_ring_strike(id_,effects,targets,bool(skill.evolved),1)
+	for pulse in range(2,int(effects.ring_pulses)+1):
+		_ring_pending.append({"due":tick+24*(pulse-1),"skill_id":id_,"effects":effects.duplicate(true),"evolved":bool(skill.evolved),"pulse":pulse})
+
+## A pulse is a cast of its own (fresh hit budget, nothing shared with the first pulse).
+func _ring_strike(id_: String, effects: Dictionary, targets: Array[int], evolved: bool, pulse: int) -> void:
+	_cast_sequence += 1
+	var context := {"uid":_cast_sequence,"skill_id":id_,"effects":effects,"remaining_hits":int(effects.hit_budget),"hit_ids":[],"evolved":evolved}
+	var positions: Array[Vector2] = []
+	for target in targets: positions.append(enemies[target].position)
+	var details := {"skill_id":id_,"direction":hero.direction,"effects":effects.duplicate(true),"targets":positions,"evolved":evolved,"shape":"ring","radius_cm":int(effects.ring_radius_cm)}
+	if pulse > 1: details.pulse = pulse
+	_emit("cast",hero.position,details)
+	for target in targets:
+		if not _terminal_mode.is_empty() or int(context.remaining_hits) <= 0: break
+		_damage_enemy(target,context,0)
+
+func _step_ring_pulses() -> void:
+	var left: Array[Dictionary] = []
+	var due: Array[Dictionary] = []
+	for entry in _ring_pending:
+		if tick < int(entry.due): left.append(entry)
+		else: due.append(entry)
+	_ring_pending = left
+	for entry in due:
+		if not _terminal_mode.is_empty(): break
+		var targets := _ring_targets(String(entry.skill_id),entry.effects)
+		if not targets.is_empty(): _ring_strike(String(entry.skill_id),entry.effects,targets,bool(entry.evolved),int(entry.pulse))
 
 func _chain(first: Dictionary, context: Dictionary) -> Array[Vector2]:
 	var positions: Array[Vector2] = []
