@@ -89,14 +89,6 @@ func _texture(path: String) -> Texture2D:
 			image.generate_mipmaps();result=ImageTexture.create_from_image(image)
 	return result
 
-func _ground_material__q03() -> Material:
-	var mat := ShaderMaterial.new();mat.shader=load("res://chapter1/view/cloister_ground_quality03.gdshader")
-	for pair in [["flagstone","ground_flagstone_v01.png"],["soil","ground_soil_v01.png"]]:
-		var texture := _texture(ART_BASE+pair[1])
-		if texture:
-			mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true)
-			art_status.ground.append(pair[1])
-	return mat
 
 func _load_props() -> void:
 	_load_prop_doc(ART_BASE+"cloister_props_v01.json")
@@ -120,25 +112,6 @@ func _prop__q03(id_: String, at: Vector3, height: float=0.0, tint: Color=Color.W
 	var record: Dictionary=_prop_defs[id_]
 	_prop_entries.append({"id":id_,"at":at,"height":height if height>0 else float(record.get("height_m",1.0)),"tint":tint,"mirror":mirror})
 
-func _compose_cloister__q03() -> void:
-	art_status.composition_revision="verge-ribbons-20261101-01"
-	art_status.court_half_extents=[6.5,8.0]
-	# The solid-looking architecture stays outside the ±19m combat square.
-	# Its perspective is authored into the PNG; no invisible collision is implied.
-	_prop("arch",Vector3(0,0,-21.6),6.2,Color(.75,.82,.9))
-	for side in [-1.0,1.0]:
-		for z in [-20.0,-11.0,-2.0,7.0,16.0,25.0]:
-			_prop("pillar_whole" if int(z)%2==0 else "pillar_broken",Vector3(side*20.4,0,z),3.4,Color(.73,.79,.85),side<0)
-			_prop("wall",Vector3(side*21.0,0,z+3.3),2.2,Color(.65,.72,.79),side<0)
-		for z in [-17.0,-9.0,2.0,13.0,21.0]:
-			_prop("grave_cross" if z<1 else "grave_slab",Vector3(side*19.9,0,z),1.35,Color(.72,.77,.79),side>0)
-		_prop("tree",Vector3(side*26,0,-18),5.8,Color(.65,.71,.75),side<0)
-		_prop("tree",Vector3(side*25,0,23),5.0,Color(.65,.71,.75),side>0)
-		for z in [-14.0,2.0,18.0]:_brazier(Vector3(side*19.7,0,z))
-	_compose_verges()
-	for at in [Vector3(-15,0,-7),Vector3(14,0,10),Vector3(9,0,-17),Vector3(-16,0,15)]:
-		_prop("roots",at,.42,Color(.65,.70,.67))
-		_prop("rubble",at+Vector3(1.1,.005,.7),.28,Color(.75,.78,.78),true)
 
 func _paving_distance(at: Vector2) -> float:
 	# Match the three authored ground regions; keep the central paths open.
@@ -147,34 +120,6 @@ func _paving_distance(at: Vector2) -> float:
 	var crossing := absf(at.y+2.0+sin(at.x*.14)*.3)-2.95
 	return minf(court,minf(nave,crossing))
 
-func _compose_verges__q03() -> void:
-	# Jittered ribbons grow from the paving edges instead of isolated green balls.
-	# One clump per lattice cell bounds fill and keeps broad soil gaps between beds.
-	var green_ids: Array[String]=[]
-	for id_ in _prop_defs:
-		if _prop_defs[id_]._atlas.ends_with("cloister_foliage_v01.png"):green_ids.append(id_)
-	if green_ids.is_empty():return
-	var candidates: Array[Dictionary]=[]
-	for gx in range(-28,29):
-		for gz in range(-28,29):
-			var at := Vector2(float(gx)*.88+_rng.randf_range(-.11,.11),float(gz)*.88+_rng.randf_range(-.11,.11))
-			var distance_ := _paving_distance(at)
-			if distance_<.32 or distance_>5.0:continue
-			# Broad winding gaps avoid a ruler-straight hedge around the court.
-			var gap := sin(at.x*.42+at.y*.17)+cos(at.y*.57-at.x*.13)
-			if gap<-.95 and distance_>1.45:continue
-			candidates.append({"at":at,"priority":_rng.randf()+distance_*.075})
-	candidates.sort_custom(func(a: Dictionary,b: Dictionary) -> bool:return a.priority<b.priority)
-	var count := mini(620,candidates.size())
-	for i in count:
-		var at: Vector2=candidates[i].at
-		var id_: String=green_ids[i%green_ids.size()]
-		var height := _rng.randf_range(.63,.96)
-		var shade := _rng.randf_range(.88,1.07)
-		# Ferns and grasses share subdued olive values, not neon shrub highlights.
-		_prop(id_,Vector3(at.x,.008,at.y),height,Color(.55,.63,.54)*shade,i%2==0)
-	art_status.foliage_quads=count
-	art_status.verge_candidates=candidates.size()
 
 func _brazier(at: Vector3) -> void:
 	_prop("brazier",at,2.0,Color(.88,.8,.67))
@@ -297,12 +242,6 @@ func setup__chapter(view: Node3D) -> void:
 		label.text=Loc.t("ritual.%s.name"%def.id)+"\n[E] 의식 시작";root.add_child(label);ritual_labels[def.id]=label
 	route=MeshInstance3D.new();var arrow := PrismMesh.new();arrow.size=Vector3(.45,.035,.7);route.mesh=arrow;route.material_override=material(Color("c5a367"),.3);root.add_child(route)
 
-func _ground_material__chapter() -> Material:
-	var mat := ShaderMaterial.new();mat.shader=load("res://chapter1/view/chapter_ground.gdshader")
-	for pair in [["flagstone","ground_flagstone_v01.png"],["soil","ground_soil_v01.png"]]:
-		var texture := _texture(ART_BASE+pair[1])
-		if texture:mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true);art_status.ground.append(pair[1])
-	return mat
 
 func _compose_cloister() -> void:
 	art_status.composition_revision="full-chapter-three-courtyards-01"
@@ -604,20 +543,6 @@ func _batch22__q22(records: Array[Dictionary],shape: Mesh,label: String) -> void
 	var material_ := StandardMaterial3D.new();material_.albedo_texture=_texture(ART_BASE+"ground_flagstone_v01.png")
 	material_.vertex_color_use_as_albedo=true;material_.roughness=.97;material_.uv1_triplanar=true;material_.uv1_world_triplanar=true;material_.uv1_scale=Vector3.ONE*.7
 	var node := MultiMeshInstance3D.new();node.name=label;node.multimesh=mm;node.material_override=material_;root.add_child(node)
-func _voussoir22__q22() -> ArrayMesh:
-	var angle := PI/15.0*.47
-	var points: Array[Vector3]=[]
-	for z in [-.55,.55]:
-		for radius in [3.28,4.12]:
-			for a in [-angle,angle]:points.append(Vector3(cos(a)*radius,sin(a)*radius,z))
-	var surface := SurfaceTool.new();surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for face in [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]]:
-		var a: Vector3=points[face[0]];var b: Vector3=points[face[1]];var c: Vector3=points[face[2]]
-		var normal := (b-a).cross(c-a).normalized()
-		# Godot front faces use clockwise winding; retain outward normals.
-		for index in [0,2,1,0,3,2]:
-			surface.set_normal(normal);surface.add_vertex(points[face[index]])
-	return surface.commit()
 
 # ---- chapter1/view/chapter_world_quality31.gd ----
 ## Unconnected volumetric column study. No core/colliders/lighting additions.
@@ -690,9 +615,6 @@ func _safe31(point: Vector2,radius: float) -> Vector2:
 			if direction.length_squared()<.0001:direction=Vector2.UP
 			point=center+direction*((19+radius+.35)/maxf(absf(direction.x),absf(direction.y)))
 	return point
-func set_columns31__q31(enabled: bool) -> void:
-	for node in _old_columns31:node.visible=not enabled
-	for node in _solid_columns31:node.visible=enabled
 func _column_mesh31(broken: bool) -> ArrayMesh:
 	var profile := [Vector2(0,1),Vector2(.035,1),Vector2(.055,.85),Vector2(.08,.85),Vector2(.105,.57),Vector2(.85,.51),Vector2(.88,.73),Vector2(.91,.73),Vector2(.935,1),Vector2(1,.92)]
 	if broken:profile=[Vector2(0,1),Vector2(.06,1),Vector2(.10,.85),Vector2(.15,.57),Vector2(.92,.53),Vector2(1,.53)]

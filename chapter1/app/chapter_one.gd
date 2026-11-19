@@ -4,21 +4,17 @@ extends Node3D
 
 # ---- chapter1/chapter_view.gd ----
 ## C2 scene glue. Fixed-tick core owns all gameplay; UI/actors/VFX only present it.
-const CombatRun=preload("res://chapter1/core/combat_run.gd")
-const World=preload("res://chapter1/view/cloister_world.gd")
-const Actors=preload("res://chapter1/view/cloister_actors.gd")
-const Effects=preload("res://chapter1/view/cloister_effects.gd")
-const HUD=preload("res://chapter1/view/cloister_hud.gd")
 const Audio=preload("res://chapter1/presentation/combat_audio.gd")
 const FrameProbe=preload("res://chapter1/presentation/frame_probe.gd")
-var run=CombatRun.new()
-var world=World.new()
-var actors=Actors.new()
-var effects=Effects.new()
+## Assigned in _init (chapter_core, chapter_world, chapter_actors, chapter_effects, chapter_hud).
+var run
+var world
+var actors
+var effects
 const CombatJuice=preload("res://chapter1/view/fx/combat_juice.gd")
 ## Hit feedback, spell lights and the overall look. Off with --chapter1-no-juice.
 var juice: RefCounted
-var hud=HUD.new()
+var hud
 var audio=Audio.new()
 var _frame_probe=FrameProbe.new()
 var _probe_quit_after_complete := false
@@ -198,17 +194,6 @@ func _unhandled_key_input__chapter(event: InputEvent) -> void:
 			# Only once the result window is on screen (D4 F10); unsaved rewards are asked about first (F8).
 			if run.mode in ["victory","defeat"] and hud.result_revealed():hud.request_leave("retry")
 
-func _unhandled_input__chapter(event: InputEvent) -> void:
-	if run.mode!="playing" or not event is InputEventMouseButton:return
-	if event.button_index!=MOUSE_BUTTON_LEFT or not event.pressed:return
-	var origin: Vector3=world.camera.project_ray_origin(event.position)
-	var direction: Vector3=world.camera.project_ray_normal(event.position)
-	var ground: Variant=Plane(Vector3.UP,0).intersects_ray(origin,direction)
-	if ground is Vector3:
-		_move_target=Vector2(ground.x,ground.z).clamp(Vector2.ONE*-18.8,Vector2.ONE*18.8)
-		_has_move_target=true
-		effects.move_marker(_move_target)
-		get_viewport().set_input_as_handled()
 
 func _move_input() -> Vector2:
 	var x := float(Input.is_physical_key_pressed(KEY_D))-float(Input.is_physical_key_pressed(KEY_A))
@@ -233,34 +218,6 @@ func _physics_process(_delta: float) -> void:
 			audio.play("step",run.tick);_audio_step_distance=0
 	_audio_previous=run.hero.position
 
-func _pilot_input__chapter() -> Vector2:
-	# Explicit QA-only normal input/choice/equipment driver. No HP/mana/XP grants.
-	if run.mode=="choice":
-		var offer: Dictionary=run.get_offer()
-		if not offer.is_empty():
-			var picked: Dictionary=offer.cards[0]
-			for card in offer.cards:
-				if card.kind=="evolve":picked=card;break
-			run.choose(offer.token,picked.id)
-			hud.invalidate()
-	if run.mode=="playing":
-		for item in run.inventory:
-			if run.equipped.get(item.slot,-1)!=item.uid:
-				run.open_inventory();run.equip(item.uid);run.close_inventory();hud.invalidate()
-		var at: Vector2=run.hero.position
-		var destination := Vector2(cos(run.elapsed()*.21),sin(run.elapsed()*.21))*6.5
-		var nearest := 16.0
-		for orb in run.orbs:
-			var d: float=at.distance_squared_to(orb.position)
-			if d<nearest:nearest=d;destination=orb.position
-		for e in run.enemies.values():
-			if e.elite and e.hp_raw>0:
-				var delta: Vector2=e.position-at
-				if delta.length()<4.5:
-					destination=at-delta.normalized()*5.0
-					if e.state=="windup":run.request_dash(-delta)
-		return (destination-at).normalized()
-	return Vector2.ZERO
 
 func _consume_events__chapter() -> void:
 	effects.consume(run.events)
@@ -333,10 +290,6 @@ func _capture_file__chapter(filename: String) -> void:
 	var image := get_viewport().get_texture().get_image()
 	if image:print("CHAPTER1_CAPTURE ",path," ",image.save_png(path))
 
-func _print_result__chapter() -> void:
-	var values := _frame_ms.duplicate();values.sort()
-	var p95: float=values[mini(values.size()-1,int(values.size()*.95))] if not values.is_empty() else 0.0
-	print("CHAPTER1_RUNTIME_RESULT ",JSON.stringify({"mode":run.mode,"elapsed":run.elapsed(),"kills":run.kills,"hp_raw":run.hero.get("hp_raw",0),"metrics":run.metrics,"growth":run.growth.snapshot(),"equipped":run.equipped,"pilot":_pilot,"qa_ignore_focus":_qa_ignore_focus,"frame_samples":values.size(),"frame_p95_ms":p95,"scope":"representative encounter; captures/driver may perturb frame times; not formal GPU quality pass"}))
 
 # ---- chapter1/chapter_one_view.gd ----
 const Loc=preload("res://chapter1/view/loc.gd")

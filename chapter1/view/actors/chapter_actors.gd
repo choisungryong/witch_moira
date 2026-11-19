@@ -325,13 +325,6 @@ func _present_position(actor: Node3D, at: Vector2, tick: int, playing: bool, fra
 	var shown: Vector2=sample.previous.lerp(sample.current,fraction) if playing else at
 	return Vector3(shown.x,0,shown.y)
 
-func _overlaps_hero__cloister(actor: Node3D, camera: Camera3D) -> bool:
-	# Conservative projected current-frame bounds, not a world-distance trigger.
-	# Both sprites remain normal depth-tested. Only a nearer living enemy whose
-	# actual displayed frame intersects the hero frame enables the separate rim.
-	if camera==null or not actor.has_meta("sprite") or not hero.has_meta("sprite"):return false
-	if (actor.global_position-hero.global_position).dot(camera.global_basis.z)<=.04:return false
-	return _projected_frame(actor,camera).intersects(_projected_frame(hero,camera))
 
 func _projected_frame(actor: Node3D, camera: Camera3D) -> Rect2:
 	# https://docs.godotengine.org/en/4.5/classes/class_camera3d.html#class-camera3d-method-unproject-position
@@ -344,24 +337,6 @@ func _projected_frame(actor: Node3D, camera: Camera3D) -> Rect2:
 	var b := camera.unproject_position(center+camera.global_basis.x*extent.x*unit+camera.global_basis.y*extent.y*unit)
 	return Rect2(a,Vector2.ZERO).expand(b).abs()
 
-func _sync_hero_rim__cloister(camera: Camera3D, overlapping: bool) -> void:
-	if _hero_rim==null:return
-	_hero_rim.visible=overlapping
-	if not overlapping:return
-	var sprite: AnimatedSprite3D=hero.get_meta("sprite")
-	var frame: Texture2D=sprite.sprite_frames.get_frame_texture(sprite.animation,sprite.frame)
-	if frame!=_hero_rim_frame:
-		_hero_rim_frame=frame
-		var atlas := frame as AtlasTexture
-		if atlas:
-			var dimensions := Vector2(atlas.atlas.get_width(),atlas.atlas.get_height())
-			_hero_rim_material.set_shader_parameter("source_tex",atlas.atlas)
-			_hero_rim_material.set_shader_parameter("uv_min",atlas.region.position/dimensions)
-			_hero_rim_material.set_shader_parameter("uv_size",atlas.region.size/dimensions)
-			_hero_rim_material.set_shader_parameter("local_texel",Vector2.ONE/atlas.region.size)
-			(_hero_rim.mesh as QuadMesh).size=atlas.region.size*sprite.pixel_size*1.10
-	_hero_rim.position=sprite.position+camera.global_basis.x*sprite.offset.x*sprite.pixel_size*1.10+camera.global_basis.y*sprite.offset.y*sprite.pixel_size*1.10
-	_hero_rim_material.set_shader_parameter("strength",1.0)
 
 func _update_pose__cloister(actor: Node3D, direction: Vector2, moving: bool, casting: bool, dead: bool, tick: int, playing: bool, hit: bool=false, brief_cast: bool=false) -> void:
 	if actor.has_meta("sprite"):
@@ -878,29 +853,6 @@ func _create__chapterx(kind: String) -> Node3D:
 	actor.set_meta("minion19",{"model":model,"player":player,"skeleton":rig,"materials":materials,"fade":1.0,"death_age":0.0,"clip":""})
 	player.play("idle",0);player.seek(0,true);player.advance(0)
 	return actor
-func _demon19_materials__chapterx(node: Node,materials: Array[StandardMaterial3D],kind: String) -> void:
-	for child in node.get_children():
-		if child is MeshInstance3D:
-			child.layers=2
-			var signature: int=child.mesh.get_instance_id()
-			if not _body_cache.has(signature):
-				var body := ArrayMesh.new()
-				for surface in child.mesh.get_surface_count():
-					var source=child.get_active_material(surface) as StandardMaterial3D
-					if source and source.resource_name.begins_with("WardenChain"):continue
-					body.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,child.mesh.surface_get_arrays(surface))
-					body.surface_set_material(body.get_surface_count()-1,source)
-				_body_cache[signature]=body
-			child.mesh=_body_cache[signature]
-			for surface in child.mesh.get_surface_count():
-				var source=child.mesh.surface_get_material(surface) as StandardMaterial3D
-				if source==null:continue
-				var mat := source.duplicate() as StandardMaterial3D
-				var tint := Color(.36,.42,.39) if kind=="walker" else Color(.48,.32,.24)
-				if source.resource_name.begins_with("WardenMask"):tint=Color(.42,.46,.42) if kind=="walker" else Color(.72,.54,.38)
-				mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS;mat.roughness=.9;mat.metallic=0
-				mat.albedo_color=tint;mat.set_meta("demon19_tint",tint);child.set_surface_override_material(surface,mat);materials.append(mat)
-		else:_demon19_materials(child,materials,kind)
 func consume(events: Array) -> void:
 	for event in events:
 		if int(event.seq)<=_demon19_event:continue
@@ -1022,12 +974,7 @@ func _sync_hero_rim(camera: Camera3D,overlapping: bool) -> void:
 func reset__chapterx() -> void:
 	reset__q16();_demon19_event=-1;_demon19_attacks.clear();motion19_samples=0
 
-## Default hook preserves legacy sampling exactly; only Actor42 overrides it.
-func _sample_actor42__chapterx(player: AnimationPlayer,clip: String,time_: float) -> void:
-	player.play(clip,0);player.seek(time_,true);player.advance(0)
 
-func _set_color42__chapterx(material: StandardMaterial3D,color: Color) -> void:
-	material.albedo_color=color
 
 # ---- chapter1/view/chapter_actors_readable19.gd ----
 ## Material and silhouette refinement; all combat remains owned by the core.
