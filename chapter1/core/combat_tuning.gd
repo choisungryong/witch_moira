@@ -16,6 +16,15 @@ const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
 const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
 const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
 const BEAT_OPTIONAL := ["ranged_from_ticks","charger_from_ticks","taste_crest"]
+## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
+## "grace" (boon cadence, tools and grades, D13 4.3/4.11) is checked in full; "elites" and "extras" (D13 W4/W5) are only
+## required to be an object with a bool "enabled" until their own steps tighten them.
+const OPTIONAL_ROOT := ["rhythm","grace","elites","extras"]
+const GRACE_KEYS := ["enabled","balance_status","evolve_min_level","final_offer","min_gap_ticks","tools","survival_from_level","pact_from_level","link_slots","grades"]
+const GRACE_PROTECT_WORDS := ["evolve_keystone","evolve","passive","axis","survival"]
+const GRACE_BANISH_KINDS := ["unlock","axis","rank","survival","link","pact"]
+const GRADE_KEYS := ["enabled","kinds","rare_bps","jackpot_bps","cap_bps","near_bps","pity","final_offer_jackpot_mul_bps","luck","rare","jackpot"]
+const GRADE_KINDS := ["unlock","axis","rank","survival","link"]
 const TRIAL_KEYS := ["enabled","hold_ticks","radius_m","amount","interval_ticks","alive_cap","hp_bps","mix","clear_ticks"]
 var errors: Array[String] = []
 var _document: Dictionary = {}
@@ -43,9 +52,10 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	var issues: Array[String] = []
 	if not v is Dictionary: return ["root keys"]
 	var base_keys: Dictionary = v
-	if v.has("rhythm"):
-		base_keys = v.duplicate()
-		base_keys.erase("rhythm")
+	for optional in OPTIONAL_ROOT:
+		if v.has(optional):
+			if base_keys == v: base_keys = v.duplicate()
+			base_keys.erase(optional)
 	if not GrowthCatalog.keys_match(base_keys,ROOT_KEYS): return ["root keys"]
 	if not integer(v.schema_version,1,1) or v.provenance != "independent_design": issues.append("version/provenance")
 	if not integer(v.alive_cap,1,max_alive-2): issues.append("alive_cap")
@@ -82,6 +92,67 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	if v.has("rhythm"):
 		# The per-beat alive_cap is bounded by the document's own alive_cap, so that one has to be sound first.
 		issues.append_array(_rhythm_issues(v.rhythm,int(v.alive_cap) if integer(v.alive_cap,1,100000) else 1))
+	if v.has("grace"): issues.append_array(_grace_issues(v.grace))
+	for name in ["elites","extras"]:
+		if v.has(name) and not (v[name] is Dictionary and v[name].get("enabled") is bool): issues.append(name+" shape")
+	return issues
+
+static func _bps(v: Variant, high: int = 10000) -> bool:
+	return integer(v,0,high)
+
+static func _word_list(v: Variant, allowed: Array, max_size: int) -> bool:
+	if not v is Array or v.size() > max_size: return false
+	for item in v:
+		if not item is String or not item in allowed: return false
+	return true
+
+## D13 4.3 and 4.11.6 ranges. Every problem is one short path; an empty list means the block is usable.
+static func _grace_issues(g: Variant) -> Array[String]:
+	if not g is Dictionary or not GrowthCatalog.keys_match(g,GRACE_KEYS): return ["grace keys"]
+	var issues: Array[String] = []
+	if not g.enabled is bool: issues.append("grace enabled")
+	if not g.balance_status is String: issues.append("grace balance_status")
+	if not integer(g.evolve_min_level,0,12): issues.append("grace evolve_min_level")
+	var f: Variant = g.final_offer
+	if not f is Dictionary or not GrowthCatalog.keys_match(f,["mode","cards","protect_order"]): issues.append("grace final_offer keys")
+	else:
+		if not f.mode in ["none","big"]: issues.append("grace final_offer mode")
+		if not integer(f.cards,3,4): issues.append("grace final_offer cards")
+		if not _word_list(f.protect_order,GRACE_PROTECT_WORDS,5): issues.append("grace final_offer protect_order")
+	if not integer(g.min_gap_ticks,0,3600): issues.append("grace min_gap_ticks")
+	var t: Variant = g.tools
+	if not t is Dictionary or not GrowthCatalog.keys_match(t,["base_rerolls","base_banishes","base_holds","banish_kinds"]): issues.append("grace tools keys")
+	else:
+		for key in ["base_rerolls","base_banishes","base_holds"]:
+			if not integer(t[key],0,3): issues.append("grace tools "+key)
+		if not _word_list(t.banish_kinds,GRACE_BANISH_KINDS,6): issues.append("grace tools banish_kinds")
+	if not integer(g.survival_from_level,1,12) or not integer(g.pact_from_level,1,12) or not integer(g.link_slots,0,4): issues.append("grace survival/pact/link keys")
+	issues.append_array(_grade_issues(g.grades))
+	return issues
+
+static func _grade_issues(d: Variant) -> Array[String]:
+	if not d is Dictionary or not GrowthCatalog.keys_match(d,GRADE_KEYS): return ["grace grades keys"]
+	var issues: Array[String] = []
+	if not d.enabled is bool: issues.append("grace grades enabled")
+	if not _word_list(d.kinds,GRADE_KINDS,5): issues.append("grace grades kinds")
+	if not _bps(d.rare_bps) or not _bps(d.jackpot_bps) or not integer(d.cap_bps,0,5000) or not _bps(d.near_bps): issues.append("grace grades bps")
+	elif int(d.rare_bps)+int(d.jackpot_bps) > 10000: issues.append("grace grades rare+jackpot over 10000")
+	var p: Variant = d.pity
+	if not p is Dictionary or not GrowthCatalog.keys_match(p,["soft_step_bps","hard_after_spins"]) or not _bps(p.soft_step_bps) or not integer(p.hard_after_spins,0,20): issues.append("grace grades pity")
+	if not integer(d.final_offer_jackpot_mul_bps,10000,100000): issues.append("grace grades final_offer_jackpot_mul_bps")
+	var l: Variant = d.luck
+	if not l is Dictionary or not GrowthCatalog.keys_match(l,["shrine_mul_bps","per_reward_grade_bps","gear_cap_bps"]) or not integer(l.shrine_mul_bps,10000,100000) or not _bps(l.per_reward_grade_bps,1000) or not _bps(l.gear_cap_bps): issues.append("grace grades luck")
+	var r: Variant = d.rare
+	if not r is Dictionary or not GrowthCatalog.keys_match(r,["axis_points","unlock_points","rank_points","scale_bps"]) or not integer(r.axis_points,0,4) or not integer(r.unlock_points,0,4) or not integer(r.rank_points,0,3) or not integer(r.scale_bps,10000,100000): issues.append("grace grades rare")
+	var j: Variant = d.jackpot
+	if not j is Dictionary or not GrowthCatalog.keys_match(j,["form","base","resonance","evolve_partner_bonus_bps"]): issues.append("grace grades jackpot keys")
+	else:
+		if not j.form in ["resonance","big"]: issues.append("grace grades jackpot form")
+		var b: Variant = j.base
+		if not b is Dictionary or not GrowthCatalog.keys_match(b,["axis_points","unlock_points","rank_points","scale_bps"]) or not integer(b.axis_points,0,4) or not integer(b.unlock_points,0,4) or not integer(b.rank_points,0,3) or not integer(b.scale_bps,10000,100000): issues.append("grace grades jackpot base")
+		var q: Variant = j.resonance
+		if not q is Dictionary or not GrowthCatalog.keys_match(q,["axis_points","partner_points","axis_cap_bonus","unlock_points","link_scale_bps"]) or not integer(q.axis_points,0,4) or not integer(q.partner_points,0,2) or not integer(q.axis_cap_bonus,0,2) or not integer(q.unlock_points,0,4) or not integer(q.link_scale_bps,10000,100000): issues.append("grace grades jackpot resonance")
+		if not integer(j.evolve_partner_bonus_bps,0,100000): issues.append("grace grades jackpot evolve_partner_bonus_bps")
 	return issues
 
 static func _mix_valid(mix: Variant) -> bool:

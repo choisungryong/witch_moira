@@ -2973,6 +2973,57 @@ def do_calibrate_power(args):
     return 0
 
 
+def grade_dist_model(g, runs=20000, offers=11, slots=2.4, seed=1):
+    """D13 4.11.3 등급 굴림만의 모델(모델의 답). 코어 run_growth.gd의 규칙을 그대로 옮겼다: 제안마다 굴리는 칸 수(평균 slots)에
+    칸마다 기연 확률(기본+부드러운 천장), 기연이 없으면 천장 셈 +1, hard_after_spins번째 제안은 한 칸이 반드시 기연.
+    칸 수는 정수로 floor(slots) 또는 +1을 확률 slots-floor로 낸다. 판 승패·빌드는 모르는 모델이다."""
+    rng = random.Random(seed)
+    base, step = int(g["jackpot_bps"]), int(g["pity"]["soft_step_bps"])
+    hard, cap = int(g["pity"]["hard_after_spins"]), int(g["cap_bps"])
+    hist, first = {}, []
+    for _ in range(runs):
+        pity, shown, first_offer = 0, 0, 0
+        for o in range(offers):
+            n = int(slots) + (1 if rng.random() < slots - int(slots) else 0)
+            if n <= 0:
+                continue
+            p = min(cap, base + step * pity) / 10000.0
+            hit = any(rng.random() < p for _ in range(n))
+            if not hit and hard > 0 and pity + 1 >= hard:
+                hit = True
+            if hit:
+                shown += 1
+                first_offer = first_offer or o + 2
+                pity = 0
+            else:
+                pity += 1
+        hist[shown] = hist.get(shown, 0) + 1
+        if first_offer:
+            first.append(first_offer)
+    mean = sum(k * v for k, v in hist.items()) / runs
+    return {"runs": runs, "offers": offers, "slots_per_offer": slots, "mean": round(mean, 3),
+            "zero": round(hist.get(0, 0) / runs, 4), "three_or_more": round(sum(v for k, v in hist.items() if k >= 3) / runs, 4),
+            "histogram": {str(k): round(hist[k] / runs, 4) for k in sorted(hist)}, "median_first_level": sorted(first)[len(first) // 2] if first else 0,
+            "model_answer_not_game_answer": True}
+
+
+def do_grade_dist(args):
+    tuning = json.loads((Path(__file__).resolve().parents[2] / "chapter1" / "data" / "combat_tuning.json").read_text(encoding="utf-8"))
+    g = copy.deepcopy(tuning["grace"]["grades"])
+    for s in args.set or []:
+        k, v = s.split("=", 1)
+        if k.startswith("grace.grades."):
+            k = k[len("grace.grades."):]
+        cur = g
+        parts = k.split(".")
+        for q in parts[:-1]:
+            cur = cur[q]
+        cur[parts[-1]] = int(v)
+    res = grade_dist_model(g, slots=args.grade_slots)
+    print(json.dumps(res, ensure_ascii=False))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="균형 시뮬레이터 (모델의 답이지 게임의 답이 아니다)")
     ap.add_argument("--calibrate", action="store_true")
@@ -2984,6 +3035,8 @@ def main(argv=None):
     ap.add_argument("--write-calib", action="store_true", help="--fit2 결과를 balance_sim_calib.json에 쓴다(기본은 쓰지 않음)")
     ap.add_argument("--sensitivity", action="store_true", help="서열 간격(synergy−narrow, narrow−random)을 가장 크게 움직이는 값을 순서대로(balance_search.py의 값 목록으로). --set은 고정 조건")
     ap.add_argument("--describe", action="store_true", help="고른 주문 묶음·프리셋에서 바꿔 볼 수 있는 키 목록을 JSON으로 낸다(관리 툴 입력 칸용)")
+    ap.add_argument("--grade-dist", action="store_true", help="D13 4.11 은총 등급 굴림만의 분포(판당 기연이 뜬 횟수). --set grace.grades.jackpot_bps=300 처럼 바꿔 본다. 모델의 답")
+    ap.add_argument("--grade-slots", type=float, default=2.4, help="--grade-dist: 제안마다 굴리는 칸 수의 평균(실제 코어 측정값 test_grace.gd GRACE_DIST)")
     ap.add_argument("--jobs", type=int, default=None, help="병렬 프로세스 수(기본: 코어-2, 최대 14)")
     ap.add_argument("--preset", default=None, help="spec1 | spec1p(압력·격앙 포함) | current_on")
     ap.add_argument("--skills", default=None, choices=["s", "legacy"])
@@ -3001,6 +3054,8 @@ def main(argv=None):
     ap.add_argument("--trace", default=None, help="정책:마녀:시드 — 한 판의 초별 흔적 출력")
     args = ap.parse_args(argv)
     t0 = time.time()
+    if args.grade_dist:
+        return do_grade_dist(args)
     set_jobs(args.jobs if args.jobs else default_jobs())
     if args.sensitivity:
         import balance_search

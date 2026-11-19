@@ -96,6 +96,9 @@ const MARK_KEYS := ["mark_until_a","mark_until_b"]
 ## Run rhythm (D11 A). All of it stays at its zero value while tuning.rhythm.enabled is false, and only an enabled
 ## run puts it into snapshot().
 var _rhythm_on := false
+## Boon cadence, tools and grades (D13 K3a/K3b-1): tuning.grace.enabled. Off = nothing below exists in the run or its snapshot.
+var _grace_on := false
+var _grace_waited := 0
 var _beat_index := -1
 var _beat_tick := 0
 var _wave_index := -1
@@ -217,6 +220,8 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		if _build_max_hp>0:hero.max_hp_raw=120*UNIT+_build_max_hp*UNIT;hero.hp_raw=hero.max_hp_raw
 		if not growth.set_options(_build_growth):errors.assign(growth.errors);return false
 		if not _field_rule.is_empty():_next_field=int(_field_rule.interval_ticks)
+	_grace_on=tuning.has("grace") and bool(tuning.grace.enabled);_grace_waited=0
+	if _grace_on and not growth.set_grace(tuning.grace):errors.assign(growth.errors);return false
 	_record("chapter_started")
 	return true
 
@@ -360,8 +365,52 @@ func _progress_guardian() -> void:
 ## R5: throw the standing grace offer away for a new one. Only in the choice mode, only while re-draws are left.
 func reroll_offer(token: String) -> bool:
 	if mode!="choice" or not growth.reroll(token):return false
-	_emit("grace_reroll",hero.position,{"left":growth.rerolls_left()})
+	var details := {"left":growth.rerolls_left()}
+	if _grace_on:details.spin=growth.spins()
+	_emit("grace_reroll",hero.position,details)
+	_drain_growth_events()
 	return true
+
+## D13 K3a: take a card out of this run's pool for good (the slot is refilled), or set one aside for the next offer.
+## Both need the choice mode and a live offer token; the counts are in grace_tools().
+func banish_offer(token: String,card_id: String) -> bool:
+	if mode!="choice" or not growth.banish(token,card_id):return false
+	_drain_growth_events();return true
+
+func hold_offer(token: String,card_id: String) -> bool:
+	if mode!="choice" or not growth.hold(token,card_id):return false
+	_drain_growth_events();return true
+
+## The luck parts that raise the grade chances (D13 4.11.3). Nothing calls this yet: the shrine (W5-a), the reward stage (W5-b)
+## and the gear (K6) will. Rejected while the grades are off.
+func set_grace_luck(shrine_mul_bps: int,reward_grade: int,gear_bps: int) -> bool:
+	if not growth.set_grade_luck(shrine_mul_bps,reward_grade,gear_bps):errors.assign(growth.errors);return false
+	return true
+
+## Read only, for the choice screen (D13 4.4 (7), 4.11.5). {"enabled":false,...} while grace is off. Draws nothing.
+## {enabled, grades_enabled, rerolls_left, banishes_left, holds_left, held_card_id, banished:[id], banish_would_refill:{id:bool},
+##  banishable:{id:bool}, final (the standing offer is the last, big one), waiting_until (tick, 0 = not waiting), held_dropped,
+##  and with the grades on: spin, has_jackpot, forced_by_pity, odds:{jackpot_bps,rare_bps,shrine_mul_bps,parts,capped},
+##  pity:{spins,hard_after,soft_step_bps}, near_bps, luck, offer_cards:{card id: grade fields, same as run_spells_view().offer[id]}}
+func grace_tools() -> Dictionary:
+	var view: Dictionary=growth.grace_view()
+	if not _grace_on:return view
+	var wait_until := 0
+	if _choice_tick>=0 and int(tuning.grace.min_gap_ticks)>0 and not growth.snapshot().pending_levels.is_empty() and not growth.is_final_level(growth.next_pending_level()):
+		wait_until=maxi(0,_choice_tick+int(tuning.grace.min_gap_ticks))
+		if tick>=wait_until:wait_until=0
+	view.waiting_until=wait_until
+	return view
+
+## D13 K3a gap: after a pick the next level waits min_gap_ticks (grace.min_gap_ticks, 0 = off); the last level never waits.
+func _grace_ready() -> bool:
+	if not _grace_on or int(tuning.grace.min_gap_ticks)<=0 or _choice_tick<0:return true
+	var level: int=growth.next_pending_level()
+	var until: int=_choice_tick+int(tuning.grace.min_gap_ticks)
+	if level<=0 or growth.is_final_level(level) or tick>=until:return true
+	if _grace_waited!=level:
+		_grace_waited=level;_emit("grace_waiting",hero.position,{"level":level,"until_tick":until})
+	return false
 
 func rerolls_left() -> int:
 	return growth.rerolls_left()
@@ -1143,6 +1192,8 @@ func snapshot() -> Dictionary:
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
 	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
 	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
+	# The grace gap's own clock exists only while the grace block is on.
+	if _grace_on:result.grace_gap={"last_choice":_choice_tick}
 	# Build keys exist only in a run that was given a build; without one the snapshot is the old one.
 	if _build_active:
 		var pairs: Array=[];var ids: Array=_build.ranks.keys();ids.sort()

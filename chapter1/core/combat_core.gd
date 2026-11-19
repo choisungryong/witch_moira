@@ -122,6 +122,7 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 		return false
 	_epoch += 1
 	tick = 0
+	_choice_tick = -1
 	kills = 0
 	mode = "playing"
 	hero = {"position":Vector2.ZERO,"hp_raw":120*UNIT,"max_hp_raw":120*UNIT,"speed":5.8,"direction":Vector2.UP}
@@ -216,11 +217,25 @@ func _refresh_mode() -> void:
 		mode = "inventory" if _inventory_open and _terminal_mode == "victory" else _terminal_mode
 	elif _paused: mode = "paused"
 	elif _inventory_open: mode = "inventory"
-	elif not growth.snapshot().pending_levels.is_empty(): mode = "choice"
+	elif not growth.snapshot().pending_levels.is_empty() and _grace_ready(): mode = "choice"
 	else: mode = "playing"
 
+## D13 K3a: may the next pending level open its choice now? Always, here; the chapter core overrides this for the grace gap.
+func _grace_ready() -> bool:
+	return true
+
+## Tick of the latest card pick (-1 before the first); the grace gap counts from it. Reaches the snapshot only through the chapter core's grace key.
+var _choice_tick := -1
+
+## Events the grace rules queued in the growth (grades pulled, jackpot, banish, hold, last offer) become core events.
+func _drain_growth_events() -> void:
+	for event in growth.take_events(): _emit(String(event.type),hero.position,event.data)
+
 func get_offer() -> Dictionary:
-	return growth.next_offer() if mode == "choice" else {}
+	if mode != "choice": return {}
+	var offer: Dictionary = growth.next_offer()
+	_drain_growth_events()
+	return offer
 
 func choose(token: String, card_id: String) -> bool:
 	if mode != "choice": return false
@@ -230,6 +245,8 @@ func choose(token: String, card_id: String) -> bool:
 		if card.id == card_id: picked = {"kind":String(card.kind),"skill_id":String(card.get("skill_id","")),"title_key":String(card.title_key),"rank":int(card.get("rank",0)),"axis":String(card.get("axis","")),"level":int(card.get("level",0))}
 	if not growth.choose(token,card_id): return false
 	_emit("growth",hero.position,{"card_id":card_id,"card":picked,"growth":growth.snapshot()})
+	_drain_growth_events()
+	_choice_tick = tick
 	_refresh_mode()
 	return true
 

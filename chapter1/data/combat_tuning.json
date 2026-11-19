@@ -85,5 +85,27 @@
     "trial": {"enabled": false, "hold_ticks": 2700, "radius_m": 12.0, "amount": 10, "interval_ticks": 30,
               "alive_cap": 100, "hp_bps": 38000, "mix": {"walker": 66, "ranged": 20, "charger": 14}, "clear_ticks": 180},
     "boss": {"phase_break_ticks": 120}
+  },
+  "grace": {
+    "enabled": false,
+    "balance_status": "가설. N1 뒤 확정 (D13 4.3, 4.11)",
+    "evolve_min_level": 7,
+    "final_offer": {"mode": "big", "cards": 4, "protect_order": ["evolve_keystone", "evolve", "passive", "axis", "survival"]},
+    "min_gap_ticks": 0,
+    "tools": {"base_rerolls": 1, "base_banishes": 1, "base_holds": 0, "banish_kinds": ["unlock", "axis", "rank", "survival", "link", "pact"]},
+    "survival_from_level": 8, "pact_from_level": 8, "link_slots": 2,
+    "grades": {
+      "enabled": false,
+      "kinds": ["unlock", "axis", "rank", "survival", "link"],
+      "rare_bps": 2500, "jackpot_bps": 500, "cap_bps": 2500, "near_bps": 300,
+      "pity": {"soft_step_bps": 200, "hard_after_spins": 7},
+      "final_offer_jackpot_mul_bps": 20000,
+      "luck": {"shrine_mul_bps": 15000, "per_reward_grade_bps": 100, "gear_cap_bps": 5000},
+      "rare": {"axis_points": 2, "unlock_points": 1, "rank_points": 1, "scale_bps": 15000},
+      "jackpot": {"form": "resonance",
+                  "base": {"axis_points": 2, "unlock_points": 1, "rank_points": 1, "scale_bps": 20000},
+                  "resonance": {"axis_points": 2, "partner_points": 1, "axis_cap_bonus": 1, "unlock_points": 2, "link_scale_bps": 30000},
+                  "evolve_partner_bonus_bps": 0}
+    }
   }
 }

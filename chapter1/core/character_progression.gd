@@ -3,6 +3,8 @@ extends RefCounted
 ## Level and points are always computed from xp and first-kill receipts, never stored.
 const DEFAULT_PATH := "res://chapter1/data/character_progression.json"
 const SOURCE_KEYS := ["seal_xp", "champion_xp", "boss_xp", "victory_xp"]
+## Optional (D13 G0): extra permanent xp for a winning run, one bps value per reward grade (length 4). Absent = no bonus.
+const GRADE_BONUS_KEY := "grade_bonus_bps"
 
 static func integer_(value: Variant, low: int, high: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and float(value) >= low and float(value) <= high
@@ -40,9 +42,17 @@ static func validate_document(doc: Dictionary) -> Array[String]:
 	if not integer_(doc.get("points_per_level"), 0, 10):
 		errors.append("points_per_level")
 	var sources: Variant = doc.get("sources")
-	if not sources is Dictionary or sources.size() != SOURCE_KEYS.size():
+	if not sources is Dictionary or sources.size() != SOURCE_KEYS.size()+(1 if sources.has(GRADE_BONUS_KEY) else 0):
 		errors.append("sources keys")
 	else:
+		if sources.has(GRADE_BONUS_KEY):
+			var bonus: Variant = sources[GRADE_BONUS_KEY]
+			if not bonus is Array or bonus.size() != 4:
+				errors.append("sources." + GRADE_BONUS_KEY + " must be an array of 4")
+			else:
+				for value in bonus:
+					if not integer_(value, 0, 100000):
+						errors.append("sources." + GRADE_BONUS_KEY + " value out of range")
 		for key in SOURCE_KEYS:
 			if not sources.has(key):
 				errors.append("sources." + key + " missing")
@@ -137,12 +147,19 @@ static func xp_bounds(doc: Dictionary) -> Dictionary:
 	var boss := int(sources.get("boss_xp", 0))
 	var victory := int(sources.get("victory_xp", 0))
 	var curve: Array = doc.get("xp_thresholds", [0])
+	var run_max := seal + champion + boss + victory
+	var grade_bonus: Variant = sources.get(GRADE_BONUS_KEY)
+	if grade_bonus is Array and not grade_bonus.is_empty():
+		var top := 0
+		for value in grade_bonus:
+			top = maxi(top, int(value))
+		run_max = run_max * (10000 + top) / 10000
 	var first_points := 0
 	for id_ in doc.get("first_rewards", {}):
 		first_points += int(doc.first_rewards[id_])
 	return {
 		"seal_total": seal, "champion_total": champion, "boss": boss, "victory": victory,
-		"run_xp_max": seal + champion + boss + victory,
+		"run_xp_max": run_max,
 		"level_cap": int(doc.get("level_cap", 1)),
 		"xp_cap": int(curve[curve.size() - 1]),
 		"points_cap": (int(doc.get("level_cap", 1)) - 1) * int(doc.get("points_per_level", 1)) + first_points,
