@@ -121,12 +121,13 @@ func scenario_a(verify: bool) -> Dictionary:
 	rec.events_dropped = int(run.metrics.get("events_dropped", 0))
 	if not verify: return rec
 	var ids: Array = rec.beats.map(func(b): return b.id)
-	check(ids == ["gi", "seung1", "seung2", "jeon_a"], "A beat_started comes in table order: " + str(ids))
-	if rec.beats.size() == 4:
+	# W1b: the time limit hands over inside the zone only. seung1 is the last beat of zone 0 and its limit (2500) runs out
+	# during the loop, yet seung2 / jeon_a (later zones, the latter with a 60 tick limit on seung2) never start.
+	check(ids == ["gi", "seung1"], "A time limits hand over inside the zone only, never into a later zone's beat: " + str(ids))
+	if rec.beats.size() == 2:
 		check(int(rec.beats[0].tick) == 1, "A the first beat starts on tick 1 (tick %d)" % int(rec.beats[0].tick))
 		check(int(rec.beats[1].tick) == int(rec.beats[0].tick) + 600, "A gi hands over by its time limit (max_ticks 600): %d -> %d" % [int(rec.beats[0].tick), int(rec.beats[1].tick)])
-		check(int(rec.beats[2].tick) == int(rec.beats[1].tick) + 2500, "A seung1 hands over by its time limit: %d -> %d" % [int(rec.beats[1].tick), int(rec.beats[2].tick)])
-		check(int(rec.beats[3].tick) == int(rec.beats[2].tick) + 60, "A seung2 hands over by its time limit: %d -> %d" % [int(rec.beats[2].tick), int(rec.beats[3].tick)])
+		check(int(rec.beats[1].tick) + 2500 < 3300, "A the loop outlasted seung1's time limit (%d)" % int(rec.beats[1].tick))
 	check(int(rec.over_cap) == 0, "A spawning never takes the alive count past the beat's cap (%d violations)" % int(rec.over_cap))
 	check(rec.crests.size() >= 2, "A at least the taste crest and one wave crest happened (%d)" % rec.crests.size())
 	for crest in rec.crests:
@@ -359,6 +360,37 @@ func hp_factor_check() -> void:
 	off._alive = 0
 	off._spawn("walker", Vector2(6, 0))
 	check(off.enemies[off._enemy_sequence].max_hp_raw == 14 * (10000 + 160 * 31) / 10000 * 256, "A with the rhythm off the factor is not read")
+	# W1b: rhythm on, clock factor left at its shipped value (160): the clock must not multiply on top of the beat's factor.
+	var on = make_run(document(false))
+	check(int(on.tuning.hp_time_bps_per_s) == 160, "W1b the shipped clock factor is still 160 in the enabled document")
+	on.enemies.clear()
+	on._alive = 0
+	on.tick = 300 * 60
+	on._spawn_hp_bps = 20000
+	on._spawn("walker", Vector2(6, 0))
+	check(on.enemies[on._enemy_sequence].max_hp_raw == 14 * 2 * 256, "W1b rhythm on: no clock factor on top of hp_bps at 300 s (%d)" % int(on.enemies[on._enemy_sequence].max_hp_raw))
+
+## W1b: with the rhythm on a time limit never crosses a zone border; the last beat of a zone stays.
+func zone_limit_check() -> void:
+	var run := make_run(document(false, func(d):
+		for b in d.rhythm.beats: b.max_ticks = 60))
+	var pilot = Pilot.new()
+	pilot.run = run
+	var seen: Array = []
+	for i in 1200:
+		advance(run, pilot, true)
+		if run.mode != "playing" and run.mode != "choice": break
+		for e in run.events:
+			if e.type == "beat_started" and not seen.has(e.id): seen.append(e.id)
+	check(seen == ["gi", "seung1"] and run.zone == 0, "W1b a beat limit of 60 ticks passes gi -> seung1 and stops at the zone edge: " + str(seen))
+	# the zone border moves the beat only through the zone and seal progress
+	run._beat_index = 1
+	run._beat_tick = 0
+	run.zone = 1
+	run._zone_entered = true
+	run.tick = 5000
+	run._rhythm_tick()
+	check(run._beat_index == 2, "W1b entering zone 1 starts seung2 by zone progress, not by time")
 
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
@@ -367,6 +399,7 @@ func execute() -> void:
 		return
 	validator_checks()
 	hp_factor_check()
+	zone_limit_check()
 	var a1 := scenario_a(true)
 	var a2 := scenario_a(false)
 	check(a1.hash == a2.hash and JSON.stringify(a1.beats) == JSON.stringify(a2.beats) and JSON.stringify(a1.crests) == JSON.stringify(a2.crests), "C scenario A twice with the same seed: same snapshot, beats and crests")

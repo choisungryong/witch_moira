@@ -424,7 +424,8 @@ func _spawn(kind: String,point: Vector2) -> bool:
 		var z := clampi(zone,0,2)
 		var hp := int(rules.hp[z])
 		if _rhythm_on:hp=maxi(1,hp*_spawn_hp_bps/10000)
-		var bps := int(tuning.hp_time_bps_per_s)
+		# With the rhythm on the beat's hp_bps is the only health rise; the clock factor is not used (D11 A4, 2026-11-19).
+		var bps := 0 if _rhythm_on else int(tuning.hp_time_bps_per_s)
 		if kind=="walker" and tick<int(rules.opening_until_s)*HZ:hp=int(rules.opening_hp)
 		elif bps>0 and tick>=int(tuning.hp_time_from_s)*HZ:hp=maxi(1,hp*(10000+bps*(tick/HZ))/10000)
 		definition.hp=hp;definition.damage=int(rules.damage[z]);definition.speed=float(rules.speed[z])
@@ -493,7 +494,8 @@ func _rhythm_tick() -> void:
 		if int(beat.zone)<zone or (int(beat.zone)==zone and bps>=int(beat.from_bps)):candidate=i
 	var target := _beat_index
 	if candidate>_beat_index:target=candidate
-	elif _beat_index>=0 and _beat_index+1<beats.size() and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
+	# The time limit only hands over to the next beat of the same zone; the last beat of a zone stays (D11 A4, 2026-11-19).
+	elif _beat_index>=0 and _beat_index+1<beats.size() and int(beats[_beat_index+1].zone)==int(beats[_beat_index].zone) and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
 	if target!=_beat_index:
 		_beat_index=target;_beat_tick=tick;_wave_index=-1;_in_lull=false;_taste_done=false
 		_emit("beat_started",hero.position,{"id":String(beats[target].id)})
