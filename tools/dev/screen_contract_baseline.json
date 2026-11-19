@@ -1,0 +1,4 @@
+{
+  "_note": "tools/dev/screen_contract_check.py: the most each screen file may read (run/growth words, private fields, Color( literals, get_child(number), preload of core/ or app/). A count above this fails; no entry means 0. Lower it when you remove something. Rewrite with --update-baseline [--add=<file>].",
+  "files": {}
+}

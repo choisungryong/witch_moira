@@ -21,6 +21,12 @@ is reported as a failure, not as a pass. A check whose result never arrives
     other Godot processes running (other agents, other checks) they are reference values only.
 A result that a --changed run did not look at is not a pass: the RUN_ALL line carries "selected": true and the
 omitted checks are listed.
+
+Environment failures (TECH-REVIEW-20261120 M5): a check whose result shows WinError 1450, exit code 3221225477 (0xC0000005) or
+3221225794 (0xC0000142), a seat or import-lock timeout (repo_lock.py) is run once more. If the second run passes, the row says
+"pass(env-retry)" (counted as a pass, named in the RUN_ALL line under "env_retry"); if it fails again for the same kind of reason the
+row says "FAIL(env)" (counted as failed, named under "env_fail"). A failure that is not of that kind stays a plain "FAIL".
+Every Godot process takes a machine-wide seat (default 6, MOIRA_GODOT_SLOTS) and waits for a running import of this work tree.
 """
 from pathlib import Path
 import argparse, concurrent.futures, datetime, json, os, re, subprocess, sys, threading, time
@@ -28,6 +34,7 @@ import argparse, concurrent.futures, datetime, json, os, re, subprocess, sys, th
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from isolated_env import isolated_env
 import godot_guard
+import repo_lock
 
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path(os.environ.get('MOIRA_GODOT', 'C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe'))
@@ -45,7 +52,7 @@ ALIASES = {
     'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'grace', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
-    'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest'],
+    'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest', 'screen-contract'],
     'records': ['tools-selftest', 'wording', 'decisions', 'asset-ledger', 'audio-ledger'],
     'quick': None,  # every check that --quick keeps; filled in by resolve_names()
 }
@@ -86,12 +93,12 @@ CHANGE_TABLE = [
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording', 'screen-contract'],
     'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
     'app': ['loc', 'app-guard', 'app-loadout', 'playlog', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
-    'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger'],
+    'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger', 'screen-contract'],
     'manager': ['manager'],
     'docs': 'quick',
     'none': [],
@@ -144,18 +151,57 @@ def checks():
         {'name': 'decisions', 'kind': 'decisions', 'timeout': 120, 'slow': False},
         {'name': 'asset-ledger', 'kind': 'asset-ledger', 'timeout': 120, 'slow': False},
         {'name': 'audio-ledger', 'kind': 'audio-ledger', 'timeout': 120, 'slow': False},
+        # Screen contracts (docs/SCREEN-DESIGN-HARNESS.ko.md 6): fixtures against the schema, what the screen files read, text contrast.
+        {'name': 'screen-contract', 'kind': 'screen-contract', 'timeout': 420, 'slow': False},
     ]
+
+
+# ---------------------------------------------------------------------------------------------------- environment failures
+
+ENV_EXIT_CODES = (3221225477, 3221225794)  # 0xC0000005 access violation, 0xC0000142 DLL initialization failed
+ENV_TEXT = re.compile(r'WinError 1450|\b3221225477\b|\b3221225794\b|0xC0000005|0xC0000142')
+ENV_RETRY_MARK = '[env-retry: %s]'  # a runner that retried inside itself (tools-selftest) says so with this; done_task turns it into pass(env-retry)
+
+
+def env_hint(code, text):
+    """' [env: ...]' when an exit code or text shows an environment failure, else ''. Added to the detail of a failed runner."""
+    if code in ENV_EXIT_CODES:
+        return ' [env: exit %d]' % code
+    found = ENV_TEXT.search(text or '')
+    return ' [env: %s]' % found.group(0) if found else ''
+
+
+def env_reason(out):
+    """Why a unit's output looks like an environment failure (a short text), or None. A passing output is never one."""
+    if isinstance(out, dict):
+        if out.get('env'):
+            return out['env']
+        if 'exception' in out:
+            found = ENV_TEXT.search(out['exception'])
+            return found.group(0) if found else None
+        code = out.get('code')
+        if code in ENV_EXIT_CODES:
+            return 'exit %d' % code
+        found = ENV_TEXT.search(out.get('text') or '') if code != 0 else None
+        return found.group(0) if found else None
+    if isinstance(out, tuple) and len(out) == 2 and not out[0]:
+        found = ENV_TEXT.search(str(out[1]))
+        return found.group(0) if found else None
+    return None
 
 
 # ---------------------------------------------------------------------------------------------------- processes
 
-def run_process(script, extra, timeout, purpose):
+def run_process(script, extra, timeout, purpose, cwd=None):
     """One Godot process with its own APPDATA folder. Returns {'timeout': bool, 'code': int|None, 'text': str}."""
     command = [str(GODOT), '--headless', '--path', str(ROOT), '--script', script]
     if extra:
         command += ['--'] + list(extra)
     # The whole process tree is ended on a timeout: ending only the console parent leaves the engine child (and its window) running.
-    code, out, timed_out = godot_guard.run_guarded(command, timeout, env=isolated_env('run_all_' + purpose), capture=True)
+    try:
+        code, out, timed_out = godot_guard.run_seated(command, timeout, env=isolated_env('run_all_' + purpose), capture=True, label=purpose, cwd=cwd)
+    except repo_lock.LockTimeout as error:  # no seat or an import that did not end: an environment failure, not a verdict on the check
+        return {'timeout': 0, 'code': None, 'text': str(error), 'env': str(error).split(' ', 1)[0]}
     text = (out or b'').decode('utf-8', 'replace')
     if timed_out:
         return {'timeout': timeout, 'code': None, 'text': text}
@@ -221,6 +267,8 @@ def run_manager(check):
     ran = re.search(r'Ran (\d+) tests?', text)
     failed = re.findall(r'^(?:FAIL|ERROR): (\w+)', text, re.M)
     detail = (ran.group(1) + ' tests' if ran else 'no summary') + (', failed: ' + ', '.join(failed) if failed else '')
+    if done.returncode != 0:
+        detail += env_hint(done.returncode, text)
     return done.returncode == 0, detail
 
 
@@ -233,7 +281,7 @@ def run_i18n_scan(check):
     text = done.stdout.decode('utf-8', 'replace')
     found = re.search(r'I18N_SCAN (\{.*\})', text)
     if not found:
-        return False, 'no result line'
+        return False, 'no result line' + env_hint(done.returncode, text + done.stderr.decode('utf-8', 'replace'))
     result = json.loads(found.group(1))
     detail = '%d files, %d Hangul literals (baseline %d)' % (result['files'], result['total'], result['baseline_total'])
     if result['grown']:
@@ -248,7 +296,8 @@ def run_glyphs(check):
     except subprocess.TimeoutExpired:
         return False, 'timeout after %ds' % check['timeout']
     lines = done.stdout.decode('utf-8', 'replace').strip().splitlines()
-    return done.returncode == 0, (lines[0] if done.returncode else '') + (' · ' if done.returncode else '') + (lines[-1] if lines else 'no output')
+    detail = (lines[0] if done.returncode else '') + (' · ' if done.returncode else '') + (lines[-1] if lines else 'no output')
+    return done.returncode == 0, detail + (env_hint(done.returncode, done.stderr.decode('utf-8', 'replace')) if done.returncode else '')
 
 
 def run_tool(check, args):
@@ -268,16 +317,65 @@ def run_tools_selftest(check):
         results = list(pool.map(lambda path: run_tool(check, [str(path)]), files))
     # A file that fails while four run side by side gets one more run on its own: under a loaded machine these self tests have failed
     # once and passed alone (2026-11-21). A retried file is named in the result so a real flake does not stay hidden.
-    retried = []
+    retried, first_run = [], {}
     for index, path in enumerate(files):
         if results[index][0] != 0:
             retried.append(path.name)
+            first_run[path.name] = results[index]
             results[index] = run_tool(check, [str(path)])
-    failed = [path.name + (' (' + text + ')' if code is None else '') for path, (code, text) in zip(files, results) if code != 0]
+    failed = [path.name + (' (' + text + ')' if code is None else '') + env_hint(code, text) for path, (code, text) in zip(files, results) if code != 0]
     note = ', failed: ' + ', '.join(failed) if failed else ''
-    if retried:
-        note += ', passed on a second run alone: ' + ', '.join(name for name in retried if name not in ' '.join(failed)) if len(retried) > len(failed) else ''
+    rescued = [name for name in retried if name not in ' '.join(failed)]
+    if rescued:
+        # what the first run said (its last line) stays in the result, so a flake is not only a name; an environment sign makes it an env-retry
+        tails = []
+        for name in rescued:
+            lines = [l.strip() for l in (first_run[name][1] or '').splitlines() if l.strip()]
+            tails.append('%s [first run: %s]' % (name, (lines[-1] if lines else 'no output')[:120]))
+        note += ', passed on a second run alone: ' + ', '.join(tails)
+        reasons = [env_hint(*first_run[name]).strip() for name in rescued if env_hint(*first_run[name])]
+        if reasons:
+            note += ' ' + ENV_RETRY_MARK % reasons[0].strip('[]').replace('env: ', '')
     return not failed and bool(files), '%d files%s' % (len(files), note)
+
+
+CONTRACT_TEST = 'res://chapter1/tests/test_screen_contracts.gd'
+CONTRACT_TEST_RESULT = 'CHAPTER1_SCREEN_CONTRACTS_RESULT'
+
+
+def run_screen_contract(check):
+    """The contract checker (tools/dev/screen_contract_check.py). When chapter1/tests/test_screen_contracts.gd exists it is run
+    first (isolated, seated) to write the real adapter outputs, which the checker then reads with --dumps."""
+    command = [str(ROOT / 'tools' / 'dev' / 'screen_contract_check.py')]
+    dumps_note = 'dumps 0 (test missing)'
+    if (ROOT / 'chapter1' / 'tests' / 'test_screen_contracts.gd').is_file():
+        out_dir = '_local/run-all-fixtures/contracts-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        proc = run_process(CONTRACT_TEST, ['--out=' + out_dir], 300, 'screen-contract', cwd=ROOT)
+        if proc['timeout']:
+            return False, timeout_detail(proc)
+        found = re.search(CONTRACT_TEST_RESULT + r' (\{.*\})', proc['text'])
+        error = re.search(r'SCRIPT ERROR: (.+)', proc['text'])
+        if proc.get('env') or not found or proc['code'] != 0 or error:
+            what = 'SCRIPT ERROR: ' + error.group(1).strip() if error else 'no result line (exit %s)' % proc['code']
+            return False, 'contract test: ' + what + (' [env: %s]' % proc['env'] if proc.get('env') else env_hint(proc['code'], proc['text']))
+        failures = json.loads(found.group(1)).get('failures', [])
+        if failures:
+            return False, 'contract test: %d failures · %s' % (len(failures), str(failures[0])[:200])
+        command.append('--dumps=' + str(ROOT / out_dir))
+        dumps_note = ''
+    code, text = run_tool(check, command)
+    if code is None:
+        return False, text
+    found = re.search(r'^SCREEN_CONTRACT (\{.*\})\s*$', text, re.M)
+    if not found:
+        return False, 'no result line (exit %d)' % code
+    result = json.loads(found.group(1))
+    detail = '%d screens, %d fixtures, %d dumps, %d failures' % (result['screens'], result['fixtures'], result['dumps'], len(result['failures']))
+    if result.get('unchecked_fixtures'):
+        detail += ' · %d fixtures without a schema yet (not checked)' % result['unchecked_fixtures']
+    if result['failures']:
+        detail += ' · ' + str(result['failures'][0])[:200]
+    return code == 0 and not result['failures'], detail + (' · ' + dumps_note if dumps_note else '')
 
 
 def run_wording(check):
@@ -433,18 +531,40 @@ def build_tasks(selected, jobs, golden_files):
             tasks.append(Task([name], [unit], lambda outs, c=check: {c['name']: parse_godot(c, outs[0])}))
         else:
             runner = {'python': run_manager, 'i18n-scan': run_i18n_scan, 'glyphs': run_glyphs, 'tools-selftest': run_tools_selftest, 'wording': run_wording,
-                      'decisions': run_decisions, 'asset-ledger': run_asset_ledger, 'audio-ledger': run_audio_ledger}[check['kind']]
+                      'decisions': run_decisions, 'asset-ledger': run_asset_ledger, 'audio-ledger': run_audio_ledger, 'screen-contract': run_screen_contract}[check['kind']]
             tasks.append(Task([name], [(name, weight, lambda c=check, r=runner: r(c))], lambda outs, c=check: {c['name']: outs[0]}))
     return tasks
 
 
-def run_unit(fn):
+def run_unit(fn, label='unit', pause=3.0):
+    """Runs one unit. An output that shows an environment failure is run once more (M5). Returns (output, started, ended, env)
+    where env is None, ('retry', reason) when the second run was not an environment failure, or ('fail', reason) when it was."""
     started = time.time()
-    try:
-        out = fn()
-    except Exception as error:  # a crashing runner must not take the other checks' results with it
-        out = {'exception': '%s: %s' % (type(error).__name__, error)}
-    return out, started, time.time()
+
+    def attempt():
+        try:
+            return fn()
+        except Exception as error:  # a crashing runner must not take the other checks' results with it
+            return {'exception': '%s: %s' % (type(error).__name__, error)}
+
+    out = attempt()
+    env = None
+    reason = env_reason(out)
+    if reason:
+        print('ENV_RETRY %s: %s, running it once more' % (label, reason), flush=True)
+        time.sleep(pause)
+        out = attempt()
+        again = env_reason(out)
+        env = ('fail', again) if again else ('retry', reason)
+    return out, started, time.time(), env
+
+
+def status_of(passed, envs):
+    """Row status. pass(env-retry): passed after an environment failure; FAIL(env): failed and the last run was one too."""
+    envs = [e for e in envs if e]
+    if passed:
+        return 'pass(env-retry)' if envs else 'pass'
+    return 'FAIL(env)' if any(e[0] == 'fail' for e in envs) else 'FAIL'
 
 
 def finish_task(task, outputs):
@@ -463,9 +583,10 @@ def finish_task(task, outputs):
 
 
 def execute(tasks, jobs, emit):
-    """Runs every unit; calls emit(name, passed, detail, seconds) when all units of a task are done."""
+    """Runs every unit; calls emit(name, status, detail, seconds) when all units of a task are done."""
     outputs = {i: [None] * len(task.units) for i, task in enumerate(tasks)}
     spans = {i: [] for i in range(len(tasks))}
+    envs = {i: [] for i in range(len(tasks))}
     remaining = {i: len(task.units) for i, task in enumerate(tasks)}
 
     def done_task(i):
@@ -473,29 +594,38 @@ def execute(tasks, jobs, emit):
         rows = finish_task(task, outputs[i])
         seconds = max(s[1] for s in spans[i]) - min(s[0] for s in spans[i]) if spans[i] else 0
         for name in task.names:
-            emit(name, rows[name][0], rows[name][1], seconds)
+            passed, detail = rows[name]
+            status = status_of(passed, envs[i])
+            if status == 'pass' and '[env-retry:' in detail:  # the runner retried inside itself and saw an environment failure
+                status = 'pass(env-retry)'
+            marks = [e[1] for e in envs[i] if e]
+            if marks and status != 'pass':
+                detail += ' · env: ' + marks[0]
+            emit(name, status, detail, seconds)
 
     if jobs <= 1:
         for i, task in enumerate(tasks):
             for j, unit in enumerate(task.units):
-                out, begin, end = run_unit(unit[2])
+                out, begin, end, env = run_unit(unit[2], unit[0])
                 outputs[i][j] = out
                 spans[i].append((begin, end))
+                envs[i].append(env)
             done_task(i)
         return
     lock = threading.Lock()
     order = sorted(((i, j) for i, task in enumerate(tasks) for j in range(len(task.units))), key=lambda p: -tasks[p[0]].units[p[1]][1])
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
-        futures = {pool.submit(run_unit, tasks[i].units[j][2]): (i, j) for i, j in order}
+        futures = {pool.submit(run_unit, tasks[i].units[j][2], tasks[i].units[j][0]): (i, j) for i, j in order}
         for future in concurrent.futures.as_completed(futures):
             i, j = futures[future]
             try:
-                out, begin, end = future.result()
+                out, begin, end, env = future.result()
             except Exception as error:
-                out, begin, end = {'exception': '%s: %s' % (type(error).__name__, error)}, time.time(), time.time()
+                out, begin, end, env = {'exception': '%s: %s' % (type(error).__name__, error)}, time.time(), time.time(), None
             with lock:
                 outputs[i][j] = out
                 spans[i].append((begin, end))
+                envs[i].append(env)
                 remaining[i] -= 1
                 if remaining[i] == 0:
                     done_task(i)
@@ -596,15 +726,21 @@ def main():
         golden_files.append('--golden-textless=' + options.golden_textless_file)
     if jobs > 1 and any(check['kind'] == 'godot' for check in selected):
         # Parallel Godot processes must not all try to import at once: bring the cache up to date first.
-        done = subprocess.run([sys.executable, str(ROOT / 'tools' / 'dev' / 'run_dev.py'), '--import-only'], capture_output=True)
-        print('IMPORT exit=%d' % done.returncode, flush=True)
+        command = [sys.executable, str(ROOT / 'tools' / 'dev' / 'run_dev.py'), '--import-only']
+        done = subprocess.run(command, capture_output=True)
+        retried = done.returncode != 0
+        if retried:  # a failed import is an environment failure (M5): once more, and say so
+            print('IMPORT exit=%d, running it once more (env-retry)' % done.returncode, flush=True)
+            time.sleep(3)
+            done = subprocess.run(command, capture_output=True)
+        print('IMPORT exit=%d%s' % (done.returncode, (' (env-retry)' if done.returncode == 0 else ' FAIL(env)') if retried else ''), flush=True)
         if done.returncode != 0:
             print(done.stdout.decode('utf-8', 'replace')[-2000:])
             raise SystemExit(done.returncode)
     tasks = build_tasks(selected, jobs, golden_files)
 
-    def emit(name, passed, detail, seconds):
-        summary[name] = {'name': name, 'status': 'pass' if passed else 'FAIL', 'detail': detail, 'seconds': round(seconds, 1)}
+    def emit(name, status, detail, seconds):
+        summary[name] = {'name': name, 'status': status, 'detail': detail, 'seconds': round(seconds, 1)}
         row = summary[name]
         print('%-8s %-7s %6.1fs  %s' % (row['name'], row['status'], row['seconds'], row['detail']), flush=True)
 
@@ -621,8 +757,12 @@ def main():
         elif check in selected:  # a selected check that produced no row at all counts as failed
             rows.append({'name': name, 'status': 'FAIL', 'detail': 'no result', 'seconds': 0})
             print('%-8s %-7s %6.1fs  %s' % (name, 'FAIL', 0, 'no result'), flush=True)
-    failed = [row['name'] for row in rows if row['status'] == 'FAIL']
-    line = {'passed': sum(row['status'] == 'pass' for row in rows), 'failed': failed, 'skipped': [row['name'] for row in rows if row['status'] == 'skipped']}
+    failed = [row['name'] for row in rows if row['status'].startswith('FAIL')]
+    line = {'passed': sum(row['status'].startswith('pass') for row in rows), 'failed': failed, 'skipped': [row['name'] for row in rows if row['status'] == 'skipped']}
+    if any(row['status'] == 'pass(env-retry)' for row in rows):
+        line['env_retry'] = [row['name'] for row in rows if row['status'] == 'pass(env-retry)']
+    if any(row['status'] == 'FAIL(env)' for row in rows):
+        line['env_fail'] = [row['name'] for row in rows if row['status'] == 'FAIL(env)']
     if options.changed:
         line['selected'] = True
         line['omitted'] = omitted

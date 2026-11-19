@@ -288,9 +288,22 @@ class ServerTests(unittest.TestCase):
             report = server.stale_report(started, app)
             self.assertTrue(report['stale'])
             self.assertEqual((report['changed'], report['added']), (['catalog.py'], ['new_module.py']))
-        status, body = self.get('/api/server')
-        self.assertEqual(status, 200)
-        self.assertFalse(json.loads(body)['stale'])
+        # The HTTP route reads server.APP; point it (and the snapshot the server took at start-up) at a fake folder, so that
+        # another agent editing the real tools/manager/*.py while this runs cannot make the route report "stale".
+        with tempfile.TemporaryDirectory() as d:
+            fake = Path(d)
+            (fake / 'catalog.py').write_text('a = 1', encoding='utf-8')
+            real_app, real_started = server.APP, self.srv.code_started
+            server.APP = fake
+            self.srv.code_started = server.code_snapshot(fake)
+            try:
+                status, body = self.get('/api/server')
+                self.assertEqual(status, 200)
+                self.assertFalse(json.loads(body)['stale'])
+                (fake / 'catalog.py').write_text('a = 22', encoding='utf-8')
+                self.assertTrue(json.loads(self.get('/api/server')[1])['stale'])
+            finally:
+                server.APP, self.srv.code_started = real_app, real_started
 
     def test_files_allow_list_and_escape(self):
         self.assertEqual(self.get('/files/chapter1/art/characters/frost_witch_v02.png')[0], 200)

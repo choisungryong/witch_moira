@@ -6,8 +6,13 @@ only the parent (what subprocess.run(timeout=) does) leaves the child window on 
 Default limits (seconds): window run 1200, headless run 2400. The longest normal run is run_all's run-spells-full,
 about 16-20 minutes headless (its own run_all limit is 2400); a window run is a capture or a frame probe of a few minutes.
 Override: --timeout-s=N before "--" (godot.py), or the environment variable MOIRA_GODOT_TIMEOUT_S. 0 means no limit.
+
+run_seated() / run_import() add the lock files of repo_lock.py around run_guarded(): a machine-wide Godot seat (default 6,
+MOIRA_GODOT_SLOTS) and the work tree's import lock. They raise repo_lock.LockTimeout when a seat or the lock is not free in time.
 """
 import os, subprocess, sys
+
+import repo_lock
 
 DEFAULT_WINDOW_S = 1200
 DEFAULT_HEADLESS_S = 2400
@@ -78,3 +83,18 @@ def run_guarded(command, timeout, env=None, cwd=None, capture=False):
         kill_tree(proc.pid)
         raise
     return proc.returncode, out if capture else None, False
+
+
+def run_seated(command, timeout, env=None, cwd=None, capture=False, label='godot', seat_dir=None, lock_dir=None):
+    """run_guarded() inside one machine-wide Godot seat and after any import of this work tree has finished.
+    Same return value. Raises repo_lock.LockTimeout (message starts with GODOT_SLOT or IMPORT_LOCK)."""
+    with repo_lock.seat(label, locks_dir=seat_dir):
+        with repo_lock.run_guard(label, locks_dir=lock_dir):
+            return run_guarded(command, timeout, env=env, cwd=cwd, capture=capture)
+
+
+def run_import(command, timeout, env=None, cwd=None, capture=False, label='import', seat_dir=None, lock_dir=None):
+    """run_guarded() for `godot --import`: one seat (taken first, so a waiting run never blocks the import) and the import lock."""
+    with repo_lock.seat(label, locks_dir=seat_dir):
+        with repo_lock.import_lock(label, locks_dir=lock_dir):
+            return run_guarded(command, timeout, env=env, cwd=cwd, capture=capture)

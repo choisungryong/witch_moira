@@ -34,6 +34,8 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/run_dev.py` | 게임을 임포트하고 띄운다 | Dev loop: import the project when needed, then run the game from the repository root. | `python tools/dev/run_dev.py -- --chapter1-start`<br>`python tools/dev/run_dev.py --resolution 1920x1080 -- --chapter1-start --chapter1-pilot --chapter1-profile-off` |
 | `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60` |
 | `tools/dev/disk_report.py` | 디스크 사용 표(저장소·worktree별 큰 폴더, 지워도 되는지). --clean은 지울 목록만, --apply를 줘야 재생성 가능한 캐시만 삭제(저장·HANDOVER·recheck·ref·24시간 내 사용·살아 있는 프로세스는 절대 안 지움) | Disk use of the repository and its .claude/worktrees: a fast size table, a worktree table, and a guarded clean-up of regenerable caches. | `python tools/dev/disk_report.py`<br>`python tools/dev/disk_report.py --worktrees` |
+| `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60 --kill-stale --dry-run` |
+| `tools/dev/repo_lock.py` | Godot 동시 실행 좌석(기계 전체, 기본 6, MOIRA_GODOT_SLOTS)과 임포트 잠금(작업 폴더별). godot.py·run_all.py·run_dev.py가 알아서 씀. 기다린다는 한 줄이 찍히면 정상 | Lock files that keep Godot processes from tripping over each other (TECH-REVIEW-20261120 M2 and M3). |  |
 
 ## 기술 관리(tech-lead)
 
@@ -45,6 +47,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/golden_core.gd` | 코어 동작이 바뀌었는지 해시로 확인 | Golden replay of the runtime core. Same seed + same input policy must give the | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd` |
 | `tools/dev/check_glyphs.py` | 화면 글자가 글꼴에 다 있는지 | L3-c: every character the game can print must exist in the bundled font chain. | `python tools/dev/check_glyphs.py`<br>`python tools/dev/check_glyphs.py --verbose` |
 | `tools/dev/i18n_scan.py` | 코드 안 한글 리터럴이 늘었는지(번역 틀 지키기) | Count Hangul string literals in product GDScript files and compare with a baseline. | `python tools/dev/i18n_scan.py`<br>`python tools/dev/i18n_scan.py --update` |
+| `tools/dev/screen_contract_check.py` | 화면 계약 검사: 픽스처가 스키마를 따르는가, 변형이 다 있는가, 화면 파일이 코어(run·사적 필드·Color 리터럴)를 읽는 수(기준선보다 늘면 실패), 글자 대비 | Screen contract checker (docs/SCREEN-DESIGN-HARNESS.ko.md 6 T-1, docs/specs/T8-screen-contract-structure-20261120.ko.md 4). | `python tools/dev/screen_contract_check.py`<br>`python tools/dev/screen_contract_check.py --dumps=<folder>` |
 | `tools/dev/check_build.py` | 만든 빌드의 점검 | Checks for a finished build (T4-Q). Nothing here opens a window and nothing touches %APPDATA%/WitchMoira. | `python tools/dev/build.py --preset qa`<br>`python tools/dev/build.py --preset store --stamp S` |
 | `tools/dev/build.py` | Windows 실행 파일 만들기(다른 에이전트가 쓰는 작업 트리에서는 돌리지 않음) | Build a Windows executable with Godot's export. | `python tools/dev/build.py --preset store`<br>`python tools/dev/build.py --preset qa` |
 

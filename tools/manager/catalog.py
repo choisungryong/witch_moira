@@ -1055,7 +1055,7 @@ def check_names(text):
         out.append((m.group(1), 'Godot 실행', m.group(2).replace('res://', ''), 'slow=True' in m.group(4)))
     for m in re.finditer(r"\{'name': '([\w-]+)', 'kind': '([\w-]+)', 'timeout': \d+, 'slow': (True|False)\}", text):
         out.append((m.group(1), {'python': '파이썬 검사', 'i18n-scan': '번역 글 검사', 'glyphs': '글자 검사', 'tools-selftest': '도구 자체 검사', 'wording': '낱말 검사',
-                                                  'decisions': '결정 번호 검사', 'asset-ledger': '에셋 원장 검사', 'audio-ledger': '소리 원장 검사'}.get(m.group(2), m.group(2)), '', m.group(3) == 'True'))
+                                                  'decisions': '결정 번호 검사', 'asset-ledger': '에셋 원장 검사', 'audio-ledger': '소리 원장 검사', 'screen-contract': '화면 계약 검사'}.get(m.group(2), m.group(2)), '', m.group(3) == 'True'))
     return out
 
 
