@@ -1,0 +1,185 @@
+{
+ "screen": "title",
+ "contract_version": 0,
+ "requested": [
+  "witches[].line (1st person line; narrative-lead 7.2 recommended text, cut where it was longer than 28 chars)",
+  "witches[].confirm_line (narrative-lead 7.4 recommended text)",
+  "witches[].traits (design-lead; 7.3 one-line character used as the summary, traits are my stand-ins)",
+  "witches[].costume {owned,total,worn_id} (T5 schema 4)",
+  "witches[].devil {image,kind,eyes} (proposal-only: draft paintings read from _local/art/drafts at run time; frost has no figure = code hand)",
+  "devil_mode: none | face | shade (BRIEF 3.5.4; narrative-lead decides whether the contract demon may be shown here)",
+  "title_autoswap, confirm_line_on (proposal switches, director decides)",
+  "last_played (profile field, not in the save yet)",
+  "build",
+  "settings.motion"
+ ],
+ "strings": {
+  "logo": "Witch Moira",
+  "start": "시작",
+  "level": "Lv",
+  "tree": "스킬 트리",
+  "stash_n": "장비 {n}",
+  "costume_n": "의상 {a}/{b}",
+  "line_pending": "(한 줄 · narrative-lead 대기)",
+  "saved": "저장됨",
+  "save_off": "저장 꺼짐",
+  "qa": "검증 실행",
+  "keys": "Q/E 마녀 · Enter 시작",
+  "keys_title": "Enter 고르기 · Esc",
+  "keys_select": "Q/E 마녀 · Enter 시작 · Esc 타이틀",
+  "settings": "설정",
+  "quit": "끝내기",
+  "menu_start": "시작",
+  "menu_costume": "의상",
+  "menu_settings": "설정",
+  "menu_credits": "제작진",
+  "menu_quit": "끝내기",
+  "placeholder_art": "임시 그림"
+ },
+ "witches": [
+  {
+   "id": "ember",
+   "character_id": "chapter1.character.ember",
+   "start_skill_id": "chapter1.skill.ember",
+   "element": "ember",
+   "title": "잿불의 마녀",
+   "skill_name": "잿불탄",
+   "skill_summary": "몰려든 것을 한꺼번에 태운다",
+   "line": "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게.",
+   "confirm_line": "가자, 태우러.",
+   "traits": [
+    "범위",
+    "폭발",
+    "중거리"
+   ],
+   "growth": {
+    "level": 3,
+    "xp": 1100,
+    "xp_level_start": 900,
+    "xp_for_next": 1600,
+    "xp_to_next": 500,
+    "points_free": 1,
+    "has_tree": true
+   },
+   "costume": {
+    "owned": 2,
+    "total": 4,
+    "worn_id": "costume.ember.default"
+   },
+   "devil": {
+    "image": "_local/art/drafts/ember_demon/ember-demon-v02.png",
+    "kind": "figure",
+    "eyes": [
+     [
+      0.575,
+      0.25
+     ],
+     [
+      0.625,
+      0.25
+     ]
+    ]
+   }
+  },
+  {
+   "id": "frost",
+   "character_id": "chapter1.character.frost",
+   "start_skill_id": "chapter1.skill.frost",
+   "element": "frost",
+   "title": "서리의 마녀",
+   "skill_name": "서리창",
+   "skill_summary": "묶어 두고 깬다",
+   "line": "먼저 발을 묶어. 깨는 건 그다음이야.",
+   "confirm_line": "조용히 끝낼게.",
+   "traits": [
+    "관통",
+    "둔화",
+    "거리"
+   ],
+   "growth": {
+    "level": 8,
+    "xp": 3880,
+    "xp_level_start": 3600,
+    "xp_for_next": 4500,
+    "xp_to_next": 620,
+    "points_free": 2,
+    "has_tree": true
+   },
+   "costume": {
+    "owned": 1,
+    "total": 4,
+    "worn_id": "costume.frost.default"
+   },
+   "devil": {
+    "image": "",
+    "kind": "hand",
+    "eyes": []
+   }
+  },
+  {
+   "id": "storm",
+   "character_id": "chapter1.character.arc",
+   "start_skill_id": "chapter1.skill.arc",
+   "element": "arc",
+   "title": "뇌우의 마녀",
+   "skill_name": "연쇄 전류",
+   "skill_summary": "빠르게, 옆으로 번진다",
+   "line": "빠른 게 좋아. 기다리는 건 싫고.",
+   "confirm_line": "가자, 시끄럽게!",
+   "traits": [
+    "연쇄",
+    "속사",
+    "번짐"
+   ],
+   "growth": {
+    "level": 1,
+    "xp": 120,
+    "xp_level_start": 0,
+    "xp_for_next": 300,
+    "xp_to_next": 180,
+    "points_free": 1,
+    "has_tree": true
+   },
+   "costume": {
+    "owned": 1,
+    "total": 4,
+    "worn_id": "costume.storm.default"
+   },
+   "devil": {
+    "image": "_local/art/drafts/storm_demon/storm-demon-v02.png",
+    "kind": "figure",
+    "eyes": [
+     [
+      0.51,
+      0.3
+     ],
+     [
+      0.56,
+      0.3
+     ]
+    ]
+   }
+  }
+ ],
+ "focus_index": 1,
+ "last_played": 1,
+ "profile": {
+  "enabled": true,
+  "note": "저장 완료 · 장비 12개 · 재 31",
+  "stash_count": 12,
+  "essence": 31,
+  "completed_runs": 5
+ },
+ "settings": {
+  "shake": true,
+  "muted": false,
+  "motion": 1.0
+ },
+ "build": "v0.x",
+ "qa_run": false,
+ "devil_mode": "face",
+ "title_autoswap": true,
+ "confirm_line_on": true,
+ "variant": "normal",
+ "note": "frost in focus, Lv 8 with 2 points, stash 12 (the values of the current title.normal.json), contract demon shown (face)"
+}

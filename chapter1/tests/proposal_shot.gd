@@ -11,6 +11,9 @@ extends SceneTree
 ##   --strip           also (instead of the still) shoot the intro -> focus move -> confirm as a contact sheet, one frame per 0.1 s
 ##   --input-test      press keys on the screen (synthetic key events) and print what was accepted
 ##   --reduce-motion   play the intro the reduced way (one 0.12 s fade)
+##   --fixture-prefix=<p>  fixture files are <p>.<name>.json (default: the screen name; the title proposals use title_v0)
+##   --stage=select|title  (screens with a title state: which state the still shows; default select)
+##   --strip-kind=intro|focus|confirm|title|reduced  one contact sheet of that move at --strip-step engine frames (3 = 0.05 s, 6 = 0.1 s)
 ## Output: <shots>/<fixture>.<W>x<H>.png and .json (scene_shot's dump format, for tools/dev/hud_layout_check.py), strip sheets
 ## <shots>/strip-<fixture>.<W>x<H>.png, and PROPOSAL_SHOT lines (events with times, the held time t_u).
 const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
@@ -25,6 +28,9 @@ var screen := ""
 var shots := ""
 var fixtures: Array[String] = []
 var strip := false
+var strip_kind := ""
+var prefix := ""
+var stage := "select"
 var input_test := false
 var reduce := false
 var step := 6
@@ -54,6 +60,7 @@ func _check(wanted: String) -> String:
 	if DisplayServer.get_name() == "headless": return "needs a real renderer: run without --headless"
 	if proposal.is_empty() or not "/" in proposal: return "--proposal=<screen>/<name> is required"
 	screen = proposal.get_slice("/", 0)
+	if prefix.is_empty(): prefix = screen
 	if not FileAccess.file_exists("res://chapter1/tests/proposals/%s.gd" % proposal): return "no such proposal: " + proposal
 	if shots.is_empty(): return "--shots=<dir under _local/shots> is required"
 	var folder := shots if shots.begins_with("res://") or shots.is_absolute_path() else "res://" + shots
@@ -61,7 +68,7 @@ func _check(wanted: String) -> String:
 	shots = folder
 	if wanted == "all":
 		for f in DirAccess.get_files_at(FIXTURE_DIR):
-			if f.begins_with(screen + ".") and f.ends_with(".json"): fixtures.append(f.trim_prefix(screen + ".").trim_suffix(".json"))
+			if f.begins_with(prefix + ".") and f.ends_with(".json"): fixtures.append(f.trim_prefix(prefix + ".").trim_suffix(".json"))
 		fixtures.sort()
 	else:
 		for f in wanted.split(","): fixtures.append(f)
@@ -75,7 +82,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(shots)
 	var script: GDScript = load("res://chapter1/tests/proposals/%s.gd" % proposal)
 	for name_ in fixtures:
-		var contract := Kit.read_json("%s%s.%s.json" % [FIXTURE_DIR, screen, name_])
+		var contract := Kit.read_json("%s%s.%s.json" % [FIXTURE_DIR, prefix, name_])
 		if contract.is_empty():
 			failures.append("fixture %s unreadable" % name_)
 			continue
@@ -104,9 +111,12 @@ func _still(node: Control, name_: String, contract: Dictionary) -> void:
 	await _frames(30)
 	if node.focus_index < 0: node.set_focus(0)
 	node.set_focus(node.best_index())
+	if stage == "select" and node.has_method("prepare_still"):
+		node.prepare_still("select")
+		await _frames(40)
 	await _frames(36)
 	var image := await _grab()
-	var stem := _stem(name_)
+	var stem := _stem(name_ if stage == "select" else name_ + "." + stage)
 	image.save_png(shots.path_join(stem + ".png"))
 	var rows: Array = []
 	LayoutDump.describe(root, 0, rows, true)
@@ -158,6 +168,64 @@ func _strip(node: Control, name_: String) -> void:
 	sheet.save_png(path)
 	written.append(path)
 	print("PROPOSAL_SHOT_STRIP ", JSON.stringify({"proposal": proposal, "fixture": name_, "frames": frames.size(), "interval_s": float(step) / 60.0, "t_u": node.unlock_t, "events": node.events, "png": path}))
+
+## One move as a contact sheet: intro | focus (next witch, then back) | confirm | title (title -> select) | reduced (confirm with motion 0).
+## `step` engine frames between frames (--strip-step=3 at --fixed-fps 60 is 0.05 s). The sheet is shrunk to 400x225 per frame, 8 columns.
+func _strip_kind(node: Control, name_: String) -> void:
+	var frames: Array[Image] = []
+	var grab := func():
+		var im := await _grab()
+		im.resize(STRIP_W, STRIP_H, Image.INTERPOLATE_BILINEAR)
+		frames.append(im)
+	var n_for := func(seconds: float) -> int: return int(ceil(seconds * 60.0 / float(step))) + 1
+	if strip_kind == "reduced" and node.has_method("set_motion"): node.set_motion(0.0)
+	node.play_intro()
+	if strip_kind == "intro":
+		var guard := 0
+		while node.state == "intro" and guard < 400:
+			await grab.call()
+			await _frames(step)
+			guard += 1
+		for k in 3:
+			await grab.call()
+			await _frames(step)
+	else:
+		if node.state != "ready": await node.ready_for_pick
+		await _frames(40)
+		if node.has_method("prepare_still") and strip_kind != "title": node.prepare_still("select")
+		await _frames(45)
+		match strip_kind:
+			"focus":
+				node.set_focus((node.focus_index + 1) % node.cards.size())
+				for k in n_for.call(0.8): 
+					await grab.call()
+					await _frames(step)
+				node.set_focus(node.best_index())
+				for k in n_for.call(0.8):
+					await grab.call()
+					await _frames(step)
+			"title":
+				node.prepare_still("title")
+				await _frames(20)
+				node.prepare_still("select")
+				for k in n_for.call(0.5):
+					await grab.call()
+					await _frames(step)
+			_:
+				await _frames(20)
+				node.try_pick(node.best_index())
+				var secs: float = float(node.confirm_len) + 0.2
+				for k in n_for.call(secs):
+					await grab.call()
+					await _frames(step)
+	var rows := int(ceil(float(frames.size()) / STRIP_COLS))
+	var sheet := Image.create(STRIP_COLS * STRIP_W, rows * STRIP_H, false, Image.FORMAT_RGB8)
+	for i in frames.size():
+		sheet.blit_rect(frames[i], Rect2i(0, 0, STRIP_W, STRIP_H), Vector2i((i % STRIP_COLS) * STRIP_W, (i / STRIP_COLS) * STRIP_H))
+	var path := shots.path_join("strip-%s-%s.png" % [strip_kind, _stem(name_)])
+	sheet.save_png(path)
+	written.append(path)
+	print("PROPOSAL_SHOT_STRIP ", JSON.stringify({"proposal": proposal, "fixture": name_, "kind": strip_kind, "frames": frames.size(), "interval_s": float(step) / 60.0, "events": node.events, "png": path}))
 
 func _key(code: Key) -> InputEventKey:
 	var e := InputEventKey.new()
