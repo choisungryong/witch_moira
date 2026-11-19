@@ -18,7 +18,9 @@ extends SceneTree
 ## Output per scene and variant: <dir>/<scene>.<variant>.<W>x<H>.png and .json (hud_dump's {"order","dumps"} format plus a
 ## "meta" entry), and SCENE_SHOT lines. Exit code 2 for bad arguments, 1 if a scene could not be set up.
 ##
-## The scenes: title, skill_tree (over the title), boon (growth choice), equipment (in-run compare), stash, result
+## The scenes: title, skill_tree (over the title), boon (growth choice), boon_spells (growth choice of a run with the spell
+## composition on, RS0 of docs/specs/A6-run-spells-screen: how the screen draws the cards of the composition NOW; the fixture
+## names the state to give the run and the card ids to show, and the cards are the ones the core builds for that state), equipment (in-run compare), stash, result
 ## (victory window with the permanent-growth box), pause, abandon_confirm, combat_record (the battle record over the result
 ## window: normal = a won run, defeat = a lost run, long = a lost run with every zone and the longest rows; scrolled = the same scrolled to its end; the "defeat" and "scrolled" variants exist for this scene only). The skill tree draws itself (no child Controls),
 ## so its dump holds the panel only; judge it on the picture.
@@ -35,7 +37,7 @@ const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
-const SCENES := ["title","skill_tree","boon","equipment","stash","result","pause","abandon_confirm","combat_record"]
+const SCENES := ["title","skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record"]
 const VARIANTS := ["normal","long","defeat","scrolled"]
 const START_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 
@@ -248,6 +250,48 @@ func _scene_boon(fx: Dictionary) -> bool:
 	await _frames(10)
 	if hud.modal.get_child_count() == 0 or run.get_offer().is_empty():
 		_fail("boon","the growth window did not build")
+		return false
+	return true
+
+## RS0. The composition is switched on in this process only: the shipped run_spells.json is read, copied with "enabled": true and
+## parked in the FixtureRun before it starts (data file and app untouched). The state is given the way test_run_spells.gd's give()
+## does it; the cards are the real ones from the growth's own pool, picked by id.
+func _scene_boon_spells(fx: Dictionary) -> bool:
+	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
+	if not doc is Dictionary:
+		_fail("boon_spells","run_spells.json could not be read")
+		return false
+	doc["enabled"] = true
+	if not run.set_run_spells(doc):
+		_fail("boon_spells","run_spells document refused: "+str(run.errors))
+		return false
+	view.start_run(String(fx.primary))
+	await _frames(3)
+	if not bool(run.run_spells_view().get("enabled",false)):
+		_fail("boon_spells","the run did not take the composition")
+		return false
+	for id_ in fx.get("give",{}):
+		run.growth._ranks[id_] = 1
+		run.growth._axes[id_] = {"damage":int(fx.give[id_].damage),"reach":int(fx.give[id_].reach)}
+	for passive_id in fx.get("passives",[]): run.growth._owned_passives.append(String(passive_id))
+	var pool: Array = run.growth._spell_cards()
+	var cards: Array = []
+	for wanted in fx.cards:
+		var found := false
+		for card in pool:
+			if String(card.id) == String(wanted):
+				cards.append(card.duplicate(true))
+				found = true
+				break
+		if not found:
+			_fail("boon_spells","card %s is not in the pool of the given state (pool: %s)" % [wanted,", ".join(pool.map(func(c): return String(c.id)))])
+			return false
+	run.fx_offer = {"token":"fixture-spells","level":int(fx.level),"cards":cards}
+	run.mode = "choice"
+	hud.invalidate()
+	await _frames(10)
+	if hud.modal.get_child_count() == 0 or run.get_offer().is_empty():
+		_fail("boon_spells","the growth window did not build")
 		return false
 	return true
 

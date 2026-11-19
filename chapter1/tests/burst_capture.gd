@@ -11,6 +11,10 @@ const STEP_TICKS := 6
 const SLACK_FRAMES := 30   # a frame is also taken after STEP_TICKS*k + SLACK frames when the tick does not move (end screens)
 ## Events the default run does not produce (switches in data/combat_tuning.json are off), so a miss is expected there.
 const OFF_BY_DEFAULT := ["beat_started","wave_crest","trial_started","detonate","cast:shape=ring","cast:ring"]
+## RS0: events only a run with the spell composition produces (run_spells.json enabled). A miss is expected while it is off;
+## with hud_dump --run-spells=on (spells_on) a miss is a real miss and is not listed as expected. Names are matched by prefix.
+const SPELLS_ONLY := ["detonate","cast:shape=ring","cast:ring","cast:prefer=","stagger","hit:vs_cc=","hit:detonate"]
+var spells_on := false
 
 var names: Array[String] = []
 var frames_wanted := 8
@@ -151,9 +155,15 @@ func summary() -> Dictionary:
 	var missed_names := missed()
 	var expected_off: Array = []
 	for name in missed_names:
-		if name in OFF_BY_DEFAULT: expected_off.append(name)
+		var spells_event := _is_spells_only(name)
+		if (name in OFF_BY_DEFAULT or spells_event) and not (spells_on and spells_event): expected_off.append(name)
 	return {"lost_events":lost_events,"requested":names,"frames":frames_wanted,"captured":done.map(func(e): return e.name),"incomplete":incomplete,
 		"missed":missed_names,"missed_expected_off_by_default":expected_off}
+
+func _is_spells_only(name: String) -> bool:
+	for prefix in SPELLS_ONLY:
+		if name.begins_with(prefix): return true
+	return false
 
 func write_index(path: String) -> void:
 	var handle := FileAccess.open(path,FileAccess.WRITE)

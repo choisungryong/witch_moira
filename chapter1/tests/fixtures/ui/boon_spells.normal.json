@@ -1,0 +1,15 @@
+{
+ "scene": "boon_spells",
+ "note": "RS0: a fresh run with the spell composition on (run_spells.json enabled by the tool, in memory only). Frost witch with one damage point: the offer is the ring unlock, a reach point, and the crystal card. The cards are the real ones the core builds for that state.",
+ "primary": "chapter1.skill.frost",
+ "level": 3,
+ "give": {
+  "chapter1.skill.frost": {"damage": 1, "reach": 0}
+ },
+ "passives": [],
+ "cards": [
+  "unlock:chapter1.skill.frost_ring",
+  "axis:chapter1.skill.frost:reach",
+  "passive:chapter1.passive.crystal"
+ ]
+}

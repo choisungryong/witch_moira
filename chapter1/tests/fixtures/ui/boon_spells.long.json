@@ -1,0 +1,17 @@
+{
+ "scene": "boon_spells",
+ "note": "RS0: the late state the cards read the most from. Frost at damage 3 / reach 2 with the crystal owned, her ring at 1 / 1, ember at 1 / 0 (three spells = full slots): the offer is the evolve card (partner pair line), a ring axis card, and the ember passive card. The cards are the real ones the core builds for that state.",
+ "primary": "chapter1.skill.frost",
+ "level": 9,
+ "give": {
+  "chapter1.skill.frost": {"damage": 3, "reach": 2},
+  "chapter1.skill.frost_ring": {"damage": 1, "reach": 1},
+  "chapter1.skill.ember": {"damage": 1, "reach": 0}
+ },
+ "passives": ["chapter1.passive.crystal"],
+ "cards": [
+  "evolve:chapter1.skill.frost",
+  "axis:chapter1.skill.frost_ring:damage",
+  "passive:chapter1.passive.embers"
+ ]
+}

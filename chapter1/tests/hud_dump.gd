@@ -50,6 +50,14 @@ extends SceneTree
 ##   --menu-tour                  (T7-0, needs --asset-usage and --profile-fixture=l8) no run: for each of the three witches select it on
 ##                                the menu and open and close its skill tree, so the usage table sees every menu portrait and
 ##                                every skill tree painting. Prints MENU_TOUR lines.
+## RS0 (A6-RS, opt-in; without these two the run and the dump are byte-for-byte what they were):
+##   --run-spells=on              run with the in-run spell composition ON, by this tool only: chapter1/data/run_spells.json is read,
+##                                copied with "enabled": true and handed to the core with run.set_run_spells() before the run starts.
+##                                The data file and the app are not touched. Prints one HUD_SPELLS line at the end (what the run owned).
+##   --spells-pick=synergy        (needs --run-spells=on) the tool, not the built-in pilot, picks the growth cards in mode "choice":
+##                                the witch's ring unlock > the main skill's damage axis > a ring's reach axis > the pilot's own
+##                                scoring for everything else. Each pick prints a HUD_SPELLS_PICK line (tick, level, card, score).
+##                                The choice-1 / choice-2 moments are dumped before the tool picks, as before.
 ##   Missing or contradicting arguments end at once with one HUD_DUMP_ARGS line and exit code 2 (a flow that needs a
 ##   fixture never starts and waits for a window that does not come): --tree-shots needs --profile-fixture=l8,
 ##   every --profile-fixture needs --chapter1-profile-off, --shots needs a real renderer, unknown values are refused.
@@ -84,6 +92,9 @@ var usage: RefCounted = null
 var burst_arg := ""
 var burst_frames := 8
 var burst_frames_given := false
+var run_spells_arg := ""
+var spells_pick := ""
+var spells_picks: Array = []
 var burst: RefCounted = null
 var menu_tour := false
 var mt_stage := 0
@@ -104,6 +115,7 @@ const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const UsageProbe := preload("res://chapter1/tests/asset_usage_probe.gd")
 const BurstCapture := preload("res://chapter1/tests/burst_capture.gd")
+const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -127,6 +139,8 @@ func _initialize() -> void:
 		elif arg.begins_with("--asset-usage="): asset_usage_path = arg.trim_prefix("--asset-usage=")
 		elif arg.begins_with("--burst="): burst_arg = arg.trim_prefix("--burst=")
 		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
+		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
+		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
 	var args_error := _check_args()
 	if not args_error.is_empty():
 		push_error("hud_dump: "+args_error)
@@ -142,6 +156,13 @@ func _initialize() -> void:
 		quit(3)
 		return
 	root.add_child(view)
+	if run_spells_arg == "on":
+		var spells_problem := _enable_run_spells()
+		if not spells_problem.is_empty():
+			push_error("hud_dump: "+spells_problem)
+			print("HUD_DUMP_ARGS ",JSON.stringify({"error":spells_problem}))
+			quit(2)
+			return
 	_setup_profile()
 	if not asset_usage_path.is_empty():
 		usage = UsageProbe.new()
@@ -152,11 +173,18 @@ func _initialize() -> void:
 		burst = BurstCapture.new()
 		burst.setup(wanted,burst_frames,shots_dir)
 		# Events live one tick in run.events: read them at every physics frame (before the view steps the core again).
+		burst.spells_on = run_spells_arg == "on"
+	if burst != null or not spells_pick.is_empty():
 		physics_frame.connect(_on_physics_frame)
 
 ## One sentence for the first argument problem, or "". Runs before anything is loaded.
 func _check_args() -> String:
 	var user_args := OS.get_cmdline_user_args()
+	if not run_spells_arg.is_empty() and run_spells_arg != "on":
+		return "--run-spells=%s is unknown (on)" % run_spells_arg
+	if not spells_pick.is_empty():
+		if spells_pick != "synergy": return "--spells-pick=%s is unknown (synergy)" % spells_pick
+		if run_spells_arg != "on": return "--spells-pick needs --run-spells=on"
 	if not profile_fixture.is_empty() and not profile_fixture in ["empty","l8","rejected"]:
 		return "--profile-fixture=%s is unknown (empty, l8 or rejected)" % profile_fixture
 	if not profile_fixture.is_empty() and not "--chapter1-profile-off" in user_args:
@@ -451,6 +479,50 @@ func _process(_delta: float) -> bool:
 
 func _on_physics_frame() -> void:
 	if burst != null and view != null: burst.poll(view.run,frame)
+	# Runs before the app's own physics step, so the built-in pilot never sees the offer. Where _choice_moment() owns the
+	# offer (dump first, then pick) this stays out of the way.
+	if not spells_pick.is_empty() and view != null and view.run.mode == "choice" and choice_wait < 0 and not (choice_dumps < 2 and step in [1,3]):
+		_spells_pick(view.run)
+
+## RS0: the shipped run_spells.json with "enabled": true, parked in the core of this process before start().
+func _enable_run_spells() -> String:
+	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(RunSpellsDoc.DEFAULT_PATH))
+	if not doc is Dictionary: return "run_spells.json could not be read"
+	doc["enabled"] = true
+	if not view.run.set_run_spells(doc): return "run_spells document refused: "+str(view.run.errors)
+	print("HUD_SPELLS_ON ",JSON.stringify({"pick":spells_pick}))
+	return ""
+
+## RS0 pick rule. Same order the built-in pilot uses (chapter_pilot.decide) for everything the new rules do not name.
+func _spells_score(run: RefCounted, card: Dictionary, primary_id: String) -> int:
+	var spell: Dictionary = run.spells.get("spells",{}).get(String(card.skill_id),{})
+	var is_ring := String(spell.get("role","")) == "ring"
+	if card.kind == "unlock" and is_ring: return 300
+	if card.kind == "axis" and card.skill_id == primary_id and card.axis == "damage": return 200
+	if card.kind == "axis" and is_ring and card.axis == "reach": return 150
+	if card.skill_id == primary_id: return 100 if card.kind == "evolve" else (90 if card.kind == "rank" else 80)
+	if card.kind == "unlock": return 65
+	if card.kind == "evolve": return 60
+	if card.kind == "rank": return 50
+	return 10
+
+func _spells_pick(run: RefCounted) -> void:
+	var offer: Dictionary = run.get_offer()
+	if offer.is_empty() or offer.cards.is_empty(): return
+	var primary_id := String(run.growth.snapshot().primary)
+	var picked: Dictionary = offer.cards[0]
+	var best := -1
+	for card in offer.cards:
+		var score := _spells_score(run,card,primary_id)
+		if score > best: best = score; picked = card
+	var row := {"tick":int(run.tick),"level":int(offer.level),"id":String(picked.id),"kind":String(picked.kind),"score":best,"offered":offer.cards.map(func(c): return String(c.id))}
+	if not run.choose(offer.token,picked.id):
+		push_error("hud_dump: the synergy pick was rejected: "+str(run.errors))
+		return
+	spells_picks.append(row)
+	print("HUD_SPELLS_PICK ",JSON.stringify(row))
+	# The built-in pilot hands its pick events to the recorder the same way (chapter_one._pilot_input).
+	view.recorder.consume(run.events)
 
 func _usage_step(run: RefCounted) -> void:
 	var interval := 10 if (tree_shots or menu_tour or result_mock or not flow_shots.is_empty() or profile_fixture == "rejected") else 30
@@ -486,6 +558,14 @@ func _finish() -> void:
 			return
 		file.store_string(JSON.stringify(document))
 		file.close()
+	if run_spells_arg == "on":
+		var owned := {}
+		var spells_view: Dictionary = view.run.run_spells_view()
+		for id_ in spells_view.get("spells",{}): owned[id_] = spells_view.spells[id_].axis
+		var ring_pick := {}
+		for row in spells_picks:
+			if row.id.begins_with("unlock:") and row.id.ends_with("_ring"): ring_pick = {"level":row.level,"tick":row.tick,"id":row.id}; break
+		print("HUD_SPELLS ",JSON.stringify({"enabled":spells_view.get("enabled",false),"pick":spells_pick,"picks":spells_picks.size(),"ring":ring_pick,"owned_axes":owned,"builtin_pilot_selections":view.full_pilot.selections.size()}))
 	print("HUD_DUMP_RESULT ",JSON.stringify({"labels":order,"final_tick":view.run.tick,"mode":view.run.mode,"kills":view.run.kills}))
 	if burst != null: print("HUD_BURST_SUMMARY ",JSON.stringify(burst.summary()))
 
@@ -499,6 +579,7 @@ func _choice_moment(run: RefCounted) -> void:
 	elif choice_wait >= 0 and frame >= choice_wait:
 		choice_dumps += 1; _dump("choice-%d" % choice_dumps)
 		choice_wait = -1
+		if not spells_pick.is_empty(): _spells_pick(run)
 		view._pilot = true
 
 func _wait(frames: int) -> int:
