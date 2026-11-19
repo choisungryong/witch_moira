@@ -62,6 +62,7 @@ CHANGE_TABLE = [
     ('tools/dev/godot.py', 'all'),
     ('chapter1/ChapterOne.tscn', 'app'),
     ('chapter1/app/', 'app'),
+    ('chapter1/art/asset_slots.json', 'view'),
     ('chapter1/view/', 'view'),
     ('chapter1/art/', 'art'),
     ('chapter1/presentation/', 'view'),
@@ -84,7 +85,7 @@ CHANGE_TABLE = [
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
     'app': ['loc', 'app-guard', 'app-loadout', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
@@ -117,6 +118,7 @@ def checks():
         godot_check('profile-v4', 'res://chapter1/tests/test_profile_v4.gd', 'CHAPTER1_PROFILE_V4_RESULT', ['--work-dir=' + FIXTURES + 'v4-' + stamp]),
         godot_check('profile-v4-fixtures', 'res://chapter1/tests/test_profile_v4_fixtures.gd', 'CHAPTER1_PROFILE_V4_FIXTURES_RESULT', ['--work-dir=' + FIXTURES + 'v4fix-' + stamp]),
         godot_check('rhythm', 'res://chapter1/tests/test_rhythm.gd', 'CHAPTER1_RHYTHM_TEST_RESULT', timeout=600),
+        godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.
         godot_check('run-spells', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--fast'], timeout=900),
         godot_check('run-spells-full', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--runs-only'], timeout=2400, slow=True),

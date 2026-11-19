@@ -25,3 +25,32 @@
 
 세부 검사와 제작 보고서가 있던 `plans/chapter1-c2-20261031-01/art/`는 옛 저장소의 것이며 이 저장소에 없습니다(`quality03/`의 `*-INSPECTION.json`은 있음).
 
+
+## 자리표(asset_slots.json)
+
+코드는 에셋을 경로가 아니라 뜻 id(`actor.walker.model`)로 부른다. `asset_slots.json`이 id를 파일과 계약(뼈·클립 이름, 배율, 시간, 크기, 필수 상태)에 잇는다. 해결기는 `chapter1/view/assets/asset_slots.gd`다(`AssetSlots.scene(id)`, `.texture(id)`, `.bone(id, 논리이름)`, `.clip(...)`, `.scale3(id)`, `.timing(id, 키)`, `.contract(id)`, `.meta(id)`, `.missing()`).
+
+- 에셋 하나를 바꾸는 일: 파일을 넣고, 자리표의 그 자리 한 줄(`file`, 필요하면 계약의 이름 대응)을 고치고, `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/test_asset_slots.gd -- --strict`를 돌린다.
+- `file`·`meta`는 이 폴더(`chapter1/art`) 기준 상대 경로다. `res://`로 시작하면 그대로 쓴다.
+- 파일이 없으면 죽지 않고 대체물을 쓴다(그림은 자홍·검정 바둑판, 모델은 `fallback` 파일, 없으면 자홍 캡슐). 쓴 자리는 `missing()`에 기록되고 경고가 한 번 난다. `--strict` 검사는 계획된 자리(`planned: true`)가 아닌 자리에서 대체물이 나오면 실패한다. 배포 빌드 전에 이것이 통과해야 한다.
+- `planned: true`는 아직 그림이 없는 새 자리다. 코드는 먼저 id로 들어가고, 그림이 오면 `file`을 채우고 `planned`를 지운다.
+- `inherit`는 다른 자리의 종류·파일·계약을 물려받는다(자기 칸이 이긴다). 같은 사슬 악마 파일을 쓰는 역할들이 쓴다.
+- 시간은 틱(`timing_ticks`, `tick_hz`)으로 적는다. `float(틱)/hz`가 코드의 `56.0/60.0` 같은 값과 비트까지 같다.
+- `source` 칸은 값을 옮겨 적은 코드 위치(파일:행, 2026-11-19 기준)다. `used: "unverified"`는 코드가 부르는 듯하지만 실제로 로드되고 그려지는지는 확인 전이라는 뜻이다.
+- 개발 중 시험: 저장소를 고치지 않고 `--chapter1-asset-slots=_local/...json`으로 다른 표를 읽는다(`_local/` 아래만).
+- 출처는 `ASSET-LEDGER.json`, 소리는 `chapter1/data/audio_map.json`(예정)이다. 자리표와는 경로로 잇고 합치지 않는다.
+
+### 에셋을 바꿀 때 자리표로 안 되고 함께 고쳐야 하는 것
+
+1. UI 액체 셰이더(`ui_style.gd`): 구슬 조각이 원형 유리, 액체 그림이 가운데에 있다는 가정(반사 위치, 0.88 채움).
+2. 초상 셰이더(`rig_body`·`rig_cloth`): 겹 종류의 뜻(천은 아래로 늘어짐, 엉덩이·가슴 높이 기준). 새 초상은 같은 겹 종류로 나눠야 한다.
+3. 지면 셰이더(`chapter_ground*.gdshader`): 돌·흙 두 역할의 텍스처를 섞는다. 새 지형도 두 역할을 줘야 한다.
+4. 원거리·돌진의 몸은 사슬 악마 몸을 비등방으로 눌러 만든다(`chapter_actors.gd`의 `_create__q21`). 역할마다 다른 모델이 오면 그 경로를 고쳐야 한다(코드).
+5. 묶음 재질 `Minion19Batched`: 표면 하나·정점 색 가정. 재질이 여럿인 모델은 묶음이 깨진다.
+6. 구운 움직임(VAT, `--chapter1-vat-walker`, 기본 꺼짐): 스킨이 있는 메시 가정. 모델을 바꾸면 다시 굽는다.
+7. 글꼴: `project.godot`의 `theme/custom_font`는 프로젝트 설정이라 해결기를 거치지 않는다.
+8. `.import` 설정: 같은 이름으로 덮어쓰면 유지, 새 이름이면 옛 `.import`의 필요한 값(밉맵, 필터, 압축, 모델 임포트 배율)을 옮긴다.
+9. 도구의 표본 파일: `tools/manager/test_backend.py`가 실제 에셋을 표본으로 쓴다. 표본 파일을 지우거나 이름을 바꾸면 그 검사를 고친다.
+10. 원화를 바꾸면 사람이 앵커를 다시 찍고(`tools/art/portrait_slots.json`, `portrait_anchor_table.py`), 자르기를 다시 만들고(`portrait_derive.py`), 계약 `crops`를 고친다. 초상 겹 분해(`layers_source.json`)도 새로 한다.
+11. 환경음 반복 끝 `data.size()/2`(`combat_audio.gd`)는 16비트 모노 가정이다.
+12. 자리표가 아직 덮지 않는 것(지금 코드가 경로를 직접 가진다): UI 키트, 장비 아이콘, 글꼴, 원화·초상, 지형·소품, 소리, 눈송이 그림. T7-3 이후 차례로 옮긴다.

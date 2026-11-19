@@ -1,0 +1,494 @@
+{
+  "schema": 1,
+  "about": "Meaning id -> file and contract. Code asks by id only. Paths are relative to chapter1/art (a path starting with res:// is used as is). Provenance is ASSET-LEDGER.json; sounds are chapter1/data/audio_map.json. A slot with inherit takes the target's kind/file/meta/fallback/extra_files/contract and its own keys win (contract: per top-level key). planned=true means no art yet (placeholder). used=unverified means the code seems to call it but T7-0 has not confirmed it is loaded and drawn. Timings are in ticks (timing_ticks / tick_hz) so that float(ticks)/hz is bit-equal to the code literals; timing_s holds the few values that are not tick counts. source = where the value was copied from (file:line, as of 2026-11-19).",
+  "planned_families": [
+    "ui.town.place.<place>",
+    "ui.medal.<tree>.<node>",
+    "icon.shrine.<kind>",
+    "portrait.<witch>.outfit.<outfit>",
+    "actor.<new kind>.*"
+  ],
+  "slots": {
+    "actor.hero.model": {
+      "kind": "model",
+      "file": "rigged_mage/v01/mage_animated.glb",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:441 path, :444 scale, :476 bones, :507 upper-body prefixes, :477/:593/:605/:608/:614 clips and pose numbers, :592 death age",
+      "contract": {
+        "scale": 1.32,
+        "bones": {
+          "hand_r": "hand_cr_r",
+          "finger_r": "finger_middle.01.r"
+        },
+        "bone_groups": {
+          "upper_prefixes": [
+            "spine_",
+            "neck_",
+            "head_",
+            "shoulder_",
+            "hand_",
+            "finger_",
+            "thumb."
+          ],
+          "upper_contains": [
+            "arm_"
+          ]
+        },
+        "clips": {
+          "idle": "idle",
+          "run": "run",
+          "cast": "cast",
+          "hit": "hit",
+          "death": "death"
+        },
+        "pose": {
+          "run_time_scale": 0.6,
+          "idle_loop_s": 1.2,
+          "cast_start_s": 0.15,
+          "cast_time_scale": 2.25,
+          "hit_time_scale": 3,
+          "death_max_age_s": 0.9
+        },
+        "budget_profile": "hero"
+      }
+    },
+    "actor.walker.model": {
+      "kind": "model",
+      "file": "skeleton_outlaw/v02/skeleton_outlaw_merged.glb",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:1663 path, :1664-1666 timing, :1667 hit bones, :1683 head bone, :1707 scale, :1800 per-actor scale, :1814 head scale, :1782 death clamp; chapter1/view/actors/vat/walker_vat_spec.gd:5-28 (same path and timing, a copy)",
+      "contract": {
+        "scale": 0.62,
+        "bones": {
+          "spine": "ORG-spine",
+          "chest": "ORG-chest",
+          "neck": "ORG-neck",
+          "head": "ORG-head",
+          "shoulder_l": "ORG-shoulder_L",
+          "upper_arm_l": "ORG-upper_arm_L",
+          "forearm_l": "ORG-forearm_L",
+          "shoulder_r": "ORG-shoulder_R",
+          "upper_arm_r": "ORG-upper_arm_R",
+          "forearm_r": "ORG-forearm_R"
+        },
+        "bone_groups": {
+          "hit": [
+            "spine",
+            "chest",
+            "neck",
+            "head",
+            "shoulder_l",
+            "upper_arm_l",
+            "forearm_l",
+            "shoulder_r",
+            "upper_arm_r",
+            "forearm_r"
+          ],
+          "hit_exclude": [
+            "neck",
+            "head"
+          ],
+          "tracked": [
+            "spine",
+            "head"
+          ]
+        },
+        "clips": {
+          "idle": "idle",
+          "walk": "walk",
+          "attack": "attack_slam",
+          "death": "death",
+          "hit": "hit"
+        },
+        "tick_hz": 60,
+        "timing_ticks": {
+          "idle_cycle": 128,
+          "walk_cycle": 56,
+          "strike": 25,
+          "swing": 68,
+          "hit": 46,
+          "death": 96
+        },
+        "pose": {
+          "head_scale": 0.72,
+          "scale_base": 0.6,
+          "scale_step": 0.015,
+          "hit_intervals": 12
+        },
+        "budget_profile": "enemy"
+      }
+    },
+    "actor.elite.model": {
+      "kind": "model",
+      "file": "chained_warden/v01/chained_demon_animated.glb",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:639 path, :872 scale (elite outside zone 2), :1427 hit bones, :1515 :1606 bone sets, :761 :773 :985 :1160 single bones, clips from :735-748 and :659; release timing :640-643",
+      "contract": {
+        "scale": 0.8,
+        "bones": {
+          "spine1": "Spine1",
+          "spine2": "Spine2",
+          "spine3": "Spine3",
+          "neck": "Neck.001",
+          "head": "Head",
+          "shoulder_l": "Shoulder.L",
+          "shoulder_r": "Shoulder.R",
+          "arm_l": "Arm.L",
+          "arm_r": "Arm.R",
+          "forearm_l": "Forearm.L",
+          "forearm_r": "Forearm.R",
+          "hand_r": "Hand.R"
+        },
+        "bone_groups": {
+          "hit": [
+            "spine1",
+            "spine2",
+            "spine3",
+            "shoulder_l",
+            "shoulder_r",
+            "arm_l",
+            "arm_r",
+            "neck",
+            "head"
+          ],
+          "pose30": [
+            "head",
+            "shoulder_l",
+            "shoulder_r",
+            "arm_l",
+            "arm_r"
+          ],
+          "pose32": [
+            "spine1",
+            "spine3",
+            "shoulder_l",
+            "shoulder_r",
+            "arm_l",
+            "arm_r",
+            "head"
+          ],
+          "probe": [
+            "spine2",
+            "head"
+          ],
+          "body_line": [
+            "spine1",
+            "spine3"
+          ],
+          "screen_axis": [
+            "spine1",
+            "head"
+          ]
+        },
+        "clips": {
+          "idle": "idle",
+          "walk": "walk",
+          "windup_slam": "windup_slam",
+          "windup_fan": "windup_fan",
+          "slam": "slam",
+          "fan": "fan",
+          "hit": "hit",
+          "death": "death"
+        },
+        "tick_hz": 60,
+        "timing_ticks": {
+          "release": 8
+        },
+        "timing_s": {
+          "release_time": 0.157
+        },
+        "budget_profile": "enemy"
+      }
+    },
+    "actor.boss.model": {
+      "kind": "model",
+      "inherit": "actor.elite.model",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:652 scale 1.15 (the elite of zone 2 is the final boss presentation); same file and bone table as the elite",
+      "contract": {
+        "scale": 1.15
+      }
+    },
+    "actor.ranged.model": {
+      "kind": "model",
+      "inherit": "actor.elite.model",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:1151 and :1534 anisotropic scale; the body is the warden model squashed, a staff is attached to hand_r (:1160)",
+      "contract": {
+        "scale": [
+          0.44,
+          0.58,
+          0.44
+        ]
+      }
+    },
+    "actor.charger.model": {
+      "kind": "model",
+      "inherit": "actor.elite.model",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:1151 and :1535 anisotropic scale",
+      "contract": {
+        "scale": [
+          0.72,
+          0.48,
+          0.72
+        ]
+      }
+    },
+    "actor.hero.sheet": {
+      "kind": "sprite_sheet",
+      "file": "actors/hero.png",
+      "meta": "actors/hero.json",
+      "extra_files": [
+        "actors/hero_actions.png"
+      ],
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:84 path assembly, :98 states, :77 directions; frame data and texture paths are in the meta file",
+      "contract": {
+        "states": [
+          "idle",
+          "move",
+          "cast",
+          "hit",
+          "death"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "actor.walker.sheet": {
+      "kind": "sprite_sheet",
+      "file": "actors/walker.png",
+      "meta": "actors/walker.json",
+      "extra_files": [
+        "actors/walker_actions.png"
+      ],
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:84 path assembly, :98 states, :77 directions; frame data and texture paths are in the meta file",
+      "contract": {
+        "states": [
+          "idle",
+          "move",
+          "cast",
+          "hit",
+          "death",
+          "attack"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "actor.ranged.sheet": {
+      "kind": "sprite_sheet",
+      "file": "actors/ranged.png",
+      "meta": "actors/ranged.json",
+      "extra_files": [
+        "actors/ranged_actions.png"
+      ],
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:84 path assembly, :98 states, :77 directions; frame data and texture paths are in the meta file",
+      "contract": {
+        "states": [
+          "idle",
+          "move",
+          "cast",
+          "hit",
+          "death",
+          "attack"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "actor.charger.sheet": {
+      "kind": "sprite_sheet",
+      "file": "actors/charger.png",
+      "meta": "actors/charger.json",
+      "extra_files": [
+        "actors/charger_actions.png"
+      ],
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:84 path assembly, :98 states, :77 directions; frame data and texture paths are in the meta file",
+      "contract": {
+        "states": [
+          "idle",
+          "move",
+          "cast",
+          "hit",
+          "death",
+          "attack"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "actor.elite.sheet": {
+      "kind": "sprite_sheet",
+      "file": "actors/elite.png",
+      "meta": "actors/elite.json",
+      "extra_files": [
+        "actors/elite_actions.png"
+      ],
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:84 path assembly, :98 states, :77 directions; frame data and texture paths are in the meta file",
+      "contract": {
+        "states": [
+          "idle",
+          "move",
+          "cast",
+          "hit",
+          "death",
+          "attack"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "actor.hero.cast_sheet": {
+      "kind": "sprite_sheet",
+      "file": "quality03/hero_cast_v01.png",
+      "meta": "quality03/hero_cast_v01.json",
+      "used": "unverified",
+      "source": "chapter1/view/actors/chapter_actors.gd:72-81 (read only when the hero sheet definition exists)",
+      "contract": {
+        "states": [
+          "cast_south",
+          "cast_east",
+          "cast_north",
+          "cast_west"
+        ],
+        "directions": [
+          "south",
+          "east",
+          "north",
+          "west"
+        ]
+      }
+    },
+    "portrait.frost.cutin_evolve": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.frost.cutin_kill": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.frost.cutin_ultimate": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.frost.record": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.ember.cutin_evolve": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.ember.cutin_kill": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.ember.cutin_ultimate": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.ember.record": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.arc.cutin_evolve": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.arc.cutin_kill": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.arc.cutin_ultimate": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "portrait.arc.record": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "ui.town.backdrop": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "world.prop.chest": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    },
+    "world.prop.shrine": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+      "contract": {}
+    }
+  }
+}
