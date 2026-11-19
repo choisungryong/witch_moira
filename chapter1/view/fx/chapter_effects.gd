@@ -219,7 +219,7 @@ func consume__cloister(events: Array) -> void:
 		match String(event.type):
 			"hit":
 				burst(event.position,color,3 if not event.get("shatter",false) else 14)
-				if hit_budget>0 and strokes.size()<MAX_STROKES:
+				if hit_budget>0 and strokes.size()<MAX_STROKES and not event.has("vs_cc"):
 					hit_budget-=1
 					# A small .1s accent at the paid hit, never a screen-wide flash.
 					strokes.append({"type":"hit","at":event.position,"life":.10,"duration":.10,"element":_element(event.get("skill_id","")),"color":color})
@@ -429,30 +429,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 				var angle := PI*float(i)/float(accents)+.45
 				var axis := cam_basis.x*cos(angle)+cam_basis.y*sin(angle)
 				stroke_vertices+=_ribbon(flash,center-axis*extent,center+axis*extent,.016*fade)
-		elif stroke.type=="ring_arc":
-			# A6-RS RS1: short arcs over a staggered head (camera-facing, .3 s). Ribbons in the shared beam mesh.
-			var arc_center := Vector3(stroke.at.x,1.55,stroke.at.y)
-			var arc_fade := clampf(float(stroke.life)/float(stroke.duration),0,1)
-			var arc_color: Color=stroke.color;arc_color.a=arc_fade*.80
-			flash.surface_set_color(arc_color)
-			for k in int(stroke.count):
-				var start_angle := PI*.12+PI*float(k)
-				var previous := arc_center+(cam_basis.x*cos(start_angle)+cam_basis.y*sin(start_angle))*.30
-				for j in range(1,6):
-					var angle := start_angle+PI*.62*float(j)/5.0
-					var point := arc_center+(cam_basis.x*cos(angle)+cam_basis.y*sin(angle))*.30
-					stroke_vertices+=_ribbon(flash,previous,point,.026*arc_fade)
-					previous=point
-		elif stroke.type=="ring_shard":
-			# Three pieces of a cut wind-up, drifting out and fading to linen in .15 s.
-			var shard_age := 1.0-clampf(float(stroke.life)/float(stroke.duration),0,1)
-			var shard_color: Color=stroke.color;shard_color.a=(1.0-shard_age)*.85
-			flash.surface_set_color(shard_color)
-			for k in 3:
-				var shard_angle := float(int(stroke.seed)%7)*.9+TAU*float(k)/3.0
-				var direction_ := cam_basis.x*cos(shard_angle)+cam_basis.y*sin(shard_angle)
-				var shard_from := Vector3(stroke.at.x,.9,stroke.at.y)+direction_*(.10+shard_age*.45)
-				stroke_vertices+=_ribbon(flash,shard_from,shard_from+direction_*.20,.022)
+		elif _ring_fx.handles(String(stroke.type)):
+			# A6-RS RS1/RS2: ring-spell arcs, shards, bolts and pairing marks are drawn by ring_spell_fx (same shared ribbon mesh).
+			stroke_vertices+=_ring_fx.draw(stroke,flash,cam_basis,self)
 		elif stroke.type=="impact":
 			if impact_count<MAX_IMPACTS:
 				var ixf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y))
