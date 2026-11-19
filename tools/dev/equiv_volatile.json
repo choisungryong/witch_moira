@@ -1,0 +1,8 @@
+{
+  "normalize_names": {
+    "pattern": "@(\\w+)@\\d+",
+    "replace": "@\\1",
+    "why": "Godot names a node that was added without a name '@Class@<number>'. The number is an instance counter, so it changes whenever any earlier node is created in a different order. Compared by class only."
+  },
+  "ignore": []
+}

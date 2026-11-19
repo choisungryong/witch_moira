@@ -1,0 +1,13 @@
+{
+  "title": "example: patch before/after, exported QA builds, five rounds each, then the same pair with the baked-walker switch",
+  "seconds": 300,
+  "resolution": "1920x1080",
+  "late_from": 180,
+  "base_args": ["--chapter1-start", "--chapter1-pilot", "--chapter1-profile-off", "--chapter1-qa-ignore-focus", "--chapter1-seed=11", "--chapter1-primary=chapter1.skill.ember"],
+  "variants": [
+    {"name": "before", "exe": "C:/path/to/before/_local/build/qa/WitchMoira.exe", "rounds": 5, "warmup": true, "args": []},
+    {"name": "after", "exe": "C:/path/to/after/_local/build/qa/WitchMoira.exe", "rounds": 5, "warmup": true, "args": []},
+    {"name": "vbefore", "exe": "C:/path/to/before/_local/build/qa/WitchMoira.exe", "rounds": 3, "warmup": false, "block": "vat", "args": ["--chapter1-vat-walker"]},
+    {"name": "vafter", "exe": "C:/path/to/after/_local/build/qa/WitchMoira.exe", "rounds": 3, "warmup": false, "block": "vat", "args": ["--chapter1-vat-walker"]}
+  ]
+}
