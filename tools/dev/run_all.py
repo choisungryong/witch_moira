@@ -41,7 +41,7 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 ALIASES = {
     'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'app-guard', 'app-loadout'],
     'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells'],
-    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
+    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
     'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest'],
@@ -87,7 +87,7 @@ CHANGE_TABLE = [
 SELECTIONS = {
     'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
-    'app': ['loc', 'app-guard', 'app-loadout', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'app': ['loc', 'app-guard', 'app-loadout', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
     'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger'],
@@ -96,7 +96,7 @@ SELECTIONS = {
     'none': [],
 }
 # Rough seconds, only used to start the long checks first when --jobs is above 1.
-WEIGHTS = {'run-spells-full': 1100, 'run-spells': 300, 'golden': 120, 'core-text-tail': 15, 'loot-sim': 90, 'rhythm': 45, 'manager': 30, 'chapter': 20}
+WEIGHTS = {'run-spells-full': 1100, 'run-spells': 300, 'golden': 120, 'core-text-tail': 15, 'loot-sim': 90, 'rhythm': 45, 'run-record': 60, 'manager': 30, 'chapter': 20}
 
 
 def godot_check(name, script, marker, extra=(), timeout=120, slow=False):
@@ -119,6 +119,7 @@ def checks():
         godot_check('profile-v4-fixtures', 'res://chapter1/tests/test_profile_v4_fixtures.gd', 'CHAPTER1_PROFILE_V4_FIXTURES_RESULT', ['--work-dir=' + FIXTURES + 'v4fix-' + stamp]),
         godot_check('rhythm', 'res://chapter1/tests/test_rhythm.gd', 'CHAPTER1_RHYTHM_TEST_RESULT', timeout=600),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
+        godot_check('run-record', 'res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.
         godot_check('run-spells', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--fast'], timeout=900),
         godot_check('run-spells-full', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--runs-only'], timeout=2400, slow=True),

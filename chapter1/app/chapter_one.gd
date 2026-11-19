@@ -368,6 +368,12 @@ var run_progress: Dictionary={}
 var view_before: Dictionary={}
 var view_after: Dictionary={}
 var _chapter_last_event := -1
+## Battle record (W7, D11 F1): reads core events only. `run_record_view` is the read-only state for the result screen:
+## {} during a run, recorder.summary() once the run has ended (record in the T6 4.3 shape, skill table
+## with shares and damage per second, pair and beat tables, and the "why did I lose" material of a lost run).
+const RunRecord=preload("res://chapter1/app/run_record.gd")
+var recorder=RunRecord.new()
+var run_record_view: Dictionary={}
 func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
 	full_pilot.run=run
@@ -418,6 +424,7 @@ func start_run(id_: String) -> void:
 	elif _profile_session_off:run.first_boss_kill=false # Nothing is saved this session; a first-kill unique would only mislead.
 	else:run.first_boss_kill=not profile.available or int(profile.state.completed_runs)==0
 	start_run__chapter(id_)
+	run_record_view={};recorder.begin(run,"d1")
 	var gear_failed := false
 	if profile.available:
 		gear_failed=not _import_profile_kit()
@@ -510,6 +517,7 @@ func return_to_menu() -> void:
 	hud.set_growth_result("",{},{},{})
 	_chapter_last_event=-1;_last_audio_event=-1;_last_result="";_has_move_target=false
 	_receipt="";_saved_receipt="";run_character_id="";run_progress={};view_before={};view_after={};_run_carry_ok=false;_run_kept_slots=[]
+	run_record_view={}
 	seed_+=1 # The next run from the menu never repeats the one just played (F3).
 	world.update_camera(Vector2.ZERO,10.0)
 	_sync_profile(Loc.t("notify.profile.ready") if profile.available else _profile_error_text())
@@ -595,6 +603,7 @@ func _save_terminal() -> void:
 	run_progress=progress
 	var carry := {}
 	if _run_carry_ok and not run_character_id.is_empty():carry={"character_id":run_character_id,"equipped":run.equipped.duplicate(true),"kept_slots":_run_kept_slots.duplicate()}
+	# Schema 5: pass `outcome={"record":run_record_view.record}` as the last argument here (T6 record_run, 8th parameter) once record_run takes it. Not passed yet.
 	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress,carry):
 		_saved_receipt=_receipt;hud.result_unsaved=false
 		if not run_character_id.is_empty():view_after=profile.character_view(run_character_id)
@@ -622,7 +631,11 @@ func _unhandled_key_input__chapterx(event: InputEvent) -> void:
 				if run.activate_ritual(def.id):_consume_events();hud.invalidate();break
 			get_viewport().set_input_as_handled();return
 	_unhandled_key_input__chapter(event)
-func _pilot_input() -> Vector2:return full_pilot.decide()
+func _pilot_input() -> Vector2:
+	var move: Vector2=full_pilot.decide()
+	# The pilot picks cards and drinks potions inside decide(); step() clears those events before the app reads them.
+	recorder.consume(run.events)
+	return move
 ## A pickup is announced only when it beats what is worn in its slot. Anything
 ## else goes into the bag quietly and can be compared from the inventory.
 func _offer_if_better(item: Dictionary) -> void:
@@ -632,11 +645,14 @@ func _offer_if_better(item: Dictionary) -> void:
 	if run.loot.is_upgrade(data.candidate,data.equipped,primary):hud.offer_upgrade(data.candidate,data.equipped,data.slot)
 func _consume_events() -> void:
 	_consume_events__chapter()
+	recorder.consume(run.events);recorder.observe(run)
 	for event in run.events:
 		if int(event.seq)<=_chapter_last_event:continue
 		_chapter_last_event=event.seq
 		match String(event.type):
-			"victory","defeat":_save_terminal()
+			"victory","defeat":
+				recorder.finish(run);run_record_view=recorder.summary()
+				_save_terminal()
 			"item_pickup":_offer_if_better(event.item)
 			"item_drop":
 				# A ring or amulet has its own bright cue; a legendary or unique adds a chime.
