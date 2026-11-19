@@ -252,8 +252,18 @@ def run_tools_selftest(check):
     files = sorted(list((ROOT / 'tools' / 'dev').glob('test_*.py')) + list((ROOT / 'tools' / 'art').glob('test_*.py')))
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:  # the files are independent (temp folders only); the audio one alone takes about a minute
         results = list(pool.map(lambda path: run_tool(check, [str(path)]), files))
+    # A file that fails while four run side by side gets one more run on its own: under a loaded machine these self tests have failed
+    # once and passed alone (2026-11-21). A retried file is named in the result so a real flake does not stay hidden.
+    retried = []
+    for index, path in enumerate(files):
+        if results[index][0] != 0:
+            retried.append(path.name)
+            results[index] = run_tool(check, [str(path)])
     failed = [path.name + (' (' + text + ')' if code is None else '') for path, (code, text) in zip(files, results) if code != 0]
-    return not failed and bool(files), '%d files%s' % (len(files), ', failed: ' + ', '.join(failed) if failed else '')
+    note = ', failed: ' + ', '.join(failed) if failed else ''
+    if retried:
+        note += ', passed on a second run alone: ' + ', '.join(name for name in retried if name not in ' '.join(failed)) if len(retried) > len(failed) else ''
+    return not failed and bool(files), '%d files%s' % (len(files), note)
 
 
 def run_wording(check):
