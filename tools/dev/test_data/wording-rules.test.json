@@ -1,28 +1,74 @@
 {
-  "_note": "wording_lint.py 개발·자체 검사용 시험 규칙. 실제 규칙(docs/story/wording-rules.json)이 아니다. 낱말은 docs/story/WORDING-RULES.ko.md 의 일부를 옮긴 견본.",
+  "version": 1,
+  "status": "시험용 규칙. 실제 규칙(docs/story/wording-rules.json)의 꼴을 줄여 옮긴 견본이다. 낱말은 실제 규칙에서 따온 것",
+  "conventions": {
+    "key_map": {
+      "chapter1/data/loot.json": {
+        "bases[].name": "item.base.<id>.name",
+        "uniques[].description": "item.unique.<id>.desc",
+        "slot_names.<slot>": "item.slot.<slot>"
+      },
+      "chapter1/data/skill_trees.json": {
+        "trees[].nodes[].lore": "tree.<tree_id>.node.<id>.lore"
+      }
+    }
+  },
+  "groups": {
+    "@names": ["*.name", "item.rare.*", "item.slot.*"],
+    "@item_names": ["item.base.*.name", "item.rare.*"],
+    "@items": ["item.*"],
+    "@lore": ["*.lore"]
+  },
+  "scope": {
+    "game_text": {
+      "include": ["chapter1/i18n/*.po", "chapter1/data/*.json", "chapter1/**/*.gd", "project.godot"],
+      "exclude": ["chapter1/tests/**", "chapter1/core/chapter_items.gd"],
+      "json_fields": ["name", "description", "lore", "slot_names"]
+    },
+    "docs": {"include": ["docs/**/*.md"], "exclude": ["docs/story/WORDING-RULES.ko.md"]}
+  },
   "banned": [
-    {"word": "잿빛", "stems": [], "grade": "fail", "rule": "G1", "exceptions": [], "note": "색이면 회색"},
-    {"word": "깃들다", "stems": ["깃들", "깃든"], "grade": "fail", "rule": "G15", "exceptions": [], "note": ""},
-    {"word": "기운", "stems": [], "grade": "fail", "rule": "G16", "exceptions": ["기운 숄", "기운 옷", "기운 자국"], "note": "기운(氣運). 깁다의 기운과 구별"},
-    {"word": "신비로운", "stems": ["신비로"], "grade": "warn", "rule": "G24", "exceptions": [], "note": ""}
+    {"word": "잿빛", "stems": ["잿빛"], "grade": "fail", "rule": "WR 1.2 #1", "note": "회색"},
+    {"word": "깃들다", "stems": ["깃들", "깃든", "깃드"], "grade": "fail", "rule": "WR 1.2 #15"},
+    {"word": "기운(氣運)", "stems": ["기운"], "grade": "fail", "rule": "WR 1.2 #16", "exceptions": ["기운 숄", "기운 자국"]},
+    {"word": "무언가", "stems": ["무언가"], "grade": "fail", "rule": "WR 1.2 #26", "skip_docs": true},
+    {"word": "서약·계약·봉인", "stems": ["서약", "계약", "봉인"], "grade": "fail", "rule": "IN 1.3 A", "applies_to": ["@items"]},
+    {"word": "가족", "stems": ["어머니", "아이"], "grade": "fail", "rule": "IN 1.3 C", "applies_to": ["@item_names"]}
   ],
   "restricted": [
-    {"word": "황혼", "stems": [], "grade": "warn", "rule": "N1", "exceptions": [], "note": "이름 낱말로 쓰지 않는다"},
-    {"word": "숨결", "stems": [], "grade": "warn", "rule": "N9", "exceptions": [], "note": "눈에 보이는 입김만"},
-    {"word": "그림자", "stems": [], "grade": "warn", "rule": "N3", "exceptions": ["그림자 마녀"], "note": ""}
+    {"word": "황혼", "stems": ["황혼"], "grade": "warn", "rule": "WR 1.3 #6"},
+    {"word": "파편", "stems": ["파편"], "grade": "warn", "rule": "WR 1.3 #7", "exceptions": ["파쇄 파편"], "exception_keys": ["item.rare.second.s04"]},
+    {"word": "정적", "pattern": "(^|[^가-힣])정적", "grade": "warn", "rule": "WR 1.3 #5"}
   ],
   "name_shape": [
-    {"id": "F1", "desc": "이름 하나에 '의'가 둘", "pattern": "의.*의", "grade": "warn", "applies_to": []},
-    {"id": "F9", "desc": "부정 관형어 이름", "pattern": "^(꺼지지 않는|이름 없는|노래 없는)", "grade": "fail", "applies_to": ["name"]}
+    {"id": "F1", "pattern": "[가-힣]의\\s.*[가-힣]의(\\s|$)", "grade": "fail", "rule": "WR 1.4 F1", "applies_to": ["@names"]},
+    {"id": "F1-base", "pattern": "[가-힣]의(\\s|$)", "grade": "fail", "rule": "IN 1.5", "applies_to": ["item.base.*.name"], "only_slots": ["weapon", "ring"], "exceptions": ["재의 두건"]},
+    {"id": "F9", "pattern": "^[가-힣]+(지 않는|없는)\\s", "grade": "warn", "rule": "WR 1.4 F9", "applies_to": ["@names"]},
+    {"id": "F4", "pattern": "…", "grade": "warn", "rule": "WR 1.4 F4", "applies_to": ["*"]},
+    {"id": "EN-F1", "pattern": "\\b[A-Z][a-z]+\\s+of\\s+(the\\s+)?[A-Z]", "grade": "warn", "lang": "en", "rule": "WR 6.1", "applies_to": ["@names"]}
   ],
-  "name_max_chars": {"default": 14, "by_key_pattern": {"zone.*.name": 8}},
+  "name_max_chars": {
+    "lang": "ko", "default": 5, "default_applies_to": ["@names"], "grade": "fail",
+    "by_key_pattern": {"item.base.*.name": 6, "item.legendary.*.name": 4, "notify.*": 10},
+    "warn_only": ["item.base.*.name", "notify.*"],
+    "spaces_not_counted": ["item.base.*.name"]
+  },
+  "structure": [
+    {"id": "T-count", "file": "chapter1/data/loot.json", "check": "len(rare_names.first) == 2 and len(rare_names.second) == 1", "grade": "warn", "rule": "IN 1.5"}
+  ],
   "en_glossary": {
-    "must": [{"ko": "서약", "en": "Vow"}],
-    "banned_en": ["Ashen", "Tapestry"]
+    "must": [
+      {"ko": "서약", "en": "Vow"},
+      {"ko": "재", "en": "Ash", "applies_to": ["*essence*"]}
+    ],
+    "banned_en": ["Ashen", "Sanctum of", "Hell"],
+    "restricted_en": [{"word": "Shadow", "note": "빛이 가려진 자리로만"}]
   },
   "allow_pending": [
-    {"file": "chapter1/i18n/ko.po", "key_or_text": "잿빛 앞뜰", "decision": "N55", "why": "구역 이름 결정 대기"},
-    {"file": "chapter1/data/loot.json", "key_or_text": "황혼", "decision": "N40", "why": "희귀 낱말 결정 대기"}
+    {"file": "chapter1/i18n/ko.po", "key_or_text": "zone.0.name", "text": "잿빛 앞뜰", "word": "잿빛", "decision": "N55", "why": "시험"},
+    {"file": "chapter1/data/loot.json", "key_or_text": "황혼", "decision": "N40", "why": "시험(word 없음: 그 글의 모든 걸림)"},
+    {"file": "chapter1/i18n/en.po", "key_or_text": "zone.2.name", "word": "Sanctum of", "decision": "N55", "why": "시험"},
+    {"file": "docs/**/*.md", "key_or_text": "잿빛 회랑", "word": "잿빛", "decision": "N57", "why": "시험"}
   ],
   "future_key": {"무시": "모르는 키는 무시한다"}
 }
