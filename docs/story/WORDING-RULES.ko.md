@@ -202,7 +202,7 @@ Ashen, Abyss, Whisper(s), Echo(es), Shadow(비유), Tapestry, Journey, Fate·Des
 | 침묵 | 79줄 / 12파일(원문 8줄 포함) | `docs/story/CONTRACT-LAW.ko.md`(30줄), `docs/story/THREE-FAMILIES.ko.md`(12줄) | 대부분 번개 어머니의 뜻(원). 79줄을 하나씩 장식 여부로 보지는 않았다(8절) |
 | 그림자(비유) | 7줄 | 원 977, `ACT-STRUCTURE.ko.md:17·91`, `WORLD-BIBLE.ko.md:252·460`, `ITEM-NAMING.ko.md:186·193` | 막 제목은 원. 기준 460("남은 그림자")과 이름 186·193은 고친다. 나머지 약 30줄은 렌더링 그림자라 (나) |
 | 메아리 | 8줄 | `ACT-STRUCTURE.ko.md:121·198·240`, `FORESHADOW-MAP.ko.md:207·241·263·302·329`("세 겹 메아리") | 실제 소리 설계다. "같은 명령이 세 번 겹쳐 들린다"로(4.5절) |
-| 깃들다 | 10줄 | 검 35·201, `WORLD-BIBLE.ko.md:93·306`(껍질 마수 정의), `CONTRACT-LAW.ko.md:206·251·259·654`, `FORESHADOW-MAP.ko.md:321`, `reviews/DECISIONS-PENDING-20261117.ko.md:138` | 껍질 마수 정의는 "유해에 들어앉은"으로(공1 수집품의 말과 같게) |
+| 깃들다 | 10줄 | 검 35·201, `WORLD-BIBLE.ko.md:93·306`(껍질 마수 정의), `CONTRACT-LAW.ko.md:206·251·259·654`, `FORESHADOW-MAP.ko.md:321`, `reviews/DECISIONS-PENDING-20261117.ko.md:140` | 껍질 마수 정의는 "유해에 들어앉은"으로(공1 수집품의 말과 같게) |
 | 스며들다 | 4줄 | `CHAPTER1-TEXT-PLAN.ko.md:290`, `WORLD-BIBLE.ko.md:358`, `specs/G1-permanent-growth-spec.ko.md:206`, `ITEM-NAMING.ko.md:289` | 대부분 3.1절 16번의 인용. 290의 대체안 둘도 걸린다(4.6절) |
 | 속삭이다 | 4줄 | 원 393·706(원), `CONTRACT-LAW.ko.md:237`, `specs/G1-permanent-growth-spec.ko.md:158`("후원자의 속삭임", 트리 단 이름 안) | G1의 단 이름은 쓰지 않는다 |
 | 숨결 | 4줄 | `ITEM-NAMING.ko.md:87·186·193`, `specs/D6-loot-farming-spec.ko.md:359`(보기 "재의 숨결") | 4.4절 |
