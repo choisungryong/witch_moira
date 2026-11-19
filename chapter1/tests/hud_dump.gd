@@ -32,6 +32,7 @@ extends SceneTree
 ##                                with --result-mock). Prints HUD_DUMP_REJECT lines and HUD_DUMP_FILES (sha256 of every file).
 ##   --reject-choice=play|fresh   which way the rejected flow ends (fresh = continue from the newest readable journal copy).
 ## Normal runs now add an "end-<mode>-result" moment after the existing end moment.
+## Time limit: --wall-limit=<seconds> (default 1500, 0 = none) ends a stuck flow with HUD_DUMP_RESULT {"error":"wall_limit"} and exit code 4.
 ## Optional: --until=<tick> stops early; --primary=<skill id>; --shots=<dir> also saves a
 ## screenshot per moment (needs a real renderer, so run without --headless).
 ## Tooling additions (never change the default dump):
@@ -67,6 +68,8 @@ var order: Array[String] = []
 var out_path := ""
 var primary := "chapter1.skill.frost"
 var until_tick := 0
+var wall_limit_s := 1500
+var started_msec := 0
 var shots_dir := ""
 var scene_path := ""
 var scenes: Dictionary = {}
@@ -124,6 +127,7 @@ func _initialize() -> void:
 		if arg.begins_with("--dump="): out_path = arg.trim_prefix("--dump=")
 		elif arg.begins_with("--primary="): primary = arg.trim_prefix("--primary=")
 		elif arg.begins_with("--until="): until_tick = int(arg.trim_prefix("--until="))
+		elif arg.begins_with("--wall-limit="): wall_limit_s = int(arg.trim_prefix("--wall-limit="))
 		elif arg.begins_with("--shots="): shots_dir = arg.trim_prefix("--shots=")
 		elif arg.begins_with("--scene="): scene_path = arg.trim_prefix("--scene=")
 		elif arg.begins_with("--profile-fixture="): profile_fixture = arg.trim_prefix("--profile-fixture=")
@@ -146,6 +150,13 @@ func _initialize() -> void:
 		push_error("hud_dump: "+args_error)
 		print("HUD_DUMP_ARGS ",JSON.stringify({"error":args_error}))
 		quit(2)
+		return
+	started_msec = Time.get_ticks_msec()
+	# A project without its import cache (a fresh worktree) loads the scene with errors and then spins forever: refuse at once.
+	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://.godot/imported")):
+		push_error("hud_dump: res://.godot/imported is missing, the project is not imported here (python tools/dev/run_dev.py --import-only)")
+		print("HUD_DUMP_ARGS ",JSON.stringify({"error":"project_not_imported"}))
+		quit(3)
 		return
 	var scene: PackedScene = load("res://chapter1/ChapterOne.tscn")
 	view = scene.instantiate()
@@ -195,6 +206,10 @@ func _check_args() -> String:
 		return "--tree-shots cannot be combined with --flow-shots, --result-mock or --notice-shots"
 	if not flow_shots.is_empty() and not flow_shots in ["abandon","defeat","quit"]:
 		return "--flow-shots=%s is unknown (abandon, defeat or quit)" % flow_shots
+	if flow_shots == "abandon" and profile_fixture.is_empty():
+		# Without a profile the abandon flow reads view.profile.state (empty under --chapter1-profile-off) at its fourth stage,
+		# raises a script error in every frame from then on and never ends (seen 2026-11-20): the fixture is part of the flow.
+		return "--flow-shots=abandon needs --profile-fixture=empty (or l8) and --chapter1-profile-off; without a profile it never finishes"
 	if not flow_shots.is_empty() and profile_fixture == "rejected":
 		return "--flow-shots cannot be combined with --profile-fixture=rejected"
 	if not reject_choice in ["play","fresh"]:
@@ -392,6 +407,18 @@ func _mark(key: String) -> bool:
 func _process(_delta: float) -> bool:
 	if view == null or not view.is_inside_tree(): return true
 	frame += 1
+	# Every flow below returns early, and a script error in a frame aborts it before the old "frame > 400000" check at the end:
+	# a stuck flow (a screen that never comes, a core that is gone) used to leave this window open for hours. Wall clock, not frames.
+	if wall_limit_s > 0 and (Time.get_ticks_msec()-started_msec) > wall_limit_s*1000:
+		push_error("hud_dump: wall-clock limit of %d s passed (--wall-limit=S, 0 = none); stopped at frame %d step %d" % [wall_limit_s,frame,step])
+		print("HUD_DUMP_RESULT ",JSON.stringify({"error":"wall_limit","frame":frame,"step":step}))
+		quit(4)
+		return true
+	if view.get("run") == null:
+		push_error("hud_dump: the core is gone (view.run is null); stopped at frame %d" % frame)
+		print("HUD_DUMP_RESULT ",JSON.stringify({"error":"run_missing","frame":frame}))
+		quit(3)
+		return true
 	var run: RefCounted = view.run
 	if usage != null: _usage_step(run)
 	if burst != null:

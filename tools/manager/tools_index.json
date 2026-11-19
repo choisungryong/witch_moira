@@ -11,11 +11,12 @@
     {"text": "새 이름·글을 짓기 전에 낱말 검사기를, 새 결정 번호를 붙이기 전에 결정 번호 장부를 돌려 본다", "path": "tools/dev/wording_lint.py"}
   ],
   "roles": [
-    {"id": "everyone", "label": "모두가 쓰는 것", "about": "Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리). 회귀는 run_all.py.", "tools": [
+    {"id": "everyone", "label": "모두가 쓰는 것", "about": "Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시간 제한: 창 20분·헤드리스 40분, --timeout-s=N). 회귀는 run_all.py.", "tools": [
       {"path": "tools/dev/godot.py", "use": "검사·측정·캡처의 Godot 실행(사용자 저장 폴더를 건드리지 않음)"},
       {"path": "tools/dev/run_all.py", "use": "회귀 한 번에. --only·--quick으로 일부만"},
       {"path": "tools/dev/audit.py", "use": "기록과 약속이 어긋났는지 수를 세고 지난번과 견줌(작업 묶음을 닫을 때, 날마다 첫 일). 화면은 「점검」"},
-      {"path": "tools/dev/run_dev.py", "use": "게임을 임포트하고 띄운다"}
+      {"path": "tools/dev/run_dev.py", "use": "게임을 임포트하고 띄운다"},
+      {"path": "tools/dev/godot_ps.py", "use": "떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료"}
     ]},
     {"id": "tech-lead", "label": "기술 관리(tech-lead)", "about": "지시서 검수에 쓰는 검사들.", "tools": [
       {"path": "tools/dev/run_all.py", "use": "검수 때 회귀 결과 확인"},

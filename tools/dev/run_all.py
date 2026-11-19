@@ -27,6 +27,7 @@ import argparse, concurrent.futures, datetime, json, os, re, subprocess, sys, th
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from isolated_env import isolated_env
+import godot_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path(os.environ.get('MOIRA_GODOT', 'C:/Project/rea-tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe'))
@@ -149,12 +150,12 @@ def run_process(script, extra, timeout, purpose):
     command = [str(GODOT), '--headless', '--path', str(ROOT), '--script', script]
     if extra:
         command += ['--'] + list(extra)
-    try:
-        done = subprocess.run(command, capture_output=True, timeout=timeout, env=isolated_env('run_all_' + purpose))
-    except subprocess.TimeoutExpired as expired:
-        text = (expired.stdout or b'').decode('utf-8', 'replace') + (expired.stderr or b'').decode('utf-8', 'replace')
+    # The whole process tree is ended on a timeout: ending only the console parent leaves the engine child (and its window) running.
+    code, out, timed_out = godot_guard.run_guarded(command, timeout, env=isolated_env('run_all_' + purpose), capture=True)
+    text = (out or b'').decode('utf-8', 'replace')
+    if timed_out:
         return {'timeout': timeout, 'code': None, 'text': text}
-    return {'timeout': 0, 'code': done.returncode, 'text': done.stdout.decode('utf-8', 'replace') + done.stderr.decode('utf-8', 'replace')}
+    return {'timeout': 0, 'code': code, 'text': text}
 
 
 def timeout_detail(proc):

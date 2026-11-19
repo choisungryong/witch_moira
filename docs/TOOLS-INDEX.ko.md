@@ -18,13 +18,14 @@
 
 ## 모두가 쓰는 것
 
-Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리). 회귀는 run_all.py.
+Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시간 제한: 창 20분·헤드리스 40분, --timeout-s=N). 회귀는 run_all.py.
 
 | 도구 | 언제 쓰나 | 머리 주석 | 예시 명령 |
 |---|---|---|---|
 | `tools/dev/godot.py` | 검사·측정·캡처의 Godot 실행(사용자 저장 폴더를 건드리지 않음) | Thin Godot launcher for checks, goldens, measurements and captures. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/test_loc.gd`<br>`python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --update` |
 | `tools/dev/run_all.py` | 회귀 한 번에. --only·--quick으로 일부만 | Single regression entry point for the current working tree. | `python tools/dev/run_all.py`<br>`python tools/dev/run_all.py --quick` |
 | `tools/dev/run_dev.py` | 게임을 임포트하고 띄운다 | Dev loop: import the project when needed, then run the game from the repository root. | `python tools/dev/run_dev.py -- --chapter1-start`<br>`python tools/dev/run_dev.py --resolution 1920x1080 -- --chapter1-start --chapter1-pilot --chapter1-profile-off` |
+| `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60 --kill-stale --dry-run` |
 
 ## 기술 관리(tech-lead)
 
