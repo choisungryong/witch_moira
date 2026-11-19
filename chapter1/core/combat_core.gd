@@ -109,6 +109,9 @@ var spells: Dictionary = {}
 var _skill_ids: Array = SKILL_IDS.duplicate()
 ## Ring pulses still to come: {due, skill_id, effects, evolved, pulse}. Empty (and never filled) while the composition is off.
 var _ring_pending: Array[Dictionary] = []
+## Who fired each enemy projectile in flight: {projectile uid: {"id": enemy id, "kind": source kind}}. The projectile
+## dictionary itself is in the snapshot and gets no new key, so this lives beside it (not in the snapshot, cleared by start()).
+var _hostile_src: Dictionary = {}
 
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
@@ -154,6 +157,7 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_primary_id = primary
 	_pending_children.clear()
 	_ring_pending.clear()
+	_hostile_src.clear()
 	_friendly_tick = -1
 	_last_heavy_tick = -1
 	_guaranteed_drops = 0
@@ -555,6 +559,9 @@ func _step_enemies() -> void:
 			# Thaw cannot jump past an unseen windup and attack immediately.
 			if e.state in ["windup","recover","dash"]: e.state_until += 1
 			continue
+		# A staggered body (the ring's short stop) neither moves nor starts an attack; unlike a freeze it does not pause the
+		# recovery clock. The key exists only in a run with the spell composition.
+		if tick < int(e.get("staggered_until",0)): continue
 		if tick > int(e.freeze_expires): e.freeze_stacks = 0
 		var def: Dictionary = _enemy_definition(e)
 		var delta: Vector2 = hero.position-e.position
@@ -569,7 +576,7 @@ func _step_enemies() -> void:
 		if e.state == "dash":
 			e.position = _clamp_point(e.position+e.attack_direction*9.0*STEP)
 			if not e.attacked and e.position.distance_to(hero.position) <= float(e.radius)+.28:
-				_hero_damage(int(def.damage)*UNIT,e.position)
+				_hero_damage(int(def.damage)*UNIT,e.position,_source_kind_of(e),int(e.id))
 				e.attacked = true
 			if tick >= int(e.state_until):
 				e.state = "recover"
@@ -590,7 +597,7 @@ func _step_enemies() -> void:
 			elif e.kind == "elite":
 				_resolve_elite_attack(e,def,distance)
 			else:
-				if distance <= 1.15: _hero_damage(int(def.damage)*UNIT,e.position)
+				if distance <= 1.15: _hero_damage(int(def.damage)*UNIT,e.position,_source_kind_of(e),int(e.id))
 			e.attack_index += 1
 			e.state = "recover"
 			e.state_until = tick+int(def.recover)
@@ -689,7 +696,7 @@ func _approach_crowd(e: Dictionary, speed: float, attack_distance: float) -> Dic
 			# yield to its anchored windup. Stable UID resolves equal-distance ties.
 			var our_distance := candidate.distance_to(hero.position)
 			var their_distance: float = other.position.distance_to(hero.position)
-			var anchored: bool = other.state != "move" or (tick < int(other.frozen_until) or tick < int(other.get("stunned_until",0)))
+			var anchored: bool = other.state != "move" or (tick < int(other.frozen_until) or tick < int(other.get("stunned_until",0)) or tick < int(other.get("staggered_until",0)))
 			if anchored or their_distance < our_distance-.001 or (absf(their_distance-our_distance) <= .001 and int(other.id) < int(e.id)):
 				room = false
 				break
@@ -699,7 +706,10 @@ func _approach_crowd(e: Dictionary, speed: float, attack_distance: float) -> Dic
 ## raw is the damage before the hero's reduction. With tuning.heavy_hit.heavy_bps > 0 a hit of at least
 ## that share of the maximum life is "heavy": it grants iframe_ticks of invulnerability, and a heavy hit
 ## within gap_ticks of the previous full one only grazes (graze_bps of its damage, graze:true). Otherwise 24 ticks.
-func _hero_damage(raw: int, from: Vector2) -> void:
+## `source_kind` / `source_id` say who did it (the event carries them, the snapshot does not): walker | ranged | charger | elite |
+## champion | boss for a body, a dash or a shot, boss_ward for the final boss's floor strike, hazard for any other floor danger
+## (id 0). A blocked hit (invulnerable) makes no event.
+func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", source_id: int = 0) -> void:
 	if tick < _invulnerable_until or not _terminal_mode.is_empty(): return
 	var incoming := raw
 	var iframes := 24
@@ -715,7 +725,7 @@ func _hero_damage(raw: int, from: Vector2) -> void:
 	var result: Dictionary = Resolver.damage(raw,int(hero.hp_raw),0,int(_gear_stats.get("damage_reduction_bps",0))+_build_reduction_bps)
 	hero.hp_raw = int(result.hp_after_raw)
 	_invulnerable_until = tick+iframes
-	var details := {"damage_raw":result.total_raw,"from":from,"incoming_raw":incoming}
+	var details := {"damage_raw":result.total_raw,"from":from,"incoming_raw":incoming,"source_kind":source_kind,"source_id":source_id,"hp_after_raw":int(hero.hp_raw)}
 	if graze: details.graze = true
 	_emit("hero_hit",hero.position,details)
 	if hero.hp_raw <= 0:
@@ -734,7 +744,17 @@ func _enemy_projectiles(e: Dictionary) -> void:
 		_projectile_sequence += 1
 		projectiles.append({"uid":_projectile_sequence,"position":e.position,"previous":e.position,"direction":e.attack_direction.rotated(spread),
 			"speed":5.0 if e.elite else 4.2,"radius":.16,"skill_id":"hostile."+e.kind,"hostile":true,"damage_raw":int(_enemy_definition(e).damage)*UNIT,"expires":tick+210,"cast_id":0,"pierce_left":0,"hit_ids":[]})
+		_hostile_src[_projectile_sequence] = {"id":int(e.id),"kind":_source_kind_of(e)}
 		hostile += 1
+
+## The kind a hero_hit event names for a body: its kind (walker, ranged, charger) or, for the strong ones, its role.
+func _source_kind_of(e: Dictionary) -> String:
+	var role := _enemy_role(e)
+	return String(e.kind) if role == "normal" else role
+
+## normal | elite | champion | boss. The base core knows only normal and elite; the chapter core tells the guardians apart.
+func _enemy_role(e: Dictionary) -> String:
+	return "elite" if e.elite else "normal"
 
 func _rebuild_grid() -> void:
 	_grid.clear()
@@ -775,20 +795,34 @@ func _auto_casts() -> void:
 		var nearest := _near(hero.position,13.0)
 		if nearest.is_empty(): continue
 		var target: Dictionary = enemies[nearest[0]]
+		# With the spell composition a basic spell may aim at a far shooter or a controlled enemy first (I0, I1); without it
+		# this stays the nearest enemy and nothing below changes.
+		var aim := ""
+		if not spells.is_empty():
+			var aimed := _aim(id_,nearest)
+			target = enemies[aimed.id]
+			aim = String(aimed.how)
 		var direction: Vector2 = (target.position-hero.position).normalized()
 		var effects: Dictionary = skill.effects.duplicate(true)
 		_cast_sequence += 1
 		var context := {"uid":_cast_sequence,"skill_id":id_,"effects":effects,"remaining_hits":int(effects.hit_budget),"hit_ids":[],"evolved":skill.evolved}
+		if aim == "kind":
+			context.aim = "kind"
+			_ward_add("i0_casts")
 		_contexts[context.uid] = context
 		_next_cast[id_] = tick+int(effects.cooldown_ticks)
 		metrics.casts[id_] = int(metrics.casts.get(id_,0))+1
 		if id_ == "chapter1.skill.arc":
 			var positions := _chain(target,context)
-			_emit("cast",hero.position,{"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":positions,"segments":context.get("arc_segments",[]),"evolved":skill.evolved})
+			var arc_details := {"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":positions,"segments":context.get("arc_segments",[]),"evolved":skill.evolved}
+			if aim == "kind": arc_details.prefer = "kind"
+			_emit("cast",hero.position,arc_details)
 			# A chain that left child projectiles behind keeps its context for them.
 			if not _children_pending_for(int(context.uid)): _contexts.erase(context.uid)
 		else:
-			_emit("cast",hero.position,{"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":[],"evolved":skill.evolved})
+			var shot_details := {"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":[],"evolved":skill.evolved}
+			if aim == "kind": shot_details.prefer = "kind"
+			_emit("cast",hero.position,shot_details)
 			var count: int = effects.projectiles
 			# Angle between neighbouring shots of one cast (tuning.hero_shot.spread_mrad, default 160 = .16 rad).
 			var spread_step := float(int(tuning.get("hero_shot",{}).get("spread_mrad",160)))/1000.0
@@ -802,6 +836,52 @@ func _auto_casts() -> void:
 
 func _is_ring(id_: String) -> bool:
 	return not spells.is_empty() and String(spells.spells.get(id_,{}).get("role","")) == "ring"
+
+## Adds to a counter of metrics.ward (the ring and aim tally of a run with the composition). Nothing happens without it.
+func _ward_add(key: String, amount: int = 1) -> void:
+	if metrics.has("ward"): metrics.ward[key] = int(metrics.ward.get(key,0))+amount
+
+## True while the enemy is under the control `cls` (frozen | stunned | staggered | slowed) that `skill_id` did not put there
+## itself (a spell never counts the control it caused: the lance's own slow gives the lance no bonus). An empty `skill_id` counts all.
+## Slowed means a slow of at least 20%.
+func _cc_active(e: Dictionary, cls: String, skill_id: String) -> bool:
+	match cls:
+		"frozen": if tick >= int(e.frozen_until): return false
+		"stunned": if tick >= int(e.get("stunned_until",0)): return false
+		"staggered": if tick >= int(e.get("staggered_until",0)): return false
+		"slowed": if tick >= int(e.slow_until) or int(e.slow_bps) < 2000: return false
+		_: return false
+	return skill_id.is_empty() or String(e.get("cc_src",{}).get(cls,"")) != skill_id
+
+## Where a basic spell shoots first: {id, how}. how = "kind" (I0), "cc" (I1) or "" (the nearest enemy, as without the composition).
+## `nearest` is the enemies within 13 m, nearest first (the grid search that every cast already does; no random number).
+## I0: with no uncontrolled ordinary enemy within prefer_when_clear_cm, the nearest enemy of prefer_kinds within prefer_kind_cm.
+## I1: else the nearest enemy within prefer_cc_cm that is frozen, stunned or staggered by another spell.
+func _aim(id_: String, nearest: Array[int]) -> Dictionary:
+	var spell: Dictionary = spells.spells.get(id_,{})
+	var kinds: Array = spell.get("prefer_kinds",[])
+	var kind_m := float(int(spell.get("prefer_kind_cm",0)))/100.0
+	if not kinds.is_empty() and kind_m > 0.0:
+		var clear_m := float(int(spell.get("prefer_when_clear_cm",0)))/100.0
+		var clear := true
+		for candidate in nearest:
+			var c: Dictionary = enemies[candidate]
+			if c.position.distance_to(hero.position) > clear_m: break
+			if not c.elite and not (_cc_active(c,"frozen","") or _cc_active(c,"stunned","") or _cc_active(c,"staggered","")):
+				clear = false
+				break
+		if clear:
+			for candidate in nearest:
+				var c: Dictionary = enemies[candidate]
+				if c.position.distance_to(hero.position) > kind_m: break
+				if c.kind in kinds and not c.elite: return {"id":candidate,"how":"kind"}
+	var cc_m := float(int(spell.get("prefer_cc_cm",0)))/100.0
+	if cc_m > 0.0 and not spell.get("vs_cc",{}).is_empty():
+		for candidate in nearest:
+			var c: Dictionary = enemies[candidate]
+			if c.position.distance_to(hero.position) > cc_m: break
+			if _cc_active(c,"frozen",id_) or _cc_active(c,"stunned",id_) or _cc_active(c,"staggered",id_): return {"id":candidate,"how":"cc"}
+	return {"id":nearest[0],"how":""}
 
 ## True while the enemy carries this status (count above zero, not expired). Only a run with the composition has any.
 func _has_status(e: Dictionary, status: String) -> bool:
@@ -821,8 +901,12 @@ func _ring_targets(id_: String, effects: Dictionary) -> Array[int]:
 			if _has_status(enemies[target],prefer): ordered.append(target)
 			else: rest.append(target)
 		ordered.append_array(rest)
+	# A detonation with block_targets (I2) may let the strike reach that many more targets, so keep that many in the list;
+	# _ring_strike stops at ring_targets plus what the hits earned.
 	var limit := int(effects.get("ring_targets",0))
-	if limit > 0 and ordered.size() > limit: ordered.resize(limit)
+	var spare := 0
+	for status in spells.spells[id_].detonates: spare = maxi(spare,int(spells.spells[id_].detonates[status].get("block_targets",0)))
+	if limit > 0 and ordered.size() > limit+spare: ordered.resize(limit+spare)
 	return ordered
 
 ## One ring cast. It is cast only while an enemy stands inside the ring, so the cooldown never runs idle.
@@ -832,6 +916,7 @@ func _cast_ring(id_: String, skill: Dictionary) -> void:
 	if targets.is_empty(): return
 	_next_cast[id_] = tick+int(effects.cooldown_ticks)
 	metrics.casts[id_] = int(metrics.casts.get(id_,0))+1
+	_ward_add("casts")
 	_ring_strike(id_,effects,targets,bool(skill.evolved),1)
 	for pulse in range(2,int(effects.ring_pulses)+1):
 		_ring_pending.append({"due":tick+24*(pulse-1),"skill_id":id_,"effects":effects.duplicate(true),"evolved":bool(skill.evolved),"pulse":pulse})
@@ -841,13 +926,18 @@ func _ring_strike(id_: String, effects: Dictionary, targets: Array[int], evolved
 	_cast_sequence += 1
 	var context := {"uid":_cast_sequence,"skill_id":id_,"effects":effects,"remaining_hits":int(effects.hit_budget),"hit_ids":[],"evolved":evolved}
 	var positions: Array[Vector2] = []
-	for target in targets: positions.append(enemies[target].position)
+	var limit := int(effects.get("ring_targets",0))
+	for index in targets.size():
+		if limit > 0 and index >= limit: break
+		positions.append(enemies[targets[index]].position)
 	var details := {"skill_id":id_,"direction":hero.direction,"effects":effects.duplicate(true),"targets":positions,"evolved":evolved,"shape":"ring","radius_cm":int(effects.ring_radius_cm)}
 	if pulse > 1: details.pulse = pulse
 	_emit("cast",hero.position,details)
-	for target in targets:
+	for index in targets.size():
+		# Past ring_targets only what the detonations in this strike earned (context.ring_extra, I2) is struck.
+		if limit > 0 and index >= limit+int(context.get("ring_extra",0)): break
 		if not _terminal_mode.is_empty() or int(context.remaining_hits) <= 0: break
-		_damage_enemy(target,context,0)
+		_damage_enemy(targets[index],context,0)
 
 func _step_ring_pulses() -> void:
 	var left: Array[Dictionary] = []
@@ -937,13 +1027,17 @@ func _step_projectiles() -> void:
 	var remaining: Array[Dictionary] = []
 	for p in projectiles:
 		if not _terminal_mode.is_empty(): break
-		if tick >= int(p.expires): continue
+		if tick >= int(p.expires):
+			if p.hostile and not _hostile_src.is_empty(): _hostile_src.erase(int(p.uid))
+			continue
 		p.previous = p.position
 		p.position += p.direction*float(p.speed)*STEP
 		var remove := false
 		if p.hostile:
 			if _segment_distance_sq(hero.position,p.previous,p.position) <= pow(float(p.radius)+.28,2):
-				_hero_damage(int(p.damage_raw),p.position)
+				var shooter: Dictionary = _hostile_src.get(int(p.uid),{})
+				_hero_damage(int(p.damage_raw),p.position,String(shooter.get("kind",String(p.skill_id).trim_prefix("hostile."))),int(shooter.get("id",0)))
+				_hostile_src.erase(int(p.uid))
 				remove = true
 		else:
 			if not _contexts.has(p.cast_id): continue
@@ -1017,7 +1111,7 @@ func _damage_enemy(id_: int, context: Dictionary, depth: int) -> void:
 	e.dead_tick = tick
 	e.telegraph = {}
 	kills += 1
-	_emit("death",e.position,{"target_id":id_,"kind":e.kind,"elite":e.elite,"skill_id":context.skill_id})
+	_emit("death",e.position,{"target_id":id_,"kind":e.kind,"elite":e.elite,"skill_id":context.skill_id,"role":_enemy_role(e)})
 	_drop_orb(e.position,int(_enemy_definition(e).xp))
 	_maybe_drop_item(e)
 	if depth < int(effect.proc_depth) and int(effect.death_burst) > 0:
@@ -1039,7 +1133,7 @@ func _enemy_definition(e: Dictionary) -> Dictionary:
 	return ENEMY_DEFS[e.kind]
 
 func _resolve_elite_attack(e: Dictionary,definition: Dictionary,distance: float) -> void:
-	if e.attack_kind == "circle" and distance <= 3.4: _hero_damage(int(definition.damage)*UNIT,e.position)
+	if e.attack_kind == "circle" and distance <= 3.4: _hero_damage(int(definition.damage)*UNIT,e.position,_source_kind_of(e),int(e.id))
 	elif e.attack_kind == "fan": _enemy_projectiles(e)
 
 func _on_elite_defeated(_e: Dictionary) -> void:

@@ -209,6 +209,10 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	if not spells.is_empty():
 		if not growth.set_spells(spells,_spell_owner_skill):errors.assign(growth.errors);return false
 		metrics.detonate={"count":0,"extra_raw":0,"pairs":{}}
+		# What the rings and the aim rules did (G5-3.1): ring casts and hits, ring kills, staggers and the attacks they cut, the
+		# ring's freezes and stuns, basic hits that found a controlled enemy (vs_cc) and what that added, detonations that
+		# strengthened a ring (i2), and basic casts aimed first at a far shooter (i0) with the kills of that kind they made.
+		metrics.ward={"casts":0,"hits":0,"kills":0,"staggers":0,"cuts":0,"freezes":0,"stuns":0,"vs_cc_hits":0,"vs_cc_extra_raw":0,"i2_hits":0,"i2_extra_raw":0,"i0_casts":0,"i0_kills":0}
 	if _build_active:
 		if _build_max_hp>0:hero.max_hp_raw=120*UNIT+_build_max_hp*UNIT;hero.hp_raw=hero.max_hp_raw
 		if not growth.set_options(_build_growth):errors.assign(growth.errors);return false
@@ -413,13 +417,17 @@ func _step_fields() -> void:
 		var threshold := int(skill.effects.freeze_stacks)
 		for id_ in inside:
 			var e: Dictionary=enemies[id_]
+			# A field's control belongs to no spell of the composition: forget who put the earlier one there.
+			if e.has("cc_src"):e.cc_src.erase("slowed")
 			if tick<int(e.slow_until):
 				e.slow_bps=maxi(int(e.slow_bps),int(f.slow_bps));e.slow_until=maxi(int(e.slow_until),tick+8)
 			else:
 				e.slow_until=tick+8;e.slow_bps=int(f.slow_bps)
 			if freeze_due and threshold>0:
 				e.freeze_stacks+=1;e.freeze_expires=tick+180
-				if int(e.freeze_stacks)>=threshold:e.frozen_until=tick+(12 if e.elite else 75);e.freeze_stacks=0
+				if int(e.freeze_stacks)>=threshold:
+					e.frozen_until=tick+(12 if e.elite else 75);e.freeze_stacks=0
+					if e.has("cc_src"):e.cc_src.erase("frozen")
 		if freeze_due:f.next_freeze=tick+int(_field_rule.freeze_every_ticks)
 		var bps := int(_field_rule.pulse_damage_bps)
 		if bps>0 and tick>=int(f.next_pulse):
@@ -494,6 +502,12 @@ func _spawn(kind: String,point: Vector2) -> bool:
 
 func _enemy_definition(e: Dictionary) -> Dictionary:
 	return e.get("definition",ENEMY_DEFS[e.kind])
+
+## normal | elite | champion | boss: the final boss is the zone 2 guardian (chapter_boss), the other seal guardians carry a title_key.
+func _enemy_role(e: Dictionary) -> String:
+	if not e.elite:return "normal"
+	if e.get("chapter_boss",false):return "boss"
+	return "champion" if e.has("title_key") else "elite"
 
 func _spawn_wave() -> void:
 	if _rhythm_on:_rhythm_tick()
@@ -698,7 +712,7 @@ func _resolve_elite_attack(e: Dictionary,definition: Dictionary,distance: float)
 	if e.attack_kind!="frost_cross":super._resolve_elite_attack(e,definition,distance);return
 	for direction in [e.attack_direction,e.attack_direction.orthogonal()]:
 		if _segment_distance_sq(hero.position,e.position-direction*4.8,e.position+direction*4.8)<=.9*.9:
-			_hero_damage(int(definition.damage)*UNIT,e.position);break
+			_hero_damage(int(definition.damage)*UNIT,e.position,_source_kind_of(e),int(e.id));break
 
 func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 	super._emit(type,position,details)
@@ -889,7 +903,8 @@ func _detonation_of(e: Dictionary,spell: Dictionary,skill_id: String) -> Diction
 		var pair_id := RunSpells.pair_between(spells,skill_id,src)
 		if not pair_id.is_empty() and (growth.evolve_partner_of(skill_id)==pair_id or growth.evolve_partner_of(src)==pair_id):
 			bonus=bonus*int(spells.evolve.partner_detonate_bps)/10000
-		return {"status":String(status),"stacks":others,"src":src,"bonus_bps":bonus,"mult_bps":10000+bonus,"consume":bool(rule.consume),"freeze_bonus":int(rule.get("freeze_bonus",0))}
+		return {"status":String(status),"stacks":others,"src":src,"bonus_bps":bonus,"mult_bps":10000+bonus,"consume":bool(rule.consume),"freeze_bonus":int(rule.get("freeze_bonus",0)),
+				"block_bps":int(rule.get("block_bps",10000)),"block_targets":int(rule.get("block_targets",0)),"pair":pair_id}
 	return {}
 
 ## A direct hit puts the spell's statuses on the enemy (count up to the status maximum, every application renews the
@@ -910,6 +925,51 @@ func _apply_statuses(e: Dictionary,spell: Dictionary,effect: Dictionary,freeze_b
 			if int(effect.freeze_stacks)>0:threshold=mini(threshold,int(effect.freeze_stacks))
 			if int(entry.n)>=maxi(1,threshold):
 				e.frozen_until=tick+(12 if e.elite else 75);entry.n=0;entry.by={}
+				_set_cc_src(e,"frozen",skill_id)
+
+## Remember which spell put a control on the enemy (cc_src, only in a run with the composition) so that spell's own control
+## never counts for its own bonus (vs_cc) or its aim.
+func _set_cc_src(e: Dictionary,cls: String,skill_id: String) -> void:
+	if not e.has("cc_src"):e.cc_src={}
+	e.cc_src[cls]=skill_id
+
+## Share of a ring's damage this enemy takes by its distance to the hero, in ten-thousandths: all of it within near_cm, then
+## a straight line down to falloff_floor_bps at the edge of the ring. Integers; no random number. Controls are not scaled.
+func _falloff_bps(effect: Dictionary,e: Dictionary) -> int:
+	var floor_bps := int(effect.get("falloff_floor_bps",10000))
+	var near := int(effect.get("near_cm",0));var radius := int(effect.get("ring_radius_cm",0))
+	if floor_bps>=10000 or radius<=near:return 10000
+	var d := int(hero.position.distance_to(e.position)*100.0)
+	if d<=near:return 10000
+	return 10000-(10000-floor_bps)*mini(d-near,radius-near)/(radius-near)
+
+## What a ring hit does besides damage (depth 0, the enemy still alive): freeze, stun, stagger. A detonation (I2) lengthens
+## them by its block_bps. Strong enemies keep the old rules: frozen 12 ticks, stunned like a direct arc hit, never staggered.
+func _apply_ring_control(e: Dictionary,effect: Dictionary,detonation: Dictionary,skill_id: String) -> void:
+	var block := int(detonation.get("block_bps",10000)) if not detonation.is_empty() else 10000
+	var freeze := int(effect.get("freeze_ticks",0))
+	if freeze>0:
+		var until := tick+(12 if e.elite else maxi(1,freeze*block/10000))
+		if until>int(e.frozen_until):e.frozen_until=until;_set_cc_src(e,"frozen",skill_id);_ward_add("freezes")
+	var stun := int(effect.get("stun_ticks",0))
+	if stun>0:
+		var duration := 0
+		if not e.elite:duration=maxi(1,stun*block/10000)
+		elif tick>=int(e.get("shock_ready_tick",0)):
+			duration=ARC_ELITE_STUN_TICKS36;e.shock_ready_tick=tick+ARC_ELITE_IMMUNITY36
+		if duration>0 and tick+duration>int(e.get("stunned_until",0)):
+			e.stunned_until=tick+duration;_set_cc_src(e,"stunned",skill_id);_ward_add("stuns")
+			_emit("stun",e.position,{"target_id":int(e.id),"skill_id":skill_id,"until_tick":e.stunned_until,"duration_ticks":duration,"elite":e.elite})
+	var stagger := int(effect.get("stagger_ticks",0))
+	if stagger>0 and not e.elite:
+		var ticks := maxi(1,stagger*block/10000)
+		if tick+ticks>int(e.get("staggered_until",0)):e.staggered_until=tick+ticks
+		_set_cc_src(e,"staggered",skill_id);_ward_add("staggers")
+		# A body in the middle of a wind-up or a dash loses that attack: it recovers for as long as it is staggered.
+		var cut: bool=e.state=="windup" or e.state=="dash"
+		if cut:
+			e.state="recover";e.state_until=tick+ticks;e.telegraph={};_ward_add("cuts")
+		_emit("stagger",e.position,{"target_id":int(e.id),"cut":cut})
 
 func _limited(stat: String,amount: int) -> int:
 	return clampi(amount,int(GrowthCatalog.LIMITS[stat][0]),int(GrowthCatalog.LIMITS[stat][1]))
@@ -1021,7 +1081,7 @@ func _step_chapter_hazards() -> void:
 	var live: Array[Dictionary]=[]
 	for hazard in chapter_hazards:
 		if tick<hazard.expires:live.append(hazard);continue
-		if hero.position.distance_squared_to(hazard.position)<=pow(float(hazard.radius),2):_hero_damage(hazard.damage_raw,hazard.position)
+		if hero.position.distance_squared_to(hazard.position)<=pow(float(hazard.radius),2):_hero_damage(hazard.damage_raw,hazard.position,"boss_ward",0)
 		_last_ward_burst=tick
 		_emit("chapter_burst",hazard.position,{"radius":hazard.radius})
 	chapter_hazards=live
@@ -1044,7 +1104,8 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 
 ## Read only, for the card screen (D12 B0.11) and the measurement policies. Changes nothing. {"enabled":false} while off.
 ## {enabled, slots, spells:{id:{role,element,axis:{damage,reach},pairs_owned:[pair id],evolve_progress:{axis,passive,partner}}},
-##  offer:{card id: {pairs_if_taken:[pair id]}} (the standing offer only), detonate:{count,extra_raw,pairs}}
+##  offer:{card id: {pairs_if_taken:[pair id]}} (the standing offer only), detonate:{count,extra_raw,pairs},
+##  ward:{casts,hits,kills,staggers,cuts,freezes,stuns,vs_cc_hits,vs_cc_extra_raw,i2_hits,i2_extra_raw,i0_casts,i0_kills}}
 func run_spells_view() -> Dictionary:
 	if spells.is_empty():return {"enabled":false}
 	var owned := {}
@@ -1054,7 +1115,7 @@ func run_spells_view() -> Dictionary:
 	var offer := {}
 	# Only an offer that was already drawn (get_offer()); this function never draws one, so it never moves the random stream.
 	for card in growth.snapshot().offer.get("cards",[]):offer[String(card.id)]={"pairs_if_taken":growth.pairs_if_taken(card)}
-	return {"enabled":true,"slots":int(spells.slots),"spells":owned,"offer":offer,"detonate":metrics.get("detonate",{}).duplicate(true)}
+	return {"enabled":true,"slots":int(spells.slots),"spells":owned,"offer":offer,"detonate":metrics.get("detonate",{}).duplicate(true),"ward":metrics.get("ward",{}).duplicate(true)}
 
 ## What the screen needs to word the goal. `kind`: "move" (walk to the next room), "seal_kills" (done/total kills around the
 ## seal) or "champion" (hp/hp_max of the seal guardian, `title_key` names it). No sentence is made here.
@@ -1114,18 +1175,42 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	var spell: Dictionary={}
 	var detonation: Dictionary={}
 	var detonation_extra := 0
+	var is_ring := false
+	var cc_class := ""
+	var cc_extra := 0
 	if not spells.is_empty():
 		spell=spells.spells.get(context.skill_id,{})
 		if not spell.is_empty():
+			is_ring=String(spell.role)=="ring"
+			# A ring hits harder the closer the enemy stands (falloff_floor_bps 10000: not at all).
+			if is_ring:damage=maxi(1,damage*_falloff_bps(effect,e)/10000)
 			if depth==0:
 				detonation=_detonation_of(e,spell,String(context.skill_id))
 				if not detonation.is_empty():
 					var before_detonation := damage
 					damage=maxi(1,damage*int(detonation.mult_bps)/10000)
 					detonation_extra=damage-before_detonation
+					# I2: the detonation may let the ring strike more targets (block_targets).
+					if int(detonation.block_targets)>0:context.ring_extra=int(context.get("ring_extra",0))+int(detonation.block_targets)
+				# I1: a basic spell's hit on an enemy another spell controls deals the biggest matching vs_cc bonus (one, not stacked).
+				if not is_ring and spell.has("vs_cc"):
+					var best_bps := 0
+					for cls in spell.vs_cc:
+						if int(spell.vs_cc[cls])>best_bps and _cc_active(e,String(cls),String(context.skill_id)):best_bps=int(spell.vs_cc[cls]);cc_class=String(cls)
+					if best_bps>0:
+						var before_cc := damage
+						damage=maxi(1,damage*(10000+best_bps)/10000)
+						cc_extra=damage-before_cc
 			if e.elite and spell.has("vs_strong_bps"):damage=maxi(1,damage*int(spell.vs_strong_bps)/10000)
+			# A ring's proportional hit on a strong enemy: a share of its current life, never taking that share below the floor.
+			if is_ring and e.elite and int(effect.get("strong_pct_bps",0))>0:
+				var floor_hp := int(e.max_hp_raw)*int(effect.get("strong_floor_bps",0))/10000
+				var share := mini(int(e.hp_raw)*int(effect.strong_pct_bps)/10000,int(e.hp_raw)-damage-floor_hp)
+				if share>0:damage+=share
 	# Mark resonance: a primary hit on an enemy that a secondary skill marked deals mark_bps more per live mark.
+	# The composition switches it off (its own aim bonus replaces it) unless the document says marks_resonance.
 	var mark_bps := int(tuning.marks.mark_bps)
+	if not spells.is_empty() and not bool(spells.get("marks_resonance",false)):mark_bps=0
 	var assisting: Array[int]=[]
 	var unmarked := damage
 	var hp_before := int(e.hp_raw)
@@ -1138,6 +1223,7 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	metrics.hits[context.skill_id]=int(metrics.hits.get(context.skill_id,0))+1
 	if context.skill_id=="chapter1.skill.frost" or (not spell.is_empty() and spell.element=="frost" and int(effect.slow_bps)>0):
 		e.slow_until=tick+(int(spell.get("slow_ticks",100)) if not spell.is_empty() else 100);e.slow_bps=int(effect.slow_bps)
+		if not spell.is_empty():_set_cc_src(e,"slowed",String(context.skill_id))
 		# With the composition the chill status is the freeze counter (see _apply_statuses); without it the old stacks.
 		if spell.is_empty() and int(effect.freeze_stacks)>0:
 			e.freeze_stacks+=1;e.freeze_expires=tick+180
@@ -1145,13 +1231,18 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 				e.frozen_until=tick+(12 if e.elite else 75);e.freeze_stacks=0
 	if not spell.is_empty():
 		if not detonation.is_empty() and bool(detonation.consume):e.status.erase(detonation.status)
-		if depth==0 and e.hp_raw>0:_apply_statuses(e,spell,effect,int(detonation.get("freeze_bonus",0)),String(context.skill_id))
+		if depth==0 and e.hp_raw>0:
+			_apply_statuses(e,spell,effect,int(detonation.get("freeze_bonus",0)),String(context.skill_id))
+			if is_ring:_apply_ring_control(e,effect,detonation,String(context.skill_id))
+		if is_ring and depth==0:_ward_add("hits")
+		if cc_extra>0:_ward_add("vs_cc_hits");_ward_add("vs_cc_extra_raw",cc_extra)
 	var cold_death: bool=evolved_cold and e.hp_raw<=0 and depth==0 and int(effect.proc_depth)>0
 	var shatter: bool=int(effect.shatter_count)>0 and (was_frozen or cold_death)
 	# dealt_raw is the life really taken off (the overflow past death is not in it); damage_raw stays the full figure.
 	var hit_details := {"target_id":id_,"skill_id":context.skill_id,"damage_raw":int(result.total_raw),"dealt_raw":int(result.hp_before_raw)-int(result.hp_after_raw),"frozen":tick<int(e.frozen_until),"shatter":shatter,
 		"radius_cm":int(effect.radius_cm),"blast_radius_cm":int(effect.radius_cm)if context.skill_id=="chapter1.skill.ember"else 0,"cast_uid":context.uid,"evolved":context.evolved}
 	if not detonation.is_empty():hit_details.detonate=true
+	if cc_extra>0:hit_details.vs_cc=cc_class
 	if not assisting.is_empty():
 		# The extra damage (HP really removed beyond the unmarked hit) is credited to the marking skills, remainder to the first.
 		var dealt: int=mini(int(result.total_raw),hp_before)
@@ -1166,8 +1257,9 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 		hit_details.assist_raw=extra;hit_details.assist_skill_ids=owners
 	_emit("hit",e.position,hit_details)
 	if not detonation.is_empty():
-		_emit("detonate",e.position,{"target_id":id_,"by_skill":context.skill_id,"status":detonation.status,"src_skill":detonation.src,"stacks":int(detonation.stacks),"cast_uid":context.uid,"extra_raw":detonation_extra})
-		var pair_id := RunSpells.pair_between(spells,String(context.skill_id),String(detonation.src))
+		_emit("detonate",e.position,{"target_id":id_,"by_skill":context.skill_id,"status":detonation.status,"src_skill":detonation.src,"stacks":int(detonation.stacks),"cast_uid":context.uid,"extra_raw":detonation_extra,"pair":String(detonation.pair)})
+		var pair_id := String(detonation.pair)
+		if is_ring:_ward_add("i2_hits");_ward_add("i2_extra_raw",detonation_extra)
 		var tally: Dictionary=metrics.detonate
 		tally.count=int(tally.count)+1;tally.extra_raw=int(tally.extra_raw)+detonation_extra
 		var row: Dictionary=tally.pairs.get(pair_id,{"count":0,"extra_raw":0})
@@ -1181,11 +1273,14 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if e.hp_raw>0 and context.skill_id=="chapter1.skill.arc" and depth==0 and tick>=int(e.get("shock_ready_tick",0)):
 		var duration: int=ARC_ELITE_STUN_TICKS36 if e.elite else ARC_STUN_TICKS36
 		e.stunned_until=tick+duration
+		if not spells.is_empty():_set_cc_src(e,"stunned",String(context.skill_id))
 		e.shock_ready_tick=tick+(ARC_ELITE_IMMUNITY36 if e.elite else ARC_STUN_IMMUNITY36)
 		_emit("stun",e.position,{"target_id":id_,"skill_id":context.skill_id,"until_tick":e.stunned_until,"duration_ticks":duration,"elite":e.elite})
 	if e.hp_raw>0:return
 	e.state="dead";_alive-=1;e.dead_tick=tick;e.telegraph={};kills+=1
-	_emit("death",e.position,{"target_id":id_,"kind":e.kind,"elite":e.elite,"skill_id":context.skill_id})
+	_emit("death",e.position,{"target_id":id_,"kind":e.kind,"elite":e.elite,"skill_id":context.skill_id,"role":_enemy_role(e)})
+	if is_ring:_ward_add("kills")
+	if context.get("aim","")=="kind" and e.kind in spell.get("prefer_kinds",[]):_ward_add("i0_kills")
 	_drop_orb(e.position,int(_enemy_definition(e).xp));_maybe_drop_item(e)
 	# The run ends with the final boss; sparks over its corpse would only be drawn after the win.
 	if not e.get("chapter_boss",false):_queue_children(e,context)
