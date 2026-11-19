@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-20 00:15:30 · 도구 81개
+생성: 2026-11-20 03:13:40 · 도구 84개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -32,7 +32,8 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/run_all.py` | 회귀 한 번에. --only·--quick으로 일부만 | Single regression entry point for the current working tree. | `python tools/dev/run_all.py`<br>`python tools/dev/run_all.py --quick` |
 | `tools/dev/audit.py` | 기록과 약속이 어긋났는지 수를 세고 지난번과 견줌(작업 묶음을 닫을 때, 날마다 첫 일). 화면은 「점검」 | 기록과 약속이 어긋났는가를 한 장으로 센다. 회귀(run_all.py)가 통과/실패를 본다면, 이것은 수를 세고 지난번과 견준다. | `python tools/dev/audit.py`<br>`python tools/dev/audit.py --list` |
 | `tools/dev/run_dev.py` | 게임을 임포트하고 띄운다 | Dev loop: import the project when needed, then run the game from the repository root. | `python tools/dev/run_dev.py -- --chapter1-start`<br>`python tools/dev/run_dev.py --resolution 1920x1080 -- --chapter1-start --chapter1-pilot --chapter1-profile-off` |
-| `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60 --kill-stale --dry-run` |
+| `tools/dev/godot_ps.py` | 떠 있는 Godot 프로세스 표(어느 작업 폴더의 것인지, 몇 분 됐는지). --kill-stale은 이 저장소의 도구가 띄운 오래된 것만 종료 | List the Godot processes that are running now, and end the stale ones this repository's tools started. | `python tools/dev/godot_ps.py`<br>`python tools/dev/godot_ps.py --stale-min=60` |
+| `tools/dev/disk_report.py` | 디스크 사용 표(저장소·worktree별 큰 폴더, 지워도 되는지). --clean은 지울 목록만, --apply를 줘야 재생성 가능한 캐시만 삭제(저장·HANDOVER·recheck·ref·24시간 내 사용·살아 있는 프로세스는 절대 안 지움) | Disk use of the repository and its .claude/worktrees: a fast size table, a worktree table, and a guarded clean-up of regenerable caches. | `python tools/dev/disk_report.py`<br>`python tools/dev/disk_report.py --worktrees` |
 
 ## 기술 관리(tech-lead)
 
@@ -240,6 +241,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/audio_scene_audition.py` | Scene audition: lay candidate sounds under captured game footage, one video per candidate, plus an answer key and measurements. | `python tools/dev/audio_scene_audition.py CAPTURE_DIR --requests REQ.json --candidates CANDS.json --out _local/audio/audition/20261119-scene`<br>`python tools/dev/audio_scene_audition.py _local/sfx/ember-a --requests _local/sfx/req_ember.json --candidates cands.json --out OUT --open-labels --no-video` |
 | `tools/dev/balance_search.py` | balance_search.py — 균형 시뮬레이터 위의 값 탐색(모델의 답이지 게임의 답이 아니다. 재미는 평가하지 않는다). | `python tools/dev/balance_search.py --stage power --plan A --rounds 3 --out _local/balsim2/s1A`<br>`python tools/dev/balance_search.py --stage threat --init _local/balsim2/s1A.json --out _local/balsim2/s2A` |
 | `tools/dev/equiv.py` | Behaviour-preservation check for refactors: run a base commit and the working folder the same way and compare what they dump. | `python tools/dev/equiv.py`<br>`python tools/dev/equiv.py --base f36b0a7 --primary frost,ember,arc --until 2400` |
+| `tools/dev/godot_guard.py` | Time limit and process-tree kill for Godot child processes (used by godot.py and run_all.py). |  |
 | `tools/dev/isolated_env.py` | Environment for Godot child processes that must not touch the user folder. |  |
 | `tools/dev/judge_targets.py` | 목표 판정표: tools/dev/targets.json 과 측정 JSON 여러 개를 맞대어 통과·미달·못 잼·미평가를 낸다. | `python tools/dev/judge_targets.py --out-md _local/tools/judge/table.md --out-json _local/tools/judge/table.json \`<br>`python tools/dev/judge_targets.py --check-constants --out-md _local/tools/judge/constants.md` |
 | `tools/dev/make_lightning_candidates.py` | Lightning (running current) cast sound candidates for the scene audition. Candidates only: nothing here goes into the game. | `python tools/dev/make_lightning_candidates.py --out _local/audio/lightning-cands-20261120`<br>`python tools/dev/make_lightning_candidates.py --out ... --sources D:/witch-moira-audio-sources` |
