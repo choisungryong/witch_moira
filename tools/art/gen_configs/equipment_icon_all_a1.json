@@ -1,0 +1,316 @@
+{
+ "batch": "equipment_icon_all_a1",
+ "folder": "equipment_icon",
+ "group": "장비 아이콘 전 칸 1차",
+ "output_name": "icon.png",
+ "model": "gpt-5.6-sol",
+ "refs": [
+  "equipment_icon/style_ref_v01.png"
+ ],
+ "id_prefix": "equip-",
+ "expect_pattern": "{folder}/{name}.prompt.txt",
+ "note": "A3 2.3판 7절 프롬프트 그대로. 참조 style_ref_v01. 마젠타 배경 원본.",
+ "specs": {
+  "A3": "docs/specs/A3-equipment-icon-direction.ko.md"
+ },
+ "parts": {
+  "exec": {
+   "spec": "A3",
+   "after": "### 7.1 공통 머리말",
+   "fence": true
+  },
+  "style": {
+   "spec": "A3",
+   "after": "### 7.2 공통 머리말",
+   "fence": true
+  },
+  "slot": {
+   "spec": "A3",
+   "regex": "\\| {slot_ko} \\| `(View: .*?)` \\|",
+   "group": 1
+  },
+  "wear": {
+   "spec": "A3",
+   "after": "### 7.3a",
+   "fence": true
+  },
+  "item": {
+   "spec": "A3",
+   "after": "**`{item}` ",
+   "fence": true
+  }
+ },
+ "template": [
+  "@exec",
+  "Image description:",
+  "@style",
+  "@slot",
+  "@item"
+ ],
+ "items": [
+  {
+   "name": "swift_wand-a1",
+   "title": "swift_wand a1",
+   "vars": {
+    "item": "swift_wand",
+    "slot_ko": "무기"
+   }
+  },
+  {
+   "name": "cinder_staff-a1",
+   "title": "cinder_staff a1",
+   "vars": {
+    "item": "cinder_staff",
+    "slot_ko": "무기"
+   }
+  },
+  {
+   "name": "piercing_sceptre-a1",
+   "title": "piercing_sceptre a1",
+   "vars": {
+    "item": "piercing_sceptre",
+    "slot_ko": "무기"
+   }
+  },
+  {
+   "name": "ash_hood-a1",
+   "title": "ash_hood a1",
+   "vars": {
+    "item": "ash_hood",
+    "slot_ko": "머리"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "iron_circlet-a1",
+   "title": "iron_circlet a1",
+   "vars": {
+    "item": "iron_circlet",
+    "slot_ko": "머리"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "seer_veil-a1",
+   "title": "seer_veil a1",
+   "vars": {
+    "item": "seer_veil",
+    "slot_ko": "머리"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "linen_wraps-a1",
+   "title": "linen_wraps a1",
+   "vars": {
+    "item": "linen_wraps",
+    "slot_ko": "장갑"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "ember_gloves-a1",
+   "title": "ember_gloves a1",
+   "vars": {
+    "item": "ember_gloves",
+    "slot_ko": "장갑"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "storm_gauntlets-a1",
+   "title": "storm_gauntlets a1",
+   "vars": {
+    "item": "storm_gauntlets",
+    "slot_ko": "장갑"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "worn_sandals-a1",
+   "title": "worn_sandals a1",
+   "vars": {
+    "item": "worn_sandals",
+    "slot_ko": "신발"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "pilgrim_boots-a1",
+   "title": "pilgrim_boots a1",
+   "vars": {
+    "item": "pilgrim_boots",
+    "slot_ko": "신발"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "ash_striders-a1",
+   "title": "ash_striders a1",
+   "vars": {
+    "item": "ash_striders",
+    "slot_ko": "신발"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "winter_shard-a1",
+   "title": "winter_shard a1",
+   "vars": {
+    "item": "winter_shard",
+    "slot_ko": "목걸이"
+   }
+  },
+  {
+   "name": "ember_lens-a1",
+   "title": "ember_lens a1",
+   "vars": {
+    "item": "ember_lens",
+    "slot_ko": "목걸이"
+   }
+  },
+  {
+   "name": "chain_knot-a1",
+   "title": "chain_knot a1",
+   "vars": {
+    "item": "chain_knot",
+    "slot_ko": "목걸이"
+   }
+  },
+  {
+   "name": "quick_loop-a1",
+   "title": "quick_loop a1",
+   "vars": {
+    "item": "quick_loop",
+    "slot_ko": "반지"
+   }
+  },
+  {
+   "name": "glass_ring-a1",
+   "title": "glass_ring a1",
+   "vars": {
+    "item": "glass_ring",
+    "slot_ko": "반지"
+   }
+  },
+  {
+   "name": "ward_ring-a1",
+   "title": "ward_ring a1",
+   "vars": {
+    "item": "ward_ring",
+    "slot_ko": "반지"
+   }
+  },
+  {
+   "name": "linen_robe-a1",
+   "title": "linen_robe a1",
+   "vars": {
+    "item": "linen_robe",
+    "slot_ko": "몸통"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "iron_vest-a1",
+   "title": "iron_vest a1",
+   "vars": {
+    "item": "iron_vest",
+    "slot_ko": "몸통"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  },
+  {
+   "name": "warden_mantle-a1",
+   "title": "warden_mantle a1",
+   "vars": {
+    "item": "warden_mantle",
+    "slot_ko": "몸통"
+   },
+   "template": [
+    "@exec",
+    "Image description:",
+    "@style",
+    "@slot",
+    "@wear",
+    "@item"
+   ]
+  }
+ ]
+}
