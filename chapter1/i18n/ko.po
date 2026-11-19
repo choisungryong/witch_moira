@@ -689,3 +689,239 @@ msgstr "빈 슬롯에 착용"
 #. Better-gear notice: key hints (keys stay in the text)
 msgid "hud.notice.keys"
 msgstr "[F] 바로 착용  ·  [I] 비교"
+
+#. Result window button that opens the battle record
+msgid "record.open"
+msgstr "전투 기록"
+
+#. Battle record: close button (the default focus)
+msgid "record.close"
+msgstr "닫기"
+
+#. Battle record window title
+msgid "record.title"
+msgstr "전투 기록"
+
+#. Battle record: how the run ended
+msgid "record.outcome.victory"
+msgstr "승리"
+
+#. Battle record: how the run ended
+msgid "record.outcome.defeat"
+msgstr "패배"
+
+#. Battle record: how the run ended
+msgid "record.outcome.abandoned"
+msgstr "포기"
+
+#. Battle record summary cell name
+msgid "record.stat.result"
+msgstr "결과"
+
+#. Battle record summary cell name
+msgid "record.stat.time"
+msgstr "생존 시간"
+
+#. Battle record summary cell name
+msgid "record.stat.kills"
+msgstr "처치"
+
+#. Battle record summary cell name
+msgid "record.stat.champions"
+msgstr "수호자·우두머리 처치"
+
+#. Battle record summary cell name
+msgid "record.stat.damage"
+msgstr "총 피해"
+
+#. Battle record summary cell name
+msgid "record.stat.taken"
+msgstr "받은 피해"
+
+#. Battle record summary cell name
+msgid "record.stat.potions"
+msgstr "쓴 회수약"
+
+#. Battle record summary cell name
+msgid "record.stat.level"
+msgstr "레벨"
+
+#. Battle record: skill table title
+msgid "record.skills.title"
+msgstr "기술별 피해"
+
+#. Battle record: skill table with no rows
+msgid "record.skills.empty"
+msgstr "기록된 기술이 없습니다"
+
+#. Skill table column
+msgid "record.skills.name"
+msgstr "기술"
+
+#. Skill table column
+msgid "record.skills.got"
+msgstr "얻은 때"
+
+#. Skill table column: share of all damage
+msgid "record.skills.share"
+msgstr "비중"
+
+#. Skill table column
+msgid "record.skills.damage"
+msgstr "피해"
+
+#. Skill table column: damage per second since the skill was got
+msgid "record.skills.dps"
+msgstr "초당 피해"
+
+#. Skill table column
+msgid "record.skills.kills"
+msgstr "처치"
+
+#. Skill table: final rank. {n}: number
+msgid "record.skills.rank"
+msgstr "랭크 {n}"
+
+#. Skill table: evolved mark
+msgid "record.skills.evolved"
+msgstr "◆ 진화"
+
+#. Skill table: when the skill was got. {time}: mm:ss, {level}: number
+msgid "record.skills.got_at"
+msgstr "{time} · 레벨 {level}"
+
+#. Skill table: sum row
+msgid "record.skills.total"
+msgstr "합계"
+
+#. Battle record: the graces chosen, in order
+msgid "record.picks.title"
+msgstr "고른 순서"
+
+#. Pick list: when. {time}: mm:ss, {level}: number
+msgid "record.picks.when"
+msgstr "{time} · 레벨 {level}"
+
+#. Pick list: a skill was unlocked. {skill}: skill name
+msgid "record.pick.unlock"
+msgstr "{skill} 얻음"
+
+#. Pick list: a rank card. {skill}: skill name, {n}: number
+msgid "record.pick.rank"
+msgstr "{skill} 랭크 {n}"
+
+#. Pick list: a damage axis point. {skill}: skill name
+msgid "record.pick.axis_damage"
+msgstr "{skill} 피해 축"
+
+#. Pick list: a reach axis point. {skill}: skill name
+msgid "record.pick.axis_reach"
+msgstr "{skill} 넓이 축"
+
+#. Pick list: evolution. {skill}: the evolved skill name
+msgid "record.pick.evolve"
+msgstr "{skill} 진화"
+
+#. Battle record: rows not shown. {n}: number
+msgid "record.more"
+msgstr "외 {n}개"
+
+#. Defeat box title. {n}: seconds
+msgid "record.loss.title"
+msgstr "죽기 전 {n}초"
+
+#. Defeat box with no hits
+msgid "record.loss.none"
+msgstr "이 구간에 받은 피해가 없습니다"
+
+#. Defeat box. {life}: number, {hits}: number
+msgid "record.loss.taken"
+msgstr "받은 피해 {life} · {hits}번 맞음"
+
+#. Defeat box row: life lost and hits by one kind. {life}, {hits}: numbers
+msgid "record.loss.row"
+msgstr "{life} · {hits}번"
+
+#. Defeat box: the damage the recorder could not attribute to a kind
+msgid "record.loss.unknown"
+msgstr "알 수 없음"
+
+#. Defeat box note. {known}, {hits}: numbers
+msgid "record.loss.known"
+msgstr "맞은 {hits}번 중 {known}번만 무엇인지 가려냈습니다"
+
+#. Defeat box: small chart title. {peak}: number
+msgid "record.loss.alive"
+msgstr "살아 있는 적 (최대 {peak})"
+
+#. Defeat box chart: left end. {n}: seconds
+msgid "record.loss.axis_start"
+msgstr "{n}초 전"
+
+#. Defeat box chart: right end
+msgid "record.loss.axis_end"
+msgstr "끝"
+
+#. Defeat box chart legend. {from}, {to}: percent numbers
+msgid "record.loss.legend"
+msgstr "실선: 살아 있는 적 · 점선: 생명 ({from}% → {to}%)"
+
+#. Defeat box. {source}: kind name, {life}: number, {sec}: seconds with one decimal
+msgid "record.loss.last"
+msgstr "마지막에 맞은 것: {source} {life} ({sec}초 전)"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.walker"
+msgstr "걸어 다니는 적"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.charger"
+msgstr "돌격하는 적"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.ranged"
+msgstr "원거리 적"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.elite"
+msgstr "정예"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.champion"
+msgstr "수호자"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.boss"
+msgstr "우두머리"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.hazard"
+msgstr "위험 지대"
+
+#. Battle record: skill pairs table title
+msgid "record.pairs.title"
+msgstr "조합"
+
+#. Pairs table: which skill set up, which skill set it off. {src}, {by}: skill names
+msgid "record.pairs.names"
+msgstr "{src} → {by}"
+
+#. Pairs table: how many times. {n}: number
+msgid "record.pairs.count"
+msgstr "{n}번"
+
+#. Pairs table. {n}: number
+msgid "record.pairs.extra"
+msgstr "추가 피해 {n}"
+
+#. Battle record: wave beat table title
+msgid "record.beats.title"
+msgstr "마디"
+
+#. Beat table. {n}: number
+msgid "record.beats.kills"
+msgstr "처치 {n}"
+
+#. Beat table. {n}: number
+msgid "record.beats.taken"
+msgstr "받은 피해 {n}"

@@ -1,0 +1,641 @@
+{
+ "scene": "combat_record",
+ "mode": "defeat",
+ "kills": 123456,
+ "tick": 359900,
+ "level": 14,
+ "note": "저장 완료",
+ "view": {
+  "ready": true,
+  "total_damage": 1138538266,
+  "dps_tenths": 1898091,
+  "skills": [
+   {
+    "id": "chapter1.skill.ember",
+    "got_tick": 0,
+    "got_level": 1,
+    "rank": 4,
+    "evolved": true,
+    "damage": 987654321,
+    "kills": 90000,
+    "dps_tenths": 1646547,
+    "share_bps": 8674
+   },
+   {
+    "id": "chapter1.skill.arc",
+    "got_tick": 7000,
+    "got_level": 4,
+    "rank": 3,
+    "evolved": false,
+    "damage": 123456789,
+    "kills": 45000,
+    "dps_tenths": 209901,
+    "share_bps": 1084
+   },
+   {
+    "id": "chapter1.skill.frost",
+    "got_tick": 14000,
+    "got_level": 7,
+    "rank": 2,
+    "evolved": false,
+    "damage": 23456789,
+    "kills": 30000,
+    "dps_tenths": 40688,
+    "share_bps": 206
+   },
+   {
+    "id": "chapter1.skill.a_very_long_borrowed_spell_name_for_the_edge_case",
+    "got_tick": 21000,
+    "got_level": 10,
+    "rank": 1,
+    "evolved": true,
+    "damage": 3456789,
+    "kills": 22500,
+    "dps_tenths": 6120,
+    "share_bps": 30
+   },
+   {
+    "id": "chapter1.skill.second_long_spell_name_to_cut",
+    "got_tick": 28000,
+    "got_level": 13,
+    "rank": 4,
+    "evolved": false,
+    "damage": 456789,
+    "kills": 18000,
+    "dps_tenths": 825,
+    "share_bps": 4
+   },
+   {
+    "id": "chapter1.skill.third",
+    "got_tick": 35000,
+    "got_level": 16,
+    "rank": 3,
+    "evolved": false,
+    "damage": 56789,
+    "kills": 15000,
+    "dps_tenths": 104,
+    "share_bps": 0
+   }
+  ],
+  "pairs": [
+   {
+    "src_skill": "chapter1.skill.ember",
+    "by_skill": "chapter1.skill.frost",
+    "statuses": [
+     "burn"
+    ],
+    "count": 412,
+    "extra": 1234567
+   },
+   {
+    "src_skill": "chapter1.skill.frost",
+    "by_skill": "chapter1.skill.arc",
+    "statuses": [
+     "chill"
+    ],
+    "count": 98,
+    "extra": 54321
+   },
+   {
+    "src_skill": "chapter1.skill.a_very_long_borrowed_spell_name_for_the_edge_case",
+    "by_skill": "chapter1.skill.second_long_spell_name_to_cut",
+    "statuses": [],
+    "count": 7,
+    "extra": 99
+   }
+  ],
+  "beats": [
+   {
+    "id": "beat_01_a_long_id",
+    "tick": 3600,
+    "kills": 317,
+    "taken": 41,
+    "damage": 100000
+   },
+   {
+    "id": "beat_02_a_long_id",
+    "tick": 7200,
+    "kills": 334,
+    "taken": 42,
+    "damage": 200000
+   },
+   {
+    "id": "beat_03_a_long_id",
+    "tick": 10800,
+    "kills": 351,
+    "taken": 43,
+    "damage": 300000
+   },
+   {
+    "id": "beat_04_a_long_id",
+    "tick": 14400,
+    "kills": 368,
+    "taken": 44,
+    "damage": 400000
+   },
+   {
+    "id": "beat_05_a_long_id",
+    "tick": 18000,
+    "kills": 385,
+    "taken": 45,
+    "damage": 500000
+   },
+   {
+    "id": "beat_06_a_long_id",
+    "tick": 21600,
+    "kills": 402,
+    "taken": 46,
+    "damage": 600000
+   },
+   {
+    "id": "beat_07_a_long_id",
+    "tick": 25200,
+    "kills": 419,
+    "taken": 47,
+    "damage": 700000
+   },
+   {
+    "id": "beat_08_a_long_id",
+    "tick": 28800,
+    "kills": 436,
+    "taken": 48,
+    "damage": 800000
+   }
+  ],
+  "picks": [
+   {
+    "tick": 1500,
+    "level": 2,
+    "card": "unlock:chapter1.skill.arc"
+   },
+   {
+    "tick": 2630,
+    "level": 3,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 3760,
+    "level": 4,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 4890,
+    "level": 5,
+    "card": "passive:chapter1.passive.embers"
+   },
+   {
+    "tick": 6020,
+    "level": 6,
+    "card": "unlock:chapter1.skill.frost"
+   },
+   {
+    "tick": 7150,
+    "level": 7,
+    "card": "axis:chapter1.skill.arc:damage"
+   },
+   {
+    "tick": 8280,
+    "level": 8,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 9410,
+    "level": 9,
+    "card": "axis:chapter1.skill.frost:reach"
+   },
+   {
+    "tick": 10540,
+    "level": 10,
+    "card": "passive:chapter1.passive.conductor"
+   },
+   {
+    "tick": 11670,
+    "level": 11,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 12800,
+    "level": 12,
+    "card": "evolve:chapter1.skill.ember"
+   },
+   {
+    "tick": 13930,
+    "level": 13,
+    "card": "axis:chapter1.skill.frost:damage"
+   },
+   {
+    "tick": 15060,
+    "level": 14,
+    "card": "passive:chapter1.passive.crystal"
+   },
+   {
+    "tick": 16190,
+    "level": 15,
+    "card": "axis:chapter1.skill.arc:reach"
+   },
+   {
+    "tick": 17320,
+    "level": 16,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 18450,
+    "level": 17,
+    "card": "axis:chapter1.skill.arc:damage"
+   },
+   {
+    "tick": 19580,
+    "level": 18,
+    "card": "rank:chapter1.skill.ember:3"
+   },
+   {
+    "tick": 20710,
+    "level": 19,
+    "card": "unlock:chapter1.skill.arc"
+   },
+   {
+    "tick": 21840,
+    "level": 20,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 22970,
+    "level": 21,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 24100,
+    "level": 22,
+    "card": "passive:chapter1.passive.embers"
+   },
+   {
+    "tick": 25230,
+    "level": 23,
+    "card": "unlock:chapter1.skill.frost"
+   },
+   {
+    "tick": 26360,
+    "level": 24,
+    "card": "axis:chapter1.skill.arc:damage"
+   },
+   {
+    "tick": 27490,
+    "level": 25,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 28620,
+    "level": 26,
+    "card": "axis:chapter1.skill.frost:reach"
+   },
+   {
+    "tick": 29750,
+    "level": 27,
+    "card": "passive:chapter1.passive.conductor"
+   },
+   {
+    "tick": 30880,
+    "level": 28,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 32010,
+    "level": 29,
+    "card": "evolve:chapter1.skill.ember"
+   },
+   {
+    "tick": 33140,
+    "level": 30,
+    "card": "axis:chapter1.skill.frost:damage"
+   },
+   {
+    "tick": 34270,
+    "level": 31,
+    "card": "passive:chapter1.passive.crystal"
+   },
+   {
+    "tick": 35400,
+    "level": 32,
+    "card": "axis:chapter1.skill.arc:reach"
+   },
+   {
+    "tick": 36530,
+    "level": 33,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 37660,
+    "level": 34,
+    "card": "axis:chapter1.skill.arc:damage"
+   },
+   {
+    "tick": 38790,
+    "level": 35,
+    "card": "rank:chapter1.skill.ember:3"
+   },
+   {
+    "tick": 39920,
+    "level": 36,
+    "card": "unlock:chapter1.skill.arc"
+   },
+   {
+    "tick": 41050,
+    "level": 37,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 42180,
+    "level": 38,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 43310,
+    "level": 39,
+    "card": "passive:chapter1.passive.embers"
+   },
+   {
+    "tick": 44440,
+    "level": 40,
+    "card": "unlock:chapter1.skill.frost"
+   },
+   {
+    "tick": 45570,
+    "level": 41,
+    "card": "axis:chapter1.skill.arc:damage"
+   }
+  ],
+  "abandoned": false,
+  "events_dropped": 0,
+  "hit_events": 9999999,
+  "loss": {
+   "window_ticks": 1800,
+   "taken": 98765,
+   "hits": 640,
+   "by_source": {
+    "walker": {
+     "hits": 200,
+     "life": 30000
+    },
+    "charger": {
+     "hits": 60,
+     "life": 20000
+    },
+    "ranged": {
+     "hits": 150,
+     "life": 25000
+    },
+    "elite": {
+     "hits": 30,
+     "life": 12000
+    },
+    "hazard": {
+     "hits": 40,
+     "life": 5000
+    },
+    "boss_ward_long_new_kind": {
+     "hits": 20,
+     "life": 3000
+    },
+    "unattributed": {
+     "hits": 140,
+     "life": 3765
+    }
+   },
+   "attributed_bps": 7800,
+   "alive_trend": [
+    {
+     "ticks_before_end": 1800,
+     "alive": 19,
+     "hp_bps": 9000
+    },
+    {
+     "ticks_before_end": 1740,
+     "alive": 22,
+     "hp_bps": 8900
+    },
+    {
+     "ticks_before_end": 1680,
+     "alive": 25,
+     "hp_bps": 8700
+    },
+    {
+     "ticks_before_end": 1620,
+     "alive": 30,
+     "hp_bps": 8500
+    },
+    {
+     "ticks_before_end": 1560,
+     "alive": 33,
+     "hp_bps": 8400
+    },
+    {
+     "ticks_before_end": 1500,
+     "alive": 38,
+     "hp_bps": 8100
+    },
+    {
+     "ticks_before_end": 1440,
+     "alive": 41,
+     "hp_bps": 7900
+    },
+    {
+     "ticks_before_end": 1380,
+     "alive": 45,
+     "hp_bps": 7500
+    },
+    {
+     "ticks_before_end": 1320,
+     "alive": 49,
+     "hp_bps": 7300
+    },
+    {
+     "ticks_before_end": 1260,
+     "alive": 52,
+     "hp_bps": 7000
+    },
+    {
+     "ticks_before_end": 1200,
+     "alive": 55,
+     "hp_bps": 6800
+    },
+    {
+     "ticks_before_end": 1140,
+     "alive": 58,
+     "hp_bps": 6300
+    },
+    {
+     "ticks_before_end": 1080,
+     "alive": 61,
+     "hp_bps": 6000
+    },
+    {
+     "ticks_before_end": 1020,
+     "alive": 63,
+     "hp_bps": 5600
+    },
+    {
+     "ticks_before_end": 960,
+     "alive": 66,
+     "hp_bps": 5400
+    },
+    {
+     "ticks_before_end": 900,
+     "alive": 68,
+     "hp_bps": 5000
+    },
+    {
+     "ticks_before_end": 840,
+     "alive": 70,
+     "hp_bps": 4700
+    },
+    {
+     "ticks_before_end": 780,
+     "alive": 72,
+     "hp_bps": 4300
+    },
+    {
+     "ticks_before_end": 720,
+     "alive": 74,
+     "hp_bps": 4000
+    },
+    {
+     "ticks_before_end": 660,
+     "alive": 75,
+     "hp_bps": 3600
+    },
+    {
+     "ticks_before_end": 600,
+     "alive": 76,
+     "hp_bps": 3300
+    },
+    {
+     "ticks_before_end": 540,
+     "alive": 78,
+     "hp_bps": 2900
+    },
+    {
+     "ticks_before_end": 480,
+     "alive": 79,
+     "hp_bps": 2600
+    },
+    {
+     "ticks_before_end": 420,
+     "alive": 80,
+     "hp_bps": 2200
+    },
+    {
+     "ticks_before_end": 360,
+     "alive": 81,
+     "hp_bps": 1800
+    },
+    {
+     "ticks_before_end": 300,
+     "alive": 82,
+     "hp_bps": 1500
+    },
+    {
+     "ticks_before_end": 240,
+     "alive": 83,
+     "hp_bps": 1100
+    },
+    {
+     "ticks_before_end": 180,
+     "alive": 83,
+     "hp_bps": 800
+    },
+    {
+     "ticks_before_end": 120,
+     "alive": 82,
+     "hp_bps": 500
+    },
+    {
+     "ticks_before_end": 60,
+     "alive": 81,
+     "hp_bps": 200
+    },
+    {
+     "ticks_before_end": 0,
+     "alive": 80,
+     "hp_bps": 0
+    }
+   ],
+   "alive_peak": 83,
+   "last_hit": {
+    "ticks_before_end": 5,
+    "life": 4321,
+    "source": "boss_ward_long_new_kind"
+   }
+  },
+  "record": {
+   "depth": "d1",
+   "victory": false,
+   "ticks": 359900,
+   "kills": 123456,
+   "elite_kills": 0,
+   "champion_kills": 2,
+   "boss_kill": false,
+   "grade": 0,
+   "potions_used": 31,
+   "damage_taken": 987654,
+   "xp_gained": 0,
+   "essence_gained": 0,
+   "items": {},
+   "skills": [
+    {
+     "id": "chapter1.skill.ember",
+     "got_tick": 0,
+     "got_level": 1,
+     "rank": 4,
+     "evolved": true,
+     "damage": 987654321,
+     "kills": 90000
+    },
+    {
+     "id": "chapter1.skill.arc",
+     "got_tick": 7000,
+     "got_level": 4,
+     "rank": 3,
+     "evolved": false,
+     "damage": 123456789,
+     "kills": 45000
+    },
+    {
+     "id": "chapter1.skill.frost",
+     "got_tick": 14000,
+     "got_level": 7,
+     "rank": 2,
+     "evolved": false,
+     "damage": 23456789,
+     "kills": 30000
+    },
+    {
+     "id": "chapter1.skill.a_very_long_borrowed_spell_name_for_the_edge_case",
+     "got_tick": 21000,
+     "got_level": 10,
+     "rank": 1,
+     "evolved": true,
+     "damage": 3456789,
+     "kills": 22500
+    },
+    {
+     "id": "chapter1.skill.second_long_spell_name_to_cut",
+     "got_tick": 28000,
+     "got_level": 13,
+     "rank": 4,
+     "evolved": false,
+     "damage": 456789,
+     "kills": 18000
+    },
+    {
+     "id": "chapter1.skill.third",
+     "got_tick": 35000,
+     "got_level": 16,
+     "rank": 3,
+     "evolved": false,
+     "damage": 56789,
+     "kills": 15000
+    }
+   ]
+  }
+ }
+}

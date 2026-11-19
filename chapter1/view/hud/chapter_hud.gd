@@ -1819,6 +1819,7 @@ func _add_growth_box(run: RefCounted) -> void:
 ## Presentation only. Every button asks through a signal; chapter_one.gd decides and acts. All text here is a key (Loc.t).
 const Loc=preload("res://chapter1/view/loc.gd")
 const FlowDialog=preload("res://chapter1/view/hud/flow_dialog.gd")
+const CombatRecordView=preload("res://chapter1/view/hud/combat_record_view.gd")
 ## The defeat window comes up this long after the fall (the scene stays on screen). An abandoned run shows it at once.
 const DEFEAT_REVEAL := 1.2
 ## Set by the app: the finished run's rewards are not saved although saving is on (F8).
@@ -1853,6 +1854,7 @@ func _sync_flow(run: RefCounted,delta: float) -> void:
 	if run.mode!=_flow_prev_mode:
 		if run.mode=="defeat":_defeat_age=0.0
 		_flow_prev_mode=run.mode
+	if run.mode in ["menu","playing"] and not run_record.is_empty():run_record={}
 	if run.mode=="defeat":
 		_defeat_age+=maxf(delta,0.0)
 		if not stash_open and _result_reason!="abandoned":
@@ -1877,7 +1879,7 @@ func _sync_flow(run: RefCounted,delta: float) -> void:
 ## (notice, fresh) are handled in _sync_flow (menu and a refused save).
 func _dialog_alive(kind: String,mode: String) -> bool:
 	if kind in ["abandon","quit"]:return mode=="paused"
-	if kind.begins_with("unsaved:"):return mode in ["victory","defeat"]
+	if kind.begins_with("unsaved:") or kind=="record":return mode in ["victory","defeat"]
 	return true
 
 func _dialog_text(text: String,size: int=19) -> Label:
@@ -1915,6 +1917,7 @@ func _on_flow_chosen(id_: String,kind: String) -> void:
 		"quit":
 			_close_dialog(id_!="go")
 			if id_=="go":quit_request.emit()
+		"record":_close_dialog(true)
 		"notice":
 			match id_:
 				"open":profile_open_folder.emit()
@@ -1980,7 +1983,60 @@ func _leave(next: String) -> void:
 func request_leave(next: String) -> void:
 	_leave(next)
 
-func _add_flow_actions(_run: RefCounted) -> void:
+# ---- battle record (W7 / A6-11): read-only view of the finished run's record, opened from the result window ----
+## The app hands over its `run_record_view` once the run has ended ({} or {"ready":false} = nothing to show).
+var run_record: Dictionary={}
+var _record_level := 0
+
+func set_run_record(view: Dictionary) -> void:
+	run_record=view.duplicate(true)
+	invalidate()
+
+func has_run_record() -> bool:
+	return bool(run_record.get("ready",false))
+
+func combat_record_open() -> bool:
+	return flow_dialog_open() and _flow_kind=="record"
+
+## Opens the record over the result window. Nothing happens before the window is on screen or while another window is open.
+func open_combat_record() -> void:
+	if not has_run_record() or not result_revealed() or flow_dialog_open():return
+	var size := root.get_viewport_rect().size
+	var width := minf(size.x-140.0,1420.0)
+	var body: VBoxContainer=CombatRecordView.new()
+	body.setup(run_record,_record_level,width-100.0)
+	# A record taller than the screen scrolls (mouse wheel); the usual record fits without.
+	var scroll := ScrollContainer.new();scroll.name="RecordScroll";scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus=true;scroll.add_child(body)
+	scroll.custom_minimum_size=Vector2(width-80.0,minf(body.get_combined_minimum_size().y,size.y-250.0))
+	_fit_record_scroll.call_deferred(scroll,body,size.y-250.0)
+	_open_dialog("record",{"width":width,"title":Loc.t("record.title"),"content":scroll,
+		"buttons":[{"id":"close","text":Loc.t("record.close")}],"default_id":"close","esc_id":"close"})
+	# The close button keeps the focus; the arrow keys, page keys and the d-pad scroll a tall record (the mouse wheel works too).
+	if is_instance_valid(_flow_dialog) and not _flow_dialog.buttons.is_empty():
+		_flow_dialog.buttons[0].gui_input.connect(_scroll_record.bind(scroll))
+
+func _scroll_record(event: InputEvent,scroll: ScrollContainer) -> void:
+	if not (event is InputEventKey or event is InputEventJoypadButton) or not event.pressed or not is_instance_valid(scroll):return
+	var step := 0
+	if event.is_action("ui_down"):step=60
+	elif event.is_action("ui_up"):step=-60
+	elif event.is_action("ui_page_down"):step=int(scroll.size.y*.8)
+	elif event.is_action("ui_page_up"):step=-int(scroll.size.y*.8)
+	if step!=0:
+		scroll.scroll_vertical+=step
+		scroll.get_viewport().set_input_as_handled()
+
+## Text that wraps only knows its height once it is in the tree, so the window is fitted to its content after the first layout.
+func _fit_record_scroll(scroll: ScrollContainer,body: Control,limit: float) -> void:
+	for i in 2:
+		if not is_instance_valid(scroll) or not is_instance_valid(body):return
+		await scroll.get_tree().process_frame
+		if not is_instance_valid(scroll) or not is_instance_valid(body):return
+		scroll.custom_minimum_size.y=minf(body.get_combined_minimum_size().y,limit)
+
+func _add_flow_actions(run: RefCounted) -> void:
+	_record_level=int(run.growth.snapshot().get("level",0)) if run!=null and run.growth!=null else 0
 	var box := modal.get_child(0) as VBoxContainer
 	if box==null or box.get_child_count()<4:return
 	var title := box.get_child(0) as Label
@@ -1994,6 +2050,9 @@ func _add_flow_actions(_run: RefCounted) -> void:
 	var retry_button := _button(Loc.t("result.button.retry"),func():_leave("retry"));retry_button.name="RetrySameWitch"
 	retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
 	var second := HBoxContainer.new();second.name="ResultFlowActions";second.add_theme_constant_override("separation",14);box.add_child(second)
+	if has_run_record():
+		var record_button := _button(Loc.t("record.open"),func():open_combat_record());record_button.name="CombatRecord"
+		record_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(record_button)
 	var menu_button := _button(Loc.t("result.button.menu"),func():_leave("menu"));menu_button.name="ReturnToMenu"
 	menu_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(menu_button)
 	var quit_button := _button(Loc.t("result.button.quit"),func():_leave("quit"));quit_button.name="QuitGame"

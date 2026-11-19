@@ -1,0 +1,161 @@
+{
+ "scene": "combat_record",
+ "mode": "victory",
+ "kills": 4828,
+ "tick": 22058,
+ "level": 14,
+ "note": "저장 완료",
+ "view": {
+  "ready": true,
+  "total_damage": 490999,
+  "dps_tenths": 13355,
+  "skills": [
+   {
+    "id": "chapter1.skill.arc",
+    "got_tick": 6049,
+    "got_level": 8,
+    "rank": 4,
+    "evolved": false,
+    "damage": 35611,
+    "kills": 182,
+    "dps_tenths": 1334,
+    "share_bps": 725
+   },
+   {
+    "id": "chapter1.skill.ember",
+    "got_tick": 0,
+    "got_level": 1,
+    "rank": 4,
+    "evolved": true,
+    "damage": 447579,
+    "kills": 4571,
+    "dps_tenths": 12174,
+    "share_bps": 9115
+   },
+   {
+    "id": "chapter1.skill.frost",
+    "got_tick": 4502,
+    "got_level": 7,
+    "rank": 2,
+    "evolved": false,
+    "damage": 7809,
+    "kills": 75,
+    "dps_tenths": 266,
+    "share_bps": 159
+   }
+  ],
+  "pairs": [],
+  "beats": [],
+  "picks": [
+   {
+    "tick": 1500,
+    "level": 2,
+    "card": "unlock:chapter1.skill.arc"
+   },
+   {
+    "tick": 2630,
+    "level": 3,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 3760,
+    "level": 4,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 4890,
+    "level": 5,
+    "card": "passive:chapter1.passive.embers"
+   },
+   {
+    "tick": 6020,
+    "level": 6,
+    "card": "unlock:chapter1.skill.frost"
+   },
+   {
+    "tick": 7150,
+    "level": 7,
+    "card": "axis:chapter1.skill.arc:damage"
+   },
+   {
+    "tick": 8280,
+    "level": 8,
+    "card": "axis:chapter1.skill.ember:damage"
+   },
+   {
+    "tick": 9410,
+    "level": 9,
+    "card": "axis:chapter1.skill.frost:reach"
+   },
+   {
+    "tick": 10540,
+    "level": 10,
+    "card": "passive:chapter1.passive.conductor"
+   },
+   {
+    "tick": 11670,
+    "level": 11,
+    "card": "axis:chapter1.skill.ember:reach"
+   },
+   {
+    "tick": 12800,
+    "level": 12,
+    "card": "evolve:chapter1.skill.ember"
+   }
+  ],
+  "abandoned": false,
+  "events_dropped": 0,
+  "hit_events": 41234,
+  "loss": {},
+  "record": {
+   "depth": "d1",
+   "victory": true,
+   "ticks": 22058,
+   "kills": 4828,
+   "elite_kills": 0,
+   "champion_kills": 2,
+   "boss_kill": true,
+   "grade": 0,
+   "potions_used": 8,
+   "damage_taken": 488,
+   "xp_gained": 0,
+   "essence_gained": 0,
+   "items": {
+    "boss": 5,
+    "champion": 6,
+    "first_kill": 1,
+    "forced": 4,
+    "normal": 23
+   },
+   "skills": [
+    {
+     "id": "chapter1.skill.arc",
+     "got_tick": 6049,
+     "got_level": 8,
+     "rank": 4,
+     "evolved": false,
+     "damage": 35611,
+     "kills": 182
+    },
+    {
+     "id": "chapter1.skill.ember",
+     "got_tick": 0,
+     "got_level": 1,
+     "rank": 4,
+     "evolved": true,
+     "damage": 447579,
+     "kills": 4571
+    },
+    {
+     "id": "chapter1.skill.frost",
+     "got_tick": 4502,
+     "got_level": 7,
+     "rank": 2,
+     "evolved": false,
+     "damage": 7809,
+     "kills": 75
+    }
+   ]
+  }
+ }
+}

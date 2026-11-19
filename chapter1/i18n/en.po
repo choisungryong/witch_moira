@@ -684,3 +684,239 @@ msgstr "Wear it in the empty slot"
 #. Better-gear notice: key hints (keys stay in the text)
 msgid "hud.notice.keys"
 msgstr "[F] Wear now  ·  [I] Compare"
+
+#. Result window button that opens the battle record
+msgid "record.open"
+msgstr "Battle record"
+
+#. Battle record: close button (the default focus)
+msgid "record.close"
+msgstr "Close"
+
+#. Battle record window title
+msgid "record.title"
+msgstr "Battle record"
+
+#. Battle record: how the run ended
+msgid "record.outcome.victory"
+msgstr "Won"
+
+#. Battle record: how the run ended
+msgid "record.outcome.defeat"
+msgstr "Lost"
+
+#. Battle record: how the run ended
+msgid "record.outcome.abandoned"
+msgstr "Gave up"
+
+#. Battle record summary cell name
+msgid "record.stat.result"
+msgstr "Result"
+
+#. Battle record summary cell name
+msgid "record.stat.time"
+msgstr "Time survived"
+
+#. Battle record summary cell name
+msgid "record.stat.kills"
+msgstr "Kills"
+
+#. Battle record summary cell name
+msgid "record.stat.champions"
+msgstr "Warden and boss kills"
+
+#. Battle record summary cell name
+msgid "record.stat.damage"
+msgstr "Total damage"
+
+#. Battle record summary cell name
+msgid "record.stat.taken"
+msgstr "Damage taken"
+
+#. Battle record summary cell name
+msgid "record.stat.potions"
+msgstr "Potions used"
+
+#. Battle record summary cell name
+msgid "record.stat.level"
+msgstr "Level"
+
+#. Battle record: skill table title
+msgid "record.skills.title"
+msgstr "Damage by skill"
+
+#. Battle record: skill table with no rows
+msgid "record.skills.empty"
+msgstr "No skill was recorded"
+
+#. Skill table column
+msgid "record.skills.name"
+msgstr "Skill"
+
+#. Skill table column
+msgid "record.skills.got"
+msgstr "Got at"
+
+#. Skill table column: share of all damage
+msgid "record.skills.share"
+msgstr "Share"
+
+#. Skill table column
+msgid "record.skills.damage"
+msgstr "Damage"
+
+#. Skill table column: damage per second since the skill was got
+msgid "record.skills.dps"
+msgstr "Damage per second"
+
+#. Skill table column
+msgid "record.skills.kills"
+msgstr "Kills"
+
+#. Skill table: final rank. {n}: number
+msgid "record.skills.rank"
+msgstr "Rank {n}"
+
+#. Skill table: evolved mark
+msgid "record.skills.evolved"
+msgstr "◆ Evolved"
+
+#. Skill table: when the skill was got. {time}: mm:ss, {level}: number
+msgid "record.skills.got_at"
+msgstr "{time} · level {level}"
+
+#. Skill table: sum row
+msgid "record.skills.total"
+msgstr "Total"
+
+#. Battle record: the graces chosen, in order
+msgid "record.picks.title"
+msgstr "Order of picks"
+
+#. Pick list: when. {time}: mm:ss, {level}: number
+msgid "record.picks.when"
+msgstr "{time} · level {level}"
+
+#. Pick list: a skill was unlocked. {skill}: skill name
+msgid "record.pick.unlock"
+msgstr "Got {skill}"
+
+#. Pick list: a rank card. {skill}: skill name, {n}: number
+msgid "record.pick.rank"
+msgstr "{skill} rank {n}"
+
+#. Pick list: a damage axis point. {skill}: skill name
+msgid "record.pick.axis_damage"
+msgstr "{skill} damage axis"
+
+#. Pick list: a reach axis point. {skill}: skill name
+msgid "record.pick.axis_reach"
+msgstr "{skill} reach axis"
+
+#. Pick list: evolution. {skill}: the evolved skill name
+msgid "record.pick.evolve"
+msgstr "{skill} evolved"
+
+#. Battle record: rows not shown. {n}: number
+msgid "record.more"
+msgstr "{n} more"
+
+#. Defeat box title. {n}: seconds
+msgid "record.loss.title"
+msgstr "Last {n} seconds"
+
+#. Defeat box with no hits
+msgid "record.loss.none"
+msgstr "No damage was taken in this stretch"
+
+#. Defeat box. {life}: number, {hits}: number
+msgid "record.loss.taken"
+msgstr "Damage taken {life} · hit {hits} times"
+
+#. Defeat box row: life lost and hits by one kind. {life}, {hits}: numbers
+msgid "record.loss.row"
+msgstr "{life} · {hits}x"
+
+#. Defeat box: the damage the recorder could not attribute to a kind
+msgid "record.loss.unknown"
+msgstr "Unknown"
+
+#. Defeat box note. {known}, {hits}: numbers
+msgid "record.loss.known"
+msgstr "Only {known} of {hits} hits could be traced to a kind"
+
+#. Defeat box: small chart title. {peak}: number
+msgid "record.loss.alive"
+msgstr "Living enemies (peak {peak})"
+
+#. Defeat box chart: left end. {n}: seconds
+msgid "record.loss.axis_start"
+msgstr "{n} s before"
+
+#. Defeat box chart: right end
+msgid "record.loss.axis_end"
+msgstr "End"
+
+#. Defeat box chart legend. {from}, {to}: percent numbers
+msgid "record.loss.legend"
+msgstr "Solid: living enemies · dotted: life ({from}% → {to}%)"
+
+#. Defeat box. {source}: kind name, {life}: number, {sec}: seconds with one decimal
+msgid "record.loss.last"
+msgstr "Last hit: {source} {life} ({sec} s before the end)"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.walker"
+msgstr "Walking enemy"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.charger"
+msgstr "Charging enemy"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.ranged"
+msgstr "Ranged enemy"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.elite"
+msgstr "Elite"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.champion"
+msgstr "Guardian"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.boss"
+msgstr "Boss"
+
+#. Kind of attacker in the defeat box
+msgid "record.source.hazard"
+msgstr "Hazard"
+
+#. Battle record: skill pairs table title
+msgid "record.pairs.title"
+msgstr "Pairs"
+
+#. Pairs table: which skill set up, which skill set it off. {src}, {by}: skill names
+msgid "record.pairs.names"
+msgstr "{src} → {by}"
+
+#. Pairs table: how many times. {n}: number
+msgid "record.pairs.count"
+msgstr "{n}x"
+
+#. Pairs table. {n}: number
+msgid "record.pairs.extra"
+msgstr "Extra damage {n}"
+
+#. Battle record: wave beat table title
+msgid "record.beats.title"
+msgstr "Beats"
+
+#. Beat table. {n}: number
+msgid "record.beats.kills"
+msgstr "Kills {n}"
+
+#. Beat table. {n}: number
+msgid "record.beats.taken"
+msgstr "Taken {n}"

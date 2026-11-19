@@ -19,7 +19,8 @@ extends SceneTree
 ## "meta" entry), and SCENE_SHOT lines. Exit code 2 for bad arguments, 1 if a scene could not be set up.
 ##
 ## The scenes: title, skill_tree (over the title), boon (growth choice), equipment (in-run compare), stash, result
-## (victory window with the permanent-growth box), pause, abandon_confirm. The skill tree draws itself (no child Controls),
+## (victory window with the permanent-growth box), pause, abandon_confirm, combat_record (the battle record over the result
+## window: normal = a won run, defeat = a lost run, long = a lost run with every zone and the longest rows; scrolled = the same scrolled to its end; the "defeat" and "scrolled" variants exist for this scene only). The skill tree draws itself (no child Controls),
 ## so its dump holds the panel only; judge it on the picture.
 ##
 ## HOW TO ADD A SCENE (a screen that exists in the game):
@@ -28,14 +29,14 @@ extends SceneTree
 ##      awaits a few frames (`await _frames(n)`) and returns true when the screen is on, false (after _fail) when not.
 ##   2. Add fixtures/ui/<scene>.normal.json and <scene>.long.json; "long" holds the longest names and descriptions the
 ##      screen can meet (the longest real strings, not a made-up wall of text).
-##   3. A screen that does not exist yet (combat log, town hub, card with an interlock line) is NOT added here: add it
+##   3. A screen that does not exist yet (town hub, card with an interlock line) is NOT added here: add it
 ##      together with the screen.
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
-const SCENES := ["title","skill_tree","boon","equipment","stash","result","pause","abandon_confirm"]
-const VARIANTS := ["normal","long"]
+const SCENES := ["title","skill_tree","boon","equipment","stash","result","pause","abandon_confirm","combat_record"]
+const VARIANTS := ["normal","long","defeat","scrolled"]
 const START_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 
 ## The core with the two answers a fixture needs to control. Everything else is the real core.
@@ -332,4 +333,34 @@ func _scene_abandon_confirm(fx: Dictionary) -> bool:
 	if not hud.flow_dialog_open():
 		_fail("abandon_confirm","the confirm window did not open")
 		return false
+	return true
+
+func _scene_combat_record(fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(3)
+	run.kills = int(fx.kills)
+	run.tick = int(fx.tick)
+	hud.motion_enabled = false
+	hud.profile_note = String(fx.get("note",""))
+	hud.set_run_record(fx.view.duplicate(true))
+	run._terminal_mode = String(fx.mode)
+	run.mode = String(fx.mode)
+	hud.invalidate()
+	for i in 300:
+		await process_frame
+		if hud.overlay.visible: break
+	await _frames(12)
+	if not hud.overlay.visible:
+		_fail("combat_record","the result window never appeared")
+		return false
+	hud._record_level = int(fx.get("level",0))
+	hud.open_combat_record()
+	await _frames(12)
+	if not hud.combat_record_open():
+		_fail("combat_record","the battle record did not open")
+		return false
+	if bool(fx.get("scroll_end",false)):
+		var scroll: ScrollContainer = hud._flow_dialog.find_child("RecordScroll",true,false)
+		scroll.scroll_vertical = 100000
+		await _frames(6)
 	return true

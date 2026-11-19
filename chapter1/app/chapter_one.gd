@@ -604,7 +604,7 @@ func _consume_events() -> void:
 		_chapter_last_event=event.seq
 		match String(event.type):
 			"victory","defeat":
-				recorder.finish(run);run_record_view=recorder.summary()
+				recorder.finish(run);run_record_view=recorder.summary();hud.set_run_record(run_record_view)
 				_save_terminal()
 			"item_pickup":_offer_if_better(event.item)
 			"item_drop":

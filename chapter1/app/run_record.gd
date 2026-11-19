@@ -151,7 +151,7 @@ func consume(events: Array) -> void:
 				var raw := int(event.get("damage_raw", 0))
 				_taken_raw += raw
 				_beat_add("taken_raw", raw)
-				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO)])
+				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO), String(event.get("source_kind", ""))])
 			"enemy_attack":
 				_attacks.append([tick, event.get("position", Vector2.ZERO), String(event.get("kind", "unknown"))])
 			"chapter_burst":
@@ -363,7 +363,8 @@ func _loss_material() -> Dictionary:
 	for hit in _hero_hits:
 		if int(hit[0]) < from_tick:
 			continue
-		var kind := _kind_of(int(hit[0]), hit[2])
+		# The core names the source on the event since KS-3; the position match is only for events without it.
+		var kind := String(hit[3]) if hit.size() > 3 and not String(hit[3]).is_empty() else _kind_of(int(hit[0]), hit[2])
 		var row: Dictionary = by_kind.get(kind, {"hits": 0, "life": 0, "raw": 0})
 		row.hits = int(row.hits) + 1
 		row.raw = int(row.raw) + int(hit[1])
