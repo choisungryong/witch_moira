@@ -31,7 +31,8 @@ var _line_mesh := ImmediateMesh.new()
 var _fill_mesh := ImmediateMesh.new()
 var _beam_mesh := ImmediateMesh.new()
 var _last_camera_tick := -100
-const MAX_PARTICLES := 960
+## A6-2: debris cap 960 -> 400 (A6 4.5), paying for the new ground ring and ember marks.
+const MAX_PARTICLES := 400
 const MAX_STROKES := 96
 const MAX_IMPACTS := 48
 const MAX_HIT_ACCENTS_PER_CONSUME := 12
@@ -428,7 +429,8 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 			if impact_count<MAX_IMPACTS:
 				var ixf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y))
 				var age := 1.0-float(stroke.life)/float(stroke.duration)
-				var icustom := Color(age,stroke.element,0,1)
+				var is_ring: bool=stroke.get("ring",false)
+				var icustom := Color(age,stroke.element,1.0 if is_ring else 0.0,1)
 				if float(stroke.element)>.3 and float(stroke.element)<.8:
 					var fio := _routed_i*MM_STRIDE
 					_wx(fibuf,fio,ixf);_wc(fibuf,fio+MM_CUSTOM,icustom);_wc(fibuf,fio+MM_COLOR,stroke.color)
@@ -436,7 +438,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					ixf.basis=ixf.basis.scaled(Vector3.ZERO)
 				var io := impact_count*MM_STRIDE
 				_wx(ibuf,io,ixf);_wc(ibuf,io+MM_COLOR,stroke.color);_wc(ibuf,io+MM_CUSTOM,icustom)
-				if float(stroke.element)<.25 and plume_count<MAX_IMPACTS:
+				if float(stroke.element)<.25 and not is_ring and plume_count<MAX_IMPACTS:
 					var scale_ := float(stroke.radius)*.70
 					# The fire-bloom squash (.85/.52/.85, origin.y*.52) is applied here, in the one write.
 					var plume_basis := Basis.IDENTITY.scaled(Vector3.ONE*scale_)
@@ -1184,10 +1186,18 @@ func setup__q39(owner_view: Node3D) -> void:
 	ice_fragment_batch.material_override=ice_material
 	print("CHAPTER1_FROST39 ",JSON.stringify({"scope":"presentation_only","replaces_frost_draws":true,"projectile_cap":projectiles.multimesh.instance_count,"strokes_cap":MAX_STROKES,"impacts_cap":MAX_IMPACTS,"ice_shards_cap":ICE_SHARD_CAP,"damage_owner":false}))
 
+var _ember_ring_tick := -100
 func consume(events: Array) -> void:
 	for event in events:
 		if int(event.seq)<=_frost39_seq:continue
 		_frost39_seq=int(event.seq)
+		if event.type=="cast" and event.get("skill_id","")=="chapter1.skill.ember":
+			# A6-2 fire layer 1 (prepare): a hollow ground ring at the hero's feet, .15 s, at most one per .4 s.
+			# It is an impact stroke with ring=true (same batch, no new draw call); custom.z=1 selects it in the shader.
+			if int(event.tick)-_ember_ring_tick>=24 and strokes.size()<MAX_STROKES:
+				_ember_ring_tick=int(event.tick)
+				strokes.append({"type":"impact","at":event.position,"radius":.9,"life":.15,"duration":.15,"element":0.0,"color":COLORS["chapter1.skill.ember"],"ring":true})
+			continue
 		if event.type!="cast" or event.get("skill_id","")!="chapter1.skill.frost":continue
 		if strokes.size()>=MAX_STROKES:continue
 		# Event-relative release cue; not a claimed animated hand/socket attachment.
@@ -1253,6 +1263,7 @@ func reset() -> void:
 	_tele_blank=false;_flash_blank=false;_ward_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
+	_ember_ring_tick=-100
 	frost39_projectile_count=0
 	frost39_impact_count=0
 	frost39_contact_count=0

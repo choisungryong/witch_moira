@@ -10,13 +10,14 @@ const ARC_PULSE_COLOR := Color("86a0ff")
 const NUMBER_POOL := 40
 const HEAVY_POOL := 16
 const SPARK_POOL := 128
-const MARK_POOL := 64
+## A6-2: pool 64 -> 32 (visible marks are about 16 at the densest, spec 4.5); sparks per frame 20 -> 8.
+const MARK_POOL := 32
 const BURST_POOL := 16
 const LIGHT_POOL := 6
 ## Look 2: effect lights reach further into the darker floor.
 const LIGHT_GAIN := 1.6
 const NUMBERS_PER_FRAME := 5
-const SPARKS_PER_FRAME := 20
+const SPARKS_PER_FRAME := 8
 const BURSTS_PER_FRAME := 5
 const LIGHTS_PER_FRAME := 2
 const MINOR_LIGHT_LIMIT := 3
@@ -43,11 +44,19 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_back;
 uniform sampler2D soft : source_color, filter_linear;
 uniform float clock = 0.0;
 uniform float fade_seconds = 2.5;
+uniform float life_seconds = 3.0;
 varying vec4 tint;
 varying float fade;
+varying float ember_seed;
+varying float spawn;
 void vertex() {
 	tint = COLOR;
 	fade = clamp((INSTANCE_CUSTOM.x - clock) / fade_seconds, 0.0, 1.0);
+	ember_seed = INSTANCE_CUSTOM.y;
+	spawn = INSTANCE_CUSTOM.x - life_seconds;
+}
+float ember_hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 // Instance colours are authored as on-screen sRGB; ALBEDO is linear, so convert here.
 vec3 srgb_to_linear(vec3 c) {
@@ -55,8 +64,28 @@ vec3 srgb_to_linear(vec3 c) {
 }
 void fragment() {
 	vec4 t = texture(soft, UV);
-	ALBEDO = srgb_to_linear(tint.rgb) * t.rgb;
-	ALPHA = tint.a * t.a * fade;
+	vec3 albedo = srgb_to_linear(tint.rgb) * t.rgb;
+	float alpha = tint.a * t.a * fade;
+	// A6-2 fire, layer 4 (trace): 3 to 6 ember dots on a charcoal mark go out one by one inside about 1.5 s.
+	// Seed 0 (every other mark) skips this entirely. No per-frame work: the clock uniform drives it.
+	if (ember_seed > 0.0) {
+		float count = 3.0 + floor(ember_hash(vec2(ember_seed, 1.0)) * 4.0);
+		float glow = 0.0;
+		for (int i = 0; i < 6; i++) {
+			float fi = float(i);
+			if (fi >= count) break;
+			float a = ember_hash(vec2(ember_seed, fi + 2.0)) * 6.2832;
+			float rad = sqrt(ember_hash(vec2(ember_seed, fi + 9.0))) * 0.34;
+			vec2 c = vec2(0.5) + vec2(cos(a), sin(a)) * rad;
+			float die = 0.35 + (fi + ember_hash(vec2(ember_seed, fi + 17.0))) / count * 1.15;
+			float on = 1.0 - smoothstep(die - 0.25, die, clock - spawn);
+			glow = max(glow, (1.0 - smoothstep(0.04, 0.07, distance(UV, c))) * on);
+		}
+		albedo = mix(albedo, srgb_to_linear(vec3(0.95, 0.50, 0.16)) * 0.8, glow);
+		alpha = max(alpha, glow * 0.9);
+	}
+	ALBEDO = albedo;
+	ALPHA = alpha;
 }
 "
 
@@ -205,6 +234,7 @@ func _build_marks() -> void:
 	_mark_material.shader = shader
 	_mark_material.set_shader_parameter("soft",_soft)
 	_mark_material.set_shader_parameter("fade_seconds",MARK_FADE)
+	_mark_material.set_shader_parameter("life_seconds",MARK_SECONDS)
 	_mark_material.render_priority = -2
 	_marks = _pool(plane,MARK_POOL,_mark_material,"GroundMarks",true)
 
@@ -310,11 +340,15 @@ func consume(events: Array) -> void:
 				var pulse_color := color
 				var pulse_scale := 1.1
 				if color.is_equal_approx(COLORS["chapter1.skill.arc"]): pulse_color = ARC_PULSE_COLOR; pulse_scale = 1.0
+				var ember_boom: bool = String(event.get("skill_id","")) == "chapter1.skill.ember"
 				if _flash_free(at):
+					# A6-2: the disc shader owns the hot centre, so the soft flash is a smaller, deeper orange
+					# and the light is weaker; one bright layer per spot (A6 3.3 L3), three lights at most.
+					if ember_boom: pulse_color = Color("e8801f"); pulse_scale = .65
 					_spark(at,pulse_color,radius*pulse_scale,.2)
-					if lights > 0:
-						lights -= 1; _light(at,color,2.5,maxf(5.0,radius*2.6),.26)
-					_mark(at,String(event.get("skill_id","")),radius*.6)
+					if lights > 0 and _light_active.size() < MINOR_LIGHT_LIMIT:
+						lights -= 1; _light(at,color,1.8 if ember_boom else 2.5,maxf(5.0,radius*2.6),.26)
+					_mark(at,String(event.get("skill_id","")),radius*.6,ember_boom and radius >= 2.2)
 			"shatter":
 				if _flash_free(at):
 					_spark(at,Color(.85,.97,1.0),1.3,.14)
@@ -325,8 +359,8 @@ func consume(events: Array) -> void:
 					bursts -= 1; _burst(at,Color("d9f6ff"),2)
 				_kick(.22)
 			"cast":
-				if lights > 0 and _light_active.size() < MINOR_LIGHT_LIMIT:
-					lights -= 1; _light(at,color,1.5,3.6,.10)
+				# A6-2: the cast light is gone (A6 4.5: the "ready" mark has no light). The ground ring in chapter_effects replaces it.
+				pass
 			"stun":
 				if sparks > 0:
 					sparks -= 1; _spark(at,Color("ffe08a"),.8,.14)
@@ -425,11 +459,11 @@ func _spark(at: Vector2, color: Color, size: float, seconds: float) -> void:
 	_spark_at[index] = Vector3(at.x,.95,at.y); _spark_size[index] = size; _spark_color[index] = color
 	stats.sparks += 1
 
-func _mark(at: Vector2, skill_id: String, size: float) -> void:
+func _mark(at: Vector2, skill_id: String, size: float, embers := false) -> void:
 	# Colours are on-screen sRGB (the mark shader linearises them) and darker than the floor (~54,60,66).
 	var tint := Color8(20,20,22,150)
 	if skill_id == "chapter1.skill.frost": tint = Color8(30,40,50,90)
-	elif skill_id == "chapter1.skill.ember": tint = Color8(24,15,10,170)
+	elif skill_id == "chapter1.skill.ember": tint = Color8(24,15,10,190 if embers else 170)
 	elif skill_id == "chapter1.skill.arc": tint = Color8(14,16,26,150)
 	var index := _mark_next
 	_mark_next = (_mark_next+1)%MARK_POOL
@@ -438,7 +472,8 @@ func _mark(at: Vector2, skill_id: String, size: float) -> void:
 	var mm := _marks.multimesh
 	mm.set_instance_transform(index,Transform3D(basis,Vector3(at.x,.028+float(index%8)*.0006,at.y)))
 	mm.set_instance_color(index,tint)
-	mm.set_instance_custom_data(index,Color(_clock+MARK_SECONDS,0,0,0))
+	# custom.y > 0 asks the mark shader for ember dots (a seed in 1..51); 0 keeps a plain mark.
+	mm.set_instance_custom_data(index,Color(_clock+MARK_SECONDS,1.0+_rng.randf()*50.0 if embers else 0.0,0,0))
 	_mark_expiry[index] = _clock+MARK_SECONDS
 	var live := 0
 	for expiry in _mark_expiry:

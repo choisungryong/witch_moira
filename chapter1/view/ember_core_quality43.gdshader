@@ -63,5 +63,30 @@ void fragment(){
   // Hostile = threat crimson (#ff2f4f family), never the fire orange used by player spells.
   shape=max(shaft,head);color=vec3(1.,.17,.30);core=vec3(.36,.03,.10)*head;
  }
+ if(bolt_data.y<=.3 && bolt_data.z>=0.){
+  // A6-2 fire, layer 2 (flight): a round charcoal head (.35 m, cracks glow, rim hot, centre hottest) and a short
+  // ember tail (1.2 m) that sheds sparse specks backwards. Metres are taken from the paid quad (2.3 x .82 m, nose at U .68).
+  vec2 m=vec2((UV.x-.68)*2.30,(UV.y-.5)*.82);
+  vec2 hc=m-vec2(-.12,0.);
+  float hr=length(hc);
+  float head_=1.-smoothstep(.150,.185,hr);
+  float crack=smoothstep(.50,.82,noise(hc*16.+bolt_data.w*9.-TIME*2.5));
+  float ring_=smoothstep(.10,.16,hr);
+  float centre=1.-smoothstep(.0,.075,hr);
+  float behind=clamp((-m.x-.12)/1.20,0.,1.);
+  float wob=sin(m.x*9.-TIME*21.+bolt_data.w*5.)*.035*behind;
+  float hw=mix(.14,.012,pow(behind,.8));
+  float tailm=(1.-smoothstep(hw*.45,hw,abs(m.y+wob)))*step(m.x,-.12)*(1.-smoothstep(.55,1.,behind))*(.40+n*.45);
+  vec2 sc=vec2(m.x*8.+bolt_data.w*13.+TIME*2.5,(m.y+behind*.10)*8.);
+  vec2 si=floor(sc);vec2 sf=fract(sc)-.5;
+  float spk=step(.84,hash(si+bolt_data.w*7.))*(1.-smoothstep(.07,.15,length(sf-(vec2(hash(si+3.1),hash(si+7.7))-.5)*.5)))*smoothstep(.10,.30,behind)*(1.-smoothstep(.60,1.,behind))*step(m.x,-.2);
+  vec3 headcol=mix(vec3(.30,.035,.004),vec3(1.,.34,.02),crack*.65);
+  headcol=mix(headcol,vec3(.95,.22,.02),ring_*.35);
+  vec3 tailcol=mix(vec3(.78,.055,.004),vec3(1.,.34,.018),clamp(n+behind*.30,0.,1.));
+  color=mix(tailcol,headcol,head_);
+  shape=clamp(max(max(head_,tailm*.9),spk)*support,0.,1.);
+  core=(vec3(1.,.60,.20)*centre*head_*.38+vec3(1.,.60,.15)*spk*.5)*support;
+  inten=.42+bolt_data.z*.30;
+ }
  ALBEDO=color*shape;EMISSION=(color*shape+core)*inten;ALPHA=clamp(shape,0.,1.);
 }
