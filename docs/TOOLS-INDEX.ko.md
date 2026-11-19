@@ -173,6 +173,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | 도구 | 언제 쓰나 | 머리 주석 | 예시 명령 |
 |---|---|---|---|
 | `tools/art/make_equipment_icons.py` | 생성된 장비 아이콘을 게임 크기로 가공 | Post-process generated equipment icons (A3 spec section 9). Pillow + NumPy only, deterministic, no external models. | `python tools/art/make_equipment_icons.py [--src DIR] [--out DIR] [--pick item=rN ...] [--no-sheet]` |
+| `tools/art/gen_queue.py` | 필요한 그림의 대기열(scan·status·next·run·record). 무료 Codex 길만 자동, 유료는 승인 필요 표시만. 절차는 docs/ART-QUEUE.ko.md | Picture queue: find the pictures the game will need, keep them as a list, and keep Codex making them ahead of time. | `python tools/art/gen_queue.py scan [--write]`<br>`python tools/art/gen_queue.py status [--json [FILE]]` |
 | `tools/art/asset_intake.py` | 새 파일을 넣기 전에 자리표(asset_slots.json)의 계약과 대조 | 외부 에셋 가져오기 검수기(표준 라이브러리만, Python 3.10). | `python tools/art/asset_intake.py FILE.glb [--profile enemy] [--budget tools/art/asset_budget.json] [--json]`<br>`python tools/art/asset_intake.py --scan chapter1/art [--json] [--strict]` |
 | `tools/art/asset_ledger.py` | 출처 원장 확인·등록. check는 자리표와 원장을 맞춰 본다 | 출처 원장 도구: chapter1/art/ASSET-LEDGER.json 을 만들고 점검한다. | `python tools/art/asset_ledger.py check`<br>`python tools/art/asset_ledger.py check --strict` |
 | `tools/art/slot_paths.py` | 자리표·소리 표·곁 JSON이 가리키는 파일을 읽는 공용 모듈(다른 도구가 불러 씀, 따로 돌리지 않음) | 에셋 자리표(chapter1/art/asset_slots.json)와 소리 표(chapter1/data/audio_map.json)가 가리키는 파일을 읽는 공용 모듈. |  |
@@ -211,6 +212,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 
 | 도구 | 언제 쓰나 | 머리 주석 | 예시 명령 |
 |---|---|---|---|
+| `tools/art/gen_queue.py` | 대기열에서 다음 K건의 작업 지시문(next)을 받고 run으로 생성, record로 검수 시트·갤러리 묶음 | Picture queue: find the pictures the game will need, keep them as a list, and keep Codex making them ahead of time. | `python tools/art/gen_queue.py scan [--write]`<br>`python tools/art/gen_queue.py status [--json [FILE]]` |
 | `tools/art/make_equipment_icons.py` | 생성된 아이콘 후처리 | Post-process generated equipment icons (A3 spec section 9). Pillow + NumPy only, deterministic, no external models. | `python tools/art/make_equipment_icons.py [--src DIR] [--out DIR] [--pick item=rN ...] [--no-sheet]` |
 | `tools/manager/drafts.py` | 갤러리 등록 상태 읽기 | Character art draft gallery: reads _local/art/drafts/index.json on every request (read-only), |  |
 

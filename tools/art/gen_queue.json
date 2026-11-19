@@ -1,0 +1,3717 @@
+{
+ "schema": 1,
+ "updated": "2026-11-20 03:56",
+ "about": "tools/art/gen_queue.py 가 읽고 쓰는 대기열. 사용법은 docs/ART-QUEUE.ko.md",
+ "items": [
+  {
+   "id": "pledge-ember-full",
+   "title": "서약의 악마의 겉 · ember",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%). 숨 쉬는 움직임은 그림 한 장 위 셰이더(겹 나눔 불필요)",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침)",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure, dark flat ground (key out)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-ember-full.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "시안(기획자 결정 N84~N89 대기). 본래 악마 시안(옥좌 화염·종 위 번개)과 사람이었던 어머니(sheet-mothers-v02)와 얼굴·머리색이 겹치면 반려. 사람의 흔적 하나만(화염 약초 주머니 / 번개 목의 흉터).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-ember-full\\pledge-ember-full-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:25",
+     "status": "generated",
+     "note": "pledge-ember-full-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      14,
+      14,
+      13
+     ],
+     [
+      13,
+      14,
+      14
+     ],
+     [
+      17,
+      17,
+      18
+     ],
+     [
+      16,
+      17,
+      18
+     ]
+    ],
+    "dark_share": 0.861,
+    "stddev": 22.3
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-ember-full\\pledge-ember-full-a1.png",
+    "sha256": "89085c4231d096720486574893a925ec9da21f168d985a45d7bbe2fad435a23e",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-ember-full.prompt.txt",
+    "prompt_sha256": "6ba251db854af76e37f950daf4ea45c9159fae4fc11512fa8786a166ce78c470",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-arc-full",
+   "title": "서약의 악마의 겉 · arc",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%). 숨 쉬는 움직임은 그림 한 장 위 셰이더(겹 나눔 불필요)",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침)",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure, dark flat ground (key out)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-arc-full.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "시안(기획자 결정 N84~N89 대기). 본래 악마 시안(옥좌 화염·종 위 번개)과 사람이었던 어머니(sheet-mothers-v02)와 얼굴·머리색이 겹치면 반려. 사람의 흔적 하나만(화염 약초 주머니 / 번개 목의 흉터).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:26",
+     "status": "generated",
+     "note": "pledge-arc-full-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      14,
+      13,
+      18
+     ],
+     [
+      12,
+      13,
+      18
+     ],
+     [
+      14,
+      14,
+      19
+     ],
+     [
+      15,
+      14,
+      20
+     ]
+    ],
+    "dark_share": 0.796,
+    "stddev": 20.8
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png",
+    "sha256": "e20a1ddbdd09db198d1a96bb2e4fad1f71b8e268c993f9b6ca4db3ed1d80a98a",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-arc-full.prompt.txt",
+    "prompt_sha256": "b4352f51ecaa7b6dc892432ca5928b0dcaf46f02d4d21de4e0178fe0bc4915d0",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-frost-full",
+   "title": "서약의 악마의 겉 · frost (지침 확정 뒤 다시)",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%)",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침) 0.11 외형 지침(잠정)",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "0.11절은 잠정 지침. 확정 뒤 같은 항목을 다시 돌린다(지금 것은 시안). 거대한 손은 다른 존재의 표지이므로 그리지 않는다.",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full\\pledge-frost-full-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:30",
+     "status": "generated",
+     "note": "pledge-frost-full-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      19,
+      19,
+      24
+     ],
+     [
+      17,
+      18,
+      22
+     ],
+     [
+      19,
+      20,
+      24
+     ],
+     [
+      18,
+      19,
+      24
+     ]
+    ],
+    "dark_share": 0.708,
+    "stddev": 34.3
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full\\pledge-frost-full-a1.png",
+    "sha256": "59a46e59587fd23727db9585f5794dc84e21fac935fc098ceb9e9ef58ff1afae",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full.prompt.txt",
+    "prompt_sha256": "2e610f7a913cb51131bc5276976ed87ae06e10113b453e94d0ef923dddfd60c4",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-frost-full-b",
+   "title": "서약의 악마의 겉 · frost 후보 b (지침 확정 뒤 다시)",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%). 냉기 겉 후보 3~4장 중 하나",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침) 0.11",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-b.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "0.11 지침 잠정. 같은 지침의 변형 후보. 확정 뒤 다시.",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-b\\pledge-frost-full-b-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:32",
+     "status": "generated",
+     "note": "pledge-frost-full-b-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      16,
+      17,
+      22
+     ],
+     [
+      13,
+      14,
+      19
+     ],
+     [
+      12,
+      14,
+      20
+     ],
+     [
+      13,
+      15,
+      21
+     ]
+    ],
+    "dark_share": 0.692,
+    "stddev": 35.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-b\\pledge-frost-full-b-a1.png",
+    "sha256": "62a62839bb3ce0dbec0fc013fab8765a6445aa5e2a4f94e004edad03990fb0dd",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-b.prompt.txt",
+    "prompt_sha256": "aafe298d563c982a91aa5bcc8d3bfd0b171637a9eeecf95dfc551f8671191da3",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-frost-full-c",
+   "title": "서약의 악마의 겉 · frost 후보 c (지침 확정 뒤 다시)",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%). 냉기 겉 후보 3~4장 중 하나",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침) 0.11",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-c.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "0.11 지침 잠정. 같은 지침의 변형 후보. 확정 뒤 다시.",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-c\\pledge-frost-full-c-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:35",
+     "status": "generated",
+     "note": "pledge-frost-full-c-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      14,
+      15,
+      17
+     ],
+     [
+      13,
+      14,
+      18
+     ],
+     [
+      14,
+      16,
+      19
+     ],
+     [
+      14,
+      16,
+      20
+     ]
+    ],
+    "dark_share": 0.735,
+    "stddev": 32.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-c\\pledge-frost-full-c-a1.png",
+    "sha256": "d9cdab107abfe8c4427184964c1c0a0b58107b8b595f525a1571afdb37db9016",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-c.prompt.txt",
+    "prompt_sha256": "31b44917fbe896d6717a66af78ea988b44a2244c0fd0bacacea3cd3780e1d549",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-frost-full-d",
+   "title": "서약의 악마의 겉 · frost 후보 d (지침 확정 뒤 다시)",
+   "use": "D14 3절 은총 화면(왼쪽 30~35%, 화면 높이 90%). 냉기 겉 후보 3~4장 중 하나",
+   "source": "GRACE-GRADES-AND-TITLE-VOICES 0.3~0.4절 K1~K7, 0.11절; D14 3절(고침) 0.11",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-d.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "0.11 지침 잠정. 같은 지침의 변형 후보. 확정 뒤 다시.",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-d\\pledge-frost-full-d-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:38",
+     "status": "generated",
+     "note": "pledge-frost-full-d-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      12,
+      13,
+      16
+     ],
+     [
+      12,
+      14,
+      17
+     ],
+     [
+      15,
+      17,
+      21
+     ],
+     [
+      15,
+      17,
+      22
+     ]
+    ],
+    "dark_share": 0.684,
+    "stddev": 35.5
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-full-d\\pledge-frost-full-d-a1.png",
+    "sha256": "5b4fa577a110898f50c570b25969719581954bcb3418448e7ba12821b865b0e8",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-full-d.prompt.txt",
+    "prompt_sha256": "1e284def7db6a2dad05370f56c1938aa2496e89ea920b186cb6f97c86c42548d",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-ember-cutin",
+   "title": "강림 컷인 · ember",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "GRACE-GRADES 0.10절(고친 강림 그림); D14 4.4절",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-ember-cutin.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옥좌·종·하늘에서 내려오는 손·위에서 당기는 실을 쓰지 않는다. 번개는 말 없음(K4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-ember-cutin\\pledge-ember-cutin-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:39",
+     "status": "generated",
+     "note": "pledge-ember-cutin-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1536,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      8,
+      7,
+      6
+     ],
+     [
+      6,
+      5,
+      5
+     ],
+     [
+      30,
+      25,
+      26
+     ],
+     [
+      12,
+      11,
+      9
+     ]
+    ],
+    "dark_share": 0.861,
+    "stddev": 20.6
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-ember-cutin\\pledge-ember-cutin-a1.png",
+    "sha256": "c4d1abce77670a02a1d50ce1cac8c36e322d1b2363d1458088986bd949ceeb1a",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-ember-cutin.prompt.txt",
+    "prompt_sha256": "5ba8f0351a0346848a6617e88e50b091c3a843509388813ea6ef476e0da6ee87",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-frost-cutin",
+   "title": "강림 컷인 · frost (지침 확정 뒤 다시)",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "GRACE-GRADES 0.10절(고친 강림 그림); D14 4.4절",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-cutin.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옥좌·종·하늘에서 내려오는 손·위에서 당기는 실을 쓰지 않는다. 번개는 말 없음(K4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-cutin\\pledge-frost-cutin-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:41",
+     "status": "generated",
+     "note": "pledge-frost-cutin-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1536,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      84,
+      104,
+      113
+     ],
+     [
+      97,
+      111,
+      130
+     ],
+     [
+      110,
+      126,
+      141
+     ],
+     [
+      128,
+      141,
+      162
+     ]
+    ],
+    "dark_share": 0.513,
+    "stddev": 44.4
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-frost-cutin\\pledge-frost-cutin-a1.png",
+    "sha256": "a2cb3e917045fadbeec83839093cb4fc5ec68b40c4b6456a07725c5eb32f3403",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-frost-cutin.prompt.txt",
+    "prompt_sha256": "97ef1c530511a45ddfe28c3fd3f0d8bd6a440f236511026b39457aa98f243107",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "pledge-arc-cutin",
+   "title": "강림 컷인 · arc",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "GRACE-GRADES 0.10절(고친 강림 그림); D14 4.4절",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/pledge-arc-cutin.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옥좌·종·하늘에서 내려오는 손·위에서 당기는 실을 쓰지 않는다. 번개는 말 없음(K4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-cutin\\pledge-arc-cutin-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:23",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:43",
+     "status": "generated",
+     "note": "pledge-arc-cutin-a1"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "review_pending",
+     "note": "sheet+gallery 서약의악마-겉-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1536,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      5,
+      5,
+      6
+     ],
+     [
+      5,
+      4,
+      5
+     ],
+     [
+      9,
+      9,
+      11
+     ],
+     [
+      7,
+      6,
+      8
+     ]
+    ],
+    "dark_share": 0.781,
+    "stddev": 26.9
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-cutin\\pledge-arc-cutin-a1.png",
+    "sha256": "3193459e2edfa968c4f2fefd5cd836c031575a6194bd12ac343ab915d0d310b8",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/pledge-arc-cutin.prompt.txt",
+    "prompt_sha256": "f55b1d30956fb2fd021f227c194c63a4e59679453edae2c13bc5fe953102ee93",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "devil-ember-full",
+   "title": "[옛 지시(본래 악마 닮음)] 은총 화면 악마 전신 · ember",
+   "use": "은총 화면 왼쪽 30~35%, 화면 높이 90%의 악마 전신(발끝까지). 숨 쉬는 움직임은 그림 한 장 위 셰이더(겹 나눔 불필요)",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.1·3.3",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure, dark flat ground (key out)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-ember-full.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "same",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 앉은 자세(옥좌·종)와 발끝까지가 핵심. 바탕은 어두운 단색. 번개 악마와 번개 마녀가 한 화면이면 종을 뺀다(CAST-APPEARANCE 3.3-6).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\_old-instruction\\devil-ember-full\\devil-ember-full-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:16",
+     "status": "generated",
+     "note": "devil-ember-full-a1"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      11,
+      11,
+      11
+     ],
+     [
+      9,
+      9,
+      10
+     ],
+     [
+      9,
+      10,
+      11
+     ],
+     [
+      9,
+      11,
+      12
+     ]
+    ],
+    "dark_share": 0.581,
+    "stddev": 32.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\devil-ember-full\\devil-ember-full-a1.png",
+    "sha256": "63f1da4e3a4617d8682fdeab93c337aa17833c66ec39665bbd8f70d275d7c5b0",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/devil-ember-full.prompt.txt",
+    "prompt_sha256": "49590d84072213988ad69f0fd93dabe7035502a3e2293932c262d6c20124fada",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "devil-arc-full",
+   "title": "[옛 지시(본래 악마 닮음)] 은총 화면 악마 전신 · arc",
+   "use": "은총 화면 왼쪽 30~35%, 화면 높이 90%의 악마 전신(발끝까지). 숨 쉬는 움직임은 그림 한 장 위 셰이더(겹 나눔 불필요)",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.1·3.3",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure, dark flat ground (key out)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-arc-full.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/storm_demon/storm-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "same",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 앉은 자세(옥좌·종)와 발끝까지가 핵심. 바탕은 어두운 단색. 번개 악마와 번개 마녀가 한 화면이면 종을 뺀다(CAST-APPEARANCE 3.3-6).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\_old-instruction\\devil-arc-full\\devil-arc-full-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:18",
+     "status": "generated",
+     "note": "devil-arc-full-a1"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      18,
+      19,
+      23
+     ],
+     [
+      16,
+      18,
+      22
+     ],
+     [
+      17,
+      18,
+      22
+     ],
+     [
+      19,
+      21,
+      26
+     ]
+    ],
+    "dark_share": 0.572,
+    "stddev": 33.4
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\devil-arc-full\\devil-arc-full-a1.png",
+    "sha256": "5b93e07ab7e851b31d6eee525a24def6e964c20f728e9fc87f789f92a3bf086a",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/devil-arc-full.prompt.txt",
+    "prompt_sha256": "3b978386175ead35808fa8e46a84b0f568c6d8a260ec70bbfe813b42aed0ba0e",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "devil-frost-person-a",
+   "title": "[옛 지시(본래 악마 닮음)] 냉기 악마의 인물 후보 a",
+   "use": "지금은 거대한 손뿐인 냉기 악마의 사람 모습 후보(은총 화면 전신). ① 세 번째 전신 자리",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.2",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-frost-person-a.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 확정 뒤 같은 항목을 다시 돌린다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-frost-person-b",
+   "title": "[옛 지시(본래 악마 닮음)] 냉기 악마의 인물 후보 b",
+   "use": "지금은 거대한 손뿐인 냉기 악마의 사람 모습 후보(은총 화면 전신). ① 세 번째 전신 자리",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.2",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-frost-person-b.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 확정 뒤 같은 항목을 다시 돌린다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-frost-person-c",
+   "title": "[옛 지시(본래 악마 닮음)] 냉기 악마의 인물 후보 c",
+   "use": "지금은 거대한 손뿐인 냉기 악마의 사람 모습 후보(은총 화면 전신). ① 세 번째 전신 자리",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.2",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-frost-person-c.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 확정 뒤 같은 항목을 다시 돌린다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-frost-person-d",
+   "title": "[옛 지시(본래 악마 닮음)] 냉기 악마의 인물 후보 d",
+   "use": "지금은 거대한 손뿐인 냉기 악마의 사람 모습 후보(은총 화면 전신). ① 세 번째 전신 자리",
+   "source": "D14-devil-grace-and-ultimate 3절(은총 화면 악마 전신, 화면 높이 90%); CAST-APPEARANCE 3.2",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-frost-person-d.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. 확정 뒤 같은 항목을 다시 돌린다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-ember-cutin",
+   "title": "[옛 지시(본래 악마 닮음)] 강림 컷인 · ember",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "D14 4.4절 컷인",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-ember-cutin.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "same",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. D14 4.3: 냉기의 강림은 '거대한 손'이므로 손이 앞으로 뻗는 상반신으로 이음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-frost-cutin",
+   "title": "[옛 지시(본래 악마 닮음)] 강림 컷인 · frost",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "D14 4.4절 컷인",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-frost-cutin.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/ember_demon/ember-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "style",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. D14 4.3: 냉기의 강림은 '거대한 손'이므로 손이 앞으로 뻗는 상반신으로 이음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "devil-arc-cutin",
+   "title": "[옛 지시(본래 악마 닮음)] 강림 컷인 · arc",
+   "use": "강림(필살기) 컷인 0.7~0.9초: 화면을 가로로 찢은 틈에서 밀려 드는 상반신",
+   "source": "D14 4.4절 컷인",
+   "canvas": "1536x1024",
+   "target": "16:9 crop (1920x1080)",
+   "background": "opaque",
+   "count": 1,
+   "priority": 0,
+   "status": "dropped",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/devil-arc-cutin.prompt.txt",
+   "refs": [
+    "C:/Project/witch-moira/_local/art/drafts/storm_demon/storm-demon-v02.png"
+   ],
+   "kind": "image",
+   "has_person": true,
+   "ref_role": "same",
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "옛 지시(2026-11-20 첫 지시): 본래 악마 시안(옥좌·종)에서 출발해 닮았다. K1 위반이라 쓰지 않는다. 그림은 _local/art/queue/_old-instruction/ 에 따로 둠. D14 4.3: 냉기의 강림은 '거대한 손'이므로 손이 앞으로 뻗는 상반신으로 이음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 03:13",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:23",
+     "status": "dropped",
+     "note": "옛 지시(본래 악마 닮음) - GRACE-GRADES 0절 K1·K2로 대체"
+    }
+   ]
+  },
+  {
+   "id": "spell-ember",
+   "title": "basic spell: Ember Shot",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.ember, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-ember.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.ember",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-ember\\spell-ember-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:45",
+     "status": "generated",
+     "note": "spell-ember-a1"
+    },
+    {
+     "at": "2026-11-20 03:56",
+     "status": "review_pending",
+     "note": "sheet+gallery 주문아이콘-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.607,
+    "corner_rgb": [
+     [
+      186,
+      11,
+      186
+     ],
+     [
+      214,
+      12,
+      209
+     ],
+     [
+      207,
+      20,
+      205
+     ],
+     [
+      238,
+      18,
+      235
+     ]
+    ],
+    "dark_share": 0.136,
+    "stddev": 112.3
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-ember\\spell-ember-a1.png",
+    "sha256": "967f5308e9399c18bbb636035f60786c975c8e9cc1c5835b017d13a0f4f0beb4",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-ember.prompt.txt",
+    "prompt_sha256": "544d120f217c120b146f7d6a462740bb026e08894e3c74504e31b4e418efda24",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "spell-ember-ring",
+   "title": "ring spell: Ember Fence",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.ember_ring, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-ember-ring.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.ember_ring",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-ember-ring\\spell-ember-ring-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:47",
+     "status": "generated",
+     "note": "spell-ember-ring-a1"
+    },
+    {
+     "at": "2026-11-20 03:56",
+     "status": "review_pending",
+     "note": "sheet+gallery 주문아이콘-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.514,
+    "corner_rgb": [
+     [
+      185,
+      11,
+      186
+     ],
+     [
+      214,
+      13,
+      210
+     ],
+     [
+      206,
+      21,
+      205
+     ],
+     [
+      237,
+      18,
+      236
+     ]
+    ],
+    "dark_share": 0.32,
+    "stddev": 109.0
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-ember-ring\\spell-ember-ring-a1.png",
+    "sha256": "69355ae4a2b1483203e58ab10f2b19f1c378e22db572c00a9c4ce102daf862dd",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-ember-ring.prompt.txt",
+    "prompt_sha256": "7891128bc32999fee1e6f18d89ba4bc672004298ebcf1c1c3814d8b6e6c88891",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "spell-frost",
+   "title": "basic spell: Frost Lance",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.frost, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-frost.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.frost",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-frost\\spell-frost-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:49",
+     "status": "generated",
+     "note": "spell-frost-a1"
+    },
+    {
+     "at": "2026-11-20 03:56",
+     "status": "review_pending",
+     "note": "sheet+gallery 주문아이콘-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.85,
+    "corner_rgb": [
+     [
+      185,
+      13,
+      185
+     ],
+     [
+      214,
+      14,
+      210
+     ],
+     [
+      207,
+      19,
+      206
+     ],
+     [
+      238,
+      19,
+      237
+     ]
+    ],
+    "dark_share": 0.008,
+    "stddev": 111.9
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-frost\\spell-frost-a1.png",
+    "sha256": "aa33559852571c495defe509ffc733eca29a6e75e10bdb16020ebfdb8ab7a2d0",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-frost.prompt.txt",
+    "prompt_sha256": "9de04fdaa64e897e7d3b798cd0cabb9ecd0977f489e52fa9cbba17f678566115",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "spell-frost-ring",
+   "title": "ring spell: Frost Fence",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.frost_ring, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-frost-ring.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.frost_ring",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-frost-ring\\spell-frost-ring-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:52",
+     "status": "generated",
+     "note": "spell-frost-ring-a1"
+    },
+    {
+     "at": "2026-11-20 03:56",
+     "status": "review_pending",
+     "note": "sheet+gallery 주문아이콘-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGBA",
+    "has_alpha_channel": true,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ]
+    ],
+    "dark_share": 0.676,
+    "stddev": 59.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-frost-ring\\spell-frost-ring-a1.png",
+    "sha256": "4447b65325745ffccf6874cbd3c46820f3e5cd16af2c0063e49356d73255fba2",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-frost-ring.prompt.txt",
+    "prompt_sha256": "9061b5e64ed7e6ddc0379d4377e9584a68319762b9556b22da83e5983fb4d0ba",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "spell-arc",
+   "title": "basic spell: Chain Current",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.arc, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "review_pending",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-arc.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.arc",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-arc\\spell-arc-a1.png"
+   ],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:54",
+     "status": "generated",
+     "note": "spell-arc-a1"
+    },
+    {
+     "at": "2026-11-20 03:56",
+     "status": "review_pending",
+     "note": "sheet+gallery 주문아이콘-20261120"
+    }
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.827,
+    "corner_rgb": [
+     [
+      185,
+      10,
+      185
+     ],
+     [
+      214,
+      13,
+      210
+     ],
+     [
+      206,
+      21,
+      206
+     ],
+     [
+      239,
+      20,
+      238
+     ]
+    ],
+    "dark_share": 0.072,
+    "stddev": 115.5
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-arc\\spell-arc-a1.png",
+    "sha256": "2806c74f4fdf8526cff7b3db46e6f5f2b03573eded4caa8c1e59d4df63fcd867",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-arc.prompt.txt",
+    "prompt_sha256": "3c4ec788c9ad4f2532c70b29cc7cf4246e7e80bfdb706839f5f40e806d2dde3c",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
+  },
+  {
+   "id": "spell-arc-ring",
+   "title": "ring spell: Current Fence",
+   "use": "전투 막대·성장 카드의 주문 아이콘 (slot icon.spell.arc_ring, 128x128 알파)",
+   "source": "asset_slots.json planned + A6-run-spells-screen RS3/RS4; 이름은 RUN-SPELLS-NAMING 2.1",
+   "canvas": "1024x1024",
+   "target": "128x128 square, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/spell-arc-ring.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "icon.spell.arc_ring",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
+   "attempts": 1,
+   "results": [],
+   "last_error": "no image (limit hit)",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 03:55",
+     "status": "prompt_ready",
+     "note": "spell-arc-ring-a1: no image (limit hit)"
+    }
+   ]
+  },
+  {
+   "id": "grade-frame-common",
+   "title": "은총 카드 테 · common",
+   "use": "은총(성장) 카드의 등급 테 (보통·드묾·기연, D13 4.11.1)",
+   "source": "D13-guarded-caches-and-boon-cadence 4.11.1; BENCHMARK-GROWTH-SCREEN 5절 '등급'",
+   "canvas": "1024x1536",
+   "target": "2:3 nine-slice frame, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-frame-common.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "grade-frame-rare",
+   "title": "은총 카드 테 · rare",
+   "use": "은총(성장) 카드의 등급 테 (보통·드묾·기연, D13 4.11.1)",
+   "source": "D13-guarded-caches-and-boon-cadence 4.11.1; BENCHMARK-GROWTH-SCREEN 5절 '등급'",
+   "canvas": "1024x1536",
+   "target": "2:3 nine-slice frame, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-frame-rare.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "grade-frame-jackpot",
+   "title": "은총 카드 테 · jackpot",
+   "use": "은총(성장) 카드의 등급 테 (보통·드묾·기연, D13 4.11.1)",
+   "source": "D13-guarded-caches-and-boon-cadence 4.11.1; BENCHMARK-GROWTH-SCREEN 5절 '등급'",
+   "canvas": "1024x1536",
+   "target": "2:3 nine-slice frame, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-frame-jackpot.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "jackpot-light-sigil",
+   "title": "기연 빛·문양",
+   "use": "기연(jackpot)이 떴을 때 카드 뒤에 깔리는 빛과 문양 (가산 합성)",
+   "source": "D13 4.11.2 공명 기연, 4.11.6 화면 계약(grace_jackpot_shown)",
+   "canvas": "1024x1024",
+   "target": "512x512 additive",
+   "background": "black",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/jackpot-light-sigil.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-reel-band",
+   "title": "슬롯 릴의 띠",
+   "use": "은총 등급이 굴러 멈추는 릴 연출의 띠 (D13 4.11.6 '릴이 돌고 칸마다 멈춘다')",
+   "source": "D13 4.11.6 이벤트 grace_grades_rolled; 사용자 결정 2026-11-20 '슬롯머신처럼'",
+   "canvas": "1536x1024",
+   "target": "1536x1024 seamless horizontal",
+   "background": "opaque",
+   "count": 1,
+   "priority": 1,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/slot-reel-band.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "grade-bg-common",
+   "title": "은총 카드 바탕 · common",
+   "use": "은총 카드 그림 뒤 바탕",
+   "source": "BENCHMARK-GROWTH-SCREEN 5절 '등급'(등급 색을 넓은 면에)",
+   "canvas": "1024x1536",
+   "target": "2:3",
+   "background": "opaque",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-bg-common.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "grade-bg-rare",
+   "title": "은총 카드 바탕 · rare",
+   "use": "은총 카드 그림 뒤 바탕",
+   "source": "BENCHMARK-GROWTH-SCREEN 5절 '등급'(등급 색을 넓은 면에)",
+   "canvas": "1024x1536",
+   "target": "2:3",
+   "background": "opaque",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-bg-rare.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "grade-bg-jackpot",
+   "title": "은총 카드 바탕 · jackpot",
+   "use": "은총 카드 그림 뒤 바탕",
+   "source": "BENCHMARK-GROWTH-SCREEN 5절 '등급'(등급 색을 넓은 면에)",
+   "canvas": "1024x1536",
+   "target": "2:3",
+   "background": "opaque",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/grade-bg-jackpot.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-ember-new",
+   "title": "성장 카드 문양 · ember · new skill",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-new.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-ember-upgrade",
+   "title": "성장 카드 문양 · ember · upgrade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-upgrade.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-ember-evolve",
+   "title": "성장 카드 문양 · ember · evolution",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-evolve.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-ember-deal",
+   "title": "성장 카드 문양 · ember · trade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-deal.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-frost-new",
+   "title": "성장 카드 문양 · frost · new skill",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-new.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-frost-upgrade",
+   "title": "성장 카드 문양 · frost · upgrade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-upgrade.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-frost-evolve",
+   "title": "성장 카드 문양 · frost · evolution",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-evolve.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-frost-deal",
+   "title": "성장 카드 문양 · frost · trade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-deal.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-arc-new",
+   "title": "성장 카드 문양 · arc · new skill",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-arc-new.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-arc-upgrade",
+   "title": "성장 카드 문양 · arc · upgrade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-arc-upgrade.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-arc-evolve",
+   "title": "성장 카드 문양 · arc · evolution",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-arc-evolve.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "emblem-arc-deal",
+   "title": "성장 카드 문양 · arc · trade",
+   "use": "성장 카드의 큰 문양(약 150px, 지금 90px 문장을 키움). 카드 종류마다 다른 그림",
+   "source": "BENCHMARK-GROWTH-SCREEN 4~5절 '그림의 몫'; A6-run-spells-screen RS3 카드 종류",
+   "canvas": "1024x1024",
+   "target": "256x256 round, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/emblem-arc-deal.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "growth-card-back",
+   "title": "성장 카드 뒷면(덮개)",
+   "use": "은총 카드를 뒤집기 전의 덮개 (BENCHMARK-GROWTH 안 2·진화 패의 드러남)",
+   "source": "BENCHMARK-GROWTH-SCREEN 4절 안 2 '봉랍·덮개'",
+   "canvas": "1024x1536",
+   "target": "2:3",
+   "background": "opaque",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/growth-card-back.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "화면 안 선택(안 2 = 뒤집기)이 정해져야 쓰임. 그림 자체는 미리 만들어 둬도 됨",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-shrine-guarded",
+   "title": "사당 · guarded",
+   "use": "정예가 지키는 사당의 상태(잠김·풀림·소진). slot world.prop.shrine",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.shrine",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-shrine-guarded.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "world.prop.shrine",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-shrine-open",
+   "title": "사당 · open",
+   "use": "정예가 지키는 사당의 상태(잠김·풀림·소진). slot world.prop.shrine",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.shrine",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-shrine-open.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-shrine-spent",
+   "title": "사당 · spent",
+   "use": "정예가 지키는 사당의 상태(잠김·풀림·소진). slot world.prop.shrine",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.shrine",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-shrine-spent.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-chest-guarded",
+   "title": "상자 · guarded",
+   "use": "정예가 지키는 상자의 상태(잠김·풀림·소진). slot world.prop.chest",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.chest",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-chest-guarded.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "world.prop.chest",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-chest-open",
+   "title": "상자 · open",
+   "use": "정예가 지키는 상자의 상태(잠김·풀림·소진). slot world.prop.chest",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.chest",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-chest-open.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "prop-chest-spent",
+   "title": "상자 · spent",
+   "use": "정예가 지키는 상자의 상태(잠김·풀림·소진). slot world.prop.chest",
+   "source": "D13-guarded-caches W5-a 지키는 자리; asset_slots.json planned world.prop.chest",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/prop-chest-spent.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "이름('사당'·'상자')은 자리표(D13 0절 6번) - 그림에 글자 없음.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "reward-tier-1",
+   "title": "보상 단계 표식 1",
+   "use": "보상 단계 Ⅰ~Ⅳ를 보이는 표식(숫자 대신 보석 수와 재질)",
+   "source": "D13-guarded-caches W5-b 보상 단계",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/reward-tier-1.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "로마 숫자는 글자 금지 때문에 쓰지 않고 보석 수로. 화면이 숫자를 얹을 수 있다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "reward-tier-2",
+   "title": "보상 단계 표식 2",
+   "use": "보상 단계 Ⅰ~Ⅳ를 보이는 표식(숫자 대신 보석 수와 재질)",
+   "source": "D13-guarded-caches W5-b 보상 단계",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/reward-tier-2.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "로마 숫자는 글자 금지 때문에 쓰지 않고 보석 수로. 화면이 숫자를 얹을 수 있다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "reward-tier-3",
+   "title": "보상 단계 표식 3",
+   "use": "보상 단계 Ⅰ~Ⅳ를 보이는 표식(숫자 대신 보석 수와 재질)",
+   "source": "D13-guarded-caches W5-b 보상 단계",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/reward-tier-3.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "로마 숫자는 글자 금지 때문에 쓰지 않고 보석 수로. 화면이 숫자를 얹을 수 있다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "reward-tier-4",
+   "title": "보상 단계 표식 4",
+   "use": "보상 단계 Ⅰ~Ⅳ를 보이는 표식(숫자 대신 보석 수와 재질)",
+   "source": "D13-guarded-caches W5-b 보상 단계",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/reward-tier-4.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "로마 숫자는 글자 금지 때문에 쓰지 않고 보석 수로. 화면이 숫자를 얹을 수 있다.",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "elite-marker",
+   "title": "정예 표식",
+   "use": "정예 적 머리 위·경로 띠의 표식",
+   "source": "D13-guarded-caches W5-a(정예가 지키는 자리); BENCHMARK-GROWTH 5절",
+   "canvas": "1024x1024",
+   "target": "96x96, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 2,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/elite-marker.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "mother-ember",
+   "title": "어머니(주는 이) 그늘진 전신 · ember",
+   "use": "은총 화면 왼쪽 큰 그림(얼굴 위쪽 절반이 그늘)",
+   "source": "CAST-APPEARANCE 2절; BOON-SCREEN-FIGURE-RULES R4·R6; BENCHMARK-GROWTH-SCREEN 안 1",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 3,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/mother-ember.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "slot": "",
+   "needs_user": "시안이 이미 있다(_local/art/drafts/boon_mothers r8, ember_mother·frost_mother v01). 구도·노출 규칙을 새로 맞춘 판이 필요할 때 생성",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "노출은 CAST-APPEARANCE 2.0(세 마녀보다 낮게)을 따름. 얼굴 닮음은 속성별 한 지점(화염 눈, 빙결·번개 머리색).",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "mother-frost",
+   "title": "어머니(주는 이) 그늘진 전신 · frost",
+   "use": "은총 화면 왼쪽 큰 그림(얼굴 위쪽 절반이 그늘)",
+   "source": "CAST-APPEARANCE 2절; BOON-SCREEN-FIGURE-RULES R4·R6; BENCHMARK-GROWTH-SCREEN 안 1",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 3,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/mother-frost.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "slot": "",
+   "needs_user": "시안이 이미 있다(_local/art/drafts/boon_mothers r8, ember_mother·frost_mother v01). 구도·노출 규칙을 새로 맞춘 판이 필요할 때 생성",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "노출은 CAST-APPEARANCE 2.0(세 마녀보다 낮게)을 따름. 얼굴 닮음은 속성별 한 지점(화염 눈, 빙결·번개 머리색).",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "mother-arc",
+   "title": "어머니(주는 이) 그늘진 전신 · arc",
+   "use": "은총 화면 왼쪽 큰 그림(얼굴 위쪽 절반이 그늘)",
+   "source": "CAST-APPEARANCE 2절; BOON-SCREEN-FIGURE-RULES R4·R6; BENCHMARK-GROWTH-SCREEN 안 1",
+   "canvas": "1024x1536",
+   "target": "2:3 full figure",
+   "background": "opaque",
+   "count": 1,
+   "priority": 3,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/mother-arc.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": true,
+   "slot": "",
+   "needs_user": "시안이 이미 있다(_local/art/drafts/boon_mothers r8, ember_mother·frost_mother v01). 구도·노출 규칙을 새로 맞춘 판이 필요할 때 생성",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "노출은 CAST-APPEARANCE 2.0(세 마녀보다 낮게)을 따름. 얼굴 닮음은 속성별 한 지점(화염 눈, 빙결·번개 머리색).",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "charselect-backdrop",
+   "title": "캐릭터 선택 공통 배경(서약의 자리)",
+   "use": "캐릭터 선택 화면의 세 마녀 뒤 공통 배경",
+   "source": "BENCHMARK-CHARACTER-SELECT 안 A~C '새 그림이 필요한 것 ① 공통 배경 한 장'",
+   "canvas": "1536x1024",
+   "target": "1920x1080 cover",
+   "background": "opaque",
+   "count": 1,
+   "priority": 3,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/charselect-backdrop.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "town-backdrop",
+   "title": "마을 허브 배경",
+   "use": "마을 0판 한 화면 허브(제단·보관함·대장장이·던전 입구)",
+   "source": "SYSTEMS-DESIGN 3절 H1 마을 0판; asset_slots.json planned ui.town.backdrop",
+   "canvas": "1536x1024",
+   "target": "1920x1080 cover",
+   "background": "opaque",
+   "count": 1,
+   "priority": 4,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/town-backdrop.prompt.txt",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "ui.town.backdrop",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "town-place-altar",
+   "title": "마을 자리 · altar",
+   "use": "마을 허브의 자리 버튼 그림 (ui.town.place.altar)",
+   "source": "SYSTEMS-DESIGN 3절 H1; asset_slots.json planned_families ui.town.place.<place>",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 4,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/town-place-altar.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "town-place-storage",
+   "title": "마을 자리 · storage",
+   "use": "마을 허브의 자리 버튼 그림 (ui.town.place.storage)",
+   "source": "SYSTEMS-DESIGN 3절 H1; asset_slots.json planned_families ui.town.place.<place>",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 4,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/town-place-storage.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "town-place-forge",
+   "title": "마을 자리 · forge",
+   "use": "마을 허브의 자리 버튼 그림 (ui.town.place.forge)",
+   "source": "SYSTEMS-DESIGN 3절 H1; asset_slots.json planned_families ui.town.place.<place>",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 4,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/town-place-forge.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "town-place-gate",
+   "title": "마을 자리 · gate",
+   "use": "마을 허브의 자리 버튼 그림 (ui.town.place.gate)",
+   "source": "SYSTEMS-DESIGN 3절 H1; asset_slots.json planned_families ui.town.place.<place>",
+   "canvas": "1024x1024",
+   "target": "256x256, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 4,
+   "status": "prompt_ready",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "tools/art/gen_queue_prompts/town-place-gate.prompt.txt",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "title-keyart",
+   "title": "타이틀 키아트",
+   "use": "타이틀 화면 한 장(글자 없는 그림)",
+   "source": "A4 11절; DECISIONS-PENDING '타이틀 키아트'; 시안 title_keyart/keyart-A-r4a.png 있음",
+   "canvas": "1536x1024",
+   "target": "",
+   "background": "opaque",
+   "count": 1,
+   "priority": 4,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "게임 이름이 교체 예정이라 로고를 그림에 넣지 않는다. 새 시안이 필요한지 사용자 결정",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "title-keyart-final",
+   "title": "타이틀 키아트 확정본(유료 API)",
+   "use": "확정본만 API로 뽑는다(메모: 시안은 Codex, 확정은 API)",
+   "source": "memory image-generation-setup",
+   "canvas": "1536x1024",
+   "target": "",
+   "background": "opaque",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "paid-api",
+   "est_cost_usd": 0.043,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [
+    "title-keyart"
+   ],
+   "blocked": "승인 필요: 장수·비용을 제시하고 사용자 승인 뒤. 크기별 비용은 미조회(1024x1536 high 장당 약 0.043달러가 2026-11-17 실측)",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "fx-flipbook-ember",
+   "title": "속성 플립북 · ember",
+   "use": "폭발·서리 번짐·전기 가지 플립북 재료(asset-producer 첫 제작 대상)",
+   "source": "SUNRA-ASSET-AGENT; A5-combat-light-effects-direction",
+   "canvas": "",
+   "target": "",
+   "background": "black",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "sunra",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "승인 필요: Sunra 모델·스키마·크레딧을 조회한 뒤 건별 승인(비용 미조회)",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "fx-flipbook-frost",
+   "title": "속성 플립북 · frost",
+   "use": "폭발·서리 번짐·전기 가지 플립북 재료(asset-producer 첫 제작 대상)",
+   "source": "SUNRA-ASSET-AGENT; A5-combat-light-effects-direction",
+   "canvas": "",
+   "target": "",
+   "background": "black",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "sunra",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "승인 필요: Sunra 모델·스키마·크레딧을 조회한 뒤 건별 승인(비용 미조회)",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "fx-flipbook-arc",
+   "title": "속성 플립북 · arc",
+   "use": "폭발·서리 번짐·전기 가지 플립북 재료(asset-producer 첫 제작 대상)",
+   "source": "SUNRA-ASSET-AGENT; A5-combat-light-effects-direction",
+   "canvas": "",
+   "target": "",
+   "background": "black",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "sunra",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "image",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "승인 필요: Sunra 모델·스키마·크레딧을 조회한 뒤 건별 승인(비용 미조회)",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "equip-icon-ward_ring",
+   "title": "장비 아이콘 교체분 · ward_ring",
+   "use": "이름에 금지 낱말이 든 장비(ward_ring)의 아이콘. A3: 아이콘은 id로 짓고 기능의 모양에 맞춤 - 이름이 바뀌어도 다시 안 뽑음",
+   "source": "wording_lint PENDING(loot.json); A3 2.3판 7절",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "새 이름(ITEM-NAMING 2.4) 확정 뒤 그림이 어긋날 때만. 프롬프트는 tools/art/gen_configs/equipment_icon_all_a1.json(--only)에 있음",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "equip-icon-ash_bloom",
+   "title": "장비 아이콘 교체분 · ash_bloom",
+   "use": "이름에 금지 낱말이 든 장비(ash_bloom)의 아이콘. A3: 아이콘은 id로 짓고 기능의 모양에 맞춤 - 이름이 바뀌어도 다시 안 뽑음",
+   "source": "wording_lint PENDING(loot.json); A3 2.3판 7절",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "새 이름(ITEM-NAMING 2.4) 확정 뒤 그림이 어긋날 때만. 프롬프트는 tools/art/gen_configs/equipment_icon_all_a1.json(--only)에 있음",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "equip-icon-forked_covenant",
+   "title": "장비 아이콘 교체분 · forked_covenant",
+   "use": "이름에 금지 낱말이 든 장비(forked_covenant)의 아이콘. A3: 아이콘은 id로 짓고 기능의 모양에 맞춤 - 이름이 바뀌어도 다시 안 뽑음",
+   "source": "wording_lint PENDING(loot.json); A3 2.3판 7절",
+   "canvas": "1024x1024",
+   "target": "128x128, alpha",
+   "background": "magenta",
+   "count": 1,
+   "priority": 5,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "",
+   "needs_user": "새 이름(ITEM-NAMING 2.4) 확정 뒤 그림이 어긋날 때만. 프롬프트는 tools/art/gen_configs/equipment_icon_all_a1.json(--only)에 있음",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-frost-cutin-evolve",
+   "title": "portrait.frost.cutin_evolve",
+   "use": "자리 portrait.frost.cutin_evolve (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.frost.cutin_evolve",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-frost-cutin-kill",
+   "title": "portrait.frost.cutin_kill",
+   "use": "자리 portrait.frost.cutin_kill (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.frost.cutin_kill",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-frost-cutin-ultimate",
+   "title": "portrait.frost.cutin_ultimate",
+   "use": "자리 portrait.frost.cutin_ultimate (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.frost.cutin_ultimate",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-frost-record",
+   "title": "portrait.frost.record",
+   "use": "자리 portrait.frost.record (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.frost.record",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-ember-cutin-evolve",
+   "title": "portrait.ember.cutin_evolve",
+   "use": "자리 portrait.ember.cutin_evolve (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.ember.cutin_evolve",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-ember-cutin-kill",
+   "title": "portrait.ember.cutin_kill",
+   "use": "자리 portrait.ember.cutin_kill (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.ember.cutin_kill",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-ember-cutin-ultimate",
+   "title": "portrait.ember.cutin_ultimate",
+   "use": "자리 portrait.ember.cutin_ultimate (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.ember.cutin_ultimate",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-ember-record",
+   "title": "portrait.ember.record",
+   "use": "자리 portrait.ember.record (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.ember.record",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-arc-cutin-evolve",
+   "title": "portrait.arc.cutin_evolve",
+   "use": "자리 portrait.arc.cutin_evolve (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.arc.cutin_evolve",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-arc-cutin-kill",
+   "title": "portrait.arc.cutin_kill",
+   "use": "자리 portrait.arc.cutin_kill (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.arc.cutin_kill",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-arc-cutin-ultimate",
+   "title": "portrait.arc.cutin_ultimate",
+   "use": "자리 portrait.arc.cutin_ultimate (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.arc.cutin_ultimate",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  },
+  {
+   "id": "slot-portrait-arc-record",
+   "title": "portrait.arc.record",
+   "use": "자리 portrait.arc.record (파일 없음, 임시 문양)",
+   "source": "asset_slots.json planned: T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
+   "canvas": "1024x1024",
+   "target": "",
+   "background": "magenta",
+   "count": 1,
+   "priority": 3,
+   "status": "candidate",
+   "route": "codex-free",
+   "est_cost_usd": null,
+   "prompt_file": "",
+   "refs": [],
+   "kind": "icon",
+   "has_person": false,
+   "slot": "portrait.arc.record",
+   "needs_user": "",
+   "depends_on": [],
+   "blocked": "",
+   "notes": "",
+   "attempts": 0,
+   "results": [],
+   "last_error": "",
+   "history": [
+    {
+     "at": "2026-11-20 00:51",
+     "status": "candidate"
+    }
+   ]
+  }
+ ]
+}
