@@ -14,6 +14,28 @@ extends SceneTree
 ##   A:d2r1   own basic spell, damage axis 2, reach axis 1      R:d1r1  own ring      X:d1  borrowed basic (--borrow=, default
 ##   per witch)   AP / DT  the applier / the detonator of the witch's own pair      crystal  owns the basic's crystal      evo  A evolved
 ##   with its pair partner.   JSON: {"spells":{"A":{"d":2,"r":1},"R":{}}, "crystal":true, "evolve":true}
+## D12 rev.3 / B0.16 (phase 0) switches: --crowd-modes=pilot,stand (T-1; the crowd cell also in stand), --tally (T-2/T-3: the hero keeps its REAL max life (--hero-hp=N to change), zone damage/speed
+##   for the enemies; per cell taken_pct_total / hero_hits / dead_np_s / dead_p_s, contact_share_pct = share of ticks with an ordinary enemy within 1.15 m, preps_close = windups that START within
+##   1.15 m, preps_close_hit = how many of those hit), --mix=walker:ranged:charger (T-4), --elite-hp=HP|g1 (T-5; g1 = champion 0 hp x the beat's mean hp multiplier; the single cell ends when it dies:
+##   kill_s). --set may create a missing last key (listed in meta.created_keys) and arrays take whole JSON values (reach=[...]) or indexes (reach/1/ring_radius_cm=200).
+## CONTACT MODES (D12 rev. 3, "the ring is a wall, not a pair part"): --mode=melee,hold,strong (default: none = the crowd + single tests above, unchanged).
+##   Here the hero keeps its REAL maximum life (the baseline hero: 120, no gear, no level) and is topped up every tick, so it cannot die, but every
+##   hero_hit is counted and a shadow life is run beside it: shadow life without potions and with the 3 starting potions (drunk under 68 %, 35 %, 240 tick
+##   cooldown, like the pilot) -> the second the shadow life would have hit 0 ("dead_np_s" / "dead_p_s", -1 = survived). Enemy damage and speed are those of the
+##   beat's zone (the crowd test leaves them at zone 0). Counted per measured second: taken damage (% of max life), hits, mean number of ordinary enemies within
+##   1.5 / 3 / 5 m (sampled at 10 Hz), the share of samples with at least one enemy within 1.5 m, enemy-seconds within 1.5 m, and how many of those are not frozen/stunned.
+##   melee   density N alive ordinary enemies (--m-density, default 35,70), --m-secs 45. Variants (--melee-variants): stand = hero does not move; pilot = pilot
+##           movement; rush = pilot movement, enemy speed x --rush-mult (2.5) and enemies (re)spawn at --rush-ring-min/max (3-5 m) instead of 7.5-10.5 m (they appear close, so the hero is boxed in).  (default stand,rush)
+##   hold    the hero is kept inside a 12 m circle around its start (the D11 "버티기"), density --hold-density 70,100, --hold-secs 45, trial rule (zone 2 life/damage, trial
+##           mix). Variants --hold-variants (default stand,pilot).
+##   strong  one champion of the beat's zone (--champion=N overrides; real hp/damage/windup from combat_tuning champions) placed next to the hero, plus --strong-mobs (0,10,30)
+##           ordinary enemies; ends when it dies or after --strong-secs (90): time to kill and damage taken. Variants --strong-variants (default stand,pilot).
+##   --hero-hp=N sets the hero's maximum life in HP (default: the real baseline 120; a stand-in for levels/gear, which the bench does not have).
+##   Ring knobs, applied in memory to the witch's OWN ring spell (all optional, any mode): --ring-radius=M (flat radius, all reach levels), --ring-cd=SECONDS, --ring-dmg=MULT,
+##   --ring-vs-strong=MULT (0.5 = shipped), --ring-pulses=N (24-tick pulses), --ring-targets=N, --ring-budget=N, --ring-slow=BPS[,TICKS] (the core applies slow only to frost-element
+##   spells, only the frost witch's ring takes it; on the other two it is reported in meta.knobs_not_applied and NOT applied), --ring-freeze=N (ring applies N chill stacks; freeze_at is 4: 4 = freezes on the first hit).
+##   NOT in the core (so NOT here): knockback / push, distance falloff of the ring damage, a stun on any spell other than the arc basic's chain contact. See REPORT "needs of the core".
+##   Contact builds (--builds=): n_base n_A n_AR n_AR22 n_AX n_A6 n_R22 (see MELEE_PRESETS; they are not in the default list of the crowd test).
 ## --pretag=status:n (counterfactual) gives every ordinary enemy that status, n stacks, by the pair applier, before every step.
 ## --set=a/b/c=value overrides one value of the run_spells document in memory (path with "/", spell ids keep their dots), repeatable.
 ## Args: --witches=ember,frost,arc --beat=gi|seung1|seung2|jeon_a --hp=lo|mid|hi --density=15,35,60,85 --secs=60 --warmup=6
@@ -43,6 +65,18 @@ const PRESETS := [
 	["A_cap6c", "A:d4r2+crystal"], ["A_cap6X1", "A:d4r2+X:d1+crystal"], ["AR_evo7", "A:d3r2+R:d1r1+crystal+evo"],
 	["R_d2r2", "R:d2r2"], ["R_d3r3", "R:d3r3"], ["AR_7", "A:d3r2+R:d1r1"],
 ]
+## Builds of the contact modes ("ring present or not" at equal other spells, plus a ring with axis points). Not part of PRESETS (the crowd test's default list).
+const MELEE_PRESETS := [
+	["n_base", "A"], ["n_A", "A:d2r1"], ["n_AR", "A:d2r1+R"], ["n_AR22", "A:d2r1+R:d2r2"], ["n_AX", "A:d2r1+X:d1"], ["n_A6", "A:d4r2"], ["n_R22", "R:d2r2"],
+]
+const HOLD_RADIUS := 12.0
+const POTION_START := 3
+var ring_knobs := {}
+var tally_on := false
+var elite_hp_arg := 0
+var created_keys: Array = []
+var unsupported: Array = []
+var speed_mult := 1.0
 var checks_failed: Array[String] = []
 var doc_overrides: Array = []
 var borrow_override := ""
@@ -81,12 +115,63 @@ func arg_names(name: String, fallback: Array) -> Array:
 
 # ------------------------------------------------------------------ document and builds
 
-func shipped_doc() -> Dictionary:
+func shipped_doc(witch: String = "") -> Dictionary:
 	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SPELLS))
 	doc.enabled = true
 	for entry in doc_overrides:
 		if not set_path(doc, String(entry.path), entry.value): checks_failed.append("override path not found: " + String(entry.path))
+	if not witch.is_empty() and not ring_knobs.is_empty(): apply_ring_knobs(doc, witch)
 	return doc
+
+## Ring knobs (see the header): written into the witch's own ring spell in the in-memory document only.
+func apply_ring_knobs(doc: Dictionary, witch: String) -> void:
+	var id_ := SK + witch + "_ring"
+	if not doc.spells.has(id_):
+		checks_failed.append("no ring spell " + id_)
+		return
+	var s: Dictionary = doc.spells[id_]
+	var base: Dictionary = s.base
+	var reach: Array = s.reach
+	if ring_knobs.has("radius_m"):
+		var cm := int(round(float(ring_knobs.radius_m) * 100.0))
+		base.ring_radius_cm = cm
+		for r in reach:
+			if r.has("ring_radius_cm"): r.ring_radius_cm = cm
+	if ring_knobs.has("cd_s"): base.cooldown_ticks = maxi(12, int(round(float(ring_knobs.cd_s) * 60.0)))
+	if ring_knobs.has("dmg"): base.damage_raw = maxi(1, int(round(float(base.damage_raw) * float(ring_knobs.dmg))))
+	if ring_knobs.has("vs_strong"): s.vs_strong_bps = int(round(float(ring_knobs.vs_strong) * 10000.0))
+	if ring_knobs.has("pulses"): base.ring_pulses = int(ring_knobs.pulses)
+	if ring_knobs.has("targets"):
+		base.ring_targets = int(ring_knobs.targets)
+		for r in reach:
+			if r.has("ring_targets"): r.ring_targets = int(ring_knobs.targets)
+	if ring_knobs.has("budget"):
+		base.hit_budget = int(ring_knobs.budget)
+		for r in reach:
+			if r.has("hit_budget"): r.hit_budget = int(ring_knobs.budget)
+	if ring_knobs.has("slow_bps"):
+		if String(s.element) == "frost":
+			base.slow_bps = int(ring_knobs.slow_bps)
+			s.slow_ticks = int(ring_knobs.get("slow_ticks", 90))
+		elif not unsupported.has("slow on non-frost ring (core: slow only from frost-element spells; the document check ties a ring's element to its witch)"):
+			unsupported.append("slow on non-frost ring (core: slow only from frost-element spells; the document check ties a ring's element to its witch)")
+	if ring_knobs.has("freeze"):
+		var applies: Dictionary = s.applies
+		applies["chill"] = int(ring_knobs.freeze)
+		s["applies"] = applies
+
+## JSON.parse_string yields floats for every number; the document check wants integers where the value is whole.
+func normalize_value(v: Variant) -> Variant:
+	if v is float and is_equal_approx(v, round(v)): return int(round(v))
+	if v is Array:
+		var out: Array = []
+		for x in v: out.append(normalize_value(x))
+		return out
+	if v is Dictionary:
+		var d := {}
+		for k in v: d[k] = normalize_value(v[k])
+		return d
+	return v
 
 func set_path(doc: Variant, path: String, value: Variant) -> bool:
 	var tokens: PackedStringArray = path.split("/", false)
@@ -95,12 +180,14 @@ func set_path(doc: Variant, path: String, value: Variant) -> bool:
 		var key: String = tokens[i]
 		var last := i == tokens.size() - 1
 		if cur is Dictionary:
-			if not cur.has(key): return false
-			if last: cur[key] = value
+			if not cur.has(key):
+				if not last: return false
+				created_keys.append(path)
+			if last: cur[key] = normalize_value(value)
 			else: cur = cur[key]
 		elif cur is Array:
 			if not key.is_valid_int() or int(key) < 0 or int(key) >= cur.size(): return false
-			if last: cur[int(key)] = value
+			if last: cur[int(key)] = normalize_value(value)
 			else: cur = cur[int(key)]
 		else: return false
 	return true
@@ -141,6 +228,8 @@ func parse_spec(spec: String) -> Dictionary:
 
 func spec_of_name(name: String) -> String:
 	for entry in PRESETS:
+		if entry[0] == name: return String(entry[1])
+	for entry in MELEE_PRESETS:
 		if entry[0] == name: return String(entry[1])
 	return ""
 
@@ -282,9 +371,10 @@ func place_elite(run: RefCounted) -> int:
 	return id_
 
 ## Before every step: the hero cannot die, gear is hidden, experience is thrown away, the seal stays shut, nothing spawns by itself.
-func neutralize(run: RefCounted) -> void:
-	run.hero.max_hp_raw = HERO_HP
-	run.hero.hp_raw = HERO_HP
+func neutralize(run: RefCounted, real_max: int = 0) -> void:
+	## real_max > 0 (contact modes): the hero keeps its real maximum life (so the heavy-hit rule works) and is refilled every tick.
+	run.hero.max_hp_raw = real_max if real_max > 0 else HERO_HP
+	run.hero.hp_raw = run.hero.max_hp_raw
 	run.inventory.clear()
 	run.zone_kills = 0
 	run.seals[0].kills = 0
@@ -499,7 +589,7 @@ func apply_pretag(run: RefCounted, pair: Dictionary) -> void:
 ## One arena: `mobs` ordinary enemies refilled to a constant number (+ one guardian when `elite`), `secs` measured after a warm-up.
 func arena(witch: String, build: Dictionary, mobs: int, elite: bool, stand: bool, secs: float, seed_: int, beat: Dictionary, hp_mode: String, warmup_s: float, label: String) -> Dictionary:
 	var primary := SK + witch
-	var run := make_run(seed_, primary, shipped_doc())
+	var run := make_run(seed_, primary, shipped_doc(witch))
 	if run == null: return {}
 	apply_build(run, build)
 	run.enemies.clear()
@@ -508,9 +598,23 @@ func arena(witch: String, build: Dictionary, mobs: int, elite: bool, stand: bool
 	rng.seed = seed_ * 7919 + 13
 	var pilot = Pilot.new()
 	pilot.run = run
-	neutralize(run)
-	fill(run, rng, beat, hp_mode, mobs, false, true)
+	var real_max := int(run.hero.max_hp_raw) if tally_on else 0
+	var hero_hp_arg := arg_string("--hero-hp", "")
+	if tally_on and not hero_hp_arg.is_empty(): real_max = int(float(hero_hp_arg)) * UNIT
+	neutralize(run, real_max)
+	fill_any(run, rng, beat, hp_mode, mobs, false, true)
 	var elite_id := place_elite(run) if elite else -1
+	if elite and elite_hp_arg > 0:
+		run.enemies[elite_id].hp_raw = elite_hp_arg * UNIT
+		run.enemies[elite_id].max_hp_raw = elite_hp_arg * UNIT
+		if tally_on:
+			var champ: Dictionary = tuning_doc.champions[0]
+			run.enemies[elite_id].definition.damage = int(champ.damage)
+			run.enemies[elite_id].definition.windup = int(champ.windup)
+			run.enemies[elite_id].definition.recover = int(champ.recover)
+	var m := new_m(real_max, run.tick + int(warmup_s * 60.0))
+	var t3 := {"ticks": 0, "contact": 0, "preps": 0, "preps_hit": 0, "windup_ids": {}, "close_ids": {}}
+	var ticks_done := 0
 	var rings: Array = []
 	var ring_radius := {}
 	for id_ in build.spells:
@@ -522,20 +626,276 @@ func arena(witch: String, build: Dictionary, mobs: int, elite: bool, stand: bool
 	var acc := new_acc()
 	var aborted := false
 	for i in total:
-		neutralize(run)
+		neutralize(run, real_max)
 		if run.mode != "playing":
 			aborted = true
 			break
-		fill(run, rng, beat, hp_mode, mobs, elite, false)
+		fill_any(run, rng, beat, hp_mode, mobs, elite, false)
 		if not pretag.is_empty(): apply_pretag(run, own_pair(run.spells, witch))
 		var pre := ring_snapshots(run, rings) if i >= warm else {}
 		var move := Vector2.ZERO if stand else pilot.decide()
 		run.step(move)
-		if i >= warm: collect(run, acc, pre, elite_id, ring_radius)
-	var out := finish(acc, secs, run, build, label)
+		if i >= warm:
+			collect(run, acc, pre, elite_id, ring_radius)
+			ticks_done += 1
+			if tally_on:
+				collect_m(run, m, elite_id, SK + witch + "_ring")
+				track_contact(run, t3)
+				if ticks_done == 2400: m["dealt40"] = int(m.dealt)
+		if elite and elite_hp_arg > 0 and (not run.enemies.has(elite_id) or run.enemies[elite_id].hp_raw <= 0): break
+	var out := finish(acc, float(ticks_done) / 60.0 if elite_hp_arg > 0 and elite else secs, run, build, label)
+	if tally_on:
+		out.merge(finish_m(m, ticks_done, elite_id, run, label), false)
+		out.merge(finish_t3(t3), true)
+		if m.has("dealt40"): out.power_40_60_hp_s = r2(float(int(m.dealt) - int(m.dealt40)) / UNIT / maxf(1.0, float(ticks_done - 2400) / 60.0))
+		if elite and elite_hp_arg > 0:
+			out.elite_killed = not run.enemies.has(elite_id) or run.enemies[elite_id].hp_raw <= 0
+			out.kill_s = r2(float(ticks_done) / 60.0) if out.elite_killed else -1.0
 	out.aborted = aborted
 	out.events_dropped = int(run.metrics.get("events_dropped", 0))
 	return out
+
+# ------------------------------------------------------------------ contact modes (melee / hold / strong)
+
+## Like fill(), but with the zone's damage and speed (the crowd test leaves them at zone 0) and a speed multiplier.
+func fill_contact(run: RefCounted, rng: RandomNumberGenerator, beat: Dictionary, hp_mode: String, target: int, has_elite: bool, initial: bool, speed_m: float, ring: Vector2 = Vector2.ZERO) -> void:
+	var count: int = run.alive_count() - (1 if has_elite else 0)
+	var z := clampi(int(beat.zone), 0, 2)
+	while count < target:
+		var kind := pick_kind(rng, beat)
+		var angle := rng.randf_range(0.0, TAU)
+		var rmin := float(run.tuning.spawn.ring_min_m) if ring == Vector2.ZERO else ring.x
+		var rmax := float(run.tuning.spawn.ring_max_m) if ring == Vector2.ZERO else ring.y
+		var dist := rng.randf_range(rmin, rmax)
+		if initial: dist = sqrt(rng.randf_range(2.0 * 2.0, (10.5 if ring == Vector2.ZERO else ring.y) * (10.5 if ring == Vector2.ZERO else ring.y)))
+		var point: Vector2 = run._clamp_point(run.hero.position + Vector2(cos(angle), sin(angle)) * dist)
+		if not run._spawn(kind, point): break
+		var e: Dictionary = run.enemies[run._enemy_sequence]
+		var hp := hp_of(kind, beat, hp_mode)
+		e.hp_raw = hp * UNIT
+		e.max_hp_raw = e.hp_raw
+		e.definition.hp = hp
+		e.definition.damage = int(tuning_doc.enemies[kind].damage[z])
+		e.definition.speed = float(tuning_doc.enemies[kind].speed[z]) * speed_m
+		count += 1
+
+func fill_any(run: RefCounted, rng: RandomNumberGenerator, beat: Dictionary, hp_mode: String, target: int, has_elite: bool, initial: bool) -> void:
+	if tally_on: fill_contact(run, rng, beat, hp_mode, target, has_elite, initial, speed_mult)
+	else: fill(run, rng, beat, hp_mode, target, has_elite, initial)
+
+## T-3: per tick, the share of ticks with a living ordinary enemy within 1.15 m (the melee reach), and windups that START within 1.15 m and how many of those hit.
+func track_contact(run: RefCounted, t3: Dictionary) -> void:
+	t3.ticks += 1
+	var any := false
+	var seen := {}
+	for e in run.enemies.values():
+		if e.hp_raw <= 0 or bool(e.elite): continue
+		var d: float = e.position.distance_to(run.hero.position)
+		if d <= 1.15: any = true
+		if String(e.state) == "windup":
+			var id_ := int(e.id)
+			seen[id_] = true
+			if not t3.windup_ids.has(id_):
+				t3.windup_ids[id_] = true
+				if d <= 1.15:
+					t3.preps += 1
+					t3.close_ids[id_] = true
+	if any: t3.contact += 1
+	for ev in run.events:
+		if String(ev.type) != "hero_hit": continue
+		var from_pos: Vector2 = ev.get("from", Vector2(1e9, 1e9))
+		for id_ in t3.close_ids.keys():
+			if run.enemies.has(id_) and run.enemies[id_].position.distance_to(from_pos) < 0.05:
+				t3.preps_hit += 1
+				t3.close_ids.erase(id_)
+				break
+	for id_ in t3.windup_ids.keys():
+		if not seen.has(id_):
+			t3.windup_ids.erase(id_)
+			t3.close_ids.erase(id_)
+
+func finish_t3(t3: Dictionary) -> Dictionary:
+	return {"contact_share_pct": r1(100.0 * float(t3.contact) / maxf(1.0, float(t3.ticks))), "preps_close": t3.preps, "preps_close_hit": t3.preps_hit}
+
+## The champion of the beat's zone (real hp / damage / windup / recover from combat_tuning champions), next to the hero.
+func place_champion(run: RefCounted, zone_index: int, dist_m: float) -> int:
+	var point: Vector2 = run._clamp_point(run.hero.position + Vector2(cos(0.8), sin(0.8)) * dist_m)
+	run._spawn("elite", point)
+	var id_: int = run._enemy_sequence
+	var e: Dictionary = run.enemies[id_]
+	var champ: Dictionary = tuning_doc.champions[clampi(zone_index, 0, 2)]
+	e.definition.hp = int(champ.hp)
+	e.definition.windup = int(champ.windup)
+	e.definition.recover = int(champ.recover)
+	e.definition.damage = int(champ.damage)
+	e.hp_raw = int(champ.hp) * UNIT
+	e.max_hp_raw = e.hp_raw
+	return id_
+
+func new_m(real_max: int, t0: int) -> Dictionary:
+	return {"max": real_max, "t0": t0, "hits": 0, "dmg": 0, "graze": 0, "first_hit": -1, "sh_np": real_max, "sh_p": real_max, "potions": POTION_START, "next_potion": 0, "pot_used": 0,
+		"dead_np": -1, "dead_p": -1, "samples": 0, "alive": 0, "n15": 0, "n30": 0, "n50": 0, "a15": 0, "c15": 0, "c30": 0, "kills": 0, "dealt": 0, "elite_dealt": 0,
+		"ring_casts": 0, "ring_hits": 0, "ring_dealt": 0, "elite_samples": 0, "elite_d": 0.0, "elite_in3": 0, "elite_alive_ticks": 0, "frozen_samples": 0}
+
+func collect_m(run: RefCounted, m: Dictionary, elite_id: int, ring_id: String) -> void:
+	for ev in run.events:
+		match String(ev.type):
+			"hero_hit":
+				var dmg := int(ev.damage_raw)
+				m.hits += 1
+				m.dmg += dmg
+				if bool(ev.get("graze", false)): m.graze += 1
+				if int(m.first_hit) < 0: m.first_hit = run.tick - int(m.t0)
+				m.sh_np -= dmg
+				m.sh_p -= dmg
+			"hit":
+				var dealt := int(ev.dealt_raw)
+				m.dealt += dealt
+				if int(ev.target_id) == elite_id: m.elite_dealt += dealt
+				if String(ev.skill_id) == ring_id:
+					m.ring_hits += 1
+					m.ring_dealt += dealt
+			"cast":
+				if String(ev.get("shape", "")) == "ring" and String(ev.skill_id) == ring_id: m.ring_casts += 1
+			"death":
+				m.kills += 1
+	if int(m.dead_np) < 0 and int(m.sh_np) <= 0: m.dead_np = run.tick - int(m.t0)
+	if int(m.dead_p) < 0 and int(m.sh_p) <= 0: m.dead_p = run.tick - int(m.t0)
+	if int(m.sh_p) * 100 < int(m.max) * 68 and int(m.potions) > 0 and run.tick >= int(m.next_potion) and int(m.sh_p) > 0:
+		m.potions -= 1
+		m.pot_used += 1
+		m.next_potion = run.tick + int(run.tuning.potion.cooldown_ticks)
+		m.sh_p = mini(int(m.max), int(m.sh_p) + int(m.max) * int(run.tuning.potion.heal_bps) / 10000)
+	if elite_id >= 0 and run.enemies.has(elite_id) and run.enemies[elite_id].hp_raw > 0: m.elite_alive_ticks += 1
+	if run.tick % 6 == 0:
+		m.samples += 1
+		var n15 := 0
+		var n30 := 0
+		var n50 := 0
+		var a15 := 0
+		var alive := 0
+		for e in run.enemies.values():
+			if e.hp_raw <= 0: continue
+			var d2: float = e.position.distance_squared_to(run.hero.position)
+			if bool(e.elite):
+				m.elite_samples += 1
+				m.elite_d += sqrt(d2)
+				if d2 <= 3.0 * 3.0: m.elite_in3 += 1
+				continue
+			alive += 1
+			if d2 <= 5.0 * 5.0:
+				n50 += 1
+				if d2 <= 3.0 * 3.0:
+					n30 += 1
+					if d2 <= 1.5 * 1.5:
+						n15 += 1
+						if run.tick >= int(e.frozen_until) and run.tick >= int(e.get("stunned_until", 0)): a15 += 1
+		m.alive += alive
+		m.n15 += n15
+		m.n30 += n30
+		m.n50 += n50
+		m.a15 += a15
+		if n15 > 0: m.c15 += 1
+		if n30 > 0: m.c30 += 1
+		if n15 > a15: m.frozen_samples += 1
+
+func finish_m(m: Dictionary, dur_ticks: int, elite_id: int, run: RefCounted, label: String) -> Dictionary:
+	var secs := maxf(1.0 / 60.0, float(dur_ticks) / 60.0)
+	var samples := maxf(1.0, float(m.samples))
+	var max_hp := float(m.max)
+	var out := {"kind": label, "secs": r2(secs), "taken_pct_s": r2(100.0 * float(m.dmg) / max_hp / secs), "taken_hp_s": r2(float(m.dmg) / UNIT / secs), "hero_hits": m.hits, "hero_hits_per_s": r2(float(m.hits) / secs), "taken_pct_total": r2(100.0 * float(m.dmg) / max_hp),
+		"graze": m.graze, "first_hit_s": r2(float(m.first_hit) / 60.0) if int(m.first_hit) >= 0 else -1.0, "alive_mean": r1(float(m.alive) / samples),
+		"n1_5": r2(float(m.n15) / samples), "n3": r2(float(m.n30) / samples), "n5": r2(float(m.n50) / samples), "active_1_5": r2(float(m.a15) / samples),
+		"contact_1_5_pct": r1(100.0 * float(m.c15) / samples), "contact_3_pct": r1(100.0 * float(m.c30) / samples), "enemy_s_1_5": r1(float(m.n15) / samples * secs),
+		"frozen_contact_pct": r1(100.0 * float(m.frozen_samples) / samples), "dead_np_s": r2(float(m.dead_np) / 60.0) if int(m.dead_np) >= 0 else -1.0, "dead_p_s": r2(float(m.dead_p) / 60.0) if int(m.dead_p) >= 0 else -1.0,
+		"sh_p_left_pct": r1(100.0 * maxf(0.0, float(m.sh_p)) / max_hp), "pot_used": m.pot_used, "kills": m.kills, "kills_per_s": r2(float(m.kills) / secs), "power_hp_s": r2(float(m.dealt) / UNIT / secs),
+		"ring_casts": m.ring_casts, "ring_casts_per_s": r2(float(m.ring_casts) / secs), "ring_hits_per_cast": r2(float(m.ring_hits) / maxf(1.0, float(m.ring_casts))),
+		"ring_share_pct": r1(100.0 * float(m.ring_dealt) / maxf(1.0, float(m.dealt))), "hero_max_hp": int(m.max) / UNIT}
+	if elite_id >= 0:
+		var e: Dictionary = run.enemies.get(elite_id, {})
+		var dead: bool = e.is_empty() or int(e.hp_raw) <= 0
+		out.elite_killed = dead
+		out.ttk_s = r2(float(dur_ticks) / 60.0) if dead else -1.0
+		out.elite_hp_left_pct = 0.0 if dead else r1(100.0 * float(e.hp_raw) / maxf(1.0, float(e.max_hp_raw)))
+		out.elite_dps_hp = r2(float(m.elite_dealt) / UNIT / secs)
+		out.elite_hp_total = int(e.get("max_hp_raw", 0)) / UNIT if not e.is_empty() else 0
+		out.ttk_est_s = r1(float(out.elite_hp_total) / maxf(0.001, float(m.elite_dealt) / UNIT / secs))
+		out.elite_d_mean = r2(float(m.elite_d) / maxf(1.0, float(m.elite_samples)))
+		out.elite_in3_pct = r1(100.0 * float(m.elite_in3) / maxf(1.0, float(m.elite_samples)))
+	return out
+
+## One contact arena. mode: melee | hold | strong. variant: stand | pilot | rush.
+func contact_arena(witch: String, build: Dictionary, mode: String, variant: String, mobs: int, secs: float, seed_: int, beat: Dictionary, hp_mode: String, warmup_s: float, champ_zone: int) -> Dictionary:
+	var primary := SK + witch
+	var run := make_run(seed_, primary, shipped_doc(witch))
+	if run == null: return {}
+	apply_build(run, build)
+	run.enemies.clear()
+	run._alive = 0
+	var real_max := int(run.hero.max_hp_raw)
+	var hero_hp_arg := arg_string("--hero-hp", "")
+	if not hero_hp_arg.is_empty(): real_max = int(float(hero_hp_arg)) * UNIT
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_ * 7919 + 13
+	var pilot = Pilot.new()
+	pilot.run = run
+	var stand := variant == "stand"
+	var speed_m := speed_mult * (float(arg_string("--rush-mult", "2.5")) if variant == "rush" else 1.0)
+	var strong := mode == "strong"
+	var ring_m := Vector2.ZERO
+	if variant == "rush": ring_m = Vector2(float(arg_string("--rush-ring-min", "3.0")), float(arg_string("--rush-ring-max", "5.0")))
+	neutralize(run, real_max)
+	fill_contact(run, rng, beat, hp_mode, mobs, false, true, speed_m, ring_m)
+	var elite_id := place_champion(run, champ_zone, 2.2) if strong else -1
+	var center: Vector2 = run.hero.position
+	var warm := 0 if strong else int(warmup_s * 60.0)
+	var total := warm + int(secs * 60.0)
+	var ring_id := SK + witch + "_ring"
+	var m := new_m(real_max, run.tick + warm)
+	var aborted := false
+	var measured := 0
+	for i in total:
+		neutralize(run, real_max)
+		if run.mode != "playing":
+			aborted = true
+			break
+		fill_contact(run, rng, beat, hp_mode, mobs, strong, false, speed_m, ring_m)
+		var move := Vector2.ZERO if stand else pilot.decide()
+		run.step(move)
+		if mode == "hold":
+			var off: Vector2 = run.hero.position - center
+			if off.length() > HOLD_RADIUS: run.hero.position = center + off.normalized() * HOLD_RADIUS
+		if i >= warm:
+			collect_m(run, m, elite_id, ring_id)
+			measured += 1
+		if strong and not run.enemies.has(elite_id) or (strong and run.enemies[elite_id].hp_raw <= 0): break
+	var out := finish_m(m, measured, elite_id, run, mode)
+	out.aborted = aborted
+	out.variant = variant
+	out.events_dropped = int(run.metrics.get("events_dropped", 0))
+	out.speed_mult = r2(speed_m)
+	return out
+
+func print_contact_tables(results: Array, witches: Array, build_names: Array) -> void:
+	for witch in witches:
+		var rows: Array = results.filter(func(r): return r.witch == witch and r.test in ["melee", "hold", "strong"])
+		if rows.is_empty(): continue
+		print("")
+		print("== witch %s : contact (mean over seeds). taken = %% of max life per second; n = ordinary enemies within 1.5/3/5 m; cont = %% of time with one within 1.5 m; dead = shadow life reached 0 (s; -1 none) ==" % witch)
+		print("%-8s %-7s %-7s %5s | %7s %6s | %5s %5s %5s | %6s | %7s %7s | %6s %6s" % ["build", "test", "variant", "load", "taken%/s", "hits/s", "n1.5", "n3", "n5", "cont%", "dead_np", "dead_p", "ttk_s", "kills/s"])
+		var keys: Array = []
+		for r in rows:
+			var key := "%s|%s|%d" % [r.test, r.variant, int(r.load)]
+			if not key in keys: keys.append(key)
+		for key in keys:
+			for name in build_names:
+				var cells: Array = rows.filter(func(r): return r.build == name and "%s|%s|%d" % [r.test, r.variant, int(r.load)] == key)
+				if cells.is_empty(): continue
+				var c0: Dictionary = cells[0]
+				var ttk := mean_of(cells, func(c): return c.get("ttk_s", -1.0))
+				print("%-8s %-7s %-7s %5d | %8.2f %6.2f | %5.2f %5.2f %5.2f | %6.1f | %7.1f %7.1f | %6.1f %6.2f" % [name, c0.test, c0.variant, int(c0.load), mean_of(cells, func(c): return c.taken_pct_s), mean_of(cells, func(c): return c.hero_hits_per_s),
+					mean_of(cells, func(c): return c.n1_5), mean_of(cells, func(c): return c.n3), mean_of(cells, func(c): return c.n5), mean_of(cells, func(c): return c.contact_1_5_pct),
+					mean_of(cells, func(c): return c.dead_np_s), mean_of(cells, func(c): return c.dead_p_s), ttk, mean_of(cells, func(c): return c.kills_per_s)])
 
 # ------------------------------------------------------------------ output
 
@@ -592,6 +952,22 @@ func execute() -> void:
 			var path := text.get_slice("=", 0)
 			var parsed: Variant = JSON.parse_string(text.substr(path.length() + 1))
 			doc_overrides.append({"path": path, "value": parsed if parsed != null else text.substr(path.length() + 1)})
+	for knob in [["--ring-radius", "radius_m"], ["--ring-cd", "cd_s"], ["--ring-dmg", "dmg"], ["--ring-vs-strong", "vs_strong"], ["--ring-pulses", "pulses"], ["--ring-targets", "targets"], ["--ring-budget", "budget"], ["--ring-freeze", "freeze"]]:
+		var v := arg_string(String(knob[0]), "")
+		if not v.is_empty(): ring_knobs[String(knob[1])] = float(v)
+	var slow_text := arg_string("--ring-slow", "")
+	if not slow_text.is_empty():
+		ring_knobs.slow_bps = float(slow_text.get_slice(",", 0))
+		if "," in slow_text: ring_knobs.slow_ticks = float(slow_text.get_slice(",", 1))
+	speed_mult = float(arg_string("--speed-mult", "1.0"))
+	var modes := arg_names("--mode", [])
+	var legacy := modes.is_empty() or modes.has("crowd") or modes.has("single")
+	var do_crowd := (modes.is_empty() or modes.has("crowd")) and not arg_flag("--no-crowd")
+	var do_single := (modes.is_empty() or modes.has("single")) and not arg_flag("--no-single")
+	tally_on = arg_flag("--tally")
+	var crowd_modes := arg_names("--crowd-modes", ["pilot"])
+	var elite_text := arg_string("--elite-hp", "")
+	var mix_text := arg_string("--mix", "")
 	var pretag_text := arg_string("--pretag", "")
 	if not pretag_text.is_empty(): pretag = {"status": pretag_text.get_slice(":", 0), "n": int(pretag_text.get_slice(":", 1))}
 	var out_path := arg_string("--out", "")
@@ -615,12 +991,24 @@ func execute() -> void:
 		print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "unknown beat " + beat_id}))
 		quit(1)
 		return
+	if not mix_text.is_empty():
+		var parts := mix_text.split(":")
+		if parts.size() != 3:
+			print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "--mix needs walker:ranged:charger"}))
+			quit(1)
+			return
+		beat = beat.duplicate(true)
+		beat.mix = {"walker": int(parts[0]), "ranged": int(parts[1]), "charger": int(parts[2])}
+	if elite_text == "g1":
+		var bps_pair: Array = beat.hp_bps
+		elite_hp_arg = int(tuning_doc.champions[0].hp) * (int(bps_pair[0]) + int(bps_pair[1])) / 20000
+	elif not elite_text.is_empty(): elite_hp_arg = int(elite_text)
 	var named: Array = []
 	var custom := arg_string("--build", "")
 	if not custom.is_empty(): named.append(["custom", custom])
 	var wanted := arg_names("--builds", [])
 	if custom.is_empty() and (wanted.is_empty() or wanted == ["all"]):
-		for entry in PRESETS: named.append([entry[0], entry[1]])
+		for entry in (PRESETS if legacy else MELEE_PRESETS): named.append([entry[0], entry[1]])
 	else:
 		for name in wanted:
 			if name == "all": continue
@@ -643,17 +1031,18 @@ func execute() -> void:
 				continue
 			for seed_ in seeds:
 				var build := resolve_build(doc, String(witch), parsed_spec, String(entry[0]))
-				if not arg_flag("--no-crowd"):
-					for density in densities:
-						var t0 := Time.get_ticks_msec()
-						var cell := arena(String(witch), build, int(density), false, false, secs, int(seed_), beat, hp_mode, warmup, "crowd")
-						if cell.is_empty(): continue
-						cell.merge({"test": "crowd", "witch": witch, "build": entry[0], "spec": entry[1], "seed": seed_, "density": density, "beat": beat_id, "points": axis_points(build), "legal": build.legal, "notes": build.notes,
-							"evolve_legal": build.get("evolve_legal", null), "wall_s": r1(float(Time.get_ticks_msec() - t0) / 1000.0)})
-						results.append(cell)
-						cells_done += 1
-						print("CELL crowd %-5s %-10s N=%-3d seed=%d P=%8.1f det=%5.1f%% kills/s=%5.2f hits/kill=%5.2f wall=%.1fs" % [witch, entry[0], density, seed_, cell.power_hp_s, cell.det_share_dealt_pct, cell.kills_per_s, cell.hits_per_kill, cell.wall_s])
-				if not arg_flag("--no-single"):
+				if do_crowd:
+					for crowd_mode in crowd_modes:
+						for density in densities:
+							var t0 := Time.get_ticks_msec()
+							var cell := arena(String(witch), build, int(density), false, String(crowd_mode) == "stand", secs, int(seed_), beat, hp_mode, warmup, "crowd")
+							if cell.is_empty(): continue
+							cell.merge({"crowd_mode": crowd_mode, "test": "crowd", "witch": witch, "build": entry[0], "spec": entry[1], "seed": seed_, "density": density, "beat": beat_id, "points": axis_points(build), "legal": build.legal, "notes": build.notes,
+								"evolve_legal": build.get("evolve_legal", null), "wall_s": r1(float(Time.get_ticks_msec() - t0) / 1000.0)})
+							results.append(cell)
+							cells_done += 1
+							print("CELL crowd %-5s %-10s %-5s N=%-3d seed=%d P=%8.1f det=%5.1f%% kills/s=%5.2f hits/kill=%5.2f wall=%.1fs taken=%.1f%% cont=%.1f%%" % [witch, entry[0], crowd_mode, density, seed_, cell.power_hp_s, cell.det_share_dealt_pct, cell.kills_per_s, cell.hits_per_kill, cell.wall_s, cell.get("taken_pct_total", -1.0), cell.get("contact_share_pct", -1.0)])
+				if do_single:
 					for mode in single_modes:
 						for mobs in single_mobs:
 							var t0 := Time.get_ticks_msec()
@@ -663,11 +1052,33 @@ func execute() -> void:
 								"wall_s": r1(float(Time.get_ticks_msec() - t0) / 1000.0)})
 							results.append(cell)
 							cells_done += 1
-							print("CELL single %-5s %-10s mobs=%-2d %-5s seed=%d P_elite=%7.1f elite_dist=%5.2f wall=%.1fs" % [witch, entry[0], mobs, mode, seed_, cell.get("elite_dps_hp", 0.0), cell.get("elite_dist_mean", 0.0), cell.wall_s])
-	print_tables(results, witches, build_names, densities if not arg_flag("--no-crowd") else [], single_mobs if not arg_flag("--no-single") else [], single_modes if not arg_flag("--no-single") else [])
+							print("CELL single %-5s %-10s mobs=%-2d %-5s seed=%d P_elite=%7.1f elite_dist=%5.2f wall=%.1fs kill_s=%s" % [witch, entry[0], mobs, mode, seed_, cell.get("elite_dps_hp", 0.0), cell.get("elite_dist_mean", 0.0), cell.wall_s, str(cell.get("kill_s", "-"))])
+				for test in ["melee", "hold", "strong"]:
+					if not modes.has(test): continue
+					var variants: Array = arg_names("--%s-variants" % test, ["stand", "pilot"] if test != "melee" else ["stand", "rush"])
+					var loads: Array = arg_ints("--m-density", [35, 70]) if test == "melee" else (arg_ints("--hold-density", [70, 100]) if test == "hold" else arg_ints("--strong-mobs", [0, 10, 30]))
+					var test_secs := float(arg_string("--strong-secs", "90")) if test == "strong" else float(arg_string("--m-secs" if test == "melee" else "--hold-secs", "45"))
+					var test_beat := beat
+					if test == "hold":
+						var trial: Dictionary = tuning_doc.rhythm.trial
+						test_beat = {"id": "trial", "zone": 2, "hp_bps": [int(trial.hp_bps), int(trial.hp_bps)], "mix": trial.mix}
+					var champ_zone := int(arg_string("--champion", str(int(beat.zone))))
+					for variant in variants:
+						for load_ in loads:
+							var t0 := Time.get_ticks_msec()
+							var cell := contact_arena(String(witch), build, test, String(variant), int(load_), test_secs, int(seed_), test_beat, hp_mode, warmup, champ_zone)
+							if cell.is_empty(): continue
+							cell.merge({"test": test, "witch": witch, "build": entry[0], "spec": entry[1], "seed": seed_, "load": load_, "beat": String(test_beat.id), "points": axis_points(build), "legal": build.legal, "notes": build.notes,
+								"wall_s": r1(float(Time.get_ticks_msec() - t0) / 1000.0)})
+							results.append(cell)
+							cells_done += 1
+							print("CELL %-6s %-5s %-8s %-7s load=%-3d seed=%d taken=%6.2f%%/s hits/s=%5.2f n1.5=%5.2f n3=%5.2f n5=%5.2f dead_np=%6.1f dead_p=%6.1f ttk=%6.1f wall=%.1fs" % [test, witch, entry[0], variant, load_, seed_,
+								cell.taken_pct_s, cell.hero_hits_per_s, cell.n1_5, cell.n3, cell.n5, cell.dead_np_s, cell.dead_p_s, cell.get("ttk_s", -1.0), cell.wall_s])
+	print_contact_tables(results, witches, build_names)
+	if legacy and not tally_on and crowd_modes == ["pilot"]: print_tables(results, witches, build_names, densities if do_crowd else [], single_mobs if do_single else [], single_modes if do_single else [])
 	var elapsed := r1(float(Time.get_ticks_msec() - started_ms) / 1000.0)
 	var meta := {"beat": beat_id, "hp_mode": hp_mode, "beat_hp_bps": beat.hp_bps, "beat_mix": beat.mix, "beat_zone": beat.zone, "secs": secs, "single_secs": single_secs, "warmup_s": warmup, "seeds": seeds, "witches": witches,
-		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed,
+		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed, "modes": modes, "ring_knobs": ring_knobs, "knobs_not_applied": unsupported, "tally": tally_on, "crowd_modes": crowd_modes, "mix": mix_text, "elite_hp": elite_hp_arg, "created_keys": created_keys, "speed_mult": speed_mult,
 		"setup": "build fixed in memory; document enabled in memory; hero cannot die; xp discarded; gear hidden (no-equip); pilot movement unchanged; bot numbers are a reference only, fun not evaluated"}
 	if not out_path.is_empty():
 		var abs_path := ProjectSettings.globalize_path("res://" + out_path)

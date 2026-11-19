@@ -206,6 +206,25 @@ def main():
     import json as _j
     _j.dumps(d, ensure_ascii=False)
 
+    # 시험장 실측 맞춤(power-bench)의 불변식
+    cp = cfg_of()
+    cp.mode = "s"
+    check("원형 안 적 수: r0가 밀도에 따라 커지면 같은 N에서 안의 수가 줄어든다", b.ring_inside({"r0_hero_m": 8.0, "r0_per_alive": 0.05}, 60, 3.0) < b.ring_inside({"r0_hero_m": 8.0, "r0_per_alive": 0.0}, 60, 3.0))
+    pw0 = b.Power(cp)
+    bx = b.power_build(cp, "ember", "A:d3r1+X:d1r1")
+    on, off = dict(cp.cal, reactions_on=1.0), dict(cp.cal, reactions_on=0.0)
+    p_on = b.Power(b._PCfg(cp, on)).evaluate(bx, 60)[2]
+    p_off = b.Power(b._PCfg(cp, off)).evaluate(bx, 60)[2]
+    check("원소 반응 스위치: 끄면 대여 빌드의 처리량이 줄거나 같다", p_off <= p_on + 1e-9, (p_on, p_off))
+    ba = b.power_build(cp, "ember", "A:d2r1+R")
+    check("power_build: 약호가 Build로(기본기+원형)", len(ba.sp) == 2 and b.SK + "ember_ring" in ba.sp)
+    mk = dict(cp.cal, mark_eff=1.0)
+    m_on = b.Power(b._PCfg(cp, mk)).evaluate(bx, 60)[2]
+    m_off = b.Power(b._PCfg(cp, dict(cp.cal, mark_eff=0.0))).evaluate(bx, 60)[2]
+    check("표식 공명: 켜면 대여 빌드 처리량이 늘거나 같다", m_on >= m_off - 1e-9, (m_on, m_off))
+    h, pct = b.taken_model(cp, dict(cp.cal, hit_per_contact_stand=2.0, hit_dmg_taken=1.0), 0.5, [74, 18, 8], 1, 120)
+    check("받는 피해 모델: 접촉 몫 0.5 x 초당 2회 = 1회/s", abs(h - 1.0) < 1e-9 and pct > 0, (h, pct))
+
     print("\n검사 %d건, 실패 %d" % (N_CHECK, len(FAILS)))
     return 1 if FAILS else 0
 

@@ -369,7 +369,7 @@ def s_eff(cfg, sid, sp):
     st["util"] = dict(d.get("utility", {}))
     if sp.evolved:
         cal = cfg.cal
-        st["dmg"] *= cal["evolve_damage_mul"]
+        st["dmg"] *= cal.get("evolve_damage_mul_" + d["element"], cal["evolve_damage_mul"])
         st["cd"] *= cal["evolve_cd_mul"]
         st["budget"] = int(st["budget"] * cal["evolve_budget_mul"])
         if st["kind"] == "proj":
@@ -559,6 +559,12 @@ def legacy_mix(T, zone, t):
 
 
 # ---- 힘 -------------------------------------------------------------------
+def ring_inside(c, N, R):
+    """반경 R 원형 안에 있는 적 수의 기대값. 척도 r0는 밀도에 따라 커진다(시험장 실측: 9~14m, calib r0_hero_m + r0_per_alive*N)."""
+    r0 = c["r0_hero_m"] + c.get("r0_per_alive", 0.0) * N
+    return N * (1 - math.exp(-(R / r0) ** 2))
+
+
 def spell_hits(st, N, c):
     """주문 하나가 N마리 앞에서 초당 내는 명중 수(깊이 0)."""
     if N <= 0.0:
@@ -592,7 +598,7 @@ def spell_hits(st, N, c):
         up = min(1.0, s.get("duration_s", 8.0) / st["cd"])
         mm = 1 + rho * math.pi * st["r"] ** 2
         return min(1.0, N) * s.get("count", 1) * up / (max(1, s.get("attack_ticks", 60)) / 60.0) * mm
-    m = N * (1 - math.exp(-(st["R"] / c["r0_hero_m"]) ** 2))
+    m = ring_inside(c, N, st["R"])
     cap = st["rt"] if st["rt"] else st["budget"]
     cap = min(cap, st["budget"])
     return st["pulses"] * min(cap * (1 - math.exp(-m)), m) / st["cd"]
@@ -670,7 +676,7 @@ class Power:
                     else:
                         pe = p_has
                         if st["prefer"] == s_name and st["rt"]:
-                            mR = N * (1 - math.exp(-(st["R"] / c["r0_hero_m"]) ** 2))
+                            mR = ring_inside(c, N, st["R"])
                             pe = min(1.0, mR * p_has / max(1, st["rt"]))
                         m = 1 + dd["bonus_bps"] / 1e4 * pe
                     if boosted:
@@ -691,8 +697,8 @@ class Power:
                         stacks += r * stat[sn]["expire_ticks"] / 60.0
                 pst[e] = (1 - math.exp(-min(stat[STATUS_OF[e]]["max"], stacks)), min(stat[STATUS_OF[e]]["max"], stacks))
             for pr in cfg.spells["pairs"]:
-                if pr["kind"] != "reaction":
-                    continue
+                if pr["kind"] != "reaction" or c.get("reactions_on", 1.0) <= 0:
+                    continue  # 코어는 원소 반응 짝에 효과를 내지 않는다(시험장 실측 0%). calib.reactions_on=1로 켜 볼 수 있다
                 X, Y = pr["elements"]
                 if X not in elems or Y not in elems:
                     continue
@@ -756,9 +762,10 @@ class Power:
                 self.last_crit = (pc, mc)
         tot_h = 0.0
         tot_dmg = 0.0
+        mkf = self._mark_factor(build, effs, H, N) if (cfg.mode == "s" and N > 0) else 1.0
         for st, h, m, f in zip(effs, H, mult, fac):
             tot_h += h
-            tot_dmg += h * st["dmg"] * m * f
+            tot_dmg += h * st["dmg"] * m * f * (mkf if st["id"] == build.primary else 1.0)
             det_dmg += h * st["dmg"] * (m - 1) * f
         for h, d in extra:
             tot_h += h
@@ -769,6 +776,20 @@ class Power:
 
     kill_rate = 0.0
     last_strong_keep = 1.0
+
+    def _mark_factor(self, build, effs, H, N):
+        """표식 공명(코어 규칙, tuning.marks): 주력 명중이 표식 낀 적을 맞히면 표식 하나당 mark_bps 더. 표식은 다른 주문이 명중한 적에게 mark_ticks 동안 붙는다.
+        calib.mark_eff가 0이면(없으면) 꺼짐. 무리에서는 표식 낀 적의 몫이 작다(시험장 실측: 보조 피해 0~6%)."""
+        c = self.c
+        eff = c.get("mark_eff", 0.0)
+        if eff <= 0:
+            return 1.0
+        mk = self.cfg.tuning.get("marks", {})
+        bps, secs = mk.get("mark_bps", 0) / 1e4, mk.get("mark_ticks", 0) / 60.0
+        if bps <= 0:
+            return 1.0
+        p = sum(1 - math.exp(-h * secs / max(N, 1.0)) for st, h in zip(effs, H) if st["id"] != build.primary)
+        return 1 + eff * bps * min(p, 2.0)
 
     def _cc(self, effs, H, N):
         """군중 제어가 위협 쪽에 주는 효과. contact: 접촉 피해 배율(0.15~1), dens: 끌어당김으로 원형 명중 가산,
@@ -829,7 +850,10 @@ class Power:
                 up = min(1.0, sm.get("duration_s", 8.0) / st["cd"])
                 v = st["dmg"] * sm.get("count", 1) * up * 60.0 / max(1, sm.get("attack_ticks", 60)) * 0.7 * (1.0 / (1.0 + 0.5 * c["single_kappa"] * N))
             else:
-                pin = min(1.0, st["R"] / c["ring_in_r_m"])
+                if "ring_in_r0" in c:  # 시험장 실측: 정예와의 거리 분포에 맞춘 선형 오름(r0 이하 0, r0+span 이상 1)
+                    pin = min(1.0, max(0.0, (st["R"] - c["ring_in_r0"]) / max(c["ring_in_span"], 0.1)))
+                else:
+                    pin = min(1.0, st["R"] / c["ring_in_r_m"])
                 v = base * st["vs"] * pin * st["pulses"]
             m = 1.0
             if self.cfg.mode == "s":
@@ -841,6 +865,9 @@ class Power:
                 if st.get("crit", 0) > 0:
                     f *= 1 + min(1.0, st["crit"]) * (st["critm"] - 1)
                 m *= f
+                if st["id"] == build.primary and c.get("mark_eff", 0.0) > 0:  # 표식 공명: 곁의 다른 주문이 정예에 건 표식(조준 몫 s로 줄어든다)
+                    nsec = sum(1 for e3 in effs if e3["id"] != build.primary and e3["kind"] != "ring")  # 맞춤은 대여 기본기 빌드(원형 없음)로 했다
+                    m *= 1 + c["mark_eff"] * self.cfg.tuning.get("marks", {}).get("mark_bps", 0) / 1e4 * min(2, nsec) * c.get("p_mark_single", 0.0) * s
                 vul = 0.0
                 for e2 in effs:
                     if e2.get("vuln"):
@@ -2411,9 +2438,13 @@ FACTOR_TEMPLATES = {  # 주문에 새로 적어 볼 수 있는 팩터(키 접미
     "utility.lifesteal_bps": (0, 0, 3000, 100), "utility.heal_on_kill": (0, 0, 3, 0.1), "utility.shield_per_s": (0, 0, 3, 0.1), "utility.dr_bps": (0, 0, 5000, 250),
     "utility.move_bps": (0, 0, 5000, 250), "utility.cd_refund_bps": (0, 0, 5000, 250),
 }
-TRUST = {
-    "ok": ["정책 사이 서열(어느 선택이 더 센가)", "값을 바꿨을 때의 방향(위협·힘을 올리면 어디서 막히는가)", "시너지 길 사이의 상대 차", "속도가 필요한 훑기·민감도", "장비를 켜고 끌 때의 대략의 크기(kit.now에 맞춤)"],
-    "not_ok": ["정확한 승률·초 단위 시각", "새 스킬 구성의 처리량(원형·터뜨림·반응·장판·소환·치명타·군중 제어 상수는 실측이 없는 가설)", "수호자·우두머리 앞의 단일 처리량 절대값",
+TRUST = {  # 시험장(sim_power.gd) 실측 재맞춤 뒤(2026-11-19, power-bench). 모두 모델의 답이다. 자동 조작의 결과로 맞췄고 재미는 평가하지 않는다
+    "ok": ["정책 사이 서열(어느 선택이 더 센가)", "값을 바꿨을 때의 방향(위협·힘을 올리면 어디서 막히는가)", "시너지 길 사이의 상대 차", "속도가 필요한 훑기·민감도", "장비를 켜고 끌 때의 대략의 크기(kit.now에 맞춤)",
+           "원형 안의 적 수(시험장 실측에 맞춤: 실/모 0.99~1.11)", "원형+기본기 짝 빌드의 열린 곳 처리량(실/모 0.95~1.09, 맞춘 칸 안)", "접촉 시간 몫에서 받은 피해로 가는 길(stand 실/모 0.8~1.2, pilot 0.8~0.9)"],
+    "not_ok": ["정확한 승률·초 단위 시각", "기본기 한 발·피해만 빌드의 열린 곳 처리량(실측이 모델의 1.2~1.5배: eta_aim이 장비 켠 판에서 맞춘 값이라 장비 없는 시험장과 다르다. 안 고침)",
+               "수호자·우두머리 앞의 단일 처리량 절대값(맞춘 뒤에도 로그 오차 0.5~0.6, 곁 잡몹이 있을 때 빌드별 실/모 0.2~4)", "터뜨림 몫(화염·냉기는 모델이 1.5~2배 높고 번개는 낮다)",
+               "진화·결정의 처리량 몫(모델이 실측의 1.8~2.9배. 맞춤 실패로 값을 안 씀)", "접촉 시간 몫이 어떻게 정해지는가(빌드·밀도에서 접촉 몫을 내는 모델이 없다. 실측 입력이 필요)",
+               "원소 반응(코어에 효과가 없어 기본은 끔. calib.reactions_on=1로 켤 수 있다)", "차단(밀어냄·빙결·경련)의 효과 크기(0단계 시험장: 접촉 시간 몫이 거의 안 줄었다. 모델의 군중 제어 팩터(접촉 배율 0.15~1)는 이 실측으로 맞추지 않았다)",
                "분당 피격의 마디별 모양", "진화한 주문의 수치(명세에 값이 없음)", "재미(모든 것이 미평가)"],
 }
 
@@ -2492,11 +2523,463 @@ def describe(cfg, args):
             "set_syntax": "--set <key>=<json>. 주문은 spells.<짧은 id>..., 배열은 [i], 점이 든 키는 [\"react.steam\"]. 장비는 --gear kit.d1_end 또는 dmg=1.2,crit=0.1,range=1.2"}
 
 
+# ---- 시험장(chapter1/tests/sim_power.gd) 실측에 맞춤 -----------------------------------------------------
+# 입력: sim_power.gd가 쓴 JSON(--out). --power-data=파일,폴더,글롭(쉼표로 여러 개). 모델 상수를 코어의 실측에 맞춘다.
+# 자동 조작의 결과다. 안정성·밸런스 참고 자료이고 재미는 평가하지 않는다. 표의 모델 값은 "모델의 답"이다.
+import glob as _glob
+
+WITCHES_ALL = ("ember", "frost", "arc")
+POWER_CLASSES = [
+    ("기본기 한 발(A, 축 0)", ["base"]), ("기본기 피해만(A_d4)", ["A_d4"]),
+    ("기본기 넓이·섞임", ["A_r4", "A_d2r2", "A_d3r3", "A_d4r2", "A_d2r4", "A_cap6c"]),
+    ("원형+기본기 짝", ["AR_4", "AR_4fit", "AR_6", "AR_6fit", "AR_7", "AR_evo7"]),
+    ("원형만 쌓기", ["R_d2r2", "R_d3r3"]), ("대여 기술 낌", ["AX_4", "AX_6", "ARX_4", "ARX_6", "A_cap6X1"]),
+]
+POWER_GROUPS = {"T4": (["AR_4", "AR_4fit"], ["A_d4", "A_r4", "A_d2r2"]), "T6": (["AR_6", "AR_6fit"], ["A_d3r3", "A_d4r2", "A_d2r4"]), "T7": (["AR_evo7"], ["A_cap6c", "A_cap6X1"])}
+
+
+def load_power_cells(spec):
+    """sim_power.gd 결과 JSON을 칸 목록으로. 값을 덮어쓴 실행(--set, --pretag, --ring-*, --borrow, --speed-mult, --tally)은 c['_plain']=False(맞춤에서 뺀다)."""
+    paths = []
+    for part in str(spec).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        pp = Path(part)
+        if pp.is_dir():
+            paths += sorted(pp.rglob("*.json"))
+        elif any(ch in part for ch in "*?["):
+            paths += [Path(x) for x in sorted(_glob.glob(part))]
+        else:
+            paths.append(pp)
+    cells = []
+    for p in paths:
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(d, dict) or "cells" not in d or "meta" not in d:
+            continue
+        m = d["meta"]
+        plain = not (m.get("overrides") or m.get("pretag") or m.get("ring_knobs") or m.get("borrow") or m.get("tally") or m.get("mix") or float(m.get("speed_mult", 1.0)) != 1.0)
+        mx = str(m.get("mix") or "")
+        for c in d["cells"]:
+            c["_mix"] = [int(x) for x in mx.split(":")] if mx.count(":") == 2 else None
+            c["_plain"] = plain
+            cells.append(c)
+    return cells
+
+
+def _pm(xs):
+    xs = [x for x in xs if x is not None and x == x]
+    return sum(xs) / len(xs) if xs else float("nan")
+
+
+def _lg(m, r):
+    return math.log(max(m, 1e-6) / max(r, 1e-6))
+
+
+def power_agg(cells, test, keyf, field):
+    g = {}
+    for c in cells:
+        if c.get("test") != test or not c.get("_plain") or c.get("beat") not in (None, "seung2") or c.get("aborted"):
+            continue
+        g.setdefault(keyf(c), []).append(c.get(field, 0.0))
+    return {k: _pm(v) for k, v in g.items()}
+
+
+def power_build(cfg, witch, spec, mod=None):
+    """sim_power.gd의 빌드 약호(A, R, X, AP, DT, crystal, evo)를 모델의 Build로."""
+    M = mod or sys.modules[__name__]
+    b = M.Build(cfg, witch)
+    x = M.WITCH_AB[witch][0]
+    pair = None
+    for pr in cfg.spells["pairs"]:
+        if pr["kind"] == "detonate" and (pr["a"] in (SK + witch, SK + witch + "_ring") or pr["b"] in (SK + witch, SK + witch + "_ring")):
+            pair = pr
+    keymap = {"A": SK + witch, "R": SK + witch + "_ring", "X": SK + x, "AP": pair["a"], "DT": pair["b"]}
+    crystal = evo = False
+    for tok in spec.split("+"):
+        tok = tok.strip()
+        if tok == "crystal":
+            crystal = True
+        elif tok == "evo":
+            evo = True
+        else:
+            key, _, ax = tok.partition(":")
+            d = re.search(r"d(\d)", ax)
+            r = re.search(r"r(\d)", ax)
+            s = M.Sp()
+            s.dmg, s.reach = (int(d.group(1)) if d else 0), (int(r.group(1)) if r else 0)
+            b.sp[keymap[key]] = s
+    if crystal or evo:
+        b.passives.add(SK + witch)
+    if evo:
+        a = b.sp[SK + witch]
+        a.evolved = True
+        a.partner = SK + witch + "_ring"
+    b.dirty()
+    return b
+
+
+def _spec_of(cells):
+    return {c["build"]: c["spec"] for c in cells}
+
+
+class _PCfg:
+    """cfg의 얕은 사본(상수만 바꿔 Power를 만들 때)."""
+
+    def __init__(self, cfg, cal):
+        self.cal, self.mode, self.spells, self.gear, self.tuning = cal, cfg.mode, cfg.spells, cfg.gear, cfg.tuning
+
+
+def power_fit(cfg, cells, mod=None):
+    """시험장 실측에서 상수를 맞춘다. 돌려준다: ({상수: 값}, [진단 줄]). cfg.cal은 고치지 않는다."""
+    M = mod or sys.modules[__name__]
+    out, log = {}, []
+    cal = dict(cfg.cal)
+    specs = _spec_of(cells)
+    plain = [c for c in cells if c.get("_plain") and c.get("beat") in (None, "seung2") and not c.get("aborted")]
+    crowd = [c for c in plain if c.get("test") == "crowd"]
+    single = [c for c in plain if c.get("test") == "single"]
+    pts = []  # (1) 원형 안 적 수
+    for c in crowd:
+        for rid, row in (c.get("rings") or {}).items():
+            R = (c.get("effects", {}).get(rid, {}).get("ring_radius_cm") or 0) / 100.0
+            if R > 0 and row.get("casts", 0) >= 5:
+                pts.append((int(c["density"]), R, float(row["inside_mean"]), float(row["casts"])))
+    if pts:
+        best = None
+        for ia in range(12, 90):
+            for ib in range(0, 71):
+                a, b = ia * 0.25, ib * 0.005
+                loss = 0.0
+                for N, R, real, w in pts:
+                    m = ring_inside({"r0_hero_m": a, "r0_per_alive": b}, N, R)
+                    mc = m / (1 - math.exp(-m)) if m > 1e-6 else 1.0
+                    loss += w * _lg(mc, real) ** 2
+                if best is None or loss < best[0]:
+                    best = (loss, a, b)
+        out["r0_hero_m"], out["r0_per_alive"] = round(best[1], 3), round(best[2], 4)
+        log.append("원형 안 적 수: r0 = %.2f + %.4f*N (표본 %d칸)" % (best[1], best[2], len(pts)))
+
+    def hits_cast_pts(w):
+        res = []
+        for c in crowd:
+            row = (c.get("spells") or {}).get(w)
+            if c["witch"] == w and row and row.get("casts", 0) >= 20 and c["build"] in specs:
+                res.append((c["build"], int(c["density"]), float(row["hits_per_cast"]), float(row["casts"])))
+        return res
+
+    def model_n(c_, witch, build_name, N):
+        bd = power_build(cfg, witch, specs[build_name], M)
+        for st in bd.eff():
+            if st["id"] == SK + witch:
+                return spell_hits(st, N, c_) * st["cd"] / min(1.0, max(N, 1e-9))
+        return 1.0
+    data = hits_cast_pts("ember")
+    if data:
+        best = None
+        for i in range(2, 90):
+            c2 = dict(cal)
+            c2["cluster"] = i * 0.05
+            loss = sum(t[3] * _lg(model_n(c2, "ember", t[0], t[1]), t[2]) ** 2 for t in data)
+            if best is None or loss < best[0]:
+                best = (loss, c2["cluster"])
+        out["cluster"] = round(best[1], 3)
+        log.append("화염 기본기 폭발 군집 cluster = %.2f (표본 %d칸)" % (best[1], len(data)))
+    data = hits_cast_pts("frost")
+    if data:
+        best = None
+        for ib in range(0, 41):
+            for ip in range(0, 41):
+                c2 = dict(cal)
+                c2["phi_base"], c2["phi_per_alive"] = ib * 0.01, ip * 0.0005
+                loss = sum(t[3] * _lg(model_n(c2, "frost", t[0], t[1]), t[2]) ** 2 for t in data)
+                if best is None or loss < best[0]:
+                    best = (loss, c2["phi_base"], c2["phi_per_alive"])
+        out["phi_base"], out["phi_per_alive"] = round(best[1], 3), round(best[2], 5)
+        log.append("냉기 창 관통 phi = %.2f + %.4f*N (표본 %d칸)" % (best[1], best[2], len(data)))
+    cal.update(out)
+    pin = []  # (3) 원형이 정예에 닿는 몫(pilot, 곁 잡몹 0)
+    for c in single:
+        if c.get("mode") != "pilot" or int(c["mobs"]) != 0:
+            continue
+        for rid, row in (c.get("rings") or {}).items():
+            R = (c.get("effects", {}).get(rid, {}).get("ring_radius_cm") or 0) / 100.0
+            if R > 0 and "elite_inside_pct" in row:
+                pin.append((R, float(row["elite_inside_pct"]) / 100.0))
+    if pin:
+        best = None
+        for i0 in range(0, 41):
+            for isp in range(2, 41):
+                r0, sp_ = i0 * 0.2, isp * 0.25
+                loss = sum((min(1.0, max(0.0, (R - r0) / sp_)) - p) ** 2 for R, p in pin)
+                if best is None or loss < best[0]:
+                    best = (loss, r0, sp_)
+        out["ring_in_r0"], out["ring_in_span"] = round(best[1], 2), round(best[2], 2)
+        log.append("원형이 정예에 닿는 몫(pilot): clip((R-%.1f)/%.2f, 0, 1) (표본 %d점)" % (best[1], best[2], len(pin)))
+    cal.update(out)
+    ps = power_agg(single, "single", lambda c: (c["witch"], c["build"], int(c["mobs"]), c["mode"]), "elite_dps_hp")
+    narrow = [k for k in ps if k[3] == "pilot" and k[1] in specs and ps[k] > 0 and not re.search(r"(^|\+)(R|X|AP|DT)|evo|crystal", specs[k[1]])]
+    if narrow:
+        best = None
+        for ia in range(2, 40):
+            for ik in range(0, 61):
+                c2 = dict(cal)
+                c2["single_proj_acc"], c2["single_kappa"] = ia * 0.05, ik * 0.01
+                pw_ = M.Power(_PCfg(cfg, c2))
+                loss = sum(_lg(pw_.p_single(power_build(cfg, k[0], specs[k[1]], M), k[2]), ps[k]) ** 2 for k in narrow)
+                if best is None or loss < best[0]:
+                    best = (loss, c2["single_proj_acc"], c2["single_kappa"])
+        out["single_proj_acc"], out["single_kappa"] = round(best[1], 3), round(best[2], 3)
+        log.append("단일 처리량(탄 빌드만, 곁 잡몹 0/10/30, pilot): single_proj_acc = %.2f, single_kappa = %.2f (표본 %d칸)" % (best[1], best[2], len(narrow)))
+    cal.update(out)
+    xs = [k for k in ps if k[3] == "pilot" and k[1] in specs and ps[k] > 0 and re.search(r"(^|\+)X", specs[k[1]]) and not re.search(r"(^|\+)R", specs[k[1]])]
+    if xs:
+        best = None
+        for ip in range(0, 41):
+            c2 = dict(cal)
+            c2["mark_eff"], c2["p_mark_single"] = 1.0, ip * 0.025
+            pw_ = M.Power(_PCfg(cfg, c2))
+            loss = sum(_lg(pw_.p_single(power_build(cfg, k[0], specs[k[1]], M), k[2]), ps[k]) ** 2 for k in xs)
+            if best is None or loss < best[0]:
+                best = (loss, c2["p_mark_single"])
+        out["mark_eff"], out["p_mark_single"] = 1.0, round(best[1], 3)
+        log.append("표식 공명(정예 단일): p_mark_single = %.3f (대여 빌드 %d칸). mark_eff=1은 켬. 무리 쪽 몫은 모델이 작게 잡는다" % (best[1], len(xs)))
+    cal.update(out)
+    pc = power_agg(crowd, "crowd", lambda c: (c["witch"], c["build"], int(c["density"])), "power_hp_s")
+    for w in WITCHES_ALL:  # (5) 진화 배율
+        ks = [(w, "AR_evo7", n) for n in (35, 60, 85)]
+        bs_ = [(w, "AR_7", n) for n in (35, 60, 85)]
+        if not all(k in pc for k in ks + bs_) or "AR_evo7" not in specs or "AR_7" not in specs:
+            continue
+        real = _pm([pc[a] / pc[b] for a, b in zip(ks, bs_)])
+        best = None
+        for iv in range(60, 300):
+            c2 = dict(cal)
+            c2["evolve_damage_mul_" + w] = iv * 0.01
+            # 코어의 진화는 깃발과 짝 터뜨림 배율뿐이다(시험장 보고): 쿨타임·발수·범위·예산의 가설 배율은 1로 두고 피해 배율 하나로 맞춘다
+            c2["evolve_cd_mul"], c2["evolve_k_add"], c2["evolve_reach_mul"], c2["evolve_budget_mul"] = 1.0, 0, 1.0, 1.0
+            pw_ = M.Power(_PCfg(cfg, c2))
+            mr = _pm([pw_.evaluate(power_build(cfg, w, specs["AR_evo7"], M), n)[2] / max(pw_.evaluate(power_build(cfg, w, specs["AR_7"], M), n)[2], 1e-9) for n in (35, 60, 85)])
+            loss = abs(math.log(mr / real))
+            if best is None or loss < best[0]:
+                best = (loss, c2["evolve_damage_mul_" + w], mr)
+        if best[0] > 0.15:  # 격자 끝에 붙고도 모델 비가 실측과 15% 넘게 어긋나면 맞춘 값을 쓰지 않는다(다른 곳이 진화 몫을 만들고 있다)
+            log.append("진화 배율 %s: 맞춤 실패. 실측 evo7/AR_7 = %.2f, 모델 최선 비 %.2f(피해 배율 %.2f). 쓰지 않는다 — 모델의 결정(passives)·짝 터뜨림 쪽 몫이 실측보다 크다" % (w, real, best[2], best[1]))
+            continue
+        out["evolve_damage_mul_" + w] = round(best[1], 2)
+        out["evolve_cd_mul"], out["evolve_k_add"], out["evolve_reach_mul"], out["evolve_budget_mul"] = 1.0, 0, 1.0, 1.0
+        log.append("진화 배율 %s: 실측 evo7/AR_7 = %.2f, 모델이 닿는 피해 배율 = %.2f (모델 비 %.2f; 다른 진화 팩터는 가설 그대로)" % (w, real, best[1], best[2]))
+    return out, log
+
+
+def power_tables(cfg, cells, title, mod=None):
+    """모델(cfg.cal) 대 시험장 실측 오차 표: 빌드 x 밀도 처리량, 터뜨림 몫, 시너지/하나만 비, 원형 안 적 수, 정예 단일."""
+    M = mod or sys.modules[__name__]
+    specs = _spec_of(cells)
+    pw = M.Power(cfg)
+    L = ["=" * 78, title, "=" * 78]
+    crowd = [c for c in cells if c.get("test") == "crowd" and c.get("_plain")]
+    dens = sorted({int(c["density"]) for c in crowd})
+    pc = power_agg(cells, "crowd", lambda c: (c["witch"], c["build"], int(c["density"])), "power_hp_s")
+    pd = power_agg(cells, "crowd", lambda c: (c["witch"], c["build"], int(c["density"])), "det_share_dealt_pct")
+    mrows = {}
+    for (w, b, n) in pc:
+        if b in specs:
+            tot_h, dbar, tot, det = pw.evaluate(power_build(cfg, w, specs[b], M), n)
+            mrows[(w, b, n)] = (tot, 100.0 * det / tot if tot else 0.0)
+    L.append("[A] 빌드 종류 x 밀도: 실측 처리량 / 모델 처리량 (마녀 3 평균, 1.00이면 맞음)")
+    L.append("%-26s " % "종류" + " ".join("%7s" % ("N%d" % n) for n in dens))
+    allerr = []
+    for label, names in POWER_CLASSES:
+        row = []
+        for n in dens:
+            rs = [pc[(w, b, n)] / mrows[(w, b, n)][0] for w in WITCHES_ALL for b in names if (w, b, n) in mrows and mrows[(w, b, n)][0] > 0]
+            row.append(_pm(rs))
+            allerr += [abs(math.log(r)) for r in rs]
+        L.append("%-26s " % label + " ".join("%7.2f" % r if r == r else "%7s" % "-" for r in row))
+    L.append("  -> 로그 오차 평균 |ln(실/모)| = %.2f (0이 완전, 0.69가 2배 어긋남)" % _pm(allerr))
+    L.append("")
+    L.append("[B] 터뜨림 몫(%): 실측/모델, 짝 빌드 AR_6 AR_6fit AR_evo7, 밀도 35·85")
+    for w in WITCHES_ALL:
+        cs = ["%s@%d %4.1f/%4.1f" % (b, n, pd[(w, b, n)], mrows[(w, b, n)][1]) for b in ("AR_6", "AR_6fit", "AR_evo7") for n in (35, 85) if (w, b, n) in mrows]
+        L.append("  %-5s " % w + "  ".join(cs))
+    L.append("")
+    L.append("[C] 시너지 ÷ 하나만(같은 축 점수) 처리량 비, 시너지 쪽 최대 / 하나만 쪽 최대: 실측|모델")
+    L.append("%-4s %-6s " % ("묶음", "마녀") + " ".join("%11s" % ("N%d" % n) for n in dens))
+    for g, (syn, nar) in POWER_GROUPS.items():
+        for w in WITCHES_ALL:
+            vals = []
+            for n in dens:
+                try:
+                    rs = max(pc[(w, b, n)] for b in syn if (w, b, n) in pc) / max(pc[(w, b, n)] for b in nar if (w, b, n) in pc)
+                    ms = max(mrows[(w, b, n)][0] for b in syn if (w, b, n) in mrows) / max(mrows[(w, b, n)][0] for b in nar if (w, b, n) in mrows)
+                    vals.append("%4.2f|%4.2f" % (rs, ms))
+                except ValueError:
+                    vals.append("-")
+            L.append("%-4s %-6s " % (g, w) + " ".join("%11s" % v for v in vals))
+    L.append("")
+    L.append("[D] 원형 안의 적 수(시전 때 평균), 반경 2.7~4.1 m 원형: 실측 / 모델(안에 한 마리 이상 조건)")
+    pts = {}
+    for c in crowd:
+        for rid, row in (c.get("rings") or {}).items():
+            R = (c.get("effects", {}).get(rid, {}).get("ring_radius_cm") or 0) / 100.0
+            if 2.7 <= R <= 4.1 and row.get("casts", 0) >= 5:
+                pts.setdefault(int(c["density"]), []).append((R, float(row["inside_mean"])))
+    L.append("%5s %8s %8s %8s" % ("N", "실측", "모델", "실/모"))
+    for n in sorted(pts):
+        real = _pm([x[1] for x in pts[n]])
+        mod_ = _pm([(lambda m: m / (1 - math.exp(-m)) if m > 1e-6 else 1.0)(ring_inside(cfg.cal, n, x[0])) for x in pts[n]])
+        L.append("%5d %8.2f %8.2f %8.2f" % (n, real, mod_, real / mod_))
+    L.append("")
+    L.append("[E] 정예 단일 처리량(HP/s), pilot, 곁 잡몹 0·30: 실측 / 모델")
+    ps = power_agg(cells, "single", lambda c: (c["witch"], c["build"], int(c["mobs"]), c["mode"]), "elite_dps_hp")
+    L.append("%-6s %-9s %9s %9s %6s | %9s %9s %6s" % ("마녀", "빌드", "실+0", "모델+0", "실/모", "실+30", "모델+30", "실/모"))
+    e_all = []
+    for w in WITCHES_ALL:
+        for b in ("A_d4", "A_r4", "AR_6", "AX_6", "A_cap6X1", "AR_evo7", "R_d3r3"):
+            if (w, b, 0, "pilot") not in ps or b not in specs:
+                continue
+            bd = power_build(cfg, w, specs[b], M)
+            m0, m30 = pw.p_single(bd, 0), pw.p_single(bd, 30)
+            r0, r30 = ps[(w, b, 0, "pilot")], ps.get((w, b, 30, "pilot"), float("nan"))
+            if r30 == r30:
+                e_all += [abs(math.log(max(r0, 1e-3) / max(m0, 1e-3))), abs(math.log(max(r30, 1e-3) / max(m30, 1e-3)))]
+            L.append("%-6s %-9s %9.1f %9.1f %6.2f | %9.1f %9.1f %6.2f" % (w, b, r0, m0, r0 / max(m0, 1e-9), r30, m30, r30 / max(m30, 1e-9)))
+    L.append("  -> 로그 오차 평균 |ln(실/모)| = %.2f" % _pm(e_all))
+    return "\n".join(L)
+
+
+def taken_model(cfg, cal, contact_share, mix, zone, hero_hp, mode="stand"):
+    """받는 피해 쪽(모델의 답): 초당 맞는 횟수 = 접촉 시간 몫 x hit_per_contact_stand|pilot (맞은 뒤 24틱 무적이라 붙은 적의 수가 아니라 이 몫을 따른다),
+    한 번의 피해 = 마디 섞임의 평균 접촉 피해(구역 zone) x hit_dmg_taken. 돌려준다: (맞은 횟수/s, 최대 생명 대비 %/s)."""
+    e = cfg.tuning["enemies"]
+    tot = float(sum(mix)) or 1.0
+    dmg = sum(w / tot * e[k]["damage"][min(zone, 2)] for w, k in zip(mix, ("walker", "ranged", "charger")))
+    hits = cal.get("hit_per_contact_" + ("stand" if mode == "stand" else "pilot"), 1.0) * contact_share  # pilot: 움직이면 붙어도 준비 동작이 빗나간다
+    return hits, hits * dmg * cal.get("hit_dmg_taken", 1.0) / float(hero_hp) * 100.0
+
+
+def _mix_of(c, cfg):
+    if c.get("_mix"):
+        return c["_mix"]
+    for b in cfg.tuning["rhythm"]["beats"]:
+        if b["id"] == c.get("beat"):
+            return [b["mix"]["walker"], b["mix"]["ranged"], b["mix"]["charger"]]
+    return [74, 18, 8]
+
+
+def power_taken_fit(cfg, cells):
+    """접촉 시간 몫 -> 받은 피해. tally 칸에서 상수 둘(hit_per_contact_s, hit_dmg_taken)을 맞춘다."""
+    tl = [c for c in cells if c.get("test") == "crowd" and "contact_share_pct" in c and c.get("hero_hits_per_s") is not None and not c.get("aborted")]
+    if not tl:
+        return {}, ["받은 피해: tally 칸이 없어 못 맞춤(sim_power.gd --tally 결과를 --power-data에 더하라)"]
+    ks = {}
+    for md in ("stand", "pilot"):
+        sub = [c for c in tl if (c.get("crowd_mode") or "pilot") == md]
+        if sub:
+            ks[md] = sum(c["contact_share_pct"] / 100.0 * c["hero_hits_per_s"] for c in sub) / (sum((c["contact_share_pct"] / 100.0) ** 2 for c in sub) or 1.0)
+    cal = dict(cfg.cal)
+    cal["hit_per_contact_stand"], cal["hit_per_contact_pilot"], cal["hit_dmg_taken"] = ks.get("stand", 2.4), ks.get("pilot", 0.8), 1.0
+    sr, sm = 0.0, 0.0
+    for c in tl:
+        zone = {"gi": 0, "seung1": 1, "seung2": 1, "jeon_a": 2}.get(c.get("beat"), 1)
+        h, pct = taken_model(cfg, cal, c["contact_share_pct"] / 100.0, _mix_of(c, cfg), zone, c.get("hero_max_hp", 120), c.get("crowd_mode") or "pilot")
+        sr += c["taken_pct_s"]
+        sm += pct
+    dm = sr / sm if sm > 0 else 1.0  # 합의 비(맞은 횟수가 많은 stand 칸이 이끈다)
+    out = {"hit_per_contact_stand": round(cal["hit_per_contact_stand"], 3), "hit_per_contact_pilot": round(cal["hit_per_contact_pilot"], 3), "hit_dmg_taken": round(dm if dm == dm and dm > 0 else 1.0, 3)}
+    return out, ["받은 피해: 맞은 횟수/s = 접촉 시간 몫 x (stand %.2f | pilot %.2f) (tally %d칸), 한 번 피해 배율 %.2f (실측 합/모델 합)" % (out["hit_per_contact_stand"], out["hit_per_contact_pilot"], len(tl), out["hit_dmg_taken"])]
+
+
+def taken_table(cfg, cells, cal, title):
+    """tally 칸: 접촉 시간 몫으로 모델이 낸 받은 피해 대 실측(마디·움직임별 평균)."""
+    tl = [c for c in cells if c.get("test") == "crowd" and "contact_share_pct" in c and not c.get("aborted")]
+    g = {}
+    for c in tl:
+        g.setdefault((c.get("beat"), c.get("crowd_mode"), int(c["density"])), []).append(c)
+    L = [title, "%-8s %-6s %4s | %6s %8s %8s | %8s %8s %6s" % ("마디", "움직임", "밀도", "접촉%", "맞음/s실", "맞음/s모", "받은%/s실", "받은%/s모", "실/모")]
+    for k in sorted(g, key=lambda x: (str(x[0]), str(x[1]), x[2])):
+        cs = g[k]
+        zone = {"gi": 0, "seung1": 1, "seung2": 1, "jeon_a": 2}.get(k[0], 1)
+        sh = _pm([c["contact_share_pct"] for c in cs])
+        hm = _pm([taken_model(cfg, cal, c["contact_share_pct"] / 100.0, _mix_of(c, cfg), zone, c.get("hero_max_hp", 120), k[1])[0] for c in cs])
+        pm =_pm([taken_model(cfg, cal, c["contact_share_pct"] / 100.0, _mix_of(c, cfg), zone, c.get("hero_max_hp", 120), k[1])[1] for c in cs])
+        hr, pr = _pm([c["hero_hits_per_s"] for c in cs]), _pm([c["taken_pct_s"] for c in cs])
+        L.append("%-8s %-6s %4d | %6.1f %8.2f %8.2f | %8.1f %8.1f %6.2f" % (k[0], k[1], k[2], sh, hr, hm, pr, pm, pr / pm if pm else float("nan")))
+    return "\n".join(L)
+
+
+def _calib_text(doc):
+    """balance_sim_calib.json의 꼴(최상위 키는 한 줄씩, params는 상수마다 한 줄)을 지킨다."""
+    lines = ["{"]
+    keys = list(doc.keys())
+    for i, k in enumerate(keys):
+        comma = "," if i < len(keys) - 1 else ""
+        if k == "params":
+            lines.append('  "params": {')
+            ps = list(doc["params"].items())
+            for j, (pk, pv) in enumerate(ps):
+                lines.append("    %s: %s%s" % (json.dumps(pk, ensure_ascii=False), json.dumps(pv, ensure_ascii=False), "," if j < len(ps) - 1 else ""))
+            lines.append("  }" + comma)
+        else:
+            lines.append("  %s: %s%s" % (json.dumps(k, ensure_ascii=False), json.dumps(doc[k], ensure_ascii=False), comma))
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def do_calibrate_power(args):
+    """--calibrate-power --power-data=...: 맞춤 전/후 오차 표. --write-calib이면 balance_sim_calib.json에 쓴다(기본은 쓰지 않음)."""
+    cells = load_power_cells(args.power_data)
+    if not cells:
+        raise SystemExit("--power-data에서 칸을 못 읽었다: %s" % args.power_data)
+    cfg = load_cfg(args, preset=args.preset)
+    cfg.mode = "s"
+    T = []
+    T.append("시험장 실측 칸 %d개(맞춤에 쓰는 것 %d개), 마녀 %s, 시드 %s. 자동 조작의 결과: 밸런스·안정성 참고 자료, 재미는 평가하지 않는다." % (
+        len(cells), sum(1 for c in cells if c.get("_plain")), sorted({c["witch"] for c in cells}), sorted({c.get("seed") for c in cells})))
+    T.append(power_tables(cfg, cells, "맞춤 전: 지금 balance_sim_calib.json의 상수 (모델의 답)"))
+    new, log = power_fit(cfg, cells)
+    tnew, tlog = power_taken_fit(cfg, cells)
+    new.update(tnew)
+    log += tlog
+    T.append("")
+    T.append("맞춘 값:")
+    T += ["  - " + l for l in log]
+    T.append("  새 상수: " + json.dumps(new, ensure_ascii=False))
+    cfg2 = copy.copy(cfg)
+    cfg2.cal = dict(cfg.cal)
+    cfg2.cal.update(new)
+    if tnew:
+        T.append("")
+        T.append(taken_table(cfg, cells, dict(cfg.cal, hit_per_contact_stand=1.0, hit_per_contact_pilot=1.0, hit_dmg_taken=1.0), "[F] 받는 피해 맞춤 전(상수 없음: 접촉 몫 1.0에 초당 1회, 배율 1): 모델은 믿을 수 없음"))
+        T.append(taken_table(cfg, cells, cfg2.cal, "[F] 받는 피해 맞춤 뒤(접촉 시간 몫 -> 맞은 횟수 -> 피해). 모델의 답"))
+    T.append(power_tables(cfg2, cells, "맞춤 뒤: 위 상수를 넣은 모델 (모델의 답. 맞춘 칸과 같은 칸이므로 표본 안 오차다)"))
+    if getattr(args, "write_calib", False):
+        p = HERE / "balance_sim_calib.json"
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        for k, v in new.items():
+            doc["params"][k] = {"value": v, "source": "power-bench", "note": "시험장 실측에 맞춤(--calibrate-power): " + k}
+        doc["params"].setdefault("reactions_on", {"value": 0.0, "source": "core", "note": "원소 반응 모델을 켠다(1). 코어는 반응 짝에 효과를 내지 않으므로(시험장 실측 0%) 기본은 끔"})
+        p.write_text(_calib_text(doc), encoding="utf-8", newline="\n")
+        T.append("balance_sim_calib.json에 썼다(source=power-bench).")
+    txt = "\n".join(T)
+    print(txt)
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(txt + "\n", encoding="utf-8", newline="\n")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="균형 시뮬레이터 (모델의 답이지 게임의 답이 아니다)")
     ap.add_argument("--calibrate", action="store_true")
     ap.add_argument("--fit", action="store_true")
     ap.add_argument("--calibrate2", action="store_true", help="builds2 실측(장비 없음/켬)과 모델의 오차 표")
+    ap.add_argument("--calibrate-power", action="store_true", help="시험장(sim_power.gd) 실측(--power-data)에 모델을 맞추기 전/후 오차 표(--write-calib이면 상수를 파일에 씀)")
+    ap.add_argument("--power-data", default=None, help="sim_power.gd의 --out JSON 파일·폴더·글롭(쉼표로 여러 개)")
     ap.add_argument("--fit2", action="store_true", help="builds2 실측에 자유 상수를 맞춘다(결과 출력만)")
     ap.add_argument("--write-calib", action="store_true", help="--fit2 결과를 balance_sim_calib.json에 쓴다(기본은 쓰지 않음)")
     ap.add_argument("--sensitivity", action="store_true", help="서열 간격(synergy−narrow, narrow−random)을 가장 크게 움직이는 값을 순서대로(balance_search.py의 값 목록으로). --set은 고정 조건")
@@ -2529,6 +3012,10 @@ def main(argv=None):
         if args.out:
             av += ["--out", args.out]
         return balance_search.main(av)
+    if args.calibrate_power:
+        if not args.power_data:
+            raise SystemExit("--calibrate-power에는 --power-data가 필요하다")
+        return do_calibrate_power(args)
     if args.calibrate2 or args.fit2:
         real_dir = Path(args.real_dir) if args.real_dir else find_real_dir2()
         if not real_dir:
