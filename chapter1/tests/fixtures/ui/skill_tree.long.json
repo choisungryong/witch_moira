@@ -1,0 +1,67 @@
+{
+ "scene": "skill_tree",
+ "character": "chapter1.character.frost",
+ "tree_id": "witch.frost",
+ "view": {
+  "character_id": "chapter1.character.frost",
+  "has_tree": true,
+  "tree_id": "witch.frost",
+  "level": 20,
+  "xp": 25000,
+  "xp_level_start": 25000,
+  "xp_for_next": 25000,
+  "xp_to_next": 0,
+  "points_earned": 32,
+  "points_spent": 32,
+  "points_free": 0,
+  "ranks": {
+   "witch.frost.needle": 5,
+   "witch.frost.volley": 3,
+   "witch.frost.oath_lance": 3,
+   "witch.frost.rime": 5,
+   "witch.frost.field": 3,
+   "witch.frost.dominion": 1,
+   "witch.frost.chill": 3,
+   "witch.frost.shatter": 3,
+   "witch.common.vigor": 5,
+   "witch.common.ward": 1
+  },
+  "first_rewards": [],
+  "respecs": 0,
+  "refunded_notice": false
+ },
+ "selected": "witch.frost.dominion",
+ "info": {
+  "name": "서리의 마녀 · 가장 긴 이름을 붙인 경우",
+  "xp": 25000,
+  "xp_floor": 25000,
+  "xp_next": -1,
+  "essence": 999999,
+  "respec_cost": 99999,
+  "portrait": "frost"
+ },
+ "patch": {
+  "nodes": {
+   "witch.frost.dominion": {
+    "name": "가장 긴 이름을 붙인 마지막 서약의 지배",
+    "lore": "이 설명은 일부러 길게 써서 정보 칸의 폭과 줄 수를 넘기는지 본다. 얼음이 지나간 자리마다 한기가 남고, 남은 한기가 다음 서약의 값이 된다."
+   },
+   "witch.frost.volley": {
+    "name": "가장 긴 이름을 붙인 연속 사격의 서약"
+   },
+   "witch.frost.needle": {
+    "name": "얼음 바늘 · 이름이 아주 긴 첫 칸"
+   }
+  },
+  "branches": {
+   "lance": {
+    "name": "가장 긴 가지 이름 관통"
+   }
+  },
+  "tiers": {
+   "1": {
+    "name": "수녀의 기도 · 긴 이름"
+   }
+  }
+ }
+}

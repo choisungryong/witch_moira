@@ -1,0 +1,309 @@
+{
+ "scene": "result",
+ "mode": "victory",
+ "kills": 99999,
+ "tick": 359999,
+ "elite_uid": 2,
+ "note": "저장 파일을 읽었습니다 · 마지막 저장은 2026-11-19 23:59에 끝났고 장비 256개와 재 99,999가 들어 있습니다",
+ "items": [
+  {
+   "uid": 1,
+   "name": "서약의 순례 맹세 관통의 홀 (갈라지는 박동 · 끝나지 않는 이름)",
+   "slot": "weapon",
+   "quality": "unique",
+   "stats": {
+    "damage_bps": 1000,
+    "max_hp_raw": 1024,
+    "projectiles": 1,
+    "move_speed_bps": 300
+   },
+   "description": "가장 긴 설명을 붙인 현재 장비. 이 줄은 일부러 길게 써서 현재 장비 칸의 폭 안에서 줄이 바뀌는지 본다.",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 2,
+   "name": "황혼 손길 파편 기도 눈물 맹세 숨결의 가장 긴 이름 장비",
+   "slot": "weapon",
+   "quality": "unique",
+   "stats": {
+    "damage_bps": 2500,
+    "cooldown_bps": -1800,
+    "slow_bps": 1500,
+    "fire_damage_bps": 2000,
+    "arc_damage_bps": 2000,
+    "max_hp_raw": 3072,
+    "damage_reduction_bps": 800,
+    "pickup_radius_cm": 150,
+    "move_speed_bps": 1200,
+    "dash_cooldown_bps": 1500,
+    "soul_gain_bps": 2000,
+    "radius_cm": 120,
+    "projectiles": 3,
+    "chain_targets": 2,
+    "shatter_count": 4,
+    "pierce": 2,
+    "fire_burst": 1,
+    "frost_threshold": 2,
+    "arc_branches": 2
+   },
+   "description": "가장 긴 설명을 붙인 후보 장비. 서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가 · 이 줄도 일부러 길게 써서 선택한 장비 칸 아래로 넘치는지, 장착 단추를 밀어내는지 본다.",
+   "required_level": 20,
+   "item_level": 20,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 3,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 3 · 서약의 순례 맹세",
+   "slot": "feet",
+   "quality": "legendary",
+   "stats": {
+    "damage_bps": 830
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 4,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 4 · 서약의 순례 맹세",
+   "slot": "charm",
+   "quality": "unique",
+   "stats": {
+    "damage_bps": 840
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 5,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 5 · 서약의 순례 맹세",
+   "slot": "ring",
+   "quality": "common",
+   "stats": {
+    "damage_bps": 850
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 6,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 6 · 서약의 순례 맹세",
+   "slot": "head",
+   "quality": "magic",
+   "stats": {
+    "damage_bps": 860
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 7,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 7 · 서약의 순례 맹세",
+   "slot": "body",
+   "quality": "rare",
+   "stats": {
+    "damage_bps": 870
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 8,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 8 · 서약의 순례 맹세",
+   "slot": "hands",
+   "quality": "legendary",
+   "stats": {
+    "damage_bps": 880
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 9,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 9 · 서약의 순례 맹세",
+   "slot": "feet",
+   "quality": "unique",
+   "stats": {
+    "damage_bps": 890
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 10,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 10 · 서약의 순례 맹세",
+   "slot": "charm",
+   "quality": "common",
+   "stats": {
+    "damage_bps": 900
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 11,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 11 · 서약의 순례 맹세",
+   "slot": "ring",
+   "quality": "magic",
+   "stats": {
+    "damage_bps": 910
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 12,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 12 · 서약의 순례 맹세",
+   "slot": "head",
+   "quality": "rare",
+   "stats": {
+    "damage_bps": 920
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 13,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 13 · 서약의 순례 맹세",
+   "slot": "body",
+   "quality": "legendary",
+   "stats": {
+    "damage_bps": 930
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 14,
+   "name": "가장 긴 이름을 붙인 보관 장비 번호 14 · 서약의 순례 맹세",
+   "slot": "hands",
+   "quality": "unique",
+   "stats": {
+    "damage_bps": 940
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  }
+ ],
+ "equipped": {
+  "weapon": 1
+ },
+ "growth": {
+  "character_id": "chapter1.character.frost",
+  "before": {
+   "character_id": "chapter1.character.frost",
+   "has_tree": true,
+   "tree_id": "witch.frost",
+   "level": 19,
+   "xp": 22000,
+   "xp_level_start": 19500,
+   "xp_for_next": 22100,
+   "xp_to_next": 100,
+   "points_earned": 0,
+   "points_spent": 0,
+   "points_free": 0,
+   "ranks": {},
+   "first_rewards": [],
+   "respecs": 0,
+   "refunded_notice": false
+  },
+  "after": {
+   "character_id": "chapter1.character.frost",
+   "has_tree": true,
+   "tree_id": "witch.frost",
+   "level": 20,
+   "xp": 25000,
+   "xp_level_start": 25000,
+   "xp_for_next": 25000,
+   "xp_to_next": 0,
+   "points_earned": 35,
+   "points_spent": 32,
+   "points_free": 3,
+   "ranks": {
+    "witch.frost.needle": 5,
+    "witch.frost.volley": 3,
+    "witch.frost.oath_lance": 3,
+    "witch.frost.rime": 5,
+    "witch.frost.field": 3,
+    "witch.frost.dominion": 1,
+    "witch.frost.chill": 3,
+    "witch.frost.shatter": 3,
+    "witch.common.vigor": 5,
+    "witch.common.ward": 1
+   },
+   "first_rewards": [],
+   "respecs": 0,
+   "refunded_notice": false
+  },
+  "progress": {
+   "xp_gained": 123456,
+   "level_after": 20,
+   "sources": {
+    "seal": [
+     9999,
+     9999,
+     9999
+    ],
+    "champion": [
+     9999,
+     9999
+    ],
+    "boss": 9999,
+    "victory": 9999
+   }
+  }
+ }
+}

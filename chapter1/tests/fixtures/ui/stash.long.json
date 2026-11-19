@@ -1,0 +1,1019 @@
+{
+ "scene": "stash",
+ "selected": 2,
+ "equipped": {
+  "weapon": 1
+ },
+ "essence": 999999,
+ "completed_runs": 9999,
+ "note": "저장 파일을 읽었습니다 · 마지막 저장은 2026-11-19 23:59에 끝났고 장비 256개와 재 99,999가 들어 있습니다",
+ "records": [
+  {
+   "storage_id": 1,
+   "item": {
+    "name": "서약의 순례 맹세 관통의 홀 (갈라지는 박동 · 끝나지 않는 이름)",
+    "slot": "weapon",
+    "quality": "unique",
+    "stats": {
+     "damage_bps": 1000,
+     "max_hp_raw": 1024,
+     "projectiles": 1,
+     "move_speed_bps": 300
+    },
+    "description": "가장 긴 설명을 붙인 현재 장비. 이 줄은 일부러 길게 써서 현재 장비 칸의 폭 안에서 줄이 바뀌는지 본다.",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 2,
+   "item": {
+    "name": "황혼 손길 파편 기도 눈물 맹세 숨결의 가장 긴 이름 장비",
+    "slot": "weapon",
+    "quality": "unique",
+    "stats": {
+     "damage_bps": 2500,
+     "cooldown_bps": -1800,
+     "slow_bps": 1500,
+     "fire_damage_bps": 2000,
+     "arc_damage_bps": 2000,
+     "max_hp_raw": 3072,
+     "damage_reduction_bps": 800,
+     "pickup_radius_cm": 150,
+     "move_speed_bps": 1200,
+     "dash_cooldown_bps": 1500,
+     "soul_gain_bps": 2000,
+     "radius_cm": 120,
+     "projectiles": 3,
+     "chain_targets": 2,
+     "shatter_count": 4,
+     "pierce": 2,
+     "fire_burst": 1,
+     "frost_threshold": 2,
+     "arc_branches": 2
+    },
+    "description": "가장 긴 설명을 붙인 후보 장비. 서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가 · 이 줄도 일부러 길게 써서 선택한 장비 칸 아래로 넘치는지, 장착 단추를 밀어내는지 본다.",
+    "required_level": 20,
+    "item_level": 20,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 3,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 3 · 서약의 순례 맹세",
+    "slot": "feet",
+    "quality": "legendary",
+    "stats": {
+     "damage_bps": 830
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 4,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 4 · 서약의 순례 맹세",
+    "slot": "charm",
+    "quality": "unique",
+    "stats": {
+     "damage_bps": 840
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 5,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 5 · 서약의 순례 맹세",
+    "slot": "ring",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 850
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 6,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 6 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 860
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 7,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 7 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 870
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 8,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 8 · 서약의 순례 맹세",
+    "slot": "hands",
+    "quality": "legendary",
+    "stats": {
+     "damage_bps": 880
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 9,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 9 · 서약의 순례 맹세",
+    "slot": "feet",
+    "quality": "unique",
+    "stats": {
+     "damage_bps": 890
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 10,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 10 · 서약의 순례 맹세",
+    "slot": "charm",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 900
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 11,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 11 · 서약의 순례 맹세",
+    "slot": "ring",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 910
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 12,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 12 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 920
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 13,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 13 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "legendary",
+    "stats": {
+     "damage_bps": 930
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 14,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 14 · 서약의 순례 맹세",
+    "slot": "hands",
+    "quality": "unique",
+    "stats": {
+     "damage_bps": 940
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 16,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 16 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 17,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 17 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 18,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 18 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 19,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 19 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 20,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 20 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 21,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 21 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 22,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 22 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 23,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 23 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 24,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 24 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 25,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 25 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 26,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 26 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 27,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 27 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 28,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 28 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 29,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 29 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 30,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 30 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 31,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 31 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 32,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 32 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 33,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 33 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 34,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 34 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 35,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 35 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 36,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 36 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 37,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 37 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 38,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 38 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 39,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 39 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 40,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 40 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 41,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 41 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 42,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 42 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 43,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 43 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 44,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 44 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 45,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 45 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 46,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 46 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 47,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 47 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 48,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 48 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 49,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 49 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 50,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 50 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 51,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 51 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 52,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 52 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 53,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 53 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 54,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 54 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 55,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 55 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 56,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 56 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 57,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 57 · 서약의 순례 맹세",
+    "slot": "weapon",
+    "quality": "common",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 58,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 58 · 서약의 순례 맹세",
+    "slot": "head",
+    "quality": "magic",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  },
+  {
+   "storage_id": 59,
+   "item": {
+    "name": "가장 긴 이름을 붙인 보관 장비 번호 59 · 서약의 순례 맹세",
+    "slot": "body",
+    "quality": "rare",
+    "stats": {
+     "damage_bps": 800
+    },
+    "description": "",
+    "required_level": 1,
+    "item_level": 1,
+    "base_id": "chapter1.full.cinder_staff",
+    "affixes": [],
+    "grammar": 2
+   }
+  }
+ ]
+}

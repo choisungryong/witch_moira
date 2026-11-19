@@ -34,6 +34,14 @@ extends SceneTree
 ## Normal runs now add an "end-<mode>-result" moment after the existing end moment.
 ## Optional: --until=<tick> stops early; --primary=<skill id>; --shots=<dir> also saves a
 ## screenshot per moment (needs a real renderer, so run without --headless).
+## Tooling additions (never change the default dump):
+##   --dump-extra                 add layout fields to every Control row (font size "fs", effective alpha "alpha", clipping
+##                                ancestors "clip", combined minimum size "min", text metrics "tw"/"th"/"lines"/"vis_lines"/"pad")
+##                                and a "meta" entry (canvas size, window size, scale). Read by tools/dev/hud_layout_check.py.
+##                                Without the flag the dump is byte-for-byte what it always was.
+##   Missing or contradicting arguments end at once with one HUD_DUMP_ARGS line and exit code 2 (a flow that needs a
+##   fixture never starts and waits for a window that does not come): --tree-shots needs --profile-fixture=l8,
+##   every --profile-fixture needs --chapter1-profile-off, --shots needs a real renderer, unknown values are refused.
 var view: Node
 var dumps: Dictionary = {}
 var order: Array[String] = []
@@ -59,6 +67,7 @@ var flow_log: Array = []
 var flow_shots := ""
 var defeat_at := 1200
 var reject_choice := "play"
+var dump_extra := false
 var rj_stage := 0
 var rj_next := 0
 var rj_tabs := 0
@@ -69,6 +78,7 @@ var fl_next := 0
 var fl_frame0 := 0
 var fl_before: Dictionary = {}
 const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
+const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -87,6 +97,13 @@ func _initialize() -> void:
 		elif arg.begins_with("--flow-shots="): flow_shots = arg.trim_prefix("--flow-shots=")
 		elif arg.begins_with("--defeat-at="): defeat_at = int(arg.trim_prefix("--defeat-at="))
 		elif arg.begins_with("--reject-choice="): reject_choice = arg.trim_prefix("--reject-choice=")
+		elif arg == "--dump-extra": dump_extra = true
+	var args_error := _check_args()
+	if not args_error.is_empty():
+		push_error("hud_dump: "+args_error)
+		print("HUD_DUMP_ARGS ",JSON.stringify({"error":args_error}))
+		quit(2)
+		return
 	var scene: PackedScene = load("res://chapter1/ChapterOne.tscn")
 	view = scene.instantiate()
 	# A script that failed to compile leaves a bare node: stop instead of spinning.
@@ -97,6 +114,33 @@ func _initialize() -> void:
 		return
 	root.add_child(view)
 	_setup_profile()
+
+## One sentence for the first argument problem, or "". Runs before anything is loaded.
+func _check_args() -> String:
+	var user_args := OS.get_cmdline_user_args()
+	if not profile_fixture.is_empty() and not profile_fixture in ["empty","l8","rejected"]:
+		return "--profile-fixture=%s is unknown (empty, l8 or rejected)" % profile_fixture
+	if not profile_fixture.is_empty() and not "--chapter1-profile-off" in user_args:
+		return "--profile-fixture needs --chapter1-profile-off (the user's own save must never be opened)"
+	if tree_shots and profile_fixture != "l8":
+		return "--tree-shots needs --profile-fixture=l8 (without it the skill tree has nothing to open and the flow would wait forever)"
+	if tree_shots and (not flow_shots.is_empty() or result_mock or notice_shots):
+		return "--tree-shots cannot be combined with --flow-shots, --result-mock or --notice-shots"
+	if not flow_shots.is_empty() and not flow_shots in ["abandon","defeat","quit"]:
+		return "--flow-shots=%s is unknown (abandon, defeat or quit)" % flow_shots
+	if not flow_shots.is_empty() and profile_fixture == "rejected":
+		return "--flow-shots cannot be combined with --profile-fixture=rejected"
+	if not reject_choice in ["play","fresh"]:
+		return "--reject-choice=%s is unknown (play or fresh)" % reject_choice
+	if "--reject-choice=fresh" in user_args and profile_fixture != "rejected":
+		return "--reject-choice only applies to --profile-fixture=rejected"
+	if not shots_dir.is_empty() and DisplayServer.get_name() == "headless":
+		return "--shots needs a real renderer: run without --headless"
+	if not out_path.is_empty():
+		var folder := out_path.get_base_dir()
+		if not folder.is_empty() and not DirAccess.dir_exists_absolute(folder) and DirAccess.make_dir_recursive_absolute(folder) != OK:
+			return "--dump folder cannot be created: "+folder
+	return ""
 
 ## Isolated profile for the growth screens. Only ever a file under res://_local/; the user's own save is not opened
 ## because the caller keeps --chapter1-profile-off (the view's own configure() is skipped then).
@@ -171,7 +215,12 @@ func _setup_rejected() -> void:
 	rj_files_before = _file_hashes(rj_folder)
 	print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fixture","configure":loaded,"available":profile.available,"kind":profile.reject_kind,"reason":profile.reject_reason,"resume":profile.resume_info(),"files":rj_files_before}))
 
-func _describe(node: Node, depth: int, rows: Array) -> void:
+func _describe(node: Node, depth: int, rows: Array, alpha := 1.0, clip := Rect2(), has_clip := false) -> void:
+	var child_alpha := alpha
+	var child_clip := clip
+	var child_has_clip := has_clip
+	if node is CanvasItem:
+		child_alpha = alpha*node.modulate.a*node.self_modulate.a
 	if node is Control:
 		var c: Control = node
 		var row := {"d":depth,"class":c.get_class(),"name":String(c.name),"visible":c.is_visible_in_tree(),
@@ -181,9 +230,18 @@ func _describe(node: Node, depth: int, rows: Array) -> void:
 		if c is BaseButton: row.disabled = c.disabled
 		if c is Range: row.value = snappedf(c.value,.001); row.max = snappedf(c.max_value,.001)
 		if c is TextureRect: row.texture = c.texture.resource_path if c.texture != null else ""
+		if dump_extra: _describe_extra(c,row,child_alpha,clip,has_clip)
 		rows.append(row)
+		if c.clip_contents or c is ScrollContainer:
+			var own := Rect2(c.global_position,c.size)
+			child_clip = clip.intersection(own) if has_clip else own
+			child_has_clip = true
 	for child in node.get_children():
-		_describe(child,depth+1,rows)
+		_describe(child,depth+1,rows,child_alpha,child_clip,child_has_clip)
+
+## Layout fields for tools/dev/hud_layout_check.py. Only with --dump-extra (shared with scene_shot.gd).
+func _describe_extra(c: Control, row: Dictionary, alpha: float, clip: Rect2, has_clip: bool) -> void:
+	LayoutDump.extra(c,row,alpha,clip,has_clip)
 
 func _vec(v: Vector3) -> Array:
 	return [snappedf(v.x,.001),snappedf(v.y,.001),snappedf(v.z,.001)]
@@ -329,7 +387,14 @@ func _finish() -> void:
 		scene_file.close()
 	if not out_path.is_empty():
 		var file := FileAccess.open(out_path,FileAccess.WRITE)
-		file.store_string(JSON.stringify({"order":order,"dumps":dumps}))
+		var document := {"order":order,"dumps":dumps}
+		if dump_extra:
+			document["meta"] = {"canvas":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"window":[root.size.x,root.size.y],"extra":true}
+		if file == null:
+			push_error("cannot write the dump: "+out_path)
+			quit(1)
+			return
+		file.store_string(JSON.stringify(document))
 		file.close()
 	print("HUD_DUMP_RESULT ",JSON.stringify({"labels":order,"final_tick":view.run.tick,"mode":view.run.mode,"kills":view.run.kills}))
 
@@ -374,6 +439,10 @@ func _key(code: int) -> void:
 func _tree_flow() -> bool:
 	var hud = view.hud
 	var panel: Control = hud.skill_panel
+	if frame > 3000:
+		push_error("tree flow did not finish (stage %d): the skill tree never opened" % flow_stage)
+		quit(1)
+		return true
 	if frame < flow_next: return false
 	match flow_stage:
 		0:

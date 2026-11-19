@@ -1,0 +1,4 @@
+{
+ "comment": "Known, accepted layout findings for tools/dev/hud_layout_check.py. Each entry: kind (overlap|offscreen|center|text_overflow|text_trimmed|font_small|*), label (glob, default *), path (glob over the control path, names joined by '/'), or a + b for an overlap pair, and why. Keep this list short: an entry says 'seen, judged fine by a person', with the date.",
+ "allow": []
+}

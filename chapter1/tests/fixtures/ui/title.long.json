@@ -1,0 +1,41 @@
+{
+ "scene": "title",
+ "witch": 1,
+ "views": {
+  "chapter1.character.frost": {
+   "character_id": "chapter1.character.frost",
+   "has_tree": true,
+   "tree_id": "witch.frost",
+   "level": 20,
+   "xp": 25000,
+   "xp_level_start": 25000,
+   "xp_for_next": 25000,
+   "xp_to_next": 0,
+   "points_earned": 32,
+   "points_spent": 32,
+   "points_free": 0,
+   "ranks": {
+    "witch.frost.needle": 5,
+    "witch.frost.volley": 3,
+    "witch.frost.oath_lance": 3,
+    "witch.frost.rime": 5,
+    "witch.frost.field": 3,
+    "witch.frost.dominion": 1,
+    "witch.frost.chill": 3,
+    "witch.frost.shatter": 3,
+    "witch.common.vigor": 5,
+    "witch.common.ward": 1
+   },
+   "first_rewards": [],
+   "respecs": 0,
+   "refunded_notice": false
+  }
+ },
+ "note": "저장 파일을 읽었습니다 · 이전 판의 장비 256개와 재 99,999를 불러왔고 마지막 저장은 2026-11-19 23:59에 끝났습니다 · 다음 판에 가져갈 장비는 슬롯마다 하나씩입니다",
+ "stash_count": 256,
+ "strings": {
+  "menu_title": "가장 긴 제목이 들어가는 첫 화면 이름 표시 줄",
+  "menu_description": "무리를 휩쓸고, 장비와 기술을 성장시켜 회랑 수호자를 처치하세요. 이 설명은 일부러 길게 써서 두 번째 줄과 세 번째 줄까지 내려가는지, 그리고 아래 단추를 밀어내지 않는지 본다.",
+  "menu_scope": "회랑 진입전 · 한 장을 완성하기 위한 첫 전투 구간 · 이 줄도 길게 써서 가장 아래 줄이 창 밖으로 나가지 않는지 본다"
+ }
+}

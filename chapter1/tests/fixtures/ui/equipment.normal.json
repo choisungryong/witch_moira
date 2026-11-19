@@ -1,0 +1,126 @@
+{
+ "scene": "equipment",
+ "level": 8,
+ "selected": 2,
+ "equipped": {
+  "weapon": 1,
+  "head": 3,
+  "charm": 5
+ },
+ "items": [
+  {
+   "uid": 1,
+   "name": "잿불 지팡이",
+   "slot": "weapon",
+   "quality": "common",
+   "stats": {
+    "damage_bps": 800,
+    "projectiles": 1
+   },
+   "description": "",
+   "required_level": 1,
+   "item_level": 1,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 2,
+   "name": "격노의 관통의 홀",
+   "slot": "weapon",
+   "quality": "magic",
+   "stats": {
+    "damage_bps": 1400,
+    "pierce": 1,
+    "cooldown_bps": 500
+   },
+   "description": "",
+   "required_level": 5,
+   "item_level": 5,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 3,
+   "name": "서리 순례의 눈물",
+   "slot": "head",
+   "quality": "rare",
+   "stats": {
+    "max_hp_raw": 1536,
+    "damage_reduction_bps": 300,
+    "pickup_radius_cm": 60
+   },
+   "description": "",
+   "required_level": 6,
+   "item_level": 6,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 4,
+   "name": "갈라지는 박동의 마법봉",
+   "slot": "weapon",
+   "quality": "legendary",
+   "stats": {
+    "projectiles": 2,
+    "damage_bps": -1500
+   },
+   "description": "발사체 +2 · 피해 -15%",
+   "required_level": 8,
+   "item_level": 8,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 5,
+   "name": "겨울의 심장",
+   "slot": "charm",
+   "quality": "unique",
+   "stats": {
+    "cooldown_bps": -500,
+    "frost_threshold": 1,
+    "shatter_count": 2
+   },
+   "description": "서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가",
+   "required_level": 3,
+   "item_level": 3,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 6,
+   "name": "침묵의 반지",
+   "slot": "ring",
+   "quality": "magic",
+   "stats": {
+    "move_speed_bps": 600
+   },
+   "description": "",
+   "required_level": 2,
+   "item_level": 2,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  },
+  {
+   "uid": 7,
+   "name": "새벽의 반지",
+   "slot": "ring",
+   "quality": "rare",
+   "stats": {
+    "damage_bps": 900,
+    "soul_gain_bps": 1000
+   },
+   "description": "",
+   "required_level": 9,
+   "item_level": 9,
+   "base_id": "chapter1.full.cinder_staff",
+   "affixes": [],
+   "grammar": 2
+  }
+ ]
+}

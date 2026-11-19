@@ -1,0 +1,52 @@
+{
+ "scene": "boon",
+ "offer": {
+  "token": "fixture-2",
+  "cards": [
+   {
+    "id": "evolve:chapter1.skill.frost",
+    "kind": "evolve",
+    "skill_id": "chapter1.skill.frost",
+    "rank": 4,
+    "weight": 1,
+    "title_key": "서리창 진화 · 가장 긴 이름을 붙인 얼어붙은 서약의 창끝",
+    "after": {
+     "damage_raw": 9216,
+     "projectiles": 6,
+     "slow_bps": 3500,
+     "freeze_stacks": 2,
+     "radius_cm": 350,
+     "shatter_count": 12
+    }
+   },
+   {
+    "id": "evolve:chapter1.skill.arc",
+    "kind": "evolve",
+    "skill_id": "chapter1.skill.arc",
+    "rank": 4,
+    "weight": 1,
+    "title_key": "연쇄 전류 진화 · 가장 긴 이름을 붙인 폭풍의 사슬 번개",
+    "after": {
+     "damage_raw": 8192,
+     "chain_targets": 9,
+     "branches": 4,
+     "death_burst": 1
+    }
+   },
+   {
+    "id": "evolve:chapter1.skill.ember",
+    "kind": "evolve",
+    "skill_id": "chapter1.skill.ember",
+    "rank": 4,
+    "weight": 1,
+    "title_key": "잿불탄 진화 · 가장 긴 이름을 붙인 끝없이 번지는 불꽃",
+    "after": {
+     "damage_raw": 9984,
+     "projectiles": 8,
+     "radius_cm": 480,
+     "death_burst": 1
+    }
+   }
+  ]
+ }
+}

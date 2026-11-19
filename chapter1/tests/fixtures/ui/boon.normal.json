@@ -1,0 +1,46 @@
+{
+ "scene": "boon",
+ "offer": {
+  "token": "fixture-1",
+  "cards": [
+   {
+    "id": "rank:chapter1.skill.frost:3",
+    "kind": "rank",
+    "skill_id": "chapter1.skill.frost",
+    "rank": 3,
+    "weight": 1,
+    "title_key": "skill.chapter1.skill.frost.name",
+    "after": {
+     "damage_raw": 3328,
+     "projectiles": 3,
+     "slow_bps": 2000,
+     "freeze_stacks": 3,
+     "radius_cm": 0
+    }
+   },
+   {
+    "id": "passive:chapter1.passive.crystal",
+    "kind": "passive",
+    "skill_id": "chapter1.skill.frost",
+    "rank": 0,
+    "weight": 1,
+    "title_key": "grace.passive.chapter1.passive.crystal.name",
+    "passive_id": "chapter1.passive.crystal"
+   },
+   {
+    "id": "unlock:chapter1.skill.ember",
+    "kind": "unlock",
+    "skill_id": "chapter1.skill.ember",
+    "rank": 1,
+    "weight": 1,
+    "title_key": "skill.chapter1.skill.ember.name",
+    "after": {
+     "damage_raw": 3072,
+     "projectiles": 1,
+     "radius_cm": 220,
+     "death_burst": 1
+    }
+   }
+  ]
+ }
+}

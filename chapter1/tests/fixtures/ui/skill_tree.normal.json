@@ -1,0 +1,38 @@
+{
+ "scene": "skill_tree",
+ "character": "chapter1.character.frost",
+ "tree_id": "witch.frost",
+ "view": {
+  "character_id": "chapter1.character.frost",
+  "has_tree": true,
+  "tree_id": "witch.frost",
+  "level": 8,
+  "xp": 3880,
+  "xp_level_start": 3600,
+  "xp_for_next": 4500,
+  "xp_to_next": 620,
+  "points_earned": 10,
+  "points_spent": 8,
+  "points_free": 2,
+  "ranks": {
+   "witch.frost.needle": 3,
+   "witch.frost.volley": 1,
+   "witch.frost.rime": 2,
+   "witch.frost.chill": 2
+  },
+  "first_rewards": [],
+  "respecs": 0,
+  "refunded_notice": false
+ },
+ "selected": "witch.frost.volley",
+ "info": {
+  "name": "서리의 마녀",
+  "xp": 3880,
+  "xp_floor": 3600,
+  "xp_next": 4500,
+  "essence": 31,
+  "respec_cost": 0,
+  "portrait": "frost"
+ },
+ "patch": {}
+}
