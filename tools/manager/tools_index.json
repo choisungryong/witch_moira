@@ -1,0 +1,112 @@
+{
+  "_note": "역할별 도구 묶음. 사람이 손으로 관리한다(근거: docs/reviews/TOOLS-REVIEW-20261119.ko.md). 한 도구가 여러 역할에 나와도 된다. 여기에 없는 도구는 화면의 「아직 역할에 묶지 않은 도구」에 나온다.",
+  "reminders": [
+    {"text": "코어를 고치는 동안에는 골든을 전부 돌리지 말고 사례 하나만: golden_core.gd -- --case=11:chapter1.skill.frost", "path": "chapter1/tests/golden_core.gd"},
+    {"text": "앞 구간만 볼 때는 hud_dump.gd --until=<틱>으로 한 판 8~11분을 1~3분으로 줄인다", "path": "chapter1/tests/hud_dump.gd"},
+    {"text": "hud_dump.gd --dump의 Control 사각형은 화면 배치(겹침·잘림) 점검의 재료다", "path": "chapter1/tests/hud_dump.gd"},
+    {"text": "코어 없이 화면만 띄우는 선례: skill_tree_preview.gd", "path": "chapter1/tests/skill_tree_preview.gd"},
+    {"text": "회귀는 --only(일부), --quick(골든 제외), --json 이 있다", "path": "tools/dev/run_all.py"},
+    {"text": "소리: audio_mix_offline.py --stats, audio_measure.py --compare-s1", "path": "tools/dev/audio_measure.py"},
+    {"text": "새 이름·글을 짓기 전에 낱말 검사기를, 새 결정 번호를 붙이기 전에 결정 번호 장부를 돌려 본다", "path": "tools/dev/wording_lint.py"}
+  ],
+  "roles": [
+    {"id": "everyone", "label": "모두가 쓰는 것", "about": "Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리). 회귀는 run_all.py.", "tools": [
+      {"path": "tools/dev/godot.py", "use": "검사·측정·캡처의 Godot 실행(사용자 저장 폴더를 건드리지 않음)"},
+      {"path": "tools/dev/run_all.py", "use": "회귀 한 번에. --only·--quick으로 일부만"},
+      {"path": "tools/dev/run_dev.py", "use": "게임을 임포트하고 띄운다"}
+    ]},
+    {"id": "tech-lead", "label": "기술 관리(tech-lead)", "about": "지시서 검수에 쓰는 검사들.", "tools": [
+      {"path": "tools/dev/run_all.py", "use": "검수 때 회귀 결과 확인"},
+      {"path": "chapter1/tests/golden_core.gd", "use": "코어 동작이 바뀌었는지 해시로 확인"},
+      {"path": "tools/dev/check_glyphs.py", "use": "화면 글자가 글꼴에 다 있는지"},
+      {"path": "tools/dev/i18n_scan.py", "use": "코드 안 한글 리터럴이 늘었는지(번역 틀 지키기)"},
+      {"path": "tools/dev/check_build.py", "use": "만든 빌드의 점검"},
+      {"path": "tools/dev/build.py", "use": "Windows 실행 파일 만들기(다른 에이전트가 쓰는 작업 트리에서는 돌리지 않음)"}
+    ]},
+    {"id": "design-lead", "label": "기획 관리(design-lead)", "about": "목표 대비 수치 판정에 쓰는 측정과 시뮬레이터.", "tools": [
+      {"path": "tools/dev/balance_sim.py", "use": "코어를 돌리지 않는 흐름 모델로 스킬 구성의 서열을 몇 초에 본다"},
+      {"path": "chapter1/tests/measure_combat.gd", "use": "실제 코어 한 판의 전투 압박 지표(약 3분)"},
+      {"path": "chapter1/tests/measure_rhythm.gd", "use": "난이도 리듬 측정"},
+      {"path": "chapter1/tests/sim_loot.gd", "use": "한 판 드랍 양을 많이 굴려 목표와 대조"},
+      {"path": "chapter1/tests/sim_builds.gd", "use": "성장 선택 정책별 구성의 벌어짐"},
+      {"path": "chapter1/tests/sim_progression.gd", "use": "영구 성장 속도"},
+      {"path": "tools/dev/decision_ledger.py", "use": "결정 번호의 겹침과 다음 빈 번호"}
+    ]},
+    {"id": "gameplay-systems", "label": "전투 코어(gameplay-systems)", "about": "코어를 고친 뒤의 확인.", "tools": [
+      {"path": "chapter1/tests/golden_core.gd", "use": "코어를 고쳤으면 먼저. 사례 하나만(--case)도 가능"},
+      {"path": "chapter1/tests/measure_combat.gd", "use": "수치를 고친 뒤 전투 지표 재측정"},
+      {"path": "chapter1/tests/sim_loot.gd", "use": "드랍을 고친 뒤"},
+      {"path": "chapter1/tests/report_run_loot.gd", "use": "실제 코어 한 판에서 무엇이 떨어졌는지"},
+      {"path": "tools/dev/run_all.py", "use": "마지막 전체 회귀"}
+    ]},
+    {"id": "content-balance", "label": "기획 수치(content-balance)", "about": "데이터 수치 조정 뒤 재는 도구.", "tools": [
+      {"path": "tools/dev/balance_sim.py", "use": "값을 바꿔 보고 서열이 서는지 먼저 본다"},
+      {"path": "tools/manager/balance_lab.py", "use": "관리 툴의 「균형 실험실」 화면의 뒷면(시뮬레이터를 화면에서 돌림)"},
+      {"path": "chapter1/tests/measure_combat.gd", "use": "확정 전 실제 코어로 대조"},
+      {"path": "chapter1/tests/sim_loot.gd", "use": "드랍 수치 대조"},
+      {"path": "chapter1/tests/sim_builds.gd", "use": "구성 간 격차"},
+      {"path": "tools/dev/wording_lint.py", "use": "새 이름·설명을 데이터에 넣기 전 낱말 검사"}
+    ]},
+    {"id": "narrative-lead", "label": "세계관·스토리(narrative-lead)", "about": "글을 새로 쓰거나 바꾸기 전과 뒤.", "tools": [
+      {"path": "tools/dev/wording_lint.py", "use": "금지 낱말·이름 꼴·글자 수·영어 용어집(규칙은 docs/story/wording-rules.json)"},
+      {"path": "tools/dev/decision_ledger.py", "use": "새 결정 번호를 붙이기 전에 다음 빈 번호와 겹침 확인"},
+      {"path": "tools/dev/check_glyphs.py", "use": "새 글자가 글꼴에 있는지"}
+    ]},
+    {"id": "refactor-architect", "label": "구조 리팩토링(refactor-architect)", "about": "동작이 그대로인지 확인.", "tools": [
+      {"path": "tools/dev/flatten_chain.py", "use": "상속 체인을 한 파일로 펴기"},
+      {"path": "chapter1/tests/hud_dump.gd", "use": "전후 HUD 노드 트리 덤프 비교"},
+      {"path": "chapter1/tests/golden_core.gd", "use": "코어 동작 불변 확인"},
+      {"path": "tools/dev/i18n_scan.py", "use": "한글 리터럴 수 비교"}
+    ]},
+    {"id": "qa-perf", "label": "검증·성능(qa-perf)", "about": "회귀, 프레임 시간, 캡처.", "tools": [
+      {"path": "tools/dev/run_all.py", "use": "회귀 전체/일부"},
+      {"path": "chapter1/tests/frame_probe.gd", "use": "실시간 프레임 간격 기록"},
+      {"path": "chapter1/tests/hud_dump.gd", "use": "화면 상태 덤프와 캡처"},
+      {"path": "tools/dev/check_build.py", "use": "빌드 점검"},
+      {"path": "tools/dev/build.py", "use": "빌드 만들기"}
+    ]},
+    {"id": "ui-hud", "label": "HUD(ui-hud)", "about": "화면 배치를 보는 도구.", "tools": [
+      {"path": "chapter1/tests/skill_tree_preview.gd", "use": "코어 없이 기술 트리 화면만 띄워 캡처"},
+      {"path": "chapter1/tests/hud_dump.gd", "use": "Control 사각형 덤프(겹침·잘림 점검 재료)와 캡처"},
+      {"path": "chapter1/tests/portrait_select_shots.gd", "use": "제목 화면 살아 있는 초상 캡처"},
+      {"path": "tools/dev/check_glyphs.py", "use": "새 글자의 글꼴 확인"},
+      {"path": "tools/dev/i18n_scan.py", "use": "한글 리터럴을 번역 틀로 옮겼는지"}
+    ]},
+    {"id": "vfx-feel", "label": "이펙트(vfx-feel)", "about": "효과의 비용과 모양 확인.", "tools": [
+      {"path": "chapter1/tests/hud_dump.gd", "use": "정해진 순간의 캡처와 3D 노드 덤프(--scene)"},
+      {"path": "chapter1/tests/frame_probe.gd", "use": "효과 켜고 끈 프레임 시간"},
+      {"path": "chapter1/tests/vat_preview.gd", "use": "뼈 애니메이션과 구운 군중 나란히 보기"},
+      {"path": "chapter1/tests/bake_vat.gd", "use": "정점 애니메이션 텍스처 굽기와 검증"}
+    ]},
+    {"id": "character-artist", "label": "캐릭터 아트(character-artist)", "about": "원화 가공.", "tools": [
+      {"path": "tools/dev/make_living_portrait_flake.py", "use": "원화에서 눈송이와 고리를 잘라 살아 있는 초상용으로"},
+      {"path": "chapter1/tests/portrait_select_shots.gd", "use": "초상이 제목 화면에서 어떻게 보이는지 캡처"}
+    ]},
+    {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [
+      {"path": "chapter1/tests/bake_vat.gd", "use": "걷는 적을 정점 애니메이션으로 굽기"},
+      {"path": "chapter1/tests/vat_preview.gd", "use": "구운 결과를 뼈 애니메이션과 나란히"}
+    ]},
+    {"id": "asset-producer", "label": "에셋 제작(asset-producer)", "about": "그림 후처리.", "tools": [
+      {"path": "tools/art/make_equipment_icons.py", "use": "생성된 장비 아이콘을 게임 크기로 가공"}
+    ]},
+    {"id": "sound", "label": "소리(audio-lead · sound-designer)", "about": "소리 측정과 비교.", "tools": [
+      {"path": "tools/dev/audio_measure.py", "use": "소리 파일 측정(길이·피크·음량·무음·대역). --compare-s1로 기준표 대조"},
+      {"path": "tools/dev/audio_audition.py", "use": "후보 비교 묶음(음량 맞춤, 정답표 따로)"},
+      {"path": "tools/dev/audio_mix_offline.py", "use": "녹음한 한 판에 지금의 재생 규칙을 적용해 WAV로"},
+      {"path": "chapter1/tests/report_audio_requests.gd", "use": "한 판에서 게임이 내는 소리 요청 기록"},
+      {"path": "tools/dev/make_drop_sounds.py", "use": "허가된 원본이 없는 드랍 소리 합성"}
+    ]},
+    {"id": "manager-tools", "label": "관리 툴(manager-tools)", "about": "이 화면과 그 뒷면.", "tools": [
+      {"path": "tools/manager/catalog.py", "use": "카탈로그 생성. --tools-index로 이 색인을 docs/TOOLS-INDEX.ko.md로 내보냄"},
+      {"path": "tools/manager/server.py", "use": "관리 툴 서버(127.0.0.1)"},
+      {"path": "tools/manager/balance_lab.py", "use": "균형 실험실의 뒷면"},
+      {"path": "tools/manager/drafts.py", "use": "원화 시안 갤러리"},
+      {"path": "tools/manager/playlog.py", "use": "플레이 기록"},
+      {"path": "tools/manager/tools_index.py", "use": "이 색인"}
+    ]},
+    {"id": "codex-operator", "label": "Codex 운용(codex-operator)", "about": "그림 생성 뒤의 정리.", "tools": [
+      {"path": "tools/art/make_equipment_icons.py", "use": "생성된 아이콘 후처리"},
+      {"path": "tools/manager/drafts.py", "use": "갤러리 등록 상태 읽기"}
+    ]}
+  ]
+}

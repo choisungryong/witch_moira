@@ -5,17 +5,17 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
-    from . import drafts, playlog, balance_lab
+    from . import drafts, playlog, balance_lab, tools_index
 except ImportError:
     from catalog import ROOT, generate
-    import drafts, playlog, balance_lab
+    import drafts, playlog, balance_lab, tools_index
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
 LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
-STATIC = {'index.html', 'app.js', 'drafts.js', 'playlog.js', 'balance.js', 'app.css', 'vendor/model-viewer.min.js'}
+STATIC = {'index.html', 'app.js', 'drafts.js', 'playlog.js', 'balance.js', 'tools.js', 'app.css', 'vendor/model-viewer.min.js'}
 FILE_TYPES = {'.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
               '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
               '.md': 'text/plain; charset=utf-8', '.po': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.gd': 'text/plain; charset=utf-8',
@@ -161,6 +161,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, balance_lab.meta(spells_id=(q.get('spells') or [None])[0], preset=(q.get('preset') or [None])[0]))
         if route == '/api/balance/experiments':
             return self.send_json(200, balance_lab.list_experiments())
+        if route == '/api/tools':
+            return self.send_json(200, tools_index.build())
         if route.startswith('/drafts/'):
             return self.send_draft(route[len('/drafts/'):])
         if route.startswith('/files/'):

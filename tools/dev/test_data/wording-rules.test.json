@@ -1,0 +1,28 @@
+{
+  "_note": "wording_lint.py 개발·자체 검사용 시험 규칙. 실제 규칙(docs/story/wording-rules.json)이 아니다. 낱말은 docs/story/WORDING-RULES.ko.md 의 일부를 옮긴 견본.",
+  "banned": [
+    {"word": "잿빛", "stems": [], "grade": "fail", "rule": "G1", "exceptions": [], "note": "색이면 회색"},
+    {"word": "깃들다", "stems": ["깃들", "깃든"], "grade": "fail", "rule": "G15", "exceptions": [], "note": ""},
+    {"word": "기운", "stems": [], "grade": "fail", "rule": "G16", "exceptions": ["기운 숄", "기운 옷", "기운 자국"], "note": "기운(氣運). 깁다의 기운과 구별"},
+    {"word": "신비로운", "stems": ["신비로"], "grade": "warn", "rule": "G24", "exceptions": [], "note": ""}
+  ],
+  "restricted": [
+    {"word": "황혼", "stems": [], "grade": "warn", "rule": "N1", "exceptions": [], "note": "이름 낱말로 쓰지 않는다"},
+    {"word": "숨결", "stems": [], "grade": "warn", "rule": "N9", "exceptions": [], "note": "눈에 보이는 입김만"},
+    {"word": "그림자", "stems": [], "grade": "warn", "rule": "N3", "exceptions": ["그림자 마녀"], "note": ""}
+  ],
+  "name_shape": [
+    {"id": "F1", "desc": "이름 하나에 '의'가 둘", "pattern": "의.*의", "grade": "warn", "applies_to": []},
+    {"id": "F9", "desc": "부정 관형어 이름", "pattern": "^(꺼지지 않는|이름 없는|노래 없는)", "grade": "fail", "applies_to": ["name"]}
+  ],
+  "name_max_chars": {"default": 14, "by_key_pattern": {"zone.*.name": 8}},
+  "en_glossary": {
+    "must": [{"ko": "서약", "en": "Vow"}],
+    "banned_en": ["Ashen", "Tapestry"]
+  },
+  "allow_pending": [
+    {"file": "chapter1/i18n/ko.po", "key_or_text": "잿빛 앞뜰", "decision": "N55", "why": "구역 이름 결정 대기"},
+    {"file": "chapter1/data/loot.json", "key_or_text": "황혼", "decision": "N40", "why": "희귀 낱말 결정 대기"}
+  ],
+  "future_key": {"무시": "모르는 키는 무시한다"}
+}

@@ -1084,5 +1084,12 @@ def generate_once():
 
 
 if __name__ == '__main__':
+    if '--tools-index' in sys.argv:
+        # 도구 색인을 문서로 내보낸다: python tools/manager/catalog.py --tools-index [--out 경로]
+        import tools_index
+        out = sys.argv[sys.argv.index('--out') + 1] if '--out' in sys.argv[:-1] else None
+        path, data = tools_index.export(out)
+        print('wrote %s (도구 %d개, 경고 %d)' % (path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else path, data['tool_count'], len(data['warnings'])))
+        sys.exit(0)
     r = generate()
     print(json.dumps({k: r[k] for k in ('basis', 'categories', 'usage_counts', 'warnings')}, ensure_ascii=False, indent=1))
