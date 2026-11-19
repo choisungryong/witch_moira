@@ -327,8 +327,29 @@ var _chapter_last_event := -1
 const RunRecord=preload("res://chapter1/app/run_record.gd")
 var recorder=RunRecord.new()
 var run_record_view: Dictionary={}
+## Dev trial: `--chapter1-trial=spells,rhythm` switches the systems that are parked off in the data files on, for this
+## process only (the files stay off). Only together with --chapter1-profile-off, so a trial never writes to the player's save.
+func _apply_trial() -> void:
+	var wanted:=""
+	for arg in _user_args():
+		if arg.begins_with("--chapter1-trial="):wanted=arg.trim_prefix("--chapter1-trial=")
+	if wanted.is_empty():return
+	if not "--chapter1-profile-off" in _user_args():
+		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
+	var parts:=wanted.split(",",false)
+	if "rhythm" in parts:
+		var tuning_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
+		if tuning_doc is Dictionary and tuning_doc.get("rhythm") is Dictionary:
+			tuning_doc["rhythm"]["enabled"]=true
+			if not run.set_tuning(tuning_doc):push_warning("trial rhythm refused: "+str(run.errors))
+	if "spells" in parts:
+		var spells_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
+		if spells_doc is Dictionary:
+			spells_doc["enabled"]=true
+			if not run.set_run_spells(spells_doc):push_warning("trial spells refused: "+str(run.errors))
 func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
+	_apply_trial()
 	full_pilot.run=run
 func _ready() -> void:
 	_profile_off="--chapter1-profile-off" in _user_args()
@@ -461,7 +482,7 @@ func start_fresh_profile(use_revision: bool) -> bool:
 ## From a result window back to the title menu: a fresh core object is the same state the game starts in.
 func return_to_menu() -> void:
 	if run.mode not in ["victory","defeat"]:return
-	run=ChapterRun.new();full_pilot.run=run
+	run=ChapterRun.new();_apply_trial();full_pilot.run=run
 	actors.reset();actors.rest_for_menu();effects.reset()
 	if juice!=null:juice.reset()
 	hud.reset();audio.reset();audio.set_paused(true)
