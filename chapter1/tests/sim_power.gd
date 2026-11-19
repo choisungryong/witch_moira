@@ -42,6 +42,10 @@ extends SceneTree
 ##   and `effects` (the effective numbers of each owned spell, to check ring cooldown/radius/damage). --inflow-mix=w:r:c replaces the rhythm's mix (also the trial's), or -ranged / -charger / -both zero those weights and keep the rest.
 ##   --inflow-fine=R is a non-integer enemies-per-second rate. The core's tuning document is read-only, so --waves=off, --inflow=R, --inflow-fine and --inflow-mix are applied to a private copy installed with set_tuning() before start()
 ##   (before this change --waves=off and --inflow=R wrote into the read-only document and did nothing). Without those switches nothing is installed and every old key of a cell is unchanged.
+## N1 (KS-3 core in memory; the data file stays "enabled": false): --n0 also adds src_hits / src_dmg_hp (hero_hit.source_kind: walker, ranged, charger, ...), ranged_kills_ring / _basic / _other, ward (the core's metrics.ward counted
+##   after the warm-up: casts, hits, kills, staggers, cuts, freezes, stuns, vs_cc_hits, vs_cc_extra_raw, i2_hits, i2_extra_raw, i0_casts, i0_kills), dealt_hp, ring_dealt_share_pct, i1_extra_share_pct, i2_extra_share_pct (extra / damage dealt).
+##   --basic-reach=half|none weakens every basic spell's width axis in memory (half: level n takes the values of level n/2; none: no change at any level). --i0=off empties every basic spell's prefer_kinds (I0 off).
+##   --ring-cd-all makes --ring-cd also overwrite the cooldown steps of the ring's reach table (without it a reach level that sets cooldown_ticks overrides the base value). Without these switches nothing changes.
 ## --pretag=status:n (counterfactual) gives every ordinary enemy that status, n stacks, by the pair applier, before every step.
 ## --set=a/b/c=value overrides one value of the run_spells document in memory (path with "/", spell ids keep their dots), repeatable.
 ## Args: --witches=ember,frost,arc --beat=gi|seung1|seung2|jeon_a --hp=lo|mid|hi --density=15,35,60,85 --secs=60 --warmup=6
@@ -81,6 +85,9 @@ var ring_knobs := {}
 var tally_on := false
 var inflow_on := false
 var n0_on := false
+var basic_reach_mode := "shipped"
+var i0_on := true
+var ring_cd_all := false
 var inflow_mix_arg := ""
 var inflow_fine := 0.0
 var inflow_kills := 0
@@ -134,7 +141,22 @@ func shipped_doc(witch: String = "") -> Dictionary:
 	for entry in doc_overrides:
 		if not set_path(doc, String(entry.path), entry.value): checks_failed.append("override path not found: " + String(entry.path))
 	if not witch.is_empty() and not ring_knobs.is_empty(): apply_ring_knobs(doc, witch)
+	if basic_reach_mode != "shipped" or not i0_on: apply_basic_knobs(doc)
 	return doc
+
+## N1 (in-memory only): --basic-reach=half|none weakens the basic spells' width axis (half: level n gets the values of level n/2, none: no level changes anything);
+## --i0=off empties every basic spell's prefer_kinds (I0 off; I1's prefer_cc_cm stays).
+func apply_basic_knobs(doc: Dictionary) -> void:
+	for id_ in doc.spells:
+		var s: Dictionary = doc.spells[id_]
+		if String(s.get("role", "")) != "basic": continue
+		if basic_reach_mode != "shipped":
+			var old: Array = s.reach.duplicate(true)
+			for i in s.reach.size():
+				if basic_reach_mode == "none": s.reach[i] = {}
+				elif basic_reach_mode == "half": s.reach[i] = old[i / 2].duplicate(true)
+				else: checks_failed.append("unknown --basic-reach " + basic_reach_mode)
+		if not i0_on: s["prefer_kinds"] = []
 
 ## Ring knobs (see the header): written into the witch's own ring spell in the in-memory document only.
 func apply_ring_knobs(doc: Dictionary, witch: String) -> void:
@@ -151,7 +173,12 @@ func apply_ring_knobs(doc: Dictionary, witch: String) -> void:
 		for r in reach:
 			if r.has("ring_radius_cm"): r.ring_radius_cm = cm
 	if ring_knobs.has("dmg_x_walker"): base.damage_raw = maxi(1, int(round(float(ring_knobs.dmg_x_walker) * float(cur_walker_hp) * float(UNIT))))
-	if ring_knobs.has("cd_s"): base.cooldown_ticks = maxi(12, int(round(float(ring_knobs.cd_s) * 60.0)))
+	if ring_knobs.has("cd_s"):
+		base.cooldown_ticks = maxi(12, int(round(float(ring_knobs.cd_s) * 60.0)))
+		## N1: --ring-cd-all also flattens the reach levels' cooldown_ticks (the shipped reach table has cooldown steps that would override the base value).
+		if ring_cd_all:
+			for r in reach:
+				if r.has("cooldown_ticks"): r.cooldown_ticks = base.cooldown_ticks
 	if ring_knobs.has("dmg"): base.damage_raw = maxi(1, int(round(float(base.damage_raw) * float(ring_knobs.dmg))))
 	if ring_knobs.has("vs_strong"): s.vs_strong_bps = int(round(float(ring_knobs.vs_strong) * 10000.0))
 	if ring_knobs.has("pulses"): base.ring_pulses = int(ring_knobs.pulses)
@@ -961,10 +988,12 @@ func inflow_tuning(bidx: int) -> Dictionary:
 
 func new_n0() -> Dictionary:
 	return {"samples": 0, "alive": {"walker": 0, "ranged": 0, "charger": 0, "elite": 0}, "r6": 0, "r6_hist": [0, 0, 0, 0], "born": {}, "life": [], "ring_kills": 0, "kills": 0,
-		"basic_hits": 0, "basic_hard": 0, "basic_slow": 0, "basic_frozen_any": 0, "cc_hard": {}, "cc_slow": {}, "h_walker": 0, "h_charger": 0, "h_proj": 0, "h_other": 0, "d_walker": 0, "d_charger": 0, "d_proj": 0, "d_other": 0, "ring_hits_total": 0}
+		"basic_hits": 0, "basic_hard": 0, "basic_slow": 0, "basic_frozen_any": 0, "cc_hard": {}, "cc_slow": {}, "h_walker": 0, "h_charger": 0, "h_proj": 0, "h_other": 0, "d_walker": 0, "d_charger": 0, "d_proj": 0, "d_other": 0, "ring_hits_total": 0,
+		"sk_h": {}, "sk_d": {}, "rk_ring": 0, "rk_basic": 0, "rk_other": 0, "dealt_raw": 0, "dealt_ring_raw": 0, "dealt_basic_raw": 0}
 
 ## N0 tracker, once per tick after the step. counting=false during the warm-up (state is kept, nothing is counted).
 func collect_n0(run: RefCounted, n0: Dictionary, counting: bool, ring_id: String, basic_id: String) -> void:
+	if not counting: n0["ward0"] = run.metrics.get("ward", {}).duplicate()
 	for ev in run.events:
 		match String(ev.type):
 			"spawn":
@@ -979,9 +1008,17 @@ func collect_n0(run: RefCounted, n0: Dictionary, counting: bool, ring_id: String
 				if counting:
 					n0.kills += 1
 					if String(ev.skill_id) == ring_id: n0.ring_kills += 1
+					if String(ev.get("kind", "")) == "ranged":
+						if String(ev.skill_id) == ring_id: n0.rk_ring += 1
+						elif String(ev.skill_id) == basic_id: n0.rk_basic += 1
+						else: n0.rk_other += 1
 			"hit":
 				var sid := String(ev.skill_id)
 				var tid := int(ev.target_id)
+				if counting:
+					n0.dealt_raw += int(ev.dealt_raw)
+					if sid == ring_id: n0.dealt_ring_raw += int(ev.dealt_raw)
+					elif sid == basic_id: n0.dealt_basic_raw += int(ev.dealt_raw)
 				if sid == ring_id:
 					if bool(ev.get("frozen", false)) and run.enemies.has(tid): n0.cc_hard[tid] = int(run.enemies[tid].frozen_until)
 					if not n0.has("ring_slow"): n0["ring_slow"] = int(run.spells.spells[ring_id].get("slow_ticks", 0)) if int(run.effective_skill(ring_id).effects.get("slow_bps", 0)) > 0 else 0
@@ -994,6 +1031,10 @@ func collect_n0(run: RefCounted, n0: Dictionary, counting: bool, ring_id: String
 					if bool(ev.get("frozen", false)): n0.basic_frozen_any += 1
 			"hero_hit":
 				if not counting: continue
+				## The core's own source (hero_hit.source_kind) is exact; the position guess below is kept only for the old keys.
+				var skind := String(ev.get("source_kind", "?"))
+				n0.sk_h[skind] = int(n0.sk_h.get(skind, 0)) + 1
+				n0.sk_d[skind] = int(n0.sk_d.get(skind, 0)) + int(ev.damage_raw)
 				var fp: Vector2 = ev.get("from", Vector2(1e9, 1e9))
 				var kind := "proj"
 				for en in run.enemies.values():
@@ -1031,6 +1072,23 @@ func finish_n0(n0: Dictionary, run: RefCounted) -> Dictionary:
 		"basic_hits_frozen_any_pct": r1(100.0 * float(n0.basic_frozen_any) / maxf(1.0, float(n0.basic_hits))),
 		"hits_walker": n0.h_walker, "hits_charger": n0.h_charger, "hits_proj": n0.h_proj, "hits_other": n0.h_other,
 		"dmg_walker_hp": r1(float(n0.d_walker) / UNIT), "dmg_charger_hp": r1(float(n0.d_charger) / UNIT), "dmg_proj_hp": r1(float(n0.d_proj) / UNIT)}
+	## N1 (KS-3 core): exact hit sources from hero_hit.source_kind, ranged kills by killer, the core's metrics.ward, and the interlock share (I1 + I2 extra damage / damage dealt).
+	var sk_hp := {}
+	for k in n0.sk_d: sk_hp[k] = r1(float(n0.sk_d[k]) / UNIT)
+	out.src_hits = n0.sk_h
+	out.src_dmg_hp = sk_hp
+	out.ranged_kills_ring = n0.rk_ring
+	out.ranged_kills_basic = n0.rk_basic
+	out.ranged_kills_other = n0.rk_other
+	var ward: Dictionary = run.metrics.get("ward", {}).duplicate()
+	var ward0: Dictionary = n0.get("ward0", {})
+	for k in ward: ward[k] = int(ward[k]) - int(ward0.get(k, 0))
+	out.ward = ward
+	var dealt := maxf(1.0, float(n0.dealt_raw))
+	out.dealt_hp = r1(float(n0.dealt_raw) / UNIT)
+	out.ring_dealt_share_pct = r1(100.0 * float(n0.dealt_ring_raw) / dealt)
+	out.i1_extra_share_pct = r1(100.0 * float(ward.get("vs_cc_extra_raw", 0)) / dealt)
+	out.i2_extra_share_pct = r1(100.0 * float(ward.get("i2_extra_raw", 0)) / dealt)
 	return out
 
 ## INFLOW mode: the core's OWN rhythm spawner (combat_tuning rhythm.beats / trial, zone damage/speed/hp, crests, lulls, alive_cap, ring distance) feeds the arena;
@@ -1214,6 +1272,9 @@ func execute() -> void:
 		if "," in slow_text: ring_knobs.slow_ticks = float(slow_text.get_slice(",", 1))
 	speed_mult = float(arg_string("--speed-mult", "1.0"))
 	n0_on = arg_flag("--n0")
+	basic_reach_mode = arg_string("--basic-reach", "shipped")
+	i0_on = arg_string("--i0", "on") != "off"
+	ring_cd_all = arg_flag("--ring-cd-all")
 	inflow_mix_arg = arg_string("--inflow-mix", "")
 	inflow_fine = float(arg_string("--inflow-fine", "0"))
 	var modes := arg_names("--mode", [])
@@ -1346,7 +1407,7 @@ func execute() -> void:
 	if legacy and not tally_on and crowd_modes == ["pilot"]: print_tables(results, witches, build_names, densities if do_crowd else [], single_mobs if do_single else [], single_modes if do_single else [])
 	var elapsed := r1(float(Time.get_ticks_msec() - started_ms) / 1000.0)
 	var meta := {"beat": beat_id, "hp_mode": hp_mode, "beat_hp_bps": beat.hp_bps, "beat_mix": beat.mix, "beat_zone": beat.zone, "secs": secs, "single_secs": single_secs, "warmup_s": warmup, "seeds": seeds, "witches": witches,
-		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed, "modes": modes, "ring_knobs": ring_knobs, "knobs_not_applied": unsupported, "tally": tally_on, "crowd_modes": crowd_modes, "mix": mix_text, "elite_hp": elite_hp_arg, "created_keys": created_keys, "iframes": iframes_override, "speed_mult": speed_mult, "n0": n0_on, "inflow_mix": inflow_mix_arg, "inflow_fine": inflow_fine,
+		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed, "modes": modes, "ring_knobs": ring_knobs, "knobs_not_applied": unsupported, "tally": tally_on, "crowd_modes": crowd_modes, "mix": mix_text, "elite_hp": elite_hp_arg, "created_keys": created_keys, "iframes": iframes_override, "speed_mult": speed_mult, "n0": n0_on, "inflow_mix": inflow_mix_arg, "inflow_fine": inflow_fine, "basic_reach": basic_reach_mode, "i0": "on" if i0_on else "off", "ring_cd_all": ring_cd_all,
 		"setup": "build fixed in memory; document enabled in memory; hero cannot die; xp discarded; gear hidden (no-equip); pilot movement unchanged; bot numbers are a reference only, fun not evaluated"}
 	if not out_path.is_empty():
 		var abs_path := ProjectSettings.globalize_path("res://" + out_path)
