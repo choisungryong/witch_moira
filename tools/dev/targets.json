@@ -1,0 +1,4965 @@
+{
+ "schema": 1,
+ "title": "목표 판정표 — 목표 파일",
+ "header": "자동 조작 기준, 재미 미평가",
+ "rules": [
+  "출처 문서에서 글자 그대로 옮긴다. 문서끼리 어긋나면 conflict.candidates에 모두 적고 고르지 않는다.",
+  "목표를 측정 결과에 맞춰 옮기지 않는다. 바꾸려면 디렉터의 결정 기록과 함께 이 파일을 고친다.",
+  "kind=human 항목은 사용자 플레이 기록이 있어도 도구가 판정하지 않는다(늘 미평가).",
+  "range: min/max는 이상/이하, min_excl/max_excl은 초과/미만, eq는 같음. pass_fraction은 판 단위 지표에서 범위 안이어야 하는 판의 비율(문서에 없으면 1.0=전 판, 도구 기본). min_runs보다 판이 적으면 못 잼.",
+  "status: 가설 = 문서가 [가설]로 표기. 확정 = QUALITY-TARGETS처럼 가설 표기가 없는 것(문서에 확정이라 적힌 것은 아님)."
+ ],
+ "targets": [
+  {
+   "key": "q1.regression",
+   "group": "Q1 항상 지키는 기준",
+   "label": "회귀 전부 통과",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "bool",
+   "range": {
+    "eq": true
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "회귀 | `run_all.py` 전부 통과 | 명령 실행"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q1.script_errors",
+   "group": "Q1 항상 지키는 기준",
+   "label": "스크립트 오류 건수",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "건",
+   "range": {
+    "max": 0
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "스크립트 오류 | 실행 로그에 스크립트 오류 0건 | `run_dev.py` 실행 로그"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q1.perf_p95_ms",
+   "group": "Q1 항상 지키는 기준",
+   "label": "프레임 시간 p95",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "ms",
+   "range": {
+    "max": 16.6
+   },
+   "condition": {
+    "state": "1920×1080 실행 빌드",
+    "runs": "프레임 측정기 3회"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "성능 | 1920×1080 실행 빌드에서 프레임 시간 p95 16.6ms 이하, 50ms 넘는 끊김 0회 | 프레임 측정기 3회"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q1.perf_hitch_50ms",
+   "group": "Q1 항상 지키는 기준",
+   "label": "50ms 넘는 끊김",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "회",
+   "range": {
+    "max": 0
+   },
+   "condition": {
+    "state": "1920×1080 실행 빌드",
+    "runs": "프레임 측정기 3회"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "성능 | 1920×1080 실행 빌드에서 프레임 시간 p95 16.6ms 이하, 50ms 넘는 끊김 0회 | 프레임 측정기 3회"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q1.save",
+   "group": "Q1 항상 지키는 기준",
+   "label": "기존 저장 불변·새 저장 재읽기",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "bool",
+   "range": {
+    "eq": true
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "저장 | 기존 저장 파일을 수정하지 않음. 새 저장은 재실행 뒤에도 그대로 읽힘 | 프로필 검사"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q1.determinism",
+   "group": "Q1 항상 지키는 기준",
+   "label": "코어를 안 고친 변경의 골든",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "bool",
+   "range": {
+    "eq": true
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "1",
+    "text": "결정론 | 코어를 고치지 않은 변경은 골든 리플레이가 그대로 | 골든 비교"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q2.hero_height",
+   "group": "Q2 전투 화면(수치)",
+   "label": "주인공의 화면 높이",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "% (화면 높이 대비)",
+   "range": {
+    "min": 9,
+    "max": 12
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "주인공의 화면 높이 | 9~12%"
+   },
+   "doc_tool": "캡처 측정(ART-REVIEW 2.1)",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q2.seconds",
+   "group": "Q2 전투 화면(수치)",
+   "label": "판 길이",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "초",
+   "range": null,
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "판 길이 | 300~360초"
+   },
+   "pass_fraction": 1.0,
+   "conflict": {
+    "note": "문서마다 판 길이 목표가 다르다. 고르지 않고 후보를 모두 적는다. 판정은 후보별로 낸다(후보가 같은 판정이면 그 판정, 다르면 충돌).",
+    "candidates": [
+     {
+      "id": "quality",
+      "range": {
+       "min": 300,
+       "max": 360
+      },
+      "pass_fraction": 1.0,
+      "doc": "docs/QUALITY-TARGETS.ko.md",
+      "section": "2",
+      "text": "판 길이 | 300~360초 | **달성 9/9** (304~356초).",
+      "also_in": "chapter1/tests/measure_combat.gd TARGETS.seconds [300,360]"
+     },
+     {
+      "id": "d11_g1",
+      "range": {
+       "min": 390,
+       "max": 450
+      },
+      "pass_fraction": 0.8888888888888888,
+      "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+      "section": "G1",
+      "text": "판 길이(우두머리 처치까지) | 390~450초. 9판 중 8판 이상 | `measure_combat.gd`(목표 상수를 바꿔야 함, G2)",
+      "also_in": "D11 A2: 판 전체 길이 목표: 전투 6:30~7:30 + 결 0:30~1:00 = 7~8분."
+     },
+     {
+      "id": "user_decision_1",
+      "range": {
+       "min": 360,
+       "max": 480
+      },
+      "pass_fraction": 1.0,
+      "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+      "section": "머리말 사용자 결정(조건) ①",
+      "text": "① 한 판 6~8분",
+      "note": "6~8분은 전투 뒤 결·귀환을 포함한 한 판이라 우두머리 처치 시각과 같은 양은 아니다. 초로 환산(360~480)만 했다. 판정 규칙(판 수 비율)은 문서에 없어 전 판으로 둔다."
+     }
+    ]
+   }
+  },
+  {
+   "key": "q2.friendly_peak_1s",
+   "group": "Q2 전투 화면(수치)",
+   "label": "동시에 보이는 아군 투사체(1초 평균의 최대)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "개",
+   "range": {
+    "min": 60
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "동시에 보이는 아군 투사체 | 전투가 한창일 때 1초 평균의 최대 60 이상. 번개는 줄기(수명 24틱)를 함께 센다"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.hero_share_pre",
+   "group": "Q2 전투 화면(수치)",
+   "label": "주인공이 직접 쏜 탄의 비율(진화 전)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "비율",
+   "range": {
+    "eq": 1.0
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "주인공이 직접 쏜 탄의 비율 | 진화 전 100%, 진화 후 70% 이상"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.hero_share_post",
+   "group": "Q2 전투 화면(수치)",
+   "label": "주인공이 직접 쏜 탄의 비율(진화 후)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "비율",
+   "range": {
+    "min": 0.7
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "주인공이 직접 쏜 탄의 비율 | 진화 전 100%, 진화 후 70% 이상"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.primary_hit_share",
+   "group": "Q2 전투 화면(수치)",
+   "label": "주력 계열의 명중 비중",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "비율",
+   "range": {
+    "min": 0.55
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "주력 계열의 명중 비중 | 전체 명중의 55% 이상(상한 폐기)"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.secondary_contribution",
+   "group": "Q2 전투 화면(수치)",
+   "label": "보조 기여율",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "비율",
+   "range": {
+    "min": 0.12,
+    "max": 0.3
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "보조 기여율 | 0.12~0.30, 보조를 끈 반사실에서 통과"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd --secondary-off",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.secondary_counterfactual",
+   "group": "Q2 전투 화면(수치)",
+   "label": "보조를 끈 반사실 통과",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "bool",
+   "range": {
+    "eq": true
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "보조 기여율 | 0.12~0.30, 보조를 끈 반사실에서 통과"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd --secondary-off",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.attacks_per_min",
+   "group": "Q2 전투 화면(수치)",
+   "label": "적의 공격 시도",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "회/분",
+   "range": {
+    "min": 60
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "적의 공격 시도 | 분당 60회 이상"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.threat",
+   "group": "Q2 전투 화면(수치)",
+   "label": "위협(최저 생명 또는 60초 창 피해)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "판별",
+   "range": null,
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "위협 | 최저 생명 0.40 미만 또는 60초 창 피해가 최대 생명의 0.60 이상. 자동 조작의 패배는 9판 중 1판 이하"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다. 판별: 최저 생명 비 < 0.40 또는 60초 창 피해 ≥ 0.60 인 판이 전 판",
+   "params": {
+    "min_hp_ratio_below": 0.4,
+    "burst60_at_least": 0.6
+   }
+  },
+  {
+   "key": "q2.defeats",
+   "group": "Q2 전투 화면(수치)",
+   "label": "자동 조작의 패배(기본 정책)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "판",
+   "range": {
+    "max": 1
+   },
+   "condition": {
+    "state": "기본 정책(자동 조작)",
+    "runs": "9판",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "위협 | 최저 생명 0.40 미만 또는 60초 창 피해가 최대 생명의 0.60 이상. 자동 조작의 패배는 9판 중 1판 이하"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd / measure_rhythm.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "G1",
+     "text": "패배 | 9판 중 1판 이하(지금 기준 유지). (2026-11-19 개정) 이 줄은 자동 조작의 **기본 정책**에 대한 것이다. 정책별 목표는 아래 \"정책별 결과\""
+    }
+   ]
+  },
+  {
+   "key": "q2.heavy_gap",
+   "group": "Q2 전투 화면(수치)",
+   "label": "깎이지 않은 큰 한 방의 최소 간격",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "틱",
+   "range": {
+    "min": 120
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "큰 한 방 간격 | 깎이지 않은 큰 한 방의 최소 간격이 120틱 이상"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.cap_fraction",
+   "group": "Q2 전투 화면(수치)",
+   "label": "레벨 상한 도달 시점(판 길이 대비)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "비율",
+   "range": {
+    "min": 0.85
+   },
+   "condition": {
+    "state": "일반 기준",
+    "runs": "세 계열 × 시드 11·12·13",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "레벨 상한 도달 시점 | 판 길이의 85% 이후"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_combat.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 표의 \"달성 9/9\" 서술에 따라 전 판 통과를 기본 규칙으로 둔다"
+  },
+  {
+   "key": "q2.core_tick_p95",
+   "group": "Q2 전투 화면(수치)",
+   "label": "코어 1틱 p95(이전 대비)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "배",
+   "range": {
+    "max": 1.3
+   },
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2",
+    "text": "코어 1틱 p95(병렬 실행 섞임) | 이전의 1.3배 이내"
+   },
+   "doc_tool": "measure_combat.gd(step_usec_p50_p95_p99) — 이전 기준값 필요",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q2.still.1",
+   "group": "Q2 정지 화면(사람)",
+   "label": "주인공이 어디 있는지 1초 안에 짚을 수 있다.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 정지 화면 한 장으로 확인하는 것",
+    "text": "1. 주인공이 어디 있는지 1초 안에 짚을 수 있다."
+   },
+   "note": "같은 시드, 같은 시점의 캡처를 놓고 본다. 문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "주인공이 어디 있는지 1초 안에 짚을 수 있다."
+  },
+  {
+   "key": "q2.still.2",
+   "group": "Q2 정지 화면(사람)",
+   "label": "적의 공격 전조가 주문 효과에 가려지지 않는다.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 정지 화면 한 장으로 확인하는 것",
+    "text": "2. 적의 공격 전조가 주문 효과에 가려지지 않는다."
+   },
+   "note": "같은 시드, 같은 시점의 캡처를 놓고 본다. 문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "적의 공격 전조가 주문 효과에 가려지지 않는다."
+  },
+  {
+   "key": "q2.still.3",
+   "group": "Q2 정지 화면(사람)",
+   "label": "세 계열(화염·냉기·번개)의 효과를 색을 지워도 형태로 구분할 수 있다.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 정지 화면 한 장으로 확인하는 것",
+    "text": "3. 세 계열(화염·냉기·번개)의 효과를 색을 지워도 형태로 구분할 수 있다."
+   },
+   "note": "같은 시드, 같은 시점의 캡처를 놓고 본다. 문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "세 계열(화염·냉기·번개)의 효과를 색을 지워도 형태로 구분할 수 있다."
+  },
+  {
+   "key": "q2.still.4",
+   "group": "Q2 정지 화면(사람)",
+   "label": "방금 적이 죽은 자리를 짚을 수 있다.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 정지 화면 한 장으로 확인하는 것",
+    "text": "4. 방금 적이 죽은 자리를 짚을 수 있다."
+   },
+   "note": "같은 시드, 같은 시점의 캡처를 놓고 본다. 문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "방금 적이 죽은 자리를 짚을 수 있다."
+  },
+  {
+   "key": "q2.still.5",
+   "group": "Q2 정지 화면(사람)",
+   "label": "우두머리를 일반 적과 구분할 수 있다.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 정지 화면 한 장으로 확인하는 것",
+    "text": "5. 우두머리를 일반 적과 구분할 수 있다."
+   },
+   "note": "같은 시드, 같은 시점의 캡처를 놓고 본다. 문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "우두머리를 일반 적과 구분할 수 있다."
+  },
+  {
+   "key": "q2.play.1",
+   "group": "Q2 플레이 질문(사람)",
+   "label": "맞았다는 느낌이 소리 없이도 드는가.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 사람이 플레이하고 답하는 것",
+    "text": "1. 맞았다는 느낌이 소리 없이도 드는가."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "맞았다는 느낌이 소리 없이도 드는가."
+  },
+  {
+   "key": "q2.play.2",
+   "group": "Q2 플레이 질문(사람)",
+   "label": "가장 좋았던 순간은 언제였나.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 사람이 플레이하고 답하는 것",
+    "text": "2. 가장 좋았던 순간은 언제였나."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "가장 좋았던 순간은 언제였나."
+  },
+  {
+   "key": "q2.play.3",
+   "group": "Q2 플레이 질문(사람)",
+   "label": "지루했던 구간은 어디였나.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 사람이 플레이하고 답하는 것",
+    "text": "3. 지루했던 구간은 어디였나."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "지루했던 구간은 어디였나."
+  },
+  {
+   "key": "q2.play.4",
+   "group": "Q2 플레이 질문(사람)",
+   "label": "죽었다면 왜 죽었는지 알았나.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 사람이 플레이하고 답하는 것",
+    "text": "4. 죽었다면 왜 죽었는지 알았나."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "죽었다면 왜 죽었는지 알았나."
+  },
+  {
+   "key": "q2.play.5",
+   "group": "Q2 플레이 질문(사람)",
+   "label": "한 판 더 하고 싶은가.",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "2 사람이 플레이하고 답하는 것",
+    "text": "5. 한 판 더 하고 싶은가."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "한 판 더 하고 싶은가."
+  },
+  {
+   "key": "q3.res",
+   "group": "Q3 HUD",
+   "label": "해상도",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "해상도 | 1280×720과 1920×1080에서 겹침·잘림 없음"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)"
+  },
+  {
+   "key": "q3.occlude",
+   "group": "Q3 HUD",
+   "label": "가림",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "가림 | 화면 가운데 가로 60%·세로 60% 영역을 표시가 가리지 않음"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)"
+  },
+  {
+   "key": "q3.alert",
+   "group": "Q3 HUD",
+   "label": "위급 신호",
+   "kind": "human",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "위급 신호 | 생명이 30% 아래일 때 구슬만 봐도 알 수 있음(색이나 움직임이 달라짐)"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)",
+   "question": "생명이 30% 아래일 때 구슬만 봐도 알 수 있음(색이나 움직임이 달라짐)"
+  },
+  {
+   "key": "q3.read",
+   "group": "Q3 HUD",
+   "label": "읽기",
+   "kind": "human",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "읽기 | 스킬 칸은 글자 없이 아이콘과 재사용 표시만으로 상태를 알 수 있음"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)",
+   "question": "스킬 칸은 글자 없이 아이콘과 재사용 표시만으로 상태를 알 수 있음"
+  },
+  {
+   "key": "q3.consist",
+   "group": "Q3 HUD",
+   "label": "일관성",
+   "kind": "human",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "일관성 | 틀, 글꼴, 색이 한 가지 규칙을 따름"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)",
+   "question": "틀, 글꼴, 색이 한 가지 규칙을 따름"
+  },
+  {
+   "key": "q3.extend",
+   "group": "Q3 HUD",
+   "label": "확장",
+   "kind": "human",
+   "status": "확정",
+   "unit": "기준",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "확장 | 필살기 칸과 영혼 게이지가 배치를 흔들지 않고 들어감"
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 자동/사람 구분은 이 도구의 분류(문서에 확인 방법 칸 없음). 자동 점검 도구는 아직 없다(TOOLS-REVIEW T3 후보)",
+   "question": "필살기 칸과 영혼 게이지가 배치를 흔들지 않고 들어감"
+  },
+  {
+   "key": "q3.human",
+   "group": "Q3 HUD",
+   "label": "처음 보는 사람이 설명 없이 생명·스킬·목표를 짚는가",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "3",
+    "text": "사람 평가: 처음 보는 사람이 설명 없이 생명·스킬·목표가 어디 있는지 짚을 수 있는가."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "처음 보는 사람이 설명 없이 생명·스킬·목표가 어디 있는지 짚을 수 있는가."
+  },
+  {
+   "key": "q4.rare",
+   "group": "Q4 장비와 득템",
+   "label": "한 판의 희귀",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "개/판",
+   "range": {
+    "min": 3.0,
+    "max": 5.0
+   },
+   "condition": {
+    "state": "시뮬레이션(sim_loot.gd 판당 평균)",
+    "runs": "1만 판(--runs=10000)"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "한 판의 희귀 | 3~5개 | 시뮬레이션 4.6 / 실제 3"
+   },
+   "doc_tool": "sim_loot.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D6-loot-farming-spec.ko.md",
+     "section": "표(드랍 시뮬레이션)",
+     "text": "희귀 | 3~5 | 4.655"
+    },
+    {
+     "doc": "docs/specs/D2-elite-carrier-spec.ko.md",
+     "section": "4.2",
+     "text": "목표(희귀 3~5, 장신구 0.6~1.6, 전설 0.25~0.45, 유니크 0.12~0.28)"
+    }
+   ]
+  },
+  {
+   "key": "q4.jewelry",
+   "group": "Q4 장비와 득템",
+   "label": "한 판의 장신구",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "개/판",
+   "range": null,
+   "condition": {
+    "state": "시뮬레이션(sim_loot.gd 판당 평균)",
+    "runs": "1만 판(--runs=10000)"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "한 판의 장신구 | 1개 안팎 | 시뮬레이션 1.4 / 실제 1~3"
+   },
+   "doc_tool": "sim_loot.gd",
+   "conflict": {
+    "note": "QUALITY-TARGETS는 \"1개 안팎\"(수치 범위 없음), D2·D6·sim_loot 상수는 0.6~1.6. 같은 목표의 구체화인지 어긋남인지 문서가 말하지 않는다. 고르지 않고 둘 다 적는다. \"1개 안팎\"은 범위가 없어 판정하지 않는다.",
+    "candidates": [
+     {
+      "id": "quality",
+      "range": null,
+      "doc": "docs/QUALITY-TARGETS.ko.md",
+      "section": "4",
+      "text": "한 판의 장신구 | 1개 안팎 | 시뮬레이션 1.4 / 실제 1~3",
+      "note": "범위 없음(판정 불가)"
+     },
+     {
+      "id": "d6_d2",
+      "range": {
+       "min": 0.6,
+       "max": 1.6
+      },
+      "doc": "docs/specs/D6-loot-farming-spec.ko.md",
+      "section": "표(드랍 시뮬레이션)",
+      "text": "장신구 | 0.6~1.6 | 1.446(판의 77.3%에서 1개 이상)",
+      "also_in": "D2 4.2: 목표(희귀 3~5, 장신구 0.6~1.6, 전설 0.25~0.45, 유니크 0.12~0.28); chapter1/tests/sim_loot.gd TARGETS.jewelry [0.6,1.6]"
+     }
+    ]
+   }
+  },
+  {
+   "key": "q4.legendary",
+   "group": "Q4 장비와 득템",
+   "label": "한 판의 전설",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "개/판",
+   "range": {
+    "min": 0.25,
+    "max": 0.45
+   },
+   "condition": {
+    "state": "시뮬레이션(sim_loot.gd 판당 평균)",
+    "runs": "1만 판(--runs=10000)"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "전설 | 세 판에 한 번 | 시뮬레이션 0.37"
+   },
+   "doc_tool": "sim_loot.gd",
+   "note": "범위는 D6·D2의 표기. QUALITY-TARGETS의 \"세 판에 한 번\"(≈0.33)은 이 범위 안",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D6-loot-farming-spec.ko.md",
+     "section": "표(드랍 시뮬레이션)",
+     "text": "전설 | 0.25~0.45 | 0.380(판의 32.0%)"
+    }
+   ]
+  },
+  {
+   "key": "q4.unique",
+   "group": "Q4 장비와 득템",
+   "label": "한 판의 유니크(첫 처치 제외)",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "개/판",
+   "range": {
+    "min": 0.12,
+    "max": 0.28
+   },
+   "condition": {
+    "state": "시뮬레이션(sim_loot.gd 판당 평균)",
+    "runs": "1만 판(--runs=10000)"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "유니크(첫 처치 제외) | 다섯 판에 한 번 | 시뮬레이션 0.23"
+   },
+   "doc_tool": "sim_loot.gd",
+   "note": "범위는 D6·D2의 표기. QUALITY-TARGETS의 \"다섯 판에 한 번\"(=0.2)은 이 범위 안",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D6-loot-farming-spec.ko.md",
+     "section": "표(드랍 시뮬레이션)",
+     "text": "고유(첫 처치 제외) | 0.12~0.28 | 0.250(판의 22.3%)"
+    }
+   ]
+  },
+  {
+   "key": "q4.wear_slots",
+   "group": "Q4 장비와 득템",
+   "label": "한 판 끝의 착용 칸",
+   "kind": "auto",
+   "status": "확정",
+   "unit": "칸(8칸 중)",
+   "range": {
+    "min": 6
+   },
+   "condition": {
+    "state": "장비 켬(실제 코어)",
+    "runs": "실제 코어 한 판들"
+   },
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "착용 칸 | 한 판을 마치면 8칸 중 6칸 이상 착용 | 5~6칸"
+   },
+   "doc_tool": "report_run_loot.gd",
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)"
+  },
+  {
+   "key": "q4.human.1",
+   "group": "Q4 장비와 득템",
+   "label": "좋은 장비가 떨어진 순간을 소리와 화면으로 알아챘는가",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "사람 평가: 좋은 장비가 떨어진 순간을 소리와 화면으로 알아챘는가. 주운 장비를 착용할지 3초 안에 판단할 수 있었는가."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "좋은 장비가 떨어진 순간을 소리와 화면으로 알아챘는가."
+  },
+  {
+   "key": "q4.human.2",
+   "group": "Q4 장비와 득템",
+   "label": "주운 장비를 착용할지 3초 안에 판단할 수 있었는가",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "4",
+    "text": "사람 평가: 좋은 장비가 떨어진 순간을 소리와 화면으로 알아챘는가. 주운 장비를 착용할지 3초 안에 판단할 수 있었는가."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS)",
+   "question": "주운 장비를 착용할지 3초 안에 판단할 수 있었는가."
+  },
+  {
+   "key": "q5.1",
+   "group": "Q5 참고 대상과의 비교",
+   "label": "효과의 밀도(뒤처짐/비슷함/앞섬)",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "5",
+    "text": "SACRATA 영상의 같은 종류 장면(군중 전투, 레벨업 선택)을 우리 캡처와 나란히 놓고, 다음 다섯 가지를 각각 \"뒤처짐 / 비슷함 / 앞섬\"으로 적는다: 효과의 밀도, 빛과 대비, 캐릭터의 존재감, 화면 표시의 완성도, 큰 순간의 연출. 판정은 사용자가 한다."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 항목: 효과의 밀도",
+   "question": "효과의 밀도"
+  },
+  {
+   "key": "q5.2",
+   "group": "Q5 참고 대상과의 비교",
+   "label": "빛과 대비(뒤처짐/비슷함/앞섬)",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "5",
+    "text": "SACRATA 영상의 같은 종류 장면(군중 전투, 레벨업 선택)을 우리 캡처와 나란히 놓고, 다음 다섯 가지를 각각 \"뒤처짐 / 비슷함 / 앞섬\"으로 적는다: 효과의 밀도, 빛과 대비, 캐릭터의 존재감, 화면 표시의 완성도, 큰 순간의 연출. 판정은 사용자가 한다."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 항목: 빛과 대비",
+   "question": "빛과 대비"
+  },
+  {
+   "key": "q5.3",
+   "group": "Q5 참고 대상과의 비교",
+   "label": "캐릭터의 존재감(뒤처짐/비슷함/앞섬)",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "5",
+    "text": "SACRATA 영상의 같은 종류 장면(군중 전투, 레벨업 선택)을 우리 캡처와 나란히 놓고, 다음 다섯 가지를 각각 \"뒤처짐 / 비슷함 / 앞섬\"으로 적는다: 효과의 밀도, 빛과 대비, 캐릭터의 존재감, 화면 표시의 완성도, 큰 순간의 연출. 판정은 사용자가 한다."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 항목: 캐릭터의 존재감",
+   "question": "캐릭터의 존재감"
+  },
+  {
+   "key": "q5.4",
+   "group": "Q5 참고 대상과의 비교",
+   "label": "화면 표시의 완성도(뒤처짐/비슷함/앞섬)",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "5",
+    "text": "SACRATA 영상의 같은 종류 장면(군중 전투, 레벨업 선택)을 우리 캡처와 나란히 놓고, 다음 다섯 가지를 각각 \"뒤처짐 / 비슷함 / 앞섬\"으로 적는다: 효과의 밀도, 빛과 대비, 캐릭터의 존재감, 화면 표시의 완성도, 큰 순간의 연출. 판정은 사용자가 한다."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 항목: 화면 표시의 완성도",
+   "question": "화면 표시의 완성도"
+  },
+  {
+   "key": "q5.5",
+   "group": "Q5 참고 대상과의 비교",
+   "label": "큰 순간의 연출(뒤처짐/비슷함/앞섬)",
+   "kind": "human",
+   "status": "확정",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/QUALITY-TARGETS.ko.md",
+    "section": "5",
+    "text": "SACRATA 영상의 같은 종류 장면(군중 전투, 레벨업 선택)을 우리 캡처와 나란히 놓고, 다음 다섯 가지를 각각 \"뒤처짐 / 비슷함 / 앞섬\"으로 적는다: 효과의 밀도, 빛과 대비, 캐릭터의 존재감, 화면 표시의 완성도, 큰 순간의 연출. 판정은 사용자가 한다."
+   },
+   "note": "문서에 가설 표기 없음(QUALITY-TARGETS). 항목: 큰 순간의 연출",
+   "question": "큰 순간의 연출"
+  },
+  {
+   "key": "a2.gi.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "기 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 5,
+    "max": 15
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 기 | 살아 있는 적(평균 / 최대) | 5~15 / 20 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.gi.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "기 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 20
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 기 | 살아 있는 적(평균 / 최대) | 5~15 / 20 이하"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음"
+  },
+  {
+   "key": "a2.gi.kpm",
+   "group": "D11 A2 박자표",
+   "label": "기 분당 처치",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리/분",
+   "range": {
+    "min": 80,
+    "max": 180
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 기 | 분당 처치 | 80~180"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.gi.hits_pm",
+   "group": "D11 A2 박자표",
+   "label": "기 분당 피격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "회/분",
+   "range": {
+    "min": 0,
+    "max": 2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 기 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 0~2 / 0.15 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.gi.dmg30",
+   "group": "D11 A2 박자표",
+   "label": "기 30초 받은 피해÷최대 생명",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.15
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 기 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 0~2 / 0.15 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung1.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "승 1 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 15,
+    "max": 35
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 1 | 살아 있는 적(평균 / 최대) | 15~35 / 45 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung1.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "승 1 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 45
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 1 | 살아 있는 적(평균 / 최대) | 15~35 / 45 이하"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음"
+  },
+  {
+   "key": "a2.seung1.kpm",
+   "group": "D11 A2 박자표",
+   "label": "승 1 분당 처치",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리/분",
+   "range": {
+    "min": 220,
+    "max": 380
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 1 | 분당 처치 | 220~380"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung1.hits_pm",
+   "group": "D11 A2 박자표",
+   "label": "승 1 분당 피격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "회/분",
+   "range": {
+    "min": 2,
+    "max": 6
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 1 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 2~6 / 0.30 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung1.dmg30",
+   "group": "D11 A2 박자표",
+   "label": "승 1 30초 받은 피해÷최대 생명",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.3
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 1 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 2~6 / 0.30 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung2.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "승 2 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 30,
+    "max": 60
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 2 | 살아 있는 적(평균 / 최대) | 30~60 / 75 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung2.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "승 2 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 75
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 2 | 살아 있는 적(평균 / 최대) | 30~60 / 75 이하"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음"
+  },
+  {
+   "key": "a2.seung2.kpm",
+   "group": "D11 A2 박자표",
+   "label": "승 2 분당 처치",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리/분",
+   "range": {
+    "min": 380,
+    "max": 600
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 2 | 분당 처치 | 380~600"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung2.hits_pm",
+   "group": "D11 A2 박자표",
+   "label": "승 2 분당 피격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "회/분",
+   "range": {
+    "min": 4,
+    "max": 9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 2 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 4~9 / 0.45 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.seung2.dmg30",
+   "group": "D11 A2 박자표",
+   "label": "승 2 30초 받은 피해÷최대 생명",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.45
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 승 2 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 4~9 / 0.45 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_a.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "전 A 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 50,
+    "max": 85
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 A | 살아 있는 적(평균 / 최대) | 50~85 / 100"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_a.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "전 A 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 100
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 A | 살아 있는 적(평균 / 최대) | 50~85 / 100"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음(문서에 \"이하\" 없음)"
+  },
+  {
+   "key": "a2.jeon_a.kpm",
+   "group": "D11 A2 박자표",
+   "label": "전 A 분당 처치",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리/분",
+   "range": {
+    "min": 550,
+    "max": 850
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 A | 분당 처치 | 550~850"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_a.hits_pm",
+   "group": "D11 A2 박자표",
+   "label": "전 A 분당 피격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "회/분",
+   "range": {
+    "min": 6,
+    "max": 12
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 A | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 6~12 / 0.60 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_a.dmg30",
+   "group": "D11 A2 박자표",
+   "label": "전 A 30초 받은 피해÷최대 생명",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.6
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 A | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 6~12 / 0.60 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_b.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "전 B 버티기 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 70,
+    "max": 100
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 B 버티기 | 살아 있는 적(평균 / 최대) | 70~100 / 100"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_b.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "전 B 버티기 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 100
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 B 버티기 | 살아 있는 적(평균 / 최대) | 70~100 / 100"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음(문서에 \"이하\" 없음)"
+  },
+  {
+   "key": "a2.jeon_b.kpm",
+   "group": "D11 A2 박자표",
+   "label": "전 B 버티기 분당 처치",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리/분",
+   "range": {
+    "min": 700,
+    "max": 1100
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 B 버티기 | 분당 처치 | 700~1,100"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_b.hits_pm",
+   "group": "D11 A2 박자표",
+   "label": "전 B 버티기 분당 피격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "회/분",
+   "range": {
+    "min": 8,
+    "max": 14
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 B 버티기 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 8~14 / 0.70 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_b.dmg30",
+   "group": "D11 A2 박자표",
+   "label": "전 B 버티기 30초 받은 피해÷최대 생명",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.7
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 B 버티기 | 위험(분당 피격 / 30초 받은 피해÷최대 생명) | 8~14 / 0.70 이하"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_c.alive_avg",
+   "group": "D11 A2 박자표",
+   "label": "전 C 우두머리 살아 있는 적 평균",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "min": 10,
+    "max": 25
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 C 우두머리 | 살아 있는 적(평균 / 최대) | 10~25 / 30"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "a2.jeon_c.alive_max",
+   "group": "D11 A2 박자표",
+   "label": "전 C 우두머리 살아 있는 적 최대",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마리",
+   "range": {
+    "max": 30
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)로 쓰지 않음(박자표는 장비와 무관한 자동 조작 목표)",
+    "rhythm": "켬이 설계 대상. 꺼짐 판은 D11 0.3처럼 기준선으로 같은 범위에 견준다",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "A2",
+    "text": "A2. 박자표 [가설] | 전 C 우두머리 | 살아 있는 적(평균 / 최대) | 10~25 / 30"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"/ 뒤\" 값을 상한으로 읽음"
+  },
+  {
+   "key": "g1.kill_order",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "분당 처치가 기 < 승 1 < 승 2 < 전 A로 오른 판",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "eq": "all"
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "마디별 분당 처치 | A2 표. 그리고 **기 < 승 1 < 승 2 < 전 A**가 9/9판 | 같음"
+   },
+   "pass_fraction": 1.0,
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "g1.wave_trough",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "파도와 골의 차(골 끝 살아 있는 적 ≤ 파도 최대의 50%)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.5
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "파도와 골의 차 | 각 파도 주기에서 골 끝의 살아 있는 적 ≤ 파도 최대의 50% | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "g1.hits_per_kill.gi",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "기 처치 하나에 드는 주력 명중 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "명중/처치",
+   "range": {
+    "min": 1.0,
+    "max": 1.5
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "처치 하나에 드는 주력 명중 수(마디 중앙값) | 기 1.0~1.5, 승 1 1.5~2.5, 승 2 2~3, 전 A 2~4 | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "이 마디의 값: 기 1.0~1.5"
+  },
+  {
+   "key": "g1.hits_per_kill.seung1",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "승 1 처치 하나에 드는 주력 명중 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "명중/처치",
+   "range": {
+    "min": 1.5,
+    "max": 2.5
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "처치 하나에 드는 주력 명중 수(마디 중앙값) | 기 1.0~1.5, 승 1 1.5~2.5, 승 2 2~3, 전 A 2~4 | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "이 마디의 값: 승 1 1.5~2.5"
+  },
+  {
+   "key": "g1.hits_per_kill.seung2",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "승 2 처치 하나에 드는 주력 명중 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "명중/처치",
+   "range": {
+    "min": 2.0,
+    "max": 3.0
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "처치 하나에 드는 주력 명중 수(마디 중앙값) | 기 1.0~1.5, 승 1 1.5~2.5, 승 2 2~3, 전 A 2~4 | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "이 마디의 값: 승 2 2~3"
+  },
+  {
+   "key": "g1.hits_per_kill.jeon_a",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "전 A 처치 하나에 드는 주력 명중 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "명중/처치",
+   "range": {
+    "min": 2.0,
+    "max": 4.0
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "처치 하나에 드는 주력 명중 수(마디 중앙값) | 기 1.0~1.5, 승 1 1.5~2.5, 승 2 2~3, 전 A 2~4 | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "이 마디의 값: 전 A 2~4"
+  },
+  {
+   "key": "g1.grace.first",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "첫 은총 시각",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "max": 15
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "measure_combat.gd --xp-curve + 선택 기록 / measure_rhythm.gd(grace_times)"
+  },
+  {
+   "key": "g1.grace.in60",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "첫 60초 안의 은총 횟수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "번",
+   "range": {
+    "min": 2,
+    "max": 3
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "같음"
+  },
+  {
+   "key": "g1.grace.gap_median",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "은총 사이 간격(중앙값)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "min": 25,
+    "max": 55
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "같음",
+   "note": "\"간격 25~55초\"를 한 판의 간격 중앙값으로 읽음(해석)"
+  },
+  {
+   "key": "g1.grace.gap_max",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "은총 사이 최장 간격",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "max": 70
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "같음"
+  },
+  {
+   "key": "g1.grace.evolve",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "주력 진화 시각",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "min": 150,
+    "max": 210
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "같음",
+   "note": "2:30~3:30을 초로 환산. 진화 시각은 측정 JSON에 없다"
+  },
+  {
+   "key": "g1.grace.after_270",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "4:30 뒤의 은총 횟수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "번",
+   "range": {
+    "eq": 2
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "은총 시각 | B1 표: 첫 은총 ≤15초, 60초 안 2~3번, 간격 25~55초(최장 ≤70초), 진화 2:30~3:30, 4:30 뒤 2번 | `measure_combat.gd --xp-curve` + 자동 조작 선택 기록"
+   },
+   "doc_tool": "같음",
+   "note": "\"4:30 뒤 2번\"을 270초 이후 은총 수 = 2로 읽음(해석)"
+  },
+  {
+   "key": "g1.hit_peak_in_jeon",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "분당 피격과 30초 받은 피해의 최대가 전 마디에 있다",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "eq": "all"
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "피격의 분포 | 분당 피격과 30초 받은 피해의 최대가 전 마디에 있다(9판 중 7판 이상). 기 마디의 30초 받은 피해 ≤ 0.15 | `measure_rhythm.gd`"
+   },
+   "pass_fraction": 0.7777777777777778,
+   "doc_tool": "measure_rhythm.gd",
+   "note": "\"전 마디\"를 전 A·전 B·전 C로 읽음(해석, D12 P4 \"위험의 정점은 전 마디다\"와 같은 말로 봄). 기 마디 0.15 이하는 a2.gi.dmg30와 같다"
+  },
+  {
+   "key": "g1.drop_event_equip",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "드랍이 사건에 묶인 비율(장비)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.55
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "드랍이 사건에 묶인 비율 | 장비 55% 이상, 희귀 이상 85% 이상 | `report_run_loot.gd`(출처 집계 추가)"
+   },
+   "doc_tool": "report_run_loot.gd"
+  },
+  {
+   "key": "g1.drop_event_rare",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "드랍이 사건에 묶인 비율(희귀 이상)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.85
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "드랍이 사건에 묶인 비율 | 장비 55% 이상, 희귀 이상 85% 이상 | `report_run_loot.gd`(출처 집계 추가)"
+   },
+   "doc_tool": "report_run_loot.gd"
+  },
+  {
+   "key": "g1.chest",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "판당 상자",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "개/판",
+   "range": {
+    "min": 4,
+    "max": 5
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "상자·사당 | 판당 상자 4~5, 사당 3~4가 실제로 놓임 | `measure_rhythm.gd`"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "g1.shrine",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "판당 사당",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "개/판",
+   "range": {
+    "min": 3,
+    "max": 4
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "상자·사당 | 판당 상자 4~5, 사당 3~4가 실제로 놓임 | `measure_rhythm.gd`"
+   },
+   "doc_tool": "measure_rhythm.gd"
+  },
+  {
+   "key": "g1.reaction_share",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "반응이 낸 피해의 몫",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.1,
+    "max": 0.3
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "반응·궁극기·보상 공백(D12 F1) | 반응 몫 10~30%, 궁극기 판당 3~4번, 반응·궁극기·은총·드러남이 하나도 없는 가장 긴 구간 45초 이하 | `measure_combat.gd`, `measure_rhythm.gd`"
+   },
+   "doc_tool": "measure_combat.gd",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+     "section": "F1",
+     "text": "반응 사용률 | 판 전체 피해에서 반응의 몫, 분당 반응 수 | 몫 10~30%, 승 2 이후 분당 20~60"
+    }
+   ]
+  },
+  {
+   "key": "g1.ultimate_count",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "궁극기 판당 횟수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "번",
+   "range": {
+    "min": 3,
+    "max": 4
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "반응·궁극기·보상 공백(D12 F1) | 반응 몫 10~30%, 궁극기 판당 3~4번, 반응·궁극기·은총·드러남이 하나도 없는 가장 긴 구간 45초 이하 | `measure_combat.gd`, `measure_rhythm.gd`"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+     "section": "F1",
+     "text": "궁극기 | 첫 충전 시각, 판당 횟수, 한 번의 처치 | 1:40~2:30, 3~4번, 30~80"
+    }
+   ]
+  },
+  {
+   "key": "g1.reward_gap",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "보상 공백(가장 긴 구간)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "max": 45
+   },
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "반응·궁극기·보상 공백(D12 F1) | 반응 몫 10~30%, 궁극기 판당 3~4번, 반응·궁극기·은총·드러남이 하나도 없는 가장 긴 구간 45초 이하 | `measure_combat.gd`, `measure_rhythm.gd`"
+   },
+   "pass_fraction": 0.8888888888888888,
+   "doc_tool": "measure_rhythm.gd",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+     "section": "F1",
+     "text": "보상 공백 | 반응·궁극기·은총·드러남 중 하나도 없는 가장 긴 구간 | 45초 이하(9판 중 8) | `measure_rhythm.gd`"
+    }
+   ]
+  },
+  {
+   "key": "g1.guard_places",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "지키는 자리(C6)의 맞물림",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "기준",
+   "range": null,
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "**지키는 자리**(2026-11-19 개정) | C6의 맞물림 목표 | `measure_rhythm.gd --pilot-extras`"
+   },
+   "doc_tool": "measure_rhythm.gd --pilot-extras",
+   "note": "C6의 숫자는 이번에 옮기지 않았다(G1 줄이 C6을 가리킨다). 판정하지 않음"
+  },
+  {
+   "key": "g1.perf_alive_p90",
+   "group": "D11 G1 content-balance 숫자",
+   "label": "성능 표본: 마디별 살아 있는 적 p90",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "기록",
+   "range": null,
+   "condition": {
+    "state": "자동 조작 기본 정책",
+    "runs": "주력 셋 × 시드 11·12·13 이상",
+    "min_runs": 9,
+    "rhythm": "켬이 설계 대상"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "성능 표본 | 마디별 살아 있는 적 p90(성능 측정의 입력) | 같음"
+   },
+   "doc_tool": "measure_rhythm.gd",
+   "note": "목표 수치 없음(기록 항목). 판정하지 않음"
+  },
+  {
+   "key": "p4.gi.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 R, 기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 2.0,
+    "max": 3.0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 기 0:00~1:00 | 시너지 조합 `R_synergy` | 2.0~3.0"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 기 | 2.0~3.0 | ≥1.8 | ≥1.6 | ≥1.5 | ≥1.2"
+    }
+   ]
+  },
+  {
+   "key": "p4.gi.narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "하나만 쌓기의 R, 기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 기 0:00~1:00 | 하나만 쌓기 `R_narrow` | ≥1.8"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 기 | 2.0~3.0 | ≥1.8 | ≥1.6 | ≥1.5 | ≥1.2"
+    }
+   ]
+  },
+  {
+   "key": "p4.gi.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "아무렇게나의 R, 기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.6
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 기 0:00~1:00 | 아무렇게나 `R_random` | ≥1.6"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 기 | 2.0~3.0 | ≥1.8 | ≥1.6 | ≥1.5 | ≥1.2"
+    }
+   ]
+  },
+  {
+   "key": "p4.gi.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "흩뿌리기의 R, 기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 기 0:00~1:00 | 흩뿌리기 `R_spread` | ≥1.5"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 기 | 2.0~3.0 | ≥1.8 | ≥1.6 | ≥1.5 | ≥1.2"
+    }
+   ]
+  },
+  {
+   "key": "p4.gi.worst",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "가장 나쁘게의 R, 기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 기 0:00~1:00 | 가장 나쁘게 `R_worst` | ≥1.2"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 기 | 2.0~3.0 | ≥1.8 | ≥1.6 | ≥1.5 | ≥1.2"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung1.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 R, 승 1",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 2.0,
+    "max": 2.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 1 | 시너지 조합 `R_synergy` | 2.0~2.8"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 2.0~2.8 | 1.5~2.0 | 1.2~1.7 | 1.1~1.5 | ≥0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung1.narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "하나만 쌓기의 R, 승 1",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.5,
+    "max": 2.0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 1 | 하나만 쌓기 `R_narrow` | 1.5~2.0"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 2.0~2.8 | 1.5~2.0 | 1.2~1.7 | 1.1~1.5 | ≥0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung1.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "아무렇게나의 R, 승 1",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.2,
+    "max": 1.7
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 1 | 아무렇게나 `R_random` | 1.2~1.7"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 2.0~2.8 | 1.5~2.0 | 1.2~1.7 | 1.1~1.5 | ≥0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung1.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "흩뿌리기의 R, 승 1",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.1,
+    "max": 1.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 1 | 흩뿌리기 `R_spread` | 1.1~1.5"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 2.0~2.8 | 1.5~2.0 | 1.2~1.7 | 1.1~1.5 | ≥0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung1.worst",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "가장 나쁘게의 R, 승 1",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 1 | 가장 나쁘게 `R_worst` | ≥0.9"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 2.0~2.8 | 1.5~2.0 | 1.2~1.7 | 1.1~1.5 | ≥0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung2.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 R, 승 2",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.8,
+    "max": 2.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 2 | 시너지 조합 `R_synergy` | 1.8~2.5"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 1.8~2.5 | 1.1~1.4 | 0.9~1.2 | 0.8~1.1 | 0.6~0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung2.narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "하나만 쌓기의 R, 승 2",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.1,
+    "max": 1.4
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 2 | 하나만 쌓기 `R_narrow` | 1.1~1.4"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 1.8~2.5 | 1.1~1.4 | 0.9~1.2 | 0.8~1.1 | 0.6~0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung2.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "아무렇게나의 R, 승 2",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.9,
+    "max": 1.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 2 | 아무렇게나 `R_random` | 0.9~1.2"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 1.8~2.5 | 1.1~1.4 | 0.9~1.2 | 0.8~1.1 | 0.6~0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung2.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "흩뿌리기의 R, 승 2",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.8,
+    "max": 1.1
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 2 | 흩뿌리기 `R_spread` | 0.8~1.1"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 1.8~2.5 | 1.1~1.4 | 0.9~1.2 | 0.8~1.1 | 0.6~0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.seung2.worst",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "가장 나쁘게의 R, 승 2",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.6,
+    "max": 0.9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 승 2 | 가장 나쁘게 `R_worst` | 0.6~0.9"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 승 | 1.8~2.5 | 1.1~1.4 | 0.9~1.2 | 0.8~1.1 | 0.6~0.9"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_a.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 R, 전 A",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.5,
+    "max": 2.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 A | 시너지 조합 `R_synergy` | 1.5~2.2"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.5~2.2 | 0.8~1.0 | 0.7~0.95 | 0.6~0.9 | ≤0.7"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_a.narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "하나만 쌓기의 R, 전 A",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.8,
+    "max": 1.0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 A | 하나만 쌓기 `R_narrow` | 0.8~1.0"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.5~2.2 | 0.8~1.0 | 0.7~0.95 | 0.6~0.9 | ≤0.7"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_a.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "아무렇게나의 R, 전 A",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.7,
+    "max": 0.95
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 A | 아무렇게나 `R_random` | 0.7~0.95"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.5~2.2 | 0.8~1.0 | 0.7~0.95 | 0.6~0.9 | ≤0.7"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_a.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "흩뿌리기의 R, 전 A",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.6,
+    "max": 0.9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 A | 흩뿌리기 `R_spread` | 0.6~0.9"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.5~2.2 | 0.8~1.0 | 0.7~0.95 | 0.6~0.9 | ≤0.7"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_a.worst",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "가장 나쁘게의 R, 전 A",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "max": 0.7
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 A | 가장 나쁘게 `R_worst` | ≤0.7"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.5~2.2 | 0.8~1.0 | 0.7~0.95 | 0.6~0.9 | ≤0.7"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_b.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 R, 전 B",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 1.3,
+    "max": 1.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 B 버티기 | 시너지 조합 `R_synergy` | 1.3~1.8"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.3~1.8 | 0.7~0.9 | 0.6~0.85 | ≤0.75 | ≤0.6"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_b.narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "하나만 쌓기의 R, 전 B",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.7,
+    "max": 0.9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 B 버티기 | 하나만 쌓기 `R_narrow` | 0.7~0.9"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.3~1.8 | 0.7~0.9 | 0.6~0.85 | ≤0.75 | ≤0.6"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_b.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "아무렇게나의 R, 전 B",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "min": 0.6,
+    "max": 0.85
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 B 버티기 | 아무렇게나 `R_random` | 0.6~0.85"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.3~1.8 | 0.7~0.9 | 0.6~0.85 | ≤0.75 | ≤0.6"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_b.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "흩뿌리기의 R, 전 B",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "max": 0.75
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 B 버티기 | 흩뿌리기 `R_spread` | ≤0.75"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.3~1.8 | 0.7~0.9 | 0.6~0.85 | ≤0.75 | ≤0.6"
+    }
+   ]
+  },
+  {
+   "key": "p4.jeon_b.worst",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "가장 나쁘게의 R, 전 B",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R(힘÷위협)",
+   "range": {
+    "max": 0.6
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "비 `R = P ÷ T` | 전 B 버티기 | 가장 나쁘게 `R_worst` | ≤0.6"
+   },
+   "doc_tool": "sim_power.gd / threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 5",
+     "text": "**목표 표**(D12 P4 요약, 기준 상태 = 장비·트리 없음) | 전 | 1.3~1.8 | 0.7~0.9 | 0.6~0.85 | ≤0.75 | ≤0.6"
+    }
+   ]
+  },
+  {
+   "key": "p4.single.synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "단일 R, 시너지 조합",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "min": 1.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "단일(수호자·우두머리) | `R_single` ≥1.5 | 기본기에 쌓았으면 ≥1.2, 원형에 쌓았으면 ≤0.8 | 0.8~1.2 | ≤0.9"
+   },
+   "doc_tool": "sim_power.gd"
+  },
+  {
+   "key": "p4.single.narrow_basic",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "단일 R, 하나만 쌓기(기본기)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "min": 1.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "단일(수호자·우두머리) | `R_single` ≥1.5 | 기본기에 쌓았으면 ≥1.2, 원형에 쌓았으면 ≤0.8 | 0.8~1.2 | ≤0.9"
+   },
+   "doc_tool": "sim_power.gd"
+  },
+  {
+   "key": "p4.single.narrow_ring",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "단일 R, 하나만 쌓기(원형)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "max": 0.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "단일(수호자·우두머리) | `R_single` ≥1.5 | 기본기에 쌓았으면 ≥1.2, 원형에 쌓았으면 ≤0.8 | 0.8~1.2 | ≤0.9"
+   },
+   "doc_tool": "sim_power.gd"
+  },
+  {
+   "key": "p4.single.random",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "단일 R, 아무렇게나",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "min": 0.8,
+    "max": 1.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "단일(수호자·우두머리) | `R_single` ≥1.5 | 기본기에 쌓았으면 ≥1.2, 원형에 쌓았으면 ≤0.8 | 0.8~1.2 | ≤0.9"
+   },
+   "doc_tool": "sim_power.gd"
+  },
+  {
+   "key": "p4.single.spread",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "단일 R, 흩뿌리기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "max": 0.9
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "단일(수호자·우두머리) | `R_single` ≥1.5 | 기본기에 쌓았으면 ≥1.2, 원형에 쌓았으면 ≤0.8 | 0.8~1.2 | ≤0.9"
+   },
+   "doc_tool": "sim_power.gd"
+  },
+  {
+   "key": "p4.step_max",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "마디 사이 위협(T_crowd) 배수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배",
+   "range": {
+    "max": 3.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "**위협의 계단 상한** [가설]: 마디 사이 `T_crowd` 배수 ×3.5 이하."
+   },
+   "doc_tool": "threat_curve.gd (P9)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 3",
+     "text": "마디마다 은총 2~3번이 위협의 한 계단을 따라잡는다. 마디 사이 위협 배수 ≤ ×3.5 [가설]."
+    }
+   ]
+  },
+  {
+   "key": "p4.synergy_cap_jeon",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "시너지 조합의 상한(전 마디 R ≤ 2.2)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": {
+    "max": 2.2
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "**시너지 조합의 상한**(어렵지 않게, 시시하지 않게): 전 마디에서 `R_synergy` 2.2 이하. 위험의 정점은 전 마디다(D11 A1-5)."
+   },
+   "doc_tool": "sim_power.gd",
+   "note": "\"전 마디\"를 전 A·전 B로 읽음(해석). 표의 전 A·전 B 상한(2.2, 1.8)에 포함되어 새 판정은 없다"
+  },
+  {
+   "key": "p4.det_share_synergy",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "조합의 몫(synergy, 승 2 이후)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.3,
+    "max": 0.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P4",
+    "text": "**시너지 조합의 몫**: 시너지 조합의 피해 가운데 터뜨림·반응(조합이 낸 몫)이 승 2 이후 30~50% [가설]. 15% 아래면 조합이 장식이고, 60% 위면 조합 없이는 아무것도 못 한다."
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+     "section": "P7",
+     "text": "조합의 몫 | `synergy`의 터뜨림·반응 피해 30~50%(승 2 이후), `narrow` 5% 이하 | 전투 기록과 같은 셈(D11 F1)"
+    }
+   ]
+  },
+  {
+   "key": "p4.det_share_narrow",
+   "group": "D12 P4 힘÷위협(R)",
+   "label": "조합의 몫(narrow)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "max": 0.05
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음), 깊이 1",
+    "runs": "정책 × 마녀 × 10판",
+    "min_runs": null
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "조합의 몫 | `synergy`의 터뜨림·반응 피해 30~50%(승 2 이후), `narrow` 5% 이하 | 전투 기록과 같은 셈(D11 F1)"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.win.synergy_path",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 시너지 길(짝별)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "길마다 승률",
+   "range": {
+    "min": 0.9,
+    "max": 1.0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `synergy:<짝>`(길마다) | 마녀당 시너지 길 셋이 각각 **10판 중 9 이상**"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). `synergy:<짝>`은 판 안 스킬 구성(D12 B0) 구현 뒤에만 존재한다",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.win.synergy",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 시너지(일반형)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률(30판 합산)",
+   "range": {
+    "min": 0.9333333333333333,
+    "max": 1.0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `synergy`(일반형) | 30판 중 28 이상"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "`synergy:<짝>`은 판 안 스킬 구성(D12 B0) 구현 뒤에만 존재한다"
+  },
+  {
+   "key": "p7.win.narrow",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 하나만 쌓기(기본기)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.2,
+    "max": 0.4
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `narrow`(기본기만) | **20~40%**"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). ",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.win.narrow_ring",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 하나만 쌓기(원형)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.1,
+    "max": 0.3
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `narrow_ring`(원형만) | **10~30%**"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). ",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.win.random",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 아무렇게나",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.15,
+    "max": 0.35
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `random` | **15~35%**"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). ",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.win.spread",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 흩뿌리기",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "max": 0.15
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `spread` | 15% 이하"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). ",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.win.worst",
+   "group": "D12 P7 정책별 결과",
+   "label": "승률, 가장 나쁘게",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.0,
+    "max": 0.05
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정책 | 승리 | `worst` | 0~5%"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10",
+   "note": "정책별로 마녀마다 한 칸씩 판정(정책 × 마녀 × 10판). ",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "B6 6 / G1",
+     "text": "**결과**(10판씩): 시너지 길마다 9 이상 승리, 하나만 쌓기(기본기) 20~40%, 하나만 쌓기(원형) 10~30%, 아무렇게나 15~35%, 흩뿌리기 15% 이하, 가장 나쁘게 0~5%. **600초 정체 0판.**"
+    }
+   ]
+  },
+  {
+   "key": "p7.order",
+   "group": "D12 P7 정책별 결과",
+   "label": "서열(승률 synergy > narrow ≥ random > spread > worst, 마녀마다)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "서열",
+   "range": null,
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "서열 | 승률이 `synergy` > `narrow` ≥ `random` > `spread` > `worst`(마녀마다) | `synergy` − `narrow` ≥ 50%p"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10"
+  },
+  {
+   "key": "p7.synergy_minus_narrow",
+   "group": "D12 P7 정책별 결과",
+   "label": "synergy − narrow 승률 차",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "%p",
+   "range": {
+    "min": 50
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "서열 | 승률이 `synergy` > `narrow` ≥ `random` > `spread` > `worst`(마녀마다) | `synergy` − `narrow` ≥ 50%p"
+   },
+   "doc_tool": "sim_builds.gd --no-equip --runs=10"
+  },
+  {
+   "key": "p7.stall",
+   "group": "D12 P7 정책별 결과",
+   "label": "600초 제한에 닿은 판(정체)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "max": 0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "전 정책 판 합계"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "정체 | **모든 정책에서 600초 제한에 닿은 판 0** | 이기지 못한 판은 모두 읽히는 죽음(P8)"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "G1",
+     "text": "**정체 0**(2026-11-19 개정 2) | 모든 정책에서 600초 제한에 닿은 판 0. 지는 판의 80% 이상이 압력 10 경고 뒤 20초 넘게 지나 죽음 | 같음"
+    }
+   ]
+  },
+  {
+   "key": "p7.narrow.death_time",
+   "group": "D12 P7 정책별 결과",
+   "label": "narrow 진 시각 중앙값",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "min": 285,
+    "max": 345
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`narrow`(기본기만) | 진 시각 중앙값 전 A(4:45~5:45), 원인 \"깔림\" 60% 이상"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "note": "4:45~5:45를 초로 환산"
+  },
+  {
+   "key": "p7.narrow.cause_crowd",
+   "group": "D12 P7 정책별 결과",
+   "label": "narrow 진 판의 \"깔림\" 비율",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.6
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`narrow`(기본기만) | 진 시각 중앙값 전 A(4:45~5:45), 원인 \"깔림\" 60% 이상"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.narrow_ring.cause_strong",
+   "group": "D12 P7 정책별 결과",
+   "label": "narrow_ring 진 판의 \"단일 부족\" 비율",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.5
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`narrow_ring`(원형만) | 수호자·우두머리 앞, 원인 \"단일 부족\" 50% 이상"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.random.death_time",
+   "group": "D12 P7 정책별 결과",
+   "label": "random 진 시각 중앙값",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "마디",
+   "range": null,
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`random` | 진 시각 중앙값 승 2 끝~전 A"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "note": "문서가 마디 이름으로 적어 수치 규칙 미정 — 판정하지 않음"
+  },
+  {
+   "key": "p7.spread.death_time",
+   "group": "D12 P7 정책별 결과",
+   "label": "spread 진 시각 중앙값",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "초",
+   "range": {
+    "min": 240,
+    "max": 360
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`spread` | 진 시각 중앙값 4:00~6:00, 2:00 전 0판"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "note": "4:00~6:00을 초로 환산"
+  },
+  {
+   "key": "p7.spread.early",
+   "group": "D12 P7 정책별 결과",
+   "label": "spread 2:00 전에 진 판",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "max": 0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`spread` | 진 시각 중앙값 4:00~6:00, 2:00 전 0판"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.worst.early",
+   "group": "D12 P7 정책별 결과",
+   "label": "worst 2:00 전에 진 판",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "max": 0
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`worst` | 2:00 전 0판"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.synergy.hp_end",
+   "group": "D12 P7 정책별 결과",
+   "label": "synergy 우두머리 처치 때 남은 생명 중앙값",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.4,
+    "max": 0.75
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7",
+    "text": "`synergy:<짝>`(길마다) | ... | 진 판이 있으면 전 B 이후. 우두머리 처치 때 남은 생명 중앙값 40~75%"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.synergy_lanes",
+   "group": "D12 P7 정책별 결과",
+   "label": "시너지 길의 수(마녀마다 짝 6 가운데 3 이상)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "길",
+   "range": {
+    "min": 3
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "**시너지 길의 수**(2026-11-19 개정 2) | 마녀마다 짝 6 가운데 3 이상이 위 목표를 만족(최소 2, 원형 없는 짝 1 이상), 길 사이 우두머리 처치 시각 차 ≤15% | 같음(`synergy:<짝>`)"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "note": "\"길 사이 우두머리 처치 시각 차 ≤15%\"는 같은 줄의 둘째 조건(p7.lane_time_gap)"
+  },
+  {
+   "key": "p7.lane_time_gap",
+   "group": "D12 P7 정책별 결과",
+   "label": "길 사이 우두머리 처치 시각 차",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "%",
+   "range": {
+    "max": 15
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "**시너지 길의 수**(2026-11-19 개정 2) | 마녀마다 짝 6 가운데 3 이상이 위 목표를 만족(최소 2, 원형 없는 짝 1 이상), 길 사이 우두머리 처치 시각 차 ≤15% | 같음(`synergy:<짝>`)"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.evolve_reach",
+   "group": "D12 P7 정책별 결과",
+   "label": "synergy가 레벨 8 안에 진화 카드를 받은 판",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판(9판 중)",
+   "range": {
+    "min": 8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "**진화에 닿음**(2026-11-19 개정) | `synergy` 정책이 레벨 8 안에 진화 카드를 받는 판 9판 중 8 이상 | 같음"
+   },
+   "doc_tool": "sim_builds.gd --no-equip"
+  },
+  {
+   "key": "p7.readable_pressure",
+   "group": "D12 P7 정책별 결과",
+   "label": "지는 판의 80% 이상이 압력 10 경고 뒤 20초 넘게 지나 죽음",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P8",
+    "text": "목표: P7의 \"정체 0\". 그리고 지는 정책의 진 판 80% 이상이 S-2의 경고(압력 10 이상) 뒤 20초 넘게 지나서 죽는다."
+   },
+   "doc_tool": "sim_builds.gd --no-equip(압력 이벤트 필요)",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+     "section": "G1",
+     "text": "**정체 0**(2026-11-19 개정 2) | 모든 정책에서 600초 제한에 닿은 판 0. 지는 판의 80% 이상이 압력 10 경고 뒤 20초 넘게 지나 죽음 | 같음"
+    }
+   ]
+  },
+  {
+   "key": "p7.readable_death",
+   "group": "D12 P7 정책별 결과",
+   "label": "읽히는 죽음(죽기 전 30초 경고)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.8
+   },
+   "condition": {
+    "state": "기준 상태(장비·트리 없음)",
+    "rhythm": "켬",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G1",
+    "text": "**읽히는 죽음**(2026-11-19 개정) | 나쁜 정책의 진 판 80% 이상에서 죽기 전 30초에 경고(적이 20초 넘게 쌓임, 또는 강한 적과의 싸움이 허용 창 초과) | 같음"
+   },
+   "doc_tool": "sim_builds.gd --no-equip",
+   "note": "위 p7.readable_pressure(20초)와 같은 항목의 두 서술인지 별개 기준인지 문서가 말하지 않는다. 별개로 둔다"
+  },
+  {
+   "key": "p10.budget.d1_start.power",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_start 힘 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.15,
+    "max": 0.3
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d1_start` | 깊이 1 처음 3~5판의 흔한 착용(마법 위주, 희귀 2) | +15~30% | +20~40%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.d1_start.stay",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_start 버팀 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.2,
+    "max": 0.4
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d1_start` | 깊이 1 처음 3~5판의 흔한 착용(마법 위주, 희귀 2) | +15~30% | +20~40%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.d1_end.power",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_end 힘 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.4,
+    "max": 0.7
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d1_end` | 깊이 1을 오래 돈 착용(희귀 위주, 전설 1, 고유 1) | +40~70% | +40~70%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.d1_end.stay",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_end 버팀 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.4,
+    "max": 0.7
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d1_end` | 깊이 1을 오래 돈 착용(희귀 위주, 전설 1, 고유 1) | +40~70% | +40~70%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.d2_mid.power",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d2_mid 힘 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.8,
+    "max": 1.3
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d2_mid` | 깊이 2 중간(희귀·전설, 스킬형 1~2줄) | +80~130% | +60~100%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.d2_mid.stay",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d2_mid 버팀 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.6,
+    "max": 1.0
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "`kit.d2_mid` | 깊이 2 중간(희귀·전설, 스킬형 1~2줄) | +80~130% | +60~100%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.tree20.power",
+   "group": "D12 P10 장비 층",
+   "label": "영구 트리 Lv 20(장비 없음) 힘 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.25,
+    "max": 0.45
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "영구 트리 Lv 20(장비 없음) | C장 트리, 포인트 23 | +25~45% | +10~25%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.budget.tree20.stay",
+   "group": "D12 P10 장비 층",
+   "label": "영구 트리 Lv 20(장비 없음) 버팀 증가",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배(증가율)",
+   "range": {
+    "min": 0.1,
+    "max": 0.25
+   },
+   "condition": {
+    "state": "기준 상태 대비 증가",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "영구 트리 Lv 20(장비 없음) | C장 트리, 포인트 23 | +25~45% | +10~25%"
+   },
+   "doc_tool": "sim_power.gd (P3)"
+  },
+  {
+   "key": "p10.surv.d1_start.synergy",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 시너지 조합 kit.d1_start(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.9
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_start`(깊이 1) | synergy = ≥90%, 남은 생명 오름"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_start.narrow",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 하나만 쌓기 kit.d1_start(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.35,
+    "max": 0.6
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_start`(깊이 1) | narrow = 35~60%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_start.random",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 아무렇게나 kit.d1_start(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.3,
+    "max": 0.55
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_start`(깊이 1) | random = 30~55%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_start.spread",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 흩뿌리기 kit.d1_start(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "max": 0.3
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_start`(깊이 1) | spread = ≤30%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_end.synergy",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 시너지 조합 kit.d1_end(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": null,
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 1) | synergy = 거의 다침 없이"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit=",
+   "note": "문서가 수치를 주지 않았다(\"거의 다침 없이\") — 판정 규칙 미정"
+  },
+  {
+   "key": "p10.surv.d1_end.narrow",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 하나만 쌓기 kit.d1_end(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.6,
+    "max": 0.85
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 1) | narrow = 60~85%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_end.random",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 아무렇게나 kit.d1_end(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.55,
+    "max": 0.8
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 1) | random = 55~80%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_end.spread",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 흩뿌리기 kit.d1_end(깊이 1)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "max": 0.5
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 1) | spread = **≤50%**"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_end_depth2.synergy",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 시너지 조합 kit.d1_end(깊이 2)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.9
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 2) | synergy = ≥90%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.surv.d1_end_depth2.narrow",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 하나만 쌓기 kit.d1_end(깊이 2)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.2,
+    "max": 0.4
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 2) | narrow = 기준 상태 깊이 1과 같은 범위로 돌아감"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit=",
+   "note": "범위는 문서의 \"기준 상태 깊이 1과 같은 범위\"(P7: narrow 20~40%, random 15~35%)로 옮긴 것(해석)"
+  },
+  {
+   "key": "p10.surv.d1_end_depth2.random",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 아무렇게나 kit.d1_end(깊이 2)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "min": 0.15,
+    "max": 0.35
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 2) | random = 같음"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit=",
+   "note": "범위는 문서의 \"기준 상태 깊이 1과 같은 범위\"(P7: narrow 20~40%, random 15~35%)로 옮긴 것(해석)"
+  },
+  {
+   "key": "p10.surv.d1_end_depth2.spread",
+   "group": "D12 P10 장비 층",
+   "label": "승률, 흩뿌리기 kit.d1_end(깊이 2)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "승률",
+   "range": {
+    "max": 0.15
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "나쁜 선택을 얼마나 덮는가 | `kit.d1_end`(깊이 2) | spread = ≤15%"
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.gap",
+   "group": "D12 P10 장비 층",
+   "label": "synergy와 narrow의 승률 차(깊이 1 끝 장비)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "%p",
+   "range": {
+    "min": 15
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "(2026-11-19 개정 2) 장비가 짝 없는 빌드를 덮는 폭에도 상한을 둔다: 같은 장비에서 `synergy`와 `narrow`의 승률 차는 깊이 1 끝 장비에서도 15%p 이상."
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.ritual",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_end에서 synergy + 의식 둘의 승리",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판(15판 중)",
+   "range": {
+    "min": 14
+   },
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "2. 같은 깊이에서 더 큰 보상. 여유가 있으면 의식·운반자·위험 카드(보상 단계, D11 D3)를 감당할 수 있다. 목표: `kit.d1_end`에서 `synergy` 정책 + 의식 둘을 해도 15판 중 14 이상 승리."
+   },
+   "doc_tool": "sim_builds.gd --gear-kit="
+  },
+  {
+   "key": "p10.depth2_R",
+   "group": "D12 P10 장비 층",
+   "label": "kit.d1_end + 트리 Lv 10, 깊이 2의 R_synergy",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "R",
+   "range": null,
+   "condition": {
+    "state": "장비 켬(고정 묶음 `--gear-kit=`)",
+    "runs": "정책 × 마녀 × 10판"
+   },
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P10",
+    "text": "목표: `kit.d1_end` + 트리 Lv 10에서 깊이 2의 `R_synergy`가 깊이 1 기준 상태의 `R_synergy`와 같은 범위(P4)."
+   },
+   "doc_tool": "sim_power.gd",
+   "note": "같은 범위 = p4.* synergy 열. 깊이 2 측정 도구 없음"
+  },
+  {
+   "key": "prog.runs_to_lv6",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "Lv 6 도달까지 판 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "min": 2,
+    "max": 4
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/G1-permanent-growth-spec.ko.md",
+    "section": "10.2",
+    "text": "| Lv 6 도달 | 2~4판 | 진행 |"
+   },
+   "doc_tool": "sim_progression.gd",
+   "note": "G1 10.2는 \"가설. P5 첫 측정 뒤 디렉터가 확정\"",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+     "section": "7.2",
+     "text": "레벨 속도 | Lv 6 2~4판, Lv 12 7~10판, Lv 20 22~30판, 한 갈래 완성 8~12판, 레벨 안 오르는 연속 판 ≤ 3 | 진행 모드, 마녀마다"
+    }
+   ]
+  },
+  {
+   "key": "prog.runs_to_lv12",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "Lv 12 도달까지 판 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "min": 7,
+    "max": 10
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/G1-permanent-growth-spec.ko.md",
+    "section": "10.2",
+    "text": "| Lv 12 도달 | 7~10판 | 진행 |"
+   },
+   "doc_tool": "sim_progression.gd",
+   "note": "G1 10.2는 \"가설. P5 첫 측정 뒤 디렉터가 확정\"",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+     "section": "7.2",
+     "text": "레벨 속도 | Lv 6 2~4판, Lv 12 7~10판, Lv 20 22~30판, 한 갈래 완성 8~12판, 레벨 안 오르는 연속 판 ≤ 3 | 진행 모드, 마녀마다"
+    }
+   ]
+  },
+  {
+   "key": "prog.runs_to_lv20",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "Lv 20 도달까지 판 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "min": 22,
+    "max": 30
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/G1-permanent-growth-spec.ko.md",
+    "section": "10.2",
+    "text": "| Lv 20 도달 | 22~30판 | 진행 |"
+   },
+   "doc_tool": "sim_progression.gd",
+   "note": "G1 10.2는 \"가설. P5 첫 측정 뒤 디렉터가 확정\"",
+   "extra_sources": [
+    {
+     "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+     "section": "7.2",
+     "text": "레벨 속도 | Lv 6 2~4판, Lv 12 7~10판, Lv 20 22~30판, 한 갈래 완성 8~12판, 레벨 안 오르는 연속 판 ≤ 3 | 진행 모드, 마녀마다"
+    }
+   ]
+  },
+  {
+   "key": "prog.branch_complete",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "한 갈래 1~3단 완성까지 판 수",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "판",
+   "range": {
+    "min": 8,
+    "max": 12
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/G1-permanent-growth-spec.ko.md",
+    "section": "10.2",
+    "text": "| 한 갈래 1~3단 완성 | 8~12판 | 진행, 정책 3종 |"
+   },
+   "doc_tool": "sim_progression.gd"
+  },
+  {
+   "key": "prog.d7_gap",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "갈래 사이 격차 상한(L12 수호자 교전·받은 피해, 나쁜/좋은)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "배",
+   "range": {
+    "max": 1.6
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+    "section": "7.2",
+    "text": "갈래 사이 격차 상한 | L12에서 수호자 교전과 받은 피해 각각, 가장 나쁜 갈래 / 가장 좋은 갈래 ≤ **1.6**"
+   },
+   "doc_tool": "sim_progression.gd"
+  },
+  {
+   "key": "prog.d7_witch_spread",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "마녀 사이 격차(L20 처치 시간 비의 중앙값)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비",
+   "range": {
+    "min": -0.1,
+    "max": 0.1
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+    "section": "7.2",
+    "text": "마녀 사이 격차 | L20에서 마녀마다 세 갈래 처치 시간 비의 중앙값이 서로 ±0.10 안"
+   },
+   "doc_tool": "sim_progression.gd"
+  },
+  {
+   "key": "prog.d7_field",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "훅이 실제로 돈다(냉기 지대 생성)",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "개/분",
+   "range": {
+    "min": 15
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+    "section": "7.2",
+    "text": "훅이 실제로 돈다 | L12 해당 갈래 판에서 분당 지대 생성 ≥ 15(냉기 지대), 분당 열 폭발 > 0(화염 잔불), 분당 처치 방전 > 0이고 경련 연장 판정이 일어남(번개 감전)"
+   },
+   "doc_tool": "sim_progression.gd"
+  },
+  {
+   "key": "prog.d7_arc_secondary",
+   "group": "영구 성장(sim_progression 상수의 근거, 지시 목록 밖 출처 G1·D7)",
+   "label": "번개 L20 보조 기여율 바닥",
+   "kind": "auto",
+   "status": "가설",
+   "unit": "비율",
+   "range": {
+    "min": 0.08
+   },
+   "condition": {
+    "state": "진행 모드, 마녀마다",
+    "runs": "진행 모드"
+   },
+   "source": {
+    "doc": "docs/specs/D7-skill-trees-ember-storm-spec.ko.md",
+    "section": "7.2",
+    "text": "보조 기여율 | L12·L20 갈래별로 보고. 번개 L20이 0.08 아래면 디렉터 보고"
+   },
+   "doc_tool": "sim_progression.gd",
+   "note": "D7은 \"0.08 아래면 디렉터 보고\"라 판정 목표라기보다 보고 기준"
+  },
+  {
+   "key": "d11.g3.1",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "처음 1분이 지루했나, 손에 익히기 좋았나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "1. 처음 1분이 지루했나, 손에 익히기 좋았나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "처음 1분이 지루했나, 손에 익히기 좋았나."
+  },
+  {
+   "key": "d11.g3.2",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "무리가 몰려왔다 빠지는 것을 느꼈나. 골이 반가웠나, 늘어졌나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "2. 무리가 몰려왔다 빠지는 것을 느꼈나. 골이 반가웠나, 늘어졌나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "무리가 몰려왔다 빠지는 것을 느꼈나. 골이 반가웠나, 늘어졌나."
+  },
+  {
+   "key": "d11.g3.3",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "판의 어디가 가장 위험했나. 그것이 끝 무렵이었나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "3. 판의 어디가 가장 위험했나. 그것이 끝 무렵이었나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "판의 어디가 가장 위험했나. 그것이 끝 무렵이었나."
+  },
+  {
+   "key": "d11.g3.4",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "은총 가운데 \"이제 강해졌다\"고 느낀 것은 몇 번째였나. 진화가 2분 반에 와서 늦다고 느꼈나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "4. 은총 가운데 \"이제 강해졌다\"고 느낀 것은 몇 번째였나. 진화가 2분 반에 와서 늦다고 느꼈나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "은총 가운데 \"이제 강해졌다\"고 느낀 것은 몇 번째였나. 진화가 2분 반에 와서 늦다고 느꼈나."
+  },
+  {
+   "key": "d11.g3.5",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "마지막 은총이 우두머리 앞의 선택으로 느껴졌나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "5. 마지막 은총이 우두머리 앞의 선택으로 느껴졌나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "마지막 은총이 우두머리 앞의 선택으로 느껴졌나."
+  },
+  {
+   "key": "d11.g3.6",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "사당을 일부러 찾아갔나. 그 30초 동안 무엇이 달랐나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "6. 사당을 일부러 찾아갔나. 그 30초 동안 무엇이 달랐나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "사당을 일부러 찾아갔나. 그 30초 동안 무엇이 달랐나."
+  },
+  {
+   "key": "d11.g3.7",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "의식이나 운반자를 보상 단계 때문에 했나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "7. 의식이나 운반자를 보상 단계 때문에 했나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "의식이나 운반자를 보상 단계 때문에 했나."
+  },
+  {
+   "key": "d11.g3.8",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "우두머리 전리품이 쏟아질 때 단계가 올린 몫을 알아봤나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "8. 우두머리 전리품이 쏟아질 때 단계가 올린 몫을 알아봤나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "우두머리 전리품이 쏟아질 때 단계가 올린 몫을 알아봤나."
+  },
+  {
+   "key": "d11.g3.9",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "전투 기록을 보고 다음 판에 바꿀 것이 생겼나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "9. 전투 기록을 보고 다음 판에 바꿀 것이 생겼나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "전투 기록을 보고 다음 판에 바꿀 것이 생겼나."
+  },
+  {
+   "key": "d11.g3.10",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "마을에서 다음 판까지 무엇을 했고, 몇 분 걸렸나. 한 판 더 하고 싶었나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "10. 마을에서 다음 판까지 무엇을 했고, 몇 분 걸렸나. 한 판 더 하고 싶었나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "마을에서 다음 판까지 무엇을 했고, 몇 분 걸렸나. 한 판 더 하고 싶었나."
+  },
+  {
+   "key": "d11.g3.11",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "죽었다면 왜 죽었는지 알았나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D11-run-rhythm-and-reward-loop.ko.md",
+    "section": "G3",
+    "text": "11. 죽었다면 왜 죽었는지 알았나."
+   },
+   "note": "D11 G3 [플레이, 지금 모두 미평가]",
+   "question": "죽었다면 왜 죽었는지 알았나."
+  },
+  {
+   "key": "d12.p7.human.1",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "카드를 고를 때 \"지금 가진 것과 맞물리는가\"를 봤나. 그 줄이 고르는 데 도움이 됐나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "1. 카드를 고를 때 \"지금 가진 것과 맞물리는가\"를 봤나. 그 줄이 고르는 데 도움이 됐나."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "카드를 고를 때 \"지금 가진 것과 맞물리는가\"를 봤나. 그 줄이 고르는 데 도움이 됐나."
+  },
+  {
+   "key": "d12.p7.human.2",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "처음 짝을 지었을 때(예: 고리가 깐 냉각을 창이 터뜨림) 알아봤나. 다시 노렸나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "2. 처음 짝을 지었을 때(예: 고리가 깐 냉각을 창이 터뜨림) 알아봤나. 다시 노렸나."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "처음 짝을 지었을 때(예: 고리가 깐 냉각을 창이 터뜨림) 알아봤나. 다시 노렸나."
+  },
+  {
+   "key": "d12.p7.human.3",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "하나만 쌓아 본 판이 있었나. 어디서 왜 막혔는지 알았나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "3. 하나만 쌓아 본 판이 있었나. 어디서 왜 막혔는지 알았나."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "하나만 쌓아 본 판이 있었나. 어디서 왜 막혔는지 알았나."
+  },
+  {
+   "key": "d12.p7.human.4",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "같은 마녀로 다른 짝을 시험해 보고 싶었나. 그 판은 실제로 다르게 느껴졌나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "4. 같은 마녀로 다른 짝을 시험해 보고 싶었나. 그 판은 실제로 다르게 느껴졌나."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "같은 마녀로 다른 짝을 시험해 보고 싶었나. 그 판은 실제로 다르게 느껴졌나."
+  },
+  {
+   "key": "d12.p7.human.5",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "잘 맞춘 판이 \"어렵지 않다\"였나, \"시시하다\"였나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "5. 잘 맞춘 판이 \"어렵지 않다\"였나, \"시시하다\"였나."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "잘 맞춘 판이 \"어렵지 않다\"였나, \"시시하다\"였나."
+  },
+  {
+   "key": "d12.p7.human.6",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "처음 1분에 고른 것 때문에 죽을 뻔한 적이 있나(있으면 A1-6 위반).",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "P7 사람 플레이로 볼 질문",
+    "text": "6. 처음 1분에 고른 것 때문에 죽을 뻔한 적이 있나(있으면 A1-6 위반)."
+   },
+   "note": "D12 P7 [플레이, 미평가]",
+   "question": "처음 1분에 고른 것 때문에 죽을 뻔한 적이 있나(있으면 A1-6 위반)."
+  },
+  {
+   "key": "d12.f3.1",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "첫 반응이 일어났을 때 무엇이 일어났는지 알았나. 다시 일으키려고 했나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "1. 첫 반응이 일어났을 때 무엇이 일어났는지 알았나. 다시 일으키려고 했나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "첫 반응이 일어났을 때 무엇이 일어났는지 알았나. 다시 일으키려고 했나."
+  },
+  {
+   "key": "d12.f3.2",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "빌릴 원소를 고를 때 반응을 생각했나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "2. 빌릴 원소를 고를 때 반응을 생각했나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "빌릴 원소를 고를 때 반응을 생각했나."
+  },
+  {
+   "key": "d12.f3.3",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "결정 카드를 \"반응을 키울까 진화를 열까\"로 고민했나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "3. 결정 카드를 \"반응을 키울까 진화를 열까\"로 고민했나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "결정 카드를 \"반응을 키울까 진화를 열까\"로 고민했나."
+  },
+  {
+   "key": "d12.f3.4",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "연계 카드가 무엇을 하는지 카드 한 장만 보고 알았나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "4. 연계 카드가 무엇을 하는지 카드 한 장만 보고 알았나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "연계 카드가 무엇을 하는지 카드 한 장만 보고 알았나."
+  },
+  {
+   "key": "d12.f3.5",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "위험 카드를 골랐나. 대가 때문에 후회했나, 그래서 더 재미있었나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "5. 위험 카드를 골랐나. 대가 때문에 후회했나, 그래서 더 재미있었나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "위험 카드를 골랐나. 대가 때문에 후회했나, 그래서 더 재미있었나."
+  },
+  {
+   "key": "d12.f3.6",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "궁극기를 기다렸나. 컷인을 건너뛰고 싶었나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "6. 궁극기를 기다렸나. 컷인을 건너뛰고 싶었나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "궁극기를 기다렸나. 컷인을 건너뛰고 싶었나."
+  },
+  {
+   "key": "d12.f3.7",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "키스톤을 고를 때 망설였나. 바꾸고 싶어졌나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "7. 키스톤을 고를 때 망설였나. 바꾸고 싶어졌나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "키스톤을 고를 때 망설였나. 바꾸고 싶어졌나."
+  },
+  {
+   "key": "d12.f3.8",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "장비 비교에서 조건형·스킬형 줄을 이해했나. 숫자만 보고 골랐나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "8. 장비 비교에서 조건형·스킬형 줄을 이해했나. 숫자만 보고 골랐나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "장비 비교에서 조건형·스킬형 줄을 이해했나. 숫자만 보고 골랐나."
+  },
+  {
+   "key": "d12.f3.9",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "강화가 실패했을 때 기분이 어땠나. 다시 눌렀나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "9. 강화가 실패했을 때 기분이 어땠나. 다시 눌렀나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "강화가 실패했을 때 기분이 어땠나. 다시 눌렀나."
+  },
+  {
+   "key": "d12.f3.10",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "의상을 얻은 순간이 기억에 남았나. 의상 때문에 무언가를 하려 했나.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "10. 의상을 얻은 순간이 기억에 남았나. 의상 때문에 무언가를 하려 했나."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "의상을 얻은 순간이 기억에 남았나. 의상 때문에 무언가를 하려 했나."
+  },
+  {
+   "key": "d12.f3.11",
+   "group": "D11 G3 / D12 사람 판정",
+   "label": "다섯 가운데 이 게임에서 가장 강하게 느낀 것과 가장 약한 것.",
+   "kind": "human",
+   "status": "가설",
+   "unit": "질문",
+   "range": null,
+   "condition": {},
+   "source": {
+    "doc": "docs/specs/D12-skill-and-gear-redesign.ko.md",
+    "section": "F3",
+    "text": "11. 다섯 가운데 이 게임에서 가장 강하게 느낀 것과 가장 약한 것."
+   },
+   "note": "D12 F3 [플레이, 지금 모두 미평가]",
+   "question": "다섯 가운데 이 게임에서 가장 강하게 느낀 것과 가장 약한 것."
+  }
+ ]
+}

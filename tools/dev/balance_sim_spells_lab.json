@@ -1,0 +1,1056 @@
+{
+ "schema_version": 1,
+ "provenance": "independent_design",
+ "balance_status": "hypothesis",
+ "note": "시험 묶음(균형 시뮬레이터 팩터 확장용). 기본 여섯 주문(draft와 같은 값) + 역할이 다른 시험 주문(chapter1.skill.lab_*; 이름 없음, 영문 id만). 모든 값은 가설이다. 주문 필드(전부 선택): shape(proj|chain|ring|line|zone|summon) base.range_cm/width_cm/zone{radius_cm,duration_s,tick_ticks,count}/summon{count,duration_s,attack_ticks}, crit_bps, crit_dmg_bps, extra{elem_bps,vs_status{status,bps},vs_strong_bps,vs_low_hp_bps,vs_near_bps,vs_far_bps,vs_cc_bps}, dot{dps_bps,secs}, on_kill{radius_cm,dmg_bps,budget}, cc{chance_bps,slow_bps,slow_s,freeze_s,stun_s,root_s,knock_cm,pull_cm}, vuln{bps,secs,chance_bps}, utility{lifesteal_bps,heal_on_kill,shield_per_s,dr_bps,move_bps,cd_refund_bps}, evolve_free. kits = policy kit:<이름>이 따르는 주문 목록($basic = 그 마녀의 기본기). 접근 (가)=기존 synergy:<짝> 정책, (나)=b_*, (다)=c_*, 섞음=m_*(원형 $ring + 표식·치명타·추가 피해·지속 피해).",
+ "enabled": false,
+ "slots": 3,
+ "protect": {
+  "ring_at_level": 2,
+  "pair_open_levels": [
+   3,
+   5
+  ],
+  "toward_evolve": true
+ },
+ "axis": {
+  "cap_per_axis": 4,
+  "cap_per_spell": 6,
+  "power": {
+   "damage_bps": [
+    10000,
+    14500,
+    18000,
+    20500,
+    22500
+   ],
+   "cooldown_bps": [
+    10000,
+    9200,
+    8600,
+    8200,
+    8000
+   ]
+  }
+ },
+ "evolve": {
+  "axis_sum": 5,
+  "needs_passive": true,
+  "partner_axis_sum": 2,
+  "partner_detonate_bps": 15000,
+  "needs_partner": true
+ },
+ "statuses": {
+  "heat": {
+   "max": 6,
+   "expire_ticks": 180
+  },
+  "chill": {
+   "max": 6,
+   "expire_ticks": 240,
+   "freeze_at": 4
+  },
+  "shock": {
+   "max": 1,
+   "expire_ticks": 180
+  }
+ },
+ "spells": {
+  "chapter1.skill.ember": {
+   "role": "basic",
+   "element": "ember",
+   "weight": 100,
+   "applies": {
+    "heat": 1
+   },
+   "detonates": {},
+   "base": {
+    "damage_raw": 3584,
+    "cooldown_ticks": 48,
+    "projectiles": 1,
+    "radius_cm": 0,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "radius_cm": 150,
+     "hit_budget": 6
+    },
+    {
+     "radius_cm": 200,
+     "projectiles": 2,
+     "hit_budget": 12
+    },
+    {
+     "radius_cm": 240,
+     "projectiles": 2,
+     "hit_budget": 18
+    },
+    {
+     "radius_cm": 270,
+     "projectiles": 2,
+     "hit_budget": 24
+    }
+   ]
+  },
+  "chapter1.skill.ember_ring": {
+   "role": "ring",
+   "element": "ember",
+   "owner": "chapter1.character.ember",
+   "weight": 100,
+   "applies": {},
+   "detonates": {
+    "heat": {
+     "per_stack_bps": 4000,
+     "consume": true
+    }
+   },
+   "vs_strong_bps": 5000,
+   "base": {
+    "damage_raw": 4608,
+    "cooldown_ticks": 180,
+    "ring_radius_cm": 220,
+    "ring_pulses": 1,
+    "hit_budget": 12
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 275,
+     "hit_budget": 18
+    },
+    {
+     "ring_radius_cm": 312,
+     "hit_budget": 22
+    },
+    {
+     "ring_radius_cm": 341,
+     "hit_budget": 26
+    },
+    {
+     "ring_radius_cm": 363,
+     "hit_budget": 30
+    }
+   ]
+  },
+  "chapter1.skill.frost": {
+   "role": "basic",
+   "element": "frost",
+   "weight": 100,
+   "applies": {
+    "chill": 1
+   },
+   "detonates": {
+    "chill": {
+     "bonus_bps": 8000,
+     "consume": false,
+     "freeze_bonus": 1
+    }
+   },
+   "base": {
+    "damage_raw": 3072,
+    "cooldown_ticks": 54,
+    "projectiles": 1,
+    "pierce": 2,
+    "slow_bps": 2000,
+    "hit_budget": 3
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 2,
+     "pierce": 3,
+     "hit_budget": 8
+    },
+    {
+     "projectiles": 2,
+     "pierce": 3,
+     "hit_budget": 8
+    },
+    {
+     "projectiles": 3,
+     "pierce": 3,
+     "hit_budget": 12
+    },
+    {
+     "projectiles": 3,
+     "pierce": 4,
+     "hit_budget": 15
+    }
+   ]
+  },
+  "chapter1.skill.frost_ring": {
+   "role": "ring",
+   "element": "frost",
+   "owner": "chapter1.character.frost",
+   "weight": 100,
+   "applies": {
+    "chill": 2
+   },
+   "detonates": {},
+   "vs_strong_bps": 5000,
+   "slow_ticks": 90,
+   "base": {
+    "damage_raw": 2560,
+    "cooldown_ticks": 210,
+    "ring_radius_cm": 260,
+    "ring_pulses": 1,
+    "slow_bps": 4000,
+    "hit_budget": 12
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 325,
+     "hit_budget": 18
+    },
+    {
+     "ring_radius_cm": 369,
+     "hit_budget": 22
+    },
+    {
+     "ring_radius_cm": 403,
+     "hit_budget": 26
+    },
+    {
+     "ring_radius_cm": 429,
+     "hit_budget": 30
+    }
+   ]
+  },
+  "chapter1.skill.arc": {
+   "role": "basic",
+   "element": "arc",
+   "weight": 100,
+   "applies": {
+    "shock": 1
+   },
+   "detonates": {},
+   "base": {
+    "damage_raw": 3072,
+    "cooldown_ticks": 60,
+    "chain_targets": 1,
+    "branches": 1,
+    "radius_cm": 700,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "chain_targets": 3,
+     "hit_budget": 3
+    },
+    {
+     "chain_targets": 4,
+     "hit_budget": 4
+    },
+    {
+     "chain_targets": 5,
+     "branches": 2,
+     "hit_budget": 10
+    },
+    {
+     "chain_targets": 5,
+     "branches": 2,
+     "hit_budget": 10
+    }
+   ]
+  },
+  "chapter1.skill.arc_ring": {
+   "role": "ring",
+   "element": "arc",
+   "owner": "chapter1.character.arc",
+   "weight": 100,
+   "applies": {},
+   "detonates": {
+    "shock": {
+     "bonus_bps": 10000,
+     "consume": true
+    }
+   },
+   "prefer": "shock",
+   "vs_strong_bps": 5000,
+   "base": {
+    "damage_raw": 3584,
+    "cooldown_ticks": 150,
+    "ring_radius_cm": 400,
+    "ring_pulses": 1,
+    "ring_targets": 4,
+    "hit_budget": 12
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 500,
+     "ring_targets": 6,
+     "hit_budget": 18
+    },
+    {
+     "ring_radius_cm": 568,
+     "ring_targets": 7,
+     "hit_budget": 22
+    },
+    {
+     "ring_radius_cm": 620,
+     "ring_targets": 8,
+     "hit_budget": 26
+    },
+    {
+     "ring_radius_cm": 660,
+     "ring_targets": 9,
+     "hit_budget": 30
+    }
+   ]
+  },
+  "chapter1.skill.lab_sniper": {
+   "role": "basic",
+   "element": "arc",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 9216,
+    "cooldown_ticks": 96,
+    "projectiles": 1,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 1
+    },
+    {
+     "projectiles": 2,
+     "hit_budget": 2
+    },
+    {
+     "projectiles": 2,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 4
+    }
+   ],
+   "extra": {
+    "vs_strong_bps": 6000
+   }
+  },
+  "chapter1.skill.lab_nova": {
+   "role": "ring",
+   "element": "ember",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 3000,
+    "cooldown_ticks": 150,
+    "ring_radius_cm": 300,
+    "ring_pulses": 1,
+    "hit_budget": 15
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 340,
+     "hit_budget": 20
+    },
+    {
+     "ring_radius_cm": 380,
+     "hit_budget": 24
+    },
+    {
+     "ring_radius_cm": 410,
+     "hit_budget": 28
+    },
+    {
+     "ring_radius_cm": 440,
+     "hit_budget": 32
+    }
+   ],
+   "vs_strong_bps": 5000,
+   "shape": "ring"
+  },
+  "chapter1.skill.lab_pierce_line": {
+   "role": "basic",
+   "element": "frost",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 3000,
+    "cooldown_ticks": 72,
+    "projectiles": 1,
+    "pierce": 3,
+    "range_cm": 800,
+    "width_cm": 120,
+    "hit_budget": 6
+   },
+   "reach": [
+    {},
+    {
+     "width_cm": 160,
+     "hit_budget": 8
+    },
+    {
+     "projectiles": 2,
+     "width_cm": 180,
+     "hit_budget": 12
+    },
+    {
+     "projectiles": 2,
+     "width_cm": 200,
+     "hit_budget": 14
+    },
+    {
+     "projectiles": 3,
+     "width_cm": 220,
+     "hit_budget": 18
+    }
+   ],
+   "shape": "line"
+  },
+  "chapter1.skill.lab_field": {
+   "role": "zone",
+   "element": "ember",
+   "weight": 100,
+   "applies": {
+    "heat": 1
+   },
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 900,
+    "cooldown_ticks": 240,
+    "hit_budget": 14,
+    "zone": {
+     "radius_cm": 220,
+     "duration_s": 5,
+     "tick_ticks": 30,
+     "count": 1
+    }
+   },
+   "reach": [
+    {},
+    {
+     "zone": {
+      "radius_cm": 260,
+      "duration_s": 5,
+      "tick_ticks": 30,
+      "count": 1
+     }
+    },
+    {
+     "zone": {
+      "radius_cm": 300,
+      "duration_s": 6,
+      "tick_ticks": 30,
+      "count": 1
+     }
+    },
+    {
+     "zone": {
+      "radius_cm": 330,
+      "duration_s": 6,
+      "tick_ticks": 24,
+      "count": 1
+     }
+    },
+    {
+     "zone": {
+      "radius_cm": 360,
+      "duration_s": 7,
+      "tick_ticks": 24,
+      "count": 2
+     }
+    }
+   ],
+   "shape": "zone"
+  },
+  "chapter1.skill.lab_chain": {
+   "role": "basic",
+   "element": "arc",
+   "weight": 100,
+   "applies": {
+    "shock": 1
+   },
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 2800,
+    "cooldown_ticks": 66,
+    "chain_targets": 4,
+    "branches": 1,
+    "radius_cm": 700,
+    "hit_budget": 4
+   },
+   "reach": [
+    {},
+    {
+     "chain_targets": 5,
+     "hit_budget": 5
+    },
+    {
+     "chain_targets": 6,
+     "hit_budget": 6
+    },
+    {
+     "chain_targets": 6,
+     "branches": 2,
+     "hit_budget": 12
+    },
+    {
+     "chain_targets": 7,
+     "branches": 2,
+     "hit_budget": 14
+    }
+   ]
+  },
+  "chapter1.skill.lab_turret": {
+   "role": "summon",
+   "element": "frost",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1500,
+    "cooldown_ticks": 360,
+    "radius_cm": 100,
+    "hit_budget": 2,
+    "summon": {
+     "count": 2,
+     "duration_s": 10,
+     "attack_ticks": 45
+    }
+   },
+   "reach": [
+    {},
+    {
+     "summon": {
+      "count": 2,
+      "duration_s": 11,
+      "attack_ticks": 40
+     }
+    },
+    {
+     "summon": {
+      "count": 3,
+      "duration_s": 11,
+      "attack_ticks": 40
+     }
+    },
+    {
+     "summon": {
+      "count": 3,
+      "duration_s": 12,
+      "attack_ticks": 36
+     }
+    },
+    {
+     "summon": {
+      "count": 4,
+      "duration_s": 12,
+      "attack_ticks": 36
+     }
+    }
+   ],
+   "shape": "summon"
+  },
+  "chapter1.skill.lab_freezer": {
+   "role": "basic",
+   "element": "frost",
+   "weight": 100,
+   "applies": {
+    "chill": 1
+   },
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1800,
+    "cooldown_ticks": 60,
+    "projectiles": 2,
+    "hit_budget": 2
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 4,
+     "hit_budget": 4
+    },
+    {
+     "projectiles": 4,
+     "hit_budget": 4
+    }
+   ],
+   "cc": {
+    "chance_bps": 3000,
+    "slow_bps": 4000,
+    "slow_s": 3,
+    "freeze_s": 1.2
+   }
+  },
+  "chapter1.skill.lab_pusher": {
+   "role": "ring",
+   "element": "arc",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1500,
+    "cooldown_ticks": 180,
+    "ring_radius_cm": 250,
+    "ring_pulses": 1,
+    "hit_budget": 12
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 290,
+     "hit_budget": 16
+    },
+    {
+     "ring_radius_cm": 330,
+     "hit_budget": 20
+    },
+    {
+     "ring_radius_cm": 360,
+     "hit_budget": 24
+    },
+    {
+     "ring_radius_cm": 390,
+     "hit_budget": 28
+    }
+   ],
+   "vs_strong_bps": 3000,
+   "shape": "ring",
+   "cc": {
+    "chance_bps": 10000,
+    "knock_cm": 300,
+    "stun_s": 0.6
+   }
+  },
+  "chapter1.skill.lab_puller": {
+   "role": "ring",
+   "element": "frost",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1200,
+    "cooldown_ticks": 200,
+    "ring_radius_cm": 400,
+    "ring_pulses": 1,
+    "hit_budget": 14
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 440,
+     "hit_budget": 18
+    },
+    {
+     "ring_radius_cm": 480,
+     "hit_budget": 22
+    },
+    {
+     "ring_radius_cm": 510,
+     "hit_budget": 26
+    },
+    {
+     "ring_radius_cm": 540,
+     "hit_budget": 30
+    }
+   ],
+   "vs_strong_bps": 3000,
+   "shape": "ring",
+   "cc": {
+    "chance_bps": 10000,
+    "pull_cm": 500,
+    "slow_bps": 3000,
+    "slow_s": 2
+   }
+  },
+  "chapter1.skill.lab_crit_bolt": {
+   "role": "basic",
+   "element": "arc",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 2600,
+    "cooldown_ticks": 54,
+    "projectiles": 2,
+    "hit_budget": 2
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 2,
+     "crit_bps": 500
+    },
+    {
+     "projectiles": 3,
+     "crit_bps": 1000
+    },
+    {
+     "projectiles": 3,
+     "crit_bps": 1500
+    },
+    {
+     "projectiles": 4,
+     "crit_bps": 2000
+    }
+   ],
+   "crit_bps": 3500,
+   "crit_dmg_bps": 22000
+  },
+  "chapter1.skill.lab_marker": {
+   "role": "basic",
+   "element": "arc",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1500,
+    "cooldown_ticks": 48,
+    "projectiles": 1,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 2,
+     "hit_budget": 2
+    },
+    {
+     "projectiles": 2,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 4
+    }
+   ],
+   "vuln": {
+    "bps": 3000,
+    "secs": 5,
+    "chance_bps": 10000
+   }
+  },
+  "chapter1.skill.lab_burner": {
+   "role": "basic",
+   "element": "ember",
+   "weight": 100,
+   "applies": {
+    "heat": 1
+   },
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 2000,
+    "cooldown_ticks": 60,
+    "projectiles": 2,
+    "radius_cm": 150,
+    "hit_budget": 8
+   },
+   "reach": [
+    {},
+    {
+     "radius_cm": 180,
+     "hit_budget": 10
+    },
+    {
+     "radius_cm": 210,
+     "hit_budget": 12
+    },
+    {
+     "radius_cm": 240,
+     "projectiles": 3,
+     "hit_budget": 14
+    },
+    {
+     "radius_cm": 270,
+     "projectiles": 3,
+     "hit_budget": 16
+    }
+   ],
+   "dot": {
+    "dps_bps": 3000,
+    "secs": 4
+   }
+  },
+  "chapter1.skill.lab_volatile": {
+   "role": "basic",
+   "element": "ember",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 2600,
+    "cooldown_ticks": 54,
+    "projectiles": 1,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 2,
+     "hit_budget": 2
+    },
+    {
+     "projectiles": 2,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 4
+    }
+   ],
+   "on_kill": {
+    "radius_cm": 250,
+    "dmg_bps": 8000,
+    "budget": 8
+   }
+  },
+  "chapter1.skill.lab_guard": {
+   "role": "ring",
+   "element": "frost",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 1500,
+    "cooldown_ticks": 180,
+    "ring_radius_cm": 200,
+    "ring_pulses": 1,
+    "hit_budget": 10
+   },
+   "reach": [
+    {},
+    {
+     "ring_radius_cm": 230,
+     "hit_budget": 12
+    },
+    {
+     "ring_radius_cm": 260,
+     "hit_budget": 14
+    },
+    {
+     "ring_radius_cm": 290,
+     "hit_budget": 16
+    },
+    {
+     "ring_radius_cm": 320,
+     "hit_budget": 18
+    }
+   ],
+   "vs_strong_bps": 5000,
+   "shape": "ring",
+   "utility": {
+    "lifesteal_bps": 800,
+    "dr_bps": 1000,
+    "shield_per_s": 0.3
+   }
+  },
+  "chapter1.skill.lab_exec": {
+   "role": "basic",
+   "element": "ember",
+   "weight": 100,
+   "applies": {},
+   "detonates": {},
+   "evolve_free": true,
+   "base": {
+    "damage_raw": 3200,
+    "cooldown_ticks": 60,
+    "projectiles": 1,
+    "hit_budget": 1
+   },
+   "reach": [
+    {},
+    {
+     "projectiles": 2,
+     "hit_budget": 2
+    },
+    {
+     "projectiles": 2,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 3
+    },
+    {
+     "projectiles": 3,
+     "hit_budget": 4
+    }
+   ],
+   "extra": {
+    "vs_low_hp_bps": 12000,
+    "vs_near_bps": 3000
+   }
+  }
+ },
+ "pairs": [
+  {
+   "id": "pair.ember.basic_ring",
+   "kind": "detonate",
+   "a": "chapter1.skill.ember",
+   "b": "chapter1.skill.ember_ring",
+   "status": "heat"
+  },
+  {
+   "id": "pair.frost.ring_basic",
+   "kind": "detonate",
+   "a": "chapter1.skill.frost_ring",
+   "b": "chapter1.skill.frost",
+   "status": "chill"
+  },
+  {
+   "id": "pair.arc.basic_ring",
+   "kind": "detonate",
+   "a": "chapter1.skill.arc",
+   "b": "chapter1.skill.arc_ring",
+   "status": "shock"
+  },
+  {
+   "id": "pair.react.steam",
+   "kind": "reaction",
+   "elements": [
+    "ember",
+    "frost"
+   ],
+   "reaction": "react.steam"
+  },
+  {
+   "id": "pair.react.conduct",
+   "kind": "reaction",
+   "elements": [
+    "frost",
+    "arc"
+   ],
+   "reaction": "react.conduct"
+  },
+  {
+   "id": "pair.react.overload",
+   "kind": "reaction",
+   "elements": [
+    "arc",
+    "ember"
+   ],
+   "reaction": "react.overload"
+  }
+ ],
+ "model_extras": {
+  "reactions": {
+   "react.steam": {
+    "radius_m": 2.0,
+    "dmg": 0.8,
+    "per_stack": 0.15,
+    "budget": 6,
+    "gate_s": 1.0,
+    "status_elements": [
+     "ember",
+     "frost"
+    ]
+   },
+   "react.conduct": {
+    "targets": 3,
+    "dmg": 0.7,
+    "budget": 4,
+    "gate_s": 1.0,
+    "status_elements": [
+     "frost",
+     "arc"
+    ]
+   },
+   "react.overload": {
+    "radius_m": 2.5,
+    "dmg": 1.0,
+    "budget": 8,
+    "gate_s": 1.5,
+    "status_elements": [
+     "arc",
+     "ember"
+    ]
+   }
+  },
+  "passive_reaction_bps": 13000
+ },
+ "spells_file_kind": "lab",
+ "kits": {
+  "b_crit_mark": [
+   "lab_marker",
+   "lab_crit_bolt"
+  ],
+  "b_exec_mark": [
+   "lab_marker",
+   "lab_exec"
+  ],
+  "b_crit_burn": [
+   "lab_crit_bolt",
+   "lab_burner"
+  ],
+  "b_volatile_crit": [
+   "lab_volatile",
+   "lab_crit_bolt"
+  ],
+  "c_freeze_nova": [
+   "lab_freezer",
+   "lab_nova"
+  ],
+  "c_push_field": [
+   "lab_pusher",
+   "lab_field"
+  ],
+  "c_pull_guard": [
+   "lab_puller",
+   "lab_guard"
+  ],
+  "c_freeze_turret": [
+   "lab_freezer",
+   "lab_turret"
+  ],
+  "m_ring_mark": [
+   "$ring",
+   "lab_marker"
+  ],
+  "m_ring_crit": [
+   "$ring",
+   "lab_crit_bolt"
+  ],
+  "m_ring_exec": [
+   "$ring",
+   "lab_exec"
+  ],
+  "m_ring_burn": [
+   "$ring",
+   "lab_burner"
+  ]
+ }
+}

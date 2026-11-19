@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""균형 시뮬레이터 (1차판) — 코어를 돌리지 않고 스킬 구성의 힘과 적의 위협을 흐름 모델로 맞물려 본다.
+"""균형 시뮬레이터 (2차판) — 코어를 돌리지 않고 스킬 구성의 힘과 적의 위협을 흐름 모델로 맞물려 본다.
+
+2차 추가: --jobs(판 병렬), 승률 옆 표본 오차(95% 윌슨 구간), --gear kit.*(장비 층, P10), --calibrate2(builds2 실측 장비 없음/켬 두 조건),
+--fit2 [--write-calib], --sensitivity, 탐색은 tools/dev/balance_search.py. 같은 인수면 같은 답(시드 고정, 병렬이어도 판마다 독립 시드).
 
 이 도구의 답은 모델의 답이지 게임의 답이 아니다. 서열("어느 정책이 더 센가")과 값을 바꿨을 때의 방향을 보는 데 쓰고,
 정확한 승률·시각은 실제 코어(sim_builds.gd, measure_rhythm.gd)로 마지막에 확인한다. 재미는 평가하지 않는다.
@@ -11,10 +14,20 @@
   4) python tools/dev/balance_sim.py --preset spec1p --sweep rhythm.beats[2].amount=5,6,7,8 --seeds 6
   5) python tools/dev/balance_sim.py --fit                             # 자유 상수를 실측에 맞춰 보기(결과 출력만, 파일은 안 고침)
 
+팩터 확장(스킬 정의에 범위·갯수·공격력·추가 피해·군중 제어·치명타·흡수·표식 등을 적어 본다. 표는 FACTORS, 키 목록은 --describe):
+  6) python tools/dev/balance_sim.py --describe --spells tools/dev/balance_sim_spells_lab.json --out _local/balsim2/describe.json   # 바꿔 볼 수 있는 키(JSON)
+  7) python tools/dev/balance_sim.py --preset spec1p --spells tools/dev/balance_sim_spells_lab.json --policies kit:b_crit_mark,kit:c_freeze_nova,narrow,random --seeds 50
+  8) python tools/dev/balance_sim.py --preset spec1p --set spells.ember.crit_bps=3000 --set spells.frost.cc.freeze_s=1.0 --policies synergy,narrow --seeds 40
+  9) python tools/dev/balance_sim.py --preset spec1p --gear crit=0.1,range=1.2,count=1 --policies narrow --seeds 40     # 장비 팩터. 묶음은 --gear kit.d1_end+tree.lv20
+ 10) python tools/dev/balance_search.py --approach --spells tools/dev/balance_sim_spells_lab.json --init _local/balsim2/s1A.json   # 접근 (가)(나)(다)(섞음) 견주기
+ 11) python tools/dev/balance_sim.py --calibrate2 | --fit2 [--write-calib]     # 실측 builds2에 다시 맞춤(--fit2는 기본으로 파일을 안 고침)
+ 12) python tools/dev/balance_search.py --sensitivity | --shake | --stage power|threat --out ...   # 민감도 / 가설 상수 흔들기 / 값 탐색
+새 팩터는 기본값이면 효과가 없다(1차판과 같은 결과, test_balance_sim.py가 지킴).
+
 키 접두사: rhythm./enemies./spawn./... = combat_tuning.json, spells. = 주문 데이터(run_spells.json 또는 초안), calib. = balance_sim_calib.json의 값.
 주문 id는 chapter1.skill.을 떼고 쓴다(spells.ember_ring.base.ring_radius_cm).
 """
-import argparse, copy, json, math, os, random, re, sys, time, zlib
+import argparse, copy, hashlib, json, math, multiprocessing, os, random, re, sys, time, zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -53,11 +66,18 @@ def load_json(p):
     if key not in _JSON_CACHE:
         with open(p, encoding="utf-8") as f:
             _JSON_CACHE[key] = json.load(f)
-    return copy.deepcopy(_JSON_CACHE[key]) if key.endswith(("combat_tuning.json", "run_spells.json", "draft.json", "calib.json", "growth_quality37.json")) else _JSON_CACHE[key]
+    # 고치는 문서(주문·튜닝·calib)는 복사본을 준다. 주문 묶음 파일은 이름에 spells가 들어 있으면 전부 복사(--spells로 고른 시험 묶음이 캐시에서 오염되지 않게)
+    if key.endswith(("combat_tuning.json", "run_spells.json", "draft.json", "calib.json", "growth_quality37.json")) or "spells" in Path(key).name:
+        return copy.deepcopy(_JSON_CACHE[key])
+    return _JSON_CACHE[key]
 
 
 def _tok(path):
-    return [int(t) if t.isdigit() else t for t in re.findall(r"[^.\[\]]+", path)]
+    """점 경로. 배열 색인은 [2], 점이 든 키는 ["react.steam"]처럼 따옴표로 쓴다."""
+    out = []
+    for q, t in re.findall(r'\["([^"]+)"\]|([^.\[\]]+)', path):
+        out.append(q if q else (int(t) if t.isdigit() else t))
+    return out
 
 
 def _walk_alias(cur, t):
@@ -116,14 +136,103 @@ def load_cfg(args, sets=None, preset=None):
     c.mode = getattr(args, "skills", None) or "s"
     c.dt = getattr(args, "dt", 1.0)
     gear = getattr(args, "gear", None)
-    c.gear = parse_gear(gear)
+    c.gear = parse_gear(gear, c.cal)
     pre = preset or getattr(args, "preset", None)
+    c.spec = {"preset": pre, "skills": getattr(args, "skills", None), "spells": getattr(args, "spells", None), "gear": gear,
+              "dt": c.dt, "sets": list(sets or []), "mode": None}
     if pre:
         apply_preset(c, pre)
     for s in (sets or []):
         k, v = s.split("=", 1)
         apply_set(c, k.strip(), parse_val(v))
+    c.gear = parse_gear(gear, c.cal)
+    c.spells_sha = hashlib.sha1(json.dumps(c.spells, sort_keys=True).encode("utf-8")).hexdigest()[:8]
     return c
+
+
+def set_mode(cfg, mode):
+    cfg.mode = mode
+    cfg.spec["mode"] = mode
+
+
+def cfg_from_spec(spec):
+    a = argparse.Namespace(spells=spec.get("spells"), skills=spec.get("skills"), dt=spec.get("dt", 1.0), gear=spec.get("gear"),
+                           preset=spec.get("preset"), real_dir=None, set=[])
+    c = load_cfg(a, sets=spec.get("sets"), preset=spec.get("preset"))
+    if spec.get("mode"):
+        set_mode(c, spec["mode"])
+    return c
+
+
+def derive(cfg, sets=(), gear=None, mode=None):
+    """cfg의 사본에 --set 묶음을 더해 새 cfg를 만든다(spec에서 다시 읽어 병렬에도 쓸 수 있다)."""
+    sp = copy.deepcopy(cfg.spec)
+    sp["sets"] = list(sp["sets"]) + list(sets)
+    if gear is not None:
+        sp["gear"] = gear
+    if mode:
+        sp["mode"] = mode
+    return cfg_from_spec(sp)
+
+
+# ---- 병렬 실행 --------------------------------------------------------------
+JOBS = 1
+_POOL = None
+_WCFG = {}
+
+
+def set_jobs(n):
+    global JOBS
+    JOBS = max(1, int(n))
+
+
+def default_jobs():
+    return max(1, min(14, (os.cpu_count() or 2) - 2))
+
+
+def _get_pool():
+    global _POOL
+    if _POOL is None:
+        _POOL = multiprocessing.Pool(JOBS)
+    return _POOL
+
+
+def close_pool():
+    global _POOL
+    if _POOL is not None:
+        _POOL.close()
+        _POOL.join()
+        _POOL = None
+
+
+def _run_task(t):
+    spec_json, pol, w, seed, replay = t
+    c = _WCFG.get(spec_json)
+    if c is None:
+        if len(_WCFG) > 6:
+            _WCFG.clear()
+        c = _WCFG[spec_json] = cfg_from_spec(json.loads(spec_json))
+    return simulate(c, pol, w, seed, replay=replay)
+
+
+def run_many(cfg, tasks):
+    """tasks = [(정책, 마녀, 시드, replay 또는 None)] -> 결과 목록(같은 순서). 병렬이어도 판마다 시드가 독립이라 결과가 같다."""
+    if JOBS <= 1 or len(tasks) < 60 or not getattr(cfg, "spec", None):
+        return [simulate(cfg, p, w, s, replay=rp) for p, w, s, rp in tasks]
+    spec_json = json.dumps(cfg.spec, sort_keys=True, ensure_ascii=False)
+    items = [(spec_json, p, w, s, rp) for p, w, s, rp in tasks]
+    return _get_pool().map(_run_task, items, chunksize=max(1, len(items) // (JOBS * 4)))
+
+
+def wilson(k, n, z=1.96):
+    """승률의 95% 윌슨 구간의 반폭(%p 아님, 0~1)과 중심."""
+    if n <= 0:
+        return 0.0, 0.0, 0.0
+    p = k / n
+    d = 1 + z * z / n
+    ctr = (p + z * z / (2 * n)) / d
+    hw = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return p, max(0.0, ctr - hw), min(1.0, ctr + hw)
 
 
 def apply_set(c, key, val):
@@ -133,10 +242,21 @@ def apply_set(c, key, val):
             raise KeyError("calib 키가 없다: " + rest)
         c.cal[rest] = val
     elif head == "spells":
-        if rest.split(".")[0] in c.spells or not rest:
-            set_path(c.spells, rest, val)
-        else:
-            set_path(c.spells["spells"], rest, val)
+        root = c.spells if (not rest or _tok(rest)[0] in c.spells) else c.spells["spells"]
+        try:
+            set_path(root, rest, val)
+        except KeyError:
+            # 새 팩터는 주문에 처음 적을 때 키가 없다: 알려진 팩터 이름만 새로 만든다
+            toks = _tok(rest)
+            groups = ("extra", "dot", "on_kill", "cc", "vuln", "utility", "zone", "summon")
+            leafs = ("crit_bps", "crit_dmg_bps", "shape", "evolve_free", "vs_strong_bps", "range_cm", "width_cm")
+            if root is c.spells or not (toks[1] in groups or toks[-1] in leafs or (toks[1] in ("base",) and (toks[2] in groups or toks[-1] in leafs))):
+                raise
+            cur = root
+            for t in toks[:-1]:
+                t = _walk_alias(cur, t)
+                cur = cur.setdefault(t, {})
+            cur[toks[-1]] = val
     else:
         set_path(c.tuning, key, val)
 
@@ -161,13 +281,43 @@ def apply_preset(c, name):
         raise SystemExit("알 수 없는 preset: " + name)
 
 
-def parse_gear(g):
+# 장비 층(P10): 묶음마다 (힘 증가 p, 버팀 증가 s). dmg=1+p, 최대 생명 x sqrt(1+s), 받는 피해 x 1/sqrt(1+s) -> 버팀 S는 정확히 (1+s)배.
+# 값은 P10 표 가운데 값(가설). kit.now(지금 장비가 덮는 몫)는 실측 sim-equip에 맞춘 값(calib.gear_now_p / gear_now_s).
+GEAR_KITS = {
+    "kit.none": (0.0, 0.0),
+    "kit.d1_start": (0.225, 0.30),
+    "kit.d1_end": (0.55, 0.55),
+    "kit.d2_mid": (1.05, 0.80),
+    "tree.lv20": (0.35, 0.175),
+}
+
+
+def _kit_pair(name, cal=None):
+    if name == "kit.now":
+        cal = cal or {}
+        return (cal.get("gear_now_p", 0.5), cal.get("gear_now_s", 0.5))
+    if name in GEAR_KITS:
+        return GEAR_KITS[name]
+    raise SystemExit("알 수 없는 장비 묶음: " + name + " (kit.none|kit.now|kit.d1_start|kit.d1_end|kit.d2_mid|tree.lv20, +로 묶음, 또는 dmg=1.2,hp=1.1,dr=0.9)")
+
+
+def parse_gear(g, cal=None):
+    out = {"dmg": 1.0, "hp": 1.0, "dr": 1.0}
     if not g:
-        return {"dmg": 1.0, "hp": 1.0}
-    out = {"dmg": 1.0, "hp": 1.0}
+        return out
     if re.fullmatch(r"[0-9.]+", g):
         x = float(g)
-        return {"dmg": x, "hp": 1 + 0.5 * (x - 1)}
+        out.update(dmg=x, hp=1 + 0.5 * (x - 1))
+        return out
+    if g.startswith(("kit.", "tree.")):
+        p, s = 0.0, 0.0
+        P, S = 1.0, 1.0
+        for nm in g.split("+"):
+            pp, ss = _kit_pair(nm.strip(), cal)
+            P *= 1 + pp
+            S *= 1 + ss
+        out.update(dmg=P, hp=math.sqrt(S), dr=1 / math.sqrt(S))
+        return out
     for part in g.split(","):
         k, v = part.split("=")
         out[k.strip()] = float(v)
@@ -201,6 +351,22 @@ def s_eff(cfg, sid, sp):
               vs=d.get("vs_strong_bps", 10000) / 1e4, applies=d.get("applies", {}), det=d.get("detonates", {}),
               prefer=d.get("prefer"), burst=0, shatter=0)
     st["kind"] = "ring" if role == "ring" else ("chain" if chain > 0 else "proj")
+    # ---- 확장 팩터(전부 선택 필드, 없으면 효과 없음). 표는 balance_sim.py 머리 주석의 FACTORS와 REPORT 참조
+    shape = d.get("shape") or b.get("shape")
+    if shape:
+        st["kind"] = shape  # proj | chain | ring | line | zone | summon
+    st["rng"] = b.get("range_cm", 0) / 100.0
+    st["wid"] = b.get("width_cm", 0) / 100.0
+    st["zone"] = dict(b.get("zone", {}))
+    st["summon"] = dict(b.get("summon", {}))
+    st["crit"] = (d.get("crit_bps", 0) + b.get("crit_bps", 0)) / 1e4
+    st["critm"] = d.get("crit_dmg_bps", 15000) / 1e4
+    st["ex"] = dict(d.get("extra", {}))
+    st["dot"] = dict(d.get("dot", {}))
+    st["onkill"] = dict(d.get("on_kill", {}))
+    st["cc"] = dict(d.get("cc", {}))
+    st["vuln"] = dict(d.get("vuln", {}))
+    st["util"] = dict(d.get("utility", {}))
     if sp.evolved:
         cal = cfg.cal
         st["dmg"] *= cal["evolve_damage_mul"]
@@ -284,11 +450,68 @@ class Build:
                 self._eff = [legacy_eff(c, k, v.rank, v.evolved, k == self.primary) for k, v in self.sp.items()]
             else:
                 self._eff = [s_eff(c, k, v) for k, v in self.sp.items()]
-            gd = c.gear["dmg"]
-            if gd != 1.0:
-                for e in self._eff:
-                    e["dmg"] *= gd
+            g = c.gear
+            for e in self._eff:
+                for k, v in (("rng", 0.0), ("wid", 0.0), ("crit", 0.0), ("critm", 1.5)):
+                    e.setdefault(k, v)
+                for k in ("zone", "summon", "ex", "dot", "onkill", "cc", "vuln", "util"):
+                    e.setdefault(k, {})
+                if g["dmg"] != 1.0:
+                    e["dmg"] *= g["dmg"]
+                if g.get("cd", 1.0) != 1.0:
+                    e["cd"] *= g["cd"]
+                if g.get("crit", 0.0):
+                    e["crit"] += g["crit"]
+                if g.get("critdmg", 0.0):
+                    e["critm"] += g["critdmg"]
+                rm = g.get("range", 1.0)
+                if rm != 1.0:
+                    for k in ("r", "R", "rng", "wid"):
+                        e[k] = e[k] * rm
+                    if e["zone"]:
+                        e["zone"]["radius_cm"] = e["zone"].get("radius_cm", 0) * rm
+                if g.get("count", 0):
+                    n = int(g["count"])
+                    if e["kind"] in ("proj", "line"):
+                        e["k"] += n
+                    elif e["kind"] == "chain":
+                        e["chain"] += n
+                    elif e["kind"] == "ring" and e["rt"]:
+                        e["rt"] += n
+                    elif e["kind"] == "summon" and e["summon"]:
+                        e["summon"]["count"] = e["summon"].get("count", 1) + n
+                if g.get("pierce", 0):
+                    e["pierce"] += int(g["pierce"])
+                if g.get("extra", 0.0):
+                    e["ex"]["elem_bps"] = e["ex"].get("elem_bps", 0) + g["extra"] * 1e4
+                if g.get("dot", 1.0) != 1.0 and e["dot"]:
+                    e["dot"]["dps_bps"] = e["dot"].get("dps_bps", 0) * g["dot"]
+                if g.get("cc", 1.0) != 1.0 and e["cc"]:
+                    for k in ("slow_s", "freeze_s", "stun_s", "root_s", "knock_cm", "pull_cm"):
+                        if k in e["cc"]:
+                            e["cc"][k] *= g["cc"]
+                if g.get("vuln", 0.0) and e["vuln"]:
+                    e["vuln"]["bps"] = e["vuln"].get("bps", 0) + g["vuln"] * 1e4
         return self._eff
+
+    def util(self):
+        """판 안 방어·회복 팩터 합(주문의 utility 필드 + 장비)."""
+        u = {"lifesteal": 0.0, "heal_on_kill": 0.0, "shield_per_s": 0.0, "dr": 0.0, "move": 0.0, "cd_refund": 0.0}
+        for e in self.eff():
+            x = e.get("util") or {}
+            u["lifesteal"] += x.get("lifesteal_bps", 0) / 1e4
+            u["heal_on_kill"] += x.get("heal_on_kill", 0)
+            u["shield_per_s"] += x.get("shield_per_s", 0)
+            u["dr"] += x.get("dr_bps", 0) / 1e4
+            u["move"] += x.get("move_bps", 0) / 1e4
+            u["cd_refund"] += x.get("cd_refund_bps", 0) / 1e4
+        g = self.cfg.gear
+        u["lifesteal"] += g.get("lifesteal", 0.0)
+        u["heal_on_kill"] += g.get("heal_kill", 0.0)
+        u["dr"] += g.get("dr_add", 0.0)
+        u["move"] += g.get("move", 0.0)
+        u["cd_refund"] += g.get("cd_refund", 0.0)
+        return u
 
     def dirty(self):
         self._eff = None
@@ -351,6 +574,24 @@ def spell_hits(st, N, c):
     if kind == "chain":
         n = min(st["budget"], st["chain"] * st["branches"], N)
         return min(1.0, N) / st["cd"] * max(n, 1.0) * 1.0
+    if kind in ("line", "zone", "summon"):
+        rho = c["cluster"] * N / (math.pi * c["field_r_m"] ** 2)
+        if kind == "line":  # 관통 선: 발수 x (관통 + 선 면적 안의 적)
+            phi = min(0.9, c["phi_base"] + c["phi_per_alive"] * N)
+            n = st["k"] * (1 + st["pierce"] * phi + rho * st["wid"] * st["rng"])
+            n = max(1.0, min(n, st["budget"] if st["budget"] > 1 else n, N))
+            return min(1.0, N) / st["cd"] * n
+        if kind == "zone":  # 장판: 한 번 깔면 duration 동안 tick마다 안의 적 모두
+            z = st["zone"]
+            rad = z.get("radius_cm", 150) / 100.0
+            zones = max(1.0, z.get("duration_s", 4.0) / st["cd"]) * z.get("count", 1)
+            tick = max(1, z.get("tick_ticks", 30)) / 60.0
+            mm = min(max(st["budget"], 1), 1 + rho * math.pi * rad * rad)
+            return min(1.0, N) * zones * mm / tick
+        s = st["summon"]  # 소환·포탑: 지속 동안 마리마다 attack_ticks마다 한 번(조준 없음)
+        up = min(1.0, s.get("duration_s", 8.0) / st["cd"])
+        mm = 1 + rho * math.pi * st["r"] ** 2
+        return min(1.0, N) * s.get("count", 1) * up / (max(1, s.get("attack_ticks", 60)) / 60.0) * mm
     m = N * (1 - math.exp(-(st["R"] / c["r0_hero_m"]) ** 2))
     cap = st["rt"] if st["rt"] else st["budget"]
     cap = min(cap, st["budget"])
@@ -387,8 +628,19 @@ class Power:
         c = self.c
         effs, H = self.hits_table(build, N)
         mult = [1.0] * len(effs)
+        fac = [1.0] * len(effs)  # 확장 팩터(치명타·추가 피해·지속 피해·표식)의 피해 배율
         extra = []  # (hits/s, dmg per hit)
         det_dmg = 0.0
+        self.last_cc = {"contact": 1.0, "dens": 0.0, "strong": 1.0, "cov": 0.0}
+        self.last_crit = (0.0, 1.5)
+        if cfg.mode == "s" and N > 0:
+            self.last_cc = self._cc(effs, H, N)
+            ut = build.util()
+            for i, st in enumerate(effs):
+                if st["kind"] == "ring" and self.last_cc["dens"] > 0:
+                    H[i] *= 1 + self.last_cc["dens"]
+                if ut["cd_refund"] > 0:
+                    H[i] *= min(2.0, 1 + ut["cd_refund"] * self.kill_rate * st["cd"])
         if cfg.mode == "s" and N > 0:
             ex = cfg.spells["model_extras"]
             stat = cfg.spells["statuses"]
@@ -462,18 +714,86 @@ class Power:
                        cfg.spells["spells"][k]["element"] in rx["status_elements"]):
                     amp *= partner_bps
                 extra.append((evr * nb * c["eta_aim"] / c["eta_aim"], dmg * amp))
+            # ---- 확장 팩터
+            stk = {}
+            for (sn, src), r in rate.items():
+                stk[sn] = stk.get(sn, 0.0) + r * stat[sn]["expire_ticks"] / 60.0
+            vul_add = 0.0
+            for st, h in zip(effs, H):
+                v = st["vuln"]
+                if v:
+                    rt_ = h * v.get("chance_bps", 10000) / 1e4 / max(N, 1.0)
+                    vul_add += v.get("bps", 0) / 1e4 * (1 - math.exp(-rt_ * v.get("secs", 4.0)))
+            vul = 1 + min(1.5, vul_add)
+            rho = c["cluster"] * N / (math.pi * c["field_r_m"] ** 2)
+            for i, st in enumerate(effs):
+                f = 1.0
+                ex_ = st["ex"]
+                if ex_:
+                    f += ex_.get("elem_bps", 0) / 1e4
+                    vs = ex_.get("vs_status")
+                    if vs:
+                        f += vs.get("bps", 0) / 1e4 * (1 - math.exp(-min(stat[vs["status"]]["max"], stk.get(vs["status"], 0.0))))
+                    f += ex_.get("vs_low_hp_bps", 0) / 1e4 * c["p_low_hp"]
+                    f += ex_.get("vs_near_bps", 0) / 1e4 * c["p_near"] + ex_.get("vs_far_bps", 0) / 1e4 * (1 - c["p_near"])
+                    f += ex_.get("vs_cc_bps", 0) / 1e4 * self.last_cc["cov"]
+                dt_ = st["dot"]
+                if dt_:
+                    f += dt_.get("dps_bps", 0) / 1e4 * min(dt_.get("secs", 0.0), c["dot_cap_s"]) * c["dot_eff"]
+                f *= vul
+                if st["crit"] > 0:
+                    f *= 1 + min(1.0, st["crit"]) * (st["critm"] - 1)
+                fac[i] = f
+                ok_ = st["onkill"]
+                if ok_ and ok_.get("dmg_bps", 10000) > 0 and H[i] > 0:
+                    htk = max(1.0, math.ceil(c["ref_enemy_hp"] / max(st["dmg"] * f, 1e-6)))
+                    nb = min(ok_.get("budget", 6), 1 + rho * math.pi * (ok_.get("radius_cm", 150) / 100.0) ** 2)
+                    extra.append((H[i] / htk * nb, st["dmg"] * ok_.get("dmg_bps", 10000) / 1e4))
+            wsum = sum(h * st["dmg"] * f for st, h, f in zip(effs, H, fac))
+            if wsum > 0:
+                pc = sum(h * st["dmg"] * f * min(1.0, st["crit"]) for st, h, f in zip(effs, H, fac)) / wsum
+                mc = sum(h * st["dmg"] * f * min(1.0, st["crit"]) * st["critm"] for st, h, f in zip(effs, H, fac)) / max(wsum * pc, 1e-9) if pc > 0 else 1.5
+                self.last_crit = (pc, mc)
         tot_h = 0.0
         tot_dmg = 0.0
-        for st, h, m in zip(effs, H, mult):
+        for st, h, m, f in zip(effs, H, mult, fac):
             tot_h += h
-            tot_dmg += h * st["dmg"] * m
-            det_dmg += h * st["dmg"] * (m - 1)
+            tot_dmg += h * st["dmg"] * m * f
+            det_dmg += h * st["dmg"] * (m - 1) * f
         for h, d in extra:
             tot_h += h
             tot_dmg += h * d
             det_dmg += h * d
         dbar = tot_dmg / tot_h if tot_h > 0 else 0.0
         return tot_h, dbar, tot_dmg, det_dmg
+
+    kill_rate = 0.0
+    last_strong_keep = 1.0
+
+    def _cc(self, effs, H, N):
+        """군중 제어가 위협 쪽에 주는 효과. contact: 접촉 피해 배율(0.15~1), dens: 끌어당김으로 원형 명중 가산,
+        strong: 강한 적의 공격이 맞을 배율(지속은 cc_strong_mult로 줄어듦), cov: 제어 중인 적의 몫."""
+        c = self.c
+        hard_keep, slow_cov, pull = 1.0, 0.0, 0.0
+        s_keep = 1.0
+        for st, h in zip(effs, H):
+            cc = st["cc"]
+            if not cc:
+                continue
+            ch = cc.get("chance_bps", 10000) / 1e4
+            rate = h * ch / max(N, 1.0)
+            hd = cc.get("freeze_s", 0) + cc.get("stun_s", 0) + cc.get("root_s", 0) + cc.get("knock_cm", 0) / 100.0 / c["enemy_speed_m"]
+            if hd > 0:
+                hard_keep *= math.exp(-rate * hd)
+                s_keep *= 1 - min(1.0, ch / max(st["cd"], 0.1) * hd * c["cc_strong_mult"])
+            if cc.get("slow_s", 0) > 0 and cc.get("slow_bps", 0) > 0:
+                slow_cov += (1 - math.exp(-rate * cc["slow_s"])) * cc["slow_bps"] / 1e4
+                s_keep *= 1 - min(1.0, ch / max(st["cd"], 0.1) * cc["slow_s"] * c["cc_strong_mult"]) * cc["slow_bps"] / 1e4 * 0.5
+            if cc.get("pull_cm", 0) > 0:
+                pull += (1 - math.exp(-rate)) * cc["pull_cm"] / 100.0 / c["field_r_m"]
+        slow_cov = min(0.7, slow_cov)
+        return {"contact": max(0.15, hard_keep * (1 - slow_cov)), "dens": min(0.5, pull), "strong": max(0.2, s_keep),
+                "cov": min(1.0, (1 - hard_keep) + slow_cov)}
 
     def _paired_evolved(self, build, a, b):
         sa, sb = build.sp.get(a), build.sp.get(b)
@@ -486,6 +806,9 @@ class Power:
         tot = 0.0
         has_applier = {}
         effs = build.eff()
+        self.last_strong_keep = 1.0
+        if self.cfg.mode == "s":
+            self.last_strong_keep = self._cc(effs, self.hits_table(build, N)[1], max(N, 1.0))["strong"]
         for st in effs:
             for sn in st["applies"]:
                 has_applier.setdefault(sn, set()).add(st["id"])
@@ -495,10 +818,42 @@ class Power:
                 v = base * st["k"] * c["single_proj_acc"] * s * (1 + (c["single_splash"] if st["r"] > 0 else 0.0))
             elif st["kind"] == "chain":
                 v = base * min(1.0, st["chain"] * st["branches"] / (1.0 + N)) if N > 0 else base
+            elif st["kind"] == "line":
+                v = base * st["k"] * c["single_proj_acc"] * s
+            elif st["kind"] == "zone":
+                z = st["zone"]
+                zones = max(1.0, z.get("duration_s", 4.0) / st["cd"]) * z.get("count", 1)
+                v = st["dmg"] * zones * 60.0 / max(1, z.get("tick_ticks", 30)) * 0.8
+            elif st["kind"] == "summon":
+                sm = st["summon"]
+                up = min(1.0, sm.get("duration_s", 8.0) / st["cd"])
+                v = st["dmg"] * sm.get("count", 1) * up * 60.0 / max(1, sm.get("attack_ticks", 60)) * 0.7 * (1.0 / (1.0 + 0.5 * c["single_kappa"] * N))
             else:
                 pin = min(1.0, st["R"] / c["ring_in_r_m"])
                 v = base * st["vs"] * pin * st["pulses"]
             m = 1.0
+            if self.cfg.mode == "s":
+                ex_ = st.get("ex") or {}
+                f = 1.0 + ex_.get("elem_bps", 0) / 1e4 + ex_.get("vs_strong_bps", 0) / 1e4 + ex_.get("vs_cc_bps", 0) / 1e4 * (1 - self.last_strong_keep)
+                f += ex_.get("vs_near_bps", 0) / 1e4 * 0.5
+                if st.get("dot"):
+                    f += st["dot"].get("dps_bps", 0) / 1e4 * min(st["dot"].get("secs", 0.0), c["dot_cap_s"] * 2) * 0.9
+                if st.get("crit", 0) > 0:
+                    f *= 1 + min(1.0, st["crit"]) * (st["critm"] - 1)
+                m *= f
+                vul = 0.0
+                for e2 in effs:
+                    if e2.get("vuln"):
+                        vul += e2["vuln"].get("bps", 0) / 1e4 * min(1.0, e2["vuln"].get("secs", 4.0) / e2["cd"]) * c["p_status_single"]
+                m *= 1 + min(1.5, vul)
+                mm = 1.0
+                for sn, dd in st["det"].items():
+                    if any(x != st["id"] for x in has_applier.get(sn, ())):
+                        bonus = dd.get("bonus_bps", dd.get("per_stack_bps", 0) * 2) / 1e4
+                        mm = max(mm, 1 + bonus * c["p_status_single"])
+                m *= mm
+                tot += v * m * c["eta_aim"]
+                continue
             if self.cfg.mode == "s":
                 for sn, dd in st["det"].items():
                     if any(x != st["id"] for x in has_applier.get(sn, ())):
@@ -558,6 +913,8 @@ def evolve_ok(cfg, build, sid, level):
         return False
     if ev.get("needs_passive", True) and cfg.spells["spells"][sid]["element"] not in build.passives:
         return False
+    if not ev.get("needs_partner", True) or cfg.spells["spells"][sid].get("evolve_free"):
+        return True  # 시험 묶음의 주문은 evolve_free(짝 없이 진화)로 적을 수 있다
     p, ps = partner_of(cfg, build, sid)
     return p is not None and ps >= ev["partner_axis_sum"]
 
@@ -569,8 +926,8 @@ def unlockable(cfg, build, witch):
     for k, d in cfg.spells["spells"].items():
         if k in build.sp:
             continue
-        if d["role"] == "ring":
-            if d.get("owner") != "chapter1.character." + witch:
+        if "owner" in d:
+            if d["owner"] != "chapter1.character." + witch:
                 continue
         out.append(k)
     return out
@@ -721,6 +1078,8 @@ class Policy:
             return self.narrow(build, offer, level, ring_id(self.witch))
         if k == "synergy":
             return self.synergy(build, offer, level)
+        if k == "kit":
+            return self.kit(build, offer, level)
         raise SystemExit("알 수 없는 정책: " + self.name)
 
     def lowest(self, build, offer, level):
@@ -759,6 +1118,36 @@ class Policy:
         if ax:
             return min(ax, key=lambda c: build.sp[target].dmg if c[2] == "damage" else build.sp[target].reach)
         return self.lowest(build, offer, level)
+
+    def kit(self, build, offer, level):
+        """시험 묶음의 kits[이름] = 주문 id 목록($basic = 그 마녀의 기본기, $ring = 그 마녀의 원형). 열기 -> 축 점수를 번갈아(첫째 5, 나머지 3) -> 진화 -> 결정 -> 생존."""
+        cfg = self.cfg
+        tok = {"$basic": basic_id(self.witch), "$ring": ring_id(self.witch)}
+        members = [tok.get(m) or (SK + m if not m.startswith(SK) else m) for m in cfg.spells["kits"][self.role]]
+        for m in members:
+            if m not in build.sp:
+                for c in offer:
+                    if c[0] == "unlock" and c[1] == m:
+                        return c
+        have = [m for m in members if m in build.sp]
+        thr = {m: (5 if i == 0 else 3) for i, m in enumerate(members)}
+        need = [m for m in have if build.axis_sum(m) < thr[m]]
+        ax = [c for c in offer if c[0] == "axis" and c[1] in need]
+        if ax:
+            return min(ax, key=lambda c: (build.axis_sum(c[1]) / thr[c[1]], build.sp[c[1]].dmg if c[2] == "damage" else build.sp[c[1]].reach))
+        for c in offer:
+            if c[0] == "evolve" and c[1] in have:
+                return c
+        for c in offer:
+            if c[0] == "passive" and c[1] in {cfg.spells["spells"][m]["element"] for m in have}:
+                return c
+        for c in offer:
+            if c[0] == "axis" and c[1] in have:
+                return c
+        for c in offer:
+            if c[0] == "survival":
+                return c
+        return self.best(build, offer, level)
 
     def commit_pair(self, build, offer):
         if self.pair:
@@ -1062,11 +1451,19 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
         N = min(N, T["alive_cap"])
         # ---- 처리량과 처치
         tot_h, dbar, tot_dmg, det_dmg = pw.evaluate(build, N)
-        tot_h *= luck
-        tot_dmg *= luck
-        det_dmg *= luck
+        cc_now, crit_now = pw.last_cc, pw.last_crit
+        utl = build.util() if cfg.mode == "s" else None
+        dens = luck / (1.0 + c.get("eta_dense", 0.0) * N / 100.0)  # 포위당할수록 자동 조작이 덜 맞힌다(맞춤으로 정함)
+        tot_h *= dens
+        tot_dmg *= dens
+        det_dmg *= dens
         if tot_h > 0 and dbar > 0:
-            htk = sum(w * max(1.0, math.ceil(h / dbar - 1e-9)) for w, h in hl)
+            pc_, mc_ = crit_now
+            if pc_ > 0:  # 치명타는 처치당 명중 수의 계단을 바꾼다: 치명이면 d*mc, 아니면 d0
+                d0 = dbar / (1 + pc_ * (mc_ - 1))
+                htk = sum(w * ((1 - pc_) * max(1.0, math.ceil(h / d0 - 1e-9)) + pc_ * max(1.0, math.ceil(h / (d0 * mc_) - 1e-9))) for w, h in hl)
+            else:
+                htk = sum(w * max(1.0, math.ceil(h / dbar - 1e-9)) for w, h in hl)
             kill_cap = tot_h / htk * dt
         else:
             kill_cap = 0.0
@@ -1075,6 +1472,7 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
         N_before = N
         N = max(0.0, N - kill)
         kills_total += kill
+        pw.kill_rate = kill / dt
         if phase in ("zone", "champ"):
             zk += kill
         # 처리량 효율: 실제로 쓴 피해 비율
@@ -1109,12 +1507,20 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
         zi = min(zhp, 2)
         dmg_avg = sum(w * e[n]["damage"][zi] for w, n in zip(mix, ("walker", "ranged", "charger")))
         noise = math.exp(rng.gauss(0, c["noise_sigma"]) - c["noise_sigma"] ** 2 / 2)
-        hits = c["hit_rate_per_alive"] * N * dt * noise
+        hits = c["hit_rate_per_alive"] * 50.0 * (N / 50.0) ** c.get("hit_alive_exp", 1.0) * dt * noise
         mult = 1.0
         if pres_on:
             mult += pressure * pres_cfg["contact_per_point_bps"] / 1e4
-        gmul = (1 - 0.08 * build.guard)
-        d_contact = hits * dmg_avg * c["hit_dmg_scale"] * mult * gmul
+        gmul = (1 - 0.08 * build.guard) * cfg.gear.get("dr", 1.0)
+        shield_abs = 0.0
+        heal_now = 0.0
+        if utl is not None:
+            gmul *= 1 - min(0.8, utl["dr"])
+            hits /= 1 + 0.5 * min(1.0, utl["move"])  # 이동 속도: 접촉을 덜 허용
+            shield_abs = utl["shield_per_s"] * dt
+            heal_now = utl["lifesteal"] * tot_dmg * dt * (kill / kill_cap if kill_cap > 0 else 0) + utl["heal_on_kill"] * kill
+        hits *= cc_now["contact"]  # 군중 제어: 접근·접촉이 줄어든다(위협 쪽 효과)
+        d_contact = max(0.0, hits * dmg_avg * c["hit_dmg_scale"] * mult * gmul - shield_abs)
         pr["hits"] += hits
         d_champ = 0.0
         # ---- 강한 적
@@ -1123,7 +1529,7 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
             champ["hp"] -= ps * dt
             cs = T["champions"][champ["idx"]]
             cyc = (cs["windup"] + cs["recover"]) / 60.0
-            dd = cs["damage"] * c["champ_p_hit"] / cyc * dt
+            dd = cs["damage"] * c["champ_p_hit"] / cyc * dt * pw.last_strong_keep
             if champ["idx"] == 2:
                 boss_t += dt
                 interval = c["ward_interval_s"]
@@ -1149,6 +1555,8 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
         # ---- 체력, 회수약
         dmg_now = d_contact + d_champ
         hp -= dmg_now
+        if heal_now > 0:
+            hp = min(maxhp, hp + heal_now)
         hist.append((d_contact, d_champ, N, pressure, boss_t))
         if len(hist) > int(20 / dt):
             hist.pop(0)
@@ -1238,6 +1646,14 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
     else:
         res["stall"] = True
     res["secs"] = round(t, 1)
+    # 진행도(0~1): 승리 1, 아니면 (구역 + 봉인 진행)/3, 우두머리 싸움이면 남은 체력 몫을 더한다. 승률이 0 근처인 곳에서 탐색의 기울기를 주려는 보조 지표다.
+    _zi = min(zone, 2)
+    if res["win"]:
+        res["prog"] = 1.0
+    elif phase in ("boss",) and champ is not None:
+        res["prog"] = round((2 + 0.8 + 0.19 * (1 - max(0.0, champ["hp"]) / T["champions"][2]["hp"])) / 3.0, 3)
+    else:
+        res["prog"] = round(min(0.79, (_zi + min(1.0, zk / max(1.0, T["seal_kills"][_zi]))) / 3.0), 3)
     res["kills"] = round(kills_total)
     res["level"] = level
     res["hp_end"] = round(max(0.0, hp) / maxhp, 3)
@@ -1257,14 +1673,19 @@ def simulate(cfg, policy, witch, seed, replay=None, trace=False):
 
 # ---- 집계와 서열 -----------------------------------------------------------
 def policy_class(name):
-    return name.split(":")[0]
+    k = name.split(":")[0]
+    return "synergy" if k == "kit" else k  # kit:<이름>은 시험 묶음의 "짝을 맞춘 조합" 길
 
 
 def run_matrix(cfg, policies, witches, seeds):
+    tasks = [(pol, w, s, None) for pol in policies for w in witches for s in seeds]
+    rs = run_many(cfg, tasks)
     out = {}
+    i = 0
     for pol in policies:
         for w in witches:
-            out[(pol, w)] = [simulate(cfg, pol, w, s) for s in seeds]
+            out[(pol, w)] = rs[i:i + len(seeds)]
+            i += len(seeds)
     return out
 
 
@@ -1319,11 +1740,12 @@ def report(cfg, matrix, policies, witches, seeds, label=""):
     lines = []
     A = lines.append
     A("== 균형 시뮬레이터 결과 %s ==  [모델의 답이지 게임의 답이 아니다. 재미는 미평가]" % label)
-    A("스킬 구성 %s, 주문 데이터 %s, 리듬 %s, 시드 %s, dt %.1fs, 장비 %s" % (
-        cfg.mode, Path(cfg.spells_path).name, "켬" if cfg.tuning["rhythm"].get("enabled") else "꺼짐",
-        "%d~%d(%d판)" % (seeds[0], seeds[-1], len(seeds)), cfg.dt, cfg.gear if cfg.gear["dmg"] != 1 else "없음"))
+    A("스킬 구성 %s, 주문 데이터 %s(%s), 리듬 %s, 시드 %s, dt %.1fs, 장비 %s" % (
+        cfg.mode, Path(cfg.spells_path).name, cfg.spells_sha, "켬" if cfg.tuning["rhythm"].get("enabled") else "꺼짐",
+        "%d~%d(%d판)" % (seeds[0], seeds[-1], len(seeds)), cfg.dt,
+        (cfg.spec.get("gear") or cfg.gear) if (cfg.gear["dmg"] != 1 or cfg.gear["hp"] != 1) else "없음"))
     A("")
-    A("정책 x 마녀 | 승률 | P7 | 판 길이 중앙 | 죽은 마디(원인) | 진화 시각(중앙) | 레벨 | 터뜨림 몫 | 남은생명(승)")
+    A("정책 x 마녀 | 승률(±95%) | P7 | 판 길이 중앙 | 죽은 마디(원인) | 진화 시각(중앙) | 레벨 | 터뜨림 몫 | 남은생명(승)")
     for pol in policies:
         for w in witches:
             rs = matrix[(pol, w)]
@@ -1341,8 +1763,10 @@ def report(cfg, matrix, policies, witches, seeds, label=""):
             dtxt = ", ".join("%s %d" % kv for kv in sorted(deaths.items(), key=lambda kv: -kv[1])[:3]) or "-"
             ev = [r["evolve_t"][0] for r in rs if r["evolve_t"]]
             wins = [r for r in rs if r["win"]]
-            A("%-18s %-6s %s %s %6.0fs  %-34s %s  L%.1f  %4.0f%%  %s" % (
-                pol, w, fmt_pct(wr_), m, med([r["secs"] for r in rs]) or 0, dtxt,
+            wk = sum(1 for r in rs if r["win"])
+            _p, lo_, hi_ = wilson(wk, len(rs))
+            A("%-18s %-6s %s±%-2.0f %s %6.0fs  %-34s %s  L%.1f  %4.0f%%  %s" % (
+                pol, w, fmt_pct(wr_), 100 * (hi_ - lo_) / 2, m, med([r["secs"] for r in rs]) or 0, dtxt,
                 ("%5.0fs(%d/%d)" % (med(ev), len(ev), len(rs))) if ev else "   -  ",
                 sum(r["level"] for r in rs) / len(rs), 100 * sum(r["det_share"] for r in rs) / len(rs),
                 ("%.0f%%" % (100 * sum(r["hp_end"] for r in wins) / len(wins))) if wins else "-"))
@@ -1702,6 +2126,205 @@ def do_fit(cfg, args):
     print(json.dumps({k: round(cfg.cal[k], 5) for k in FIT_PARAMS}, ensure_ascii=False))
 
 
+# ---- 맞춤 2차: builds2 실측(장비 없음 / 장비 켬) -------------------------------
+GROUPS2 = [("강(pilot·narrow)", ("pilot", "narrow")), ("중(synergy_now)", ("synergy_now",)), ("약(random·spread·worst)", ("random", "spread", "worst"))]
+BEATS2 = ["기", "승1", "승2", "전A"]
+FIT2_PARAMS = {  # 이름: (하한, 상한) — 곱셈 걸음. gear_now_*는 덧셈 걸음
+    "hit_rate_per_alive": (0.0005, 0.02), "hit_dmg_scale": (0.03, 1.0), "tau_min_s": (1.0, 8.0), "cluster": (1.0, 8.0),
+    "eta_aim": (0.4, 1.0), "xp_mult": (0.5, 1.5), "eta_dense": (0.0, 3.0), "hit_alive_exp": (0.3, 1.6), "noise_sigma": (0.05, 0.6),
+    "power_luck_sigma": (0.0, 0.3), "potion_use_frac": (0.2, 0.7), "champ_p_hit": (0.01, 0.3), "single_kappa": (0.005, 0.2),
+    "champ_time_scale": (0.0, 1.0), "single_proj_acc": (0.3, 1.0), "ward_p_hit": (0.05, 0.8),
+}
+FIT2_GEAR = {"gear_now_p": (0.0, 3.0), "gear_now_s": (0.0, 3.0)}
+
+
+def find_real_dir2():
+    for base in [ROOT] + list(ROOT.parents):
+        d = base / "_local"
+        if (d / "builds2" / "sim-noequip.json").exists():
+            return d
+    return None
+
+
+def load_real2(real_dir):
+    return {c: load_json(real_dir / "builds2" / ("sim-%s.json" % c))["runs"] for c in ("noequip", "equip")}
+
+
+def _wname(r):
+    return r["primary"].split(".")[-1]
+
+
+def model_pairs(real_runs, cond, extra_sets=()):
+    spec = {"preset": "current", "skills": None, "spells": None, "gear": "kit.now" if cond == "equip" else None, "dt": 1.0,
+            "sets": list(extra_sets), "mode": "legacy"}
+    cfg = cfg_from_spec(spec)
+    tasks = [(r["policy"], _wname(r), int(r["seed"]), r["picks"]) for r in real_runs]
+    return list(zip(real_runs, run_many(cfg, tasks)))
+
+
+def _rate(xs):
+    return sum(1 for x in xs if x) / len(xs) if xs else 0.0
+
+
+def pol_stats(pairs):
+    out = {}
+    pols = []
+    for r, m in pairs:
+        if r["policy"] not in pols:
+            pols.append(r["policy"])
+    for p in pols:
+        rr = [(r, m) for r, m in pairs if r["policy"] == p]
+        out[p] = dict(n=len(rr), rw=_rate([r["mode"] == "victory" for r, m in rr]), mw=_rate([m["win"] for r, m in rr]),
+                      rt=_rate([r["mode"] == "playing" for r, m in rr]), mt=_rate([m["stall"] for r, m in rr]),
+                      rsec=med([r["secs"] for r, m in rr]), msec=med([m["secs"] for r, m in rr]),
+                      rk=sum(r["kills"] for r, m in rr) / len(rr), mk=sum(m["kills"] for r, m in rr) / len(rr),
+                      rd=sum(r["dmg_total"] for r, m in rr) / len(rr), md=sum(m["dmg_total"] for r, m in rr) / len(rr),
+                      rp=sum(r["potions"] for r, m in rr) / len(rr), mp=sum(m["potions"] for r, m in rr) / len(rr))
+    return out
+
+
+def group_beats(pairs):
+    out = {}
+    for gname, gp in GROUPS2:
+        rr = [(r, m) for r, m in pairs if r["policy"] in gp]
+        if not rr:
+            continue
+        for lab in BEATS2:
+            a = beat_agg([r["beats"] for r, m in rr], lab)
+            m_ = model_beat_agg([m for r, m in rr], lab)
+            if a and m_:
+                out[(gname, lab)] = (a, m_)
+    return out
+
+
+def _lg(m, r, floor=1e-3):
+    return math.log(max(m, floor) / max(r, floor))
+
+
+def score2(real2, extra_sets, parts=False):
+    """맞춤 목적함수(작을수록 좋다). 장비 없음: 정책별 승·정체 비율, 판 길이, 처치·받은 피해·회수약, 마디별 처치/살아 있는 적/피격.
+    장비 켬: 정책별 승률, 판 길이, 처치."""
+    s_ne = model_pairs(real2["noequip"], "noequip", extra_sets)
+    s_eq = model_pairs(real2["equip"], "equip", extra_sets)
+    sc = {"noequip_win": 0.0, "noequip_stall": 0.0, "noequip_len": 0.0, "noequip_vol": 0.0, "noequip_beats": 0.0, "equip_win": 0.0, "equip_len": 0.0}
+    for p, x in pol_stats(s_ne).items():
+        sc["noequip_win"] += 4 * (x["rw"] - x["mw"]) ** 2
+        sc["noequip_stall"] += 2 * (x["rt"] - x["mt"]) ** 2
+        sc["noequip_len"] += 1.0 * _lg(x["msec"], x["rsec"]) ** 2
+        sc["noequip_vol"] += 0.5 * (_lg(x["mk"], x["rk"]) ** 2 + _lg(x["md"], x["rd"]) ** 2 + 0.5 * _lg(x["mp"], x["rp"]) ** 2)
+    for (g, lab), (a, m) in group_beats(s_ne).items():
+        sc["noequip_beats"] += 0.4 * _lg(m["kpm"], a["kpm"]) ** 2 + 0.4 * _lg(m["alive"], a["alive"]) ** 2 + 0.15 * _lg(m["hpm"], a["hpm"]) ** 2
+    for p, x in pol_stats(s_eq).items():
+        sc["equip_win"] += 6 * (x["rw"] - x["mw"]) ** 2
+        sc["equip_len"] += 1.0 * _lg(x["msec"], x["rsec"]) ** 2 + 0.5 * _lg(x["mk"], x["rk"]) ** 2
+    tot = sum(sc.values())
+    return (tot, sc, s_ne, s_eq) if parts else tot
+
+
+def calib2_table(real2, extra_sets, title=""):
+    tot, sc, s_ne, s_eq = score2(real2, extra_sets, parts=True)
+    L = []
+    A = L.append
+    A("== 맞춤 2차 %s ==  실측: _local/builds2/sim-noequip.json(270판, 정책 6 x 마녀 3 x 15), sim-equip.json(135판, 정책 3 x 3 x 15)" % title)
+    A("모델: 지금 게임 값(legacy 구성, 리듬 꺼짐), 실측의 은총 선택 순서를 되먹임, 시드는 실측과 같음. 장비 켬 조건은 --gear kit.now")
+    A("목적함수 %.3f  구성: %s" % (tot, ", ".join("%s %.2f" % kv for kv in sc.items())))
+    A("")
+    A("[표 A] 장비 없음 — 정책별. 승률/정체(600초 시간 상한) 비율/판 길이 중앙/처치/받은 피해(최대 생명 배수)/회수약")
+    A("정책         | 승 실측 모델 | 정체 실측 모델 | 길이(초) 실측 모델 오차 | 처치 실측 모델 오차 | 받은피해 실측 모델 오차 | 약 실측 모델")
+    for p, x in pol_stats(s_ne).items():
+        A("%-12s | %4.0f%% %4.0f%% | %4.0f%% %4.0f%% | %6.0f %6.0f %+4.0f%% | %5.0f %5.0f %+4.0f%% | %5.2f %5.2f %+4.0f%% | %4.1f %4.1f" % (
+            p, x["rw"] * 100, x["mw"] * 100, x["rt"] * 100, x["mt"] * 100, x["rsec"], x["msec"], err(x["rsec"], x["msec"]) or 0,
+            x["rk"], x["mk"], err(x["rk"], x["mk"]) or 0, x["rd"], x["md"], err(x["rd"], x["md"]) or 0, x["rp"], x["mp"]))
+    A("")
+    A("[표 B] 장비 없음 — 정책 묶음 x 마디. 처치/분, 살아 있는 적 평균, 분당 피격 (실측 모델 오차%)")
+    for (g, lab), (a, m) in group_beats(s_ne).items():
+        A("%-22s %-3s | 처치 %4.0f %4.0f %+4.0f%% | 살아있는적 %5.1f %5.1f %+4.0f%% | 피격 %5.1f %5.1f %+4.0f%%" % (
+            g, lab, a["kpm"], m["kpm"], err(a["kpm"], m["kpm"]) or 0, a["alive"], m["alive"], err(a["alive"], m["alive"]) or 0,
+            a["hpm"], m["hpm"], err(a["hpm"], m["hpm"]) or 0))
+    A("")
+    A("[표 C] 장비 켬(kit.now: 힘 x%.2f, 버팀 x%.2f) — 정책별 승률/판 길이/처치" % (
+        1 + load_calib_value("gear_now_p", extra_sets), 1 + load_calib_value("gear_now_s", extra_sets)))
+    A("정책         | 승 실측 모델 | 길이(초) 실측 모델 오차 | 처치 실측 모델 오차")
+    for p, x in pol_stats(s_eq).items():
+        A("%-12s | %4.0f%% %4.0f%% | %6.0f %6.0f %+4.0f%% | %5.0f %5.0f %+4.0f%%" % (
+            p, x["rw"] * 100, x["mw"] * 100, x["rsec"], x["msec"], err(x["rsec"], x["msec"]) or 0, x["rk"], x["mk"], err(x["rk"], x["mk"]) or 0))
+    nr = [x for x in pol_stats(s_ne).values()]
+    A("")
+    A("[표 D] 서열(정책별 승률 순위 상관, 장비 없음은 전부 0이라 정체 비율의 역수로 대신 본다)")
+    pols = list(pol_stats(s_ne).keys())
+    ps = pol_stats(s_ne)
+    A("  정체 비율 순위 상관(실측 vs 모델, 정책 %d): %.2f" % (len(pols), spearman([ps[p]["rt"] for p in pols], [ps[p]["mt"] for p in pols])))
+    pe = pol_stats(s_eq)
+    pl2 = list(pe.keys())
+    A("  장비 켬 승률 순위 상관(정책 %d): %.2f" % (len(pl2), spearman([pe[p]["rw"] for p in pl2], [pe[p]["mw"] for p in pl2])))
+    return "\n".join(L)
+
+
+def load_calib_value(name, extra_sets=()):
+    v = load_json(HERE / "balance_sim_calib.json")["params"][name]["value"]
+    for s in extra_sets:
+        if s.startswith("calib." + name + "="):
+            v = float(s.split("=", 1)[1])
+    return v
+
+
+def write_calib_doc(p, doc):
+    """한 상수가 한 줄인 꼴로 쓴다(손으로 읽고 diff를 보기 쉽게)."""
+    lines = ["{", '  "schema_version": %s,' % json.dumps(doc["schema_version"]), '  "note": %s,' % json.dumps(doc["note"], ensure_ascii=False), '  "params": {']
+    if doc.get("fit_summary"):
+        lines.insert(3, '  "fit_summary": %s,' % json.dumps(doc["fit_summary"], ensure_ascii=False))
+    ks = list(doc["params"].keys())
+    for i, k in enumerate(ks):
+        v = doc["params"][k]
+        lines.append('    %s: %s%s' % (json.dumps(k), json.dumps(v, ensure_ascii=False), "," if i + 1 < len(ks) else ""))
+    lines += ["  }", "}"]
+    Path(p).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def do_fit2(args):
+    real_dir = Path(args.real_dir) if args.real_dir else find_real_dir2()
+    real2 = load_real2(real_dir)
+    cur = {}
+    sets = []
+    for k in list(FIT2_PARAMS) + list(FIT2_GEAR):
+        cur[k] = load_calib_value(k)
+
+    def mk():
+        return ["calib.%s=%r" % (k, v) for k, v in cur.items()]
+    best = score2(real2, mk())
+    print("fit2 시작 목적함수 %.3f" % best, flush=True)
+    for rnd in range(3):
+        for k, (lo, hi) in list(FIT2_PARAMS.items()) + list(FIT2_GEAR.items()):
+            for f in ((0.6, 1.5, 0.85, 1.18) if rnd < 2 else (0.92, 1.08)):
+                old = cur[k]
+                if k in FIT2_GEAR:
+                    new = min(hi, max(lo, old * f if old > 0.05 else old + 0.1 * (f - 1) / abs(f - 1)))
+                else:
+                    new = min(hi, max(lo, old * f if old > 0 else 0.05))
+                if new == old:
+                    continue
+                cur[k] = new
+                v = score2(real2, mk())
+                if v < best - 1e-6:
+                    best = v
+                    print("  r%d %s -> %.5g  (%.3f)" % (rnd, k, new, v), flush=True)
+                else:
+                    cur[k] = old
+    print("fit2 끝 목적함수 %.3f" % best)
+    print(json.dumps({k: round(v, 5) for k, v in cur.items()}, ensure_ascii=False))
+    if args.write_calib:
+        p = HERE / "balance_sim_calib.json"
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        for k, v in cur.items():
+            doc["params"][k]["value"] = round(v, 5)
+            doc["params"][k]["source"] = "fit2(builds2)"
+        write_calib_doc(p, doc)
+        print("balance_sim_calib.json에 썼다(--write-calib)")
+    else:
+        print("파일은 고치지 않았다(--write-calib을 주면 balance_sim_calib.json에 쓴다)")
+    return cur
+
+
 # ---- 훑기 ------------------------------------------------------------------
 def do_sweep(args, policies, witches, seeds):
     spec = args.sweep
@@ -1730,10 +2353,155 @@ def do_sweep(args, policies, witches, seeds):
     return out
 
 
+# ---- 팩터 표(스킬 정의에 쓸 수 있는 옵션) -------------------------------------------
+# (id, 갈래, 설명, 주문 데이터 필드, 모델의 식, 지금 코어에 있는가 — combat_core.gd를 grep으로 본 한도)
+FACTORS = [
+    ("damage", "공격력", "기본 피해(raw, 256=1 HP)", "base.damage_raw", "d_eff = raw/256 x 축 피해 배율; 모든 처리량 식", "있음"),
+    ("cooldown", "쿨타임·시전 속도", "쿨타임 틱", "base.cooldown_ticks", "초당 시전 = 1/cd; 축 쿨타임 배율", "있음"),
+    ("projectiles", "갯수", "발수", "base.projectiles", "탄: n = k x (1 + 관통 x phi) x (1 + 밀도 x 폭발 넓이)", "있음"),
+    ("pierce", "갯수", "관통", "base.pierce", "위 식의 phi(줄에 다음 적이 있을 확률)", "있음"),
+    ("radius", "범위", "맞은 자리 폭발 반경", "base.radius_cm", "폭발 넓이 pi r^2 x 맞은 자리 밀도", "있음"),
+    ("chain", "갯수", "연쇄 수·갈래", "base.chain_targets/branches", "n = min(예산, 연쇄 x 갈래, 살아 있는 수)", "있음"),
+    ("ring", "범위", "주인공 둘레 원형 반경·대상 수·파동 수", "base.ring_radius_cm/ring_targets/ring_pulses", "m = N(1-exp(-(R/r0)^2)), 예산 상한", "없음(D12 B0 새 구성)"),
+    ("budget", "갯수", "한 시전이 맞힐 수 있는 상한", "base.hit_budget", "모든 n의 상한", "있음"),
+    ("range", "범위", "사거리", "base.range_cm", "선: 면적 = 폭 x 사거리", "있음(투사체 속도·수명)"),
+    ("width", "범위", "선 폭", "base.width_cm (shape=line)", "line: n = k x (1 + 관통 x phi + 밀도 x 폭 x 사거리)", "코어에 새로 필요"),
+    ("zone", "지속", "장판(반경·지속 초·틱 간격·개수)", "base.zone{radius_cm,duration_s,tick_ticks,count} (shape=zone)", "hits/s = 활성 장판 수 x 장판 안 적 수 / 틱", "코어에 새로 필요"),
+    ("summon", "개수", "소환·포탑(마릿수·지속·공격 간격)", "base.summon{count,duration_s,attack_ticks} (shape=summon)", "hits/s = 수 x 가동률 x 1/공격 간격(조준 없음)", "코어에 새로 필요"),
+    ("crit", "치명타", "치명타율(bps)", "crit_bps, base/reach.crit_bps", "기대 배율 1 + p(m-1); 처치당 명중 수의 계단은 두 점 분포로(치명이면 d x m)", "코어에 새로 필요"),
+    ("crit_dmg", "치명타", "치명타 피해(bps, 기본 15000)", "crit_dmg_bps", "위 식의 m", "코어에 새로 필요"),
+    ("extra_elem", "추가 피해", "원소 추가 피해(bps 가산)", "extra.elem_bps", "피해 배율에 가산", "코어에 새로 필요"),
+    ("extra_status", "추가 피해", "상태 걸린 적에게 추가(bps)", "extra.vs_status{status,bps}", "x p(상태 있음)=1-exp(-스택)", "있음(표식 공명 일부)"),
+    ("extra_strong", "추가 피해", "강한 적에게 추가(bps)", "extra.vs_strong_bps", "단일 처리량 식에만", "코어에 새로 필요"),
+    ("extra_low", "추가 피해", "생명 낮은 적에게 추가(bps)", "extra.vs_low_hp_bps", "x calib.p_low_hp", "코어에 새로 필요"),
+    ("extra_near_far", "추가 피해", "가까운/먼 적에게 추가(bps)", "extra.vs_near_bps / vs_far_bps", "x calib.p_near / (1-p_near)", "코어에 새로 필요"),
+    ("extra_cc", "추가 피해", "제어 중인 적에게 추가(bps)", "extra.vs_cc_bps", "x 제어 중 몫(cc 계산)", "코어에 새로 필요"),
+    ("dot", "추가 피해", "지속 피해(초당 명중 피해 비율 bps, 초)", "dot{dps_bps,secs}", "가산 = dps x min(secs, dot_cap_s) x dot_eff(죽은 적에 낭비 제외)", "코어에 새로 필요"),
+    ("on_kill", "추가 피해", "처치 때 폭발(반경, 피해 bps, 예산)", "on_kill{radius_cm,dmg_bps,budget}", "추가 명중 = 처치 수 x 폭발 안 적 수", "있음(death_burst)"),
+    ("cc_slow", "군중 제어", "둔화(%, 초)", "cc{chance_bps,slow_bps,slow_s}", "접촉 배율 x (1 - 둔화 몫); 강한 적은 지속 x cc_strong_mult", "있음(slow_bps)"),
+    ("cc_freeze_stun_root", "군중 제어", "빙결·기절·묶음(초)", "cc{freeze_s,stun_s,root_s}", "접촉 배율 x exp(-맞히는 속도 x 초)", "있음(freeze·stun)/묶음은 새로 필요"),
+    ("cc_knock", "군중 제어", "밀어냄(cm)", "cc.knock_cm", "되돌아오는 초 = 거리/적 속도를 제어 시간에 더함", "코어에 새로 필요"),
+    ("cc_pull", "군중 제어", "끌어당김(cm)", "cc.pull_cm", "원형 명중 x (1 + 끌림 몫), 상한 +50%", "코어에 새로 필요"),
+    ("vuln", "표식·취약", "받는 피해 증가(bps, 초, 확률)", "vuln{bps,secs,chance_bps}", "모든 명중 x (1 + sum bps x p_표식)", "있음(marks 일부)"),
+    ("lifesteal", "방어·회복", "생명 흡수(bps)", "utility.lifesteal_bps", "회복/s = 흡수 x 준 피해/s", "코어에 새로 필요"),
+    ("heal_kill", "방어·회복", "처치 회복(HP)", "utility.heal_on_kill", "회복 = 처치 수 x HP", "코어에 새로 필요"),
+    ("shield", "방어·회복", "보호막(HP/s)", "utility.shield_per_s", "접촉 피해에서 초당 차감", "코어에 새로 필요"),
+    ("dr", "방어·회복", "피해 감소(bps)", "utility.dr_bps", "받는 피해 x (1-dr)", "있음(생존 카드 guard)"),
+    ("move", "방어·회복", "이동 속도(bps)", "utility.move_bps", "접촉 횟수 / (1 + 0.5 x move)", "있음(이동)"),
+    ("cd_refund", "자원·쿨타임 환급", "처치 때 쿨타임 환급(bps)", "utility.cd_refund_bps", "명중 x min(2, 1 + 환급 x 처치/s x cd)", "코어에 새로 필요"),
+    ("evolve_free", "진화", "짝 없이 진화(시험 묶음용 표시)", "evolve_free", "진화 조건에서 짝 조건을 건너뜀", "(도구 전용)"),
+]
+GEAR_KEYS = [  # (키, 뜻, 기본값, 권하는 범위)
+    ("dmg", "모든 주문 피해 배율", 1.0, (0.5, 3.0, 0.05)), ("cd", "쿨타임 배율(작을수록 빠름)", 1.0, (0.5, 1.2, 0.02)),
+    ("hp", "최대 생명 배율", 1.0, (0.5, 3.0, 0.05)), ("dr", "받는 피해 배율(작을수록 단단)", 1.0, (0.3, 1.0, 0.02)),
+    ("crit", "치명타율 가산(0.1 = +10%p)", 0.0, (0.0, 0.6, 0.01)), ("critdmg", "치명타 피해 가산(0.5 = +50%)", 0.0, (0.0, 2.0, 0.05)),
+    ("range", "범위(반경·사거리·폭) 배율", 1.0, (0.7, 2.0, 0.05)), ("count", "발수·연쇄·대상·소환 수 가산(정수)", 0, (0, 4, 1)),
+    ("pierce", "관통 가산", 0, (0, 4, 1)), ("extra", "원소 추가 피해 가산(0.2 = +20%)", 0.0, (0.0, 1.0, 0.02)),
+    ("dot", "지속 피해 배율", 1.0, (0.5, 3.0, 0.1)), ("cc", "군중 제어 지속·거리 배율", 1.0, (0.5, 3.0, 0.1)),
+    ("vuln", "표식 취약 가산(0.1 = +10%)", 0.0, (0.0, 0.6, 0.02)), ("lifesteal", "생명 흡수(0.05 = 5%)", 0.0, (0.0, 0.3, 0.01)),
+    ("heal_kill", "처치당 회복 HP", 0.0, (0.0, 3.0, 0.1)), ("dr_add", "피해 감소 가산(0.1 = 10%)", 0.0, (0.0, 0.5, 0.02)),
+    ("move", "이동 속도 가산(0.2 = +20%)", 0.0, (0.0, 1.0, 0.02)), ("cd_refund", "처치 쿨타임 환급 가산", 0.0, (0.0, 1.0, 0.02)),
+]
+FACTOR_TEMPLATES = {  # 주문에 새로 적어 볼 수 있는 팩터(키 접미사: 기본값, 범위)
+    "crit_bps": (0, 0, 8000, 250), "crit_dmg_bps": (15000, 12000, 40000, 1000), "extra.elem_bps": (0, 0, 8000, 250), "extra.vs_strong_bps": (0, 0, 15000, 500),
+    "extra.vs_low_hp_bps": (0, 0, 15000, 500), "extra.vs_near_bps": (0, 0, 10000, 500), "extra.vs_far_bps": (0, 0, 10000, 500), "extra.vs_cc_bps": (0, 0, 10000, 500),
+    "dot.dps_bps": (0, 0, 8000, 250), "dot.secs": (0, 0, 8, 0.5), "on_kill.dmg_bps": (0, 0, 15000, 500), "on_kill.radius_cm": (0, 0, 500, 25),
+    "cc.chance_bps": (10000, 500, 10000, 500), "cc.slow_bps": (0, 0, 8000, 500), "cc.slow_s": (0, 0, 6, 0.25), "cc.freeze_s": (0, 0, 3, 0.1), "cc.stun_s": (0, 0, 3, 0.1),
+    "cc.root_s": (0, 0, 4, 0.25), "cc.knock_cm": (0, 0, 600, 25), "cc.pull_cm": (0, 0, 800, 25), "vuln.bps": (0, 0, 8000, 250), "vuln.secs": (0, 0, 10, 0.5),
+    "utility.lifesteal_bps": (0, 0, 3000, 100), "utility.heal_on_kill": (0, 0, 3, 0.1), "utility.shield_per_s": (0, 0, 3, 0.1), "utility.dr_bps": (0, 0, 5000, 250),
+    "utility.move_bps": (0, 0, 5000, 250), "utility.cd_refund_bps": (0, 0, 5000, 250),
+}
+TRUST = {
+    "ok": ["정책 사이 서열(어느 선택이 더 센가)", "값을 바꿨을 때의 방향(위협·힘을 올리면 어디서 막히는가)", "시너지 길 사이의 상대 차", "속도가 필요한 훑기·민감도", "장비를 켜고 끌 때의 대략의 크기(kit.now에 맞춤)"],
+    "not_ok": ["정확한 승률·초 단위 시각", "새 스킬 구성의 처리량(원형·터뜨림·반응·장판·소환·치명타·군중 제어 상수는 실측이 없는 가설)", "수호자·우두머리 앞의 단일 처리량 절대값",
+               "분당 피격의 마디별 모양", "진화한 주문의 수치(명세에 값이 없음)", "재미(모든 것이 미평가)"],
+}
+
+
+def calib_summary_text(real_dir=None):
+    d = load_json(HERE / "balance_sim_calib.json")
+    return d.get("fit_summary") or "맞춤 요약 없음(--fit2 --write-calib을 돌리면 balance_sim_calib.json에 들어간다)"
+
+
+def describe(cfg, args):
+    """바꿔 볼 수 있는 키 목록(관리 툴의 입력 칸용). 각 항목: key, value, min, max, step, desc, group, in_core."""
+    keys = []
+
+    def add(key, value, lo, hi, step, desc, group, core="확인 안 함"):
+        keys.append({"key": key, "value": value, "min": lo, "max": hi, "step": step, "desc": desc, "group": group, "in_core": core})
+
+    def rng_of(v, integer=False):
+        if v == 0:
+            return 0, 1, 1
+        lo, hi = (v * 0.5, v * 2.5)
+        st = max(1, round(v / 20)) if integer or isinstance(v, int) else v / 20
+        return (int(lo) if isinstance(v, int) else round(lo, 4)), (int(hi) if isinstance(v, int) else round(hi, 4)), st
+    labels = {"damage_raw": "피해(raw)", "cooldown_ticks": "쿨타임(틱)", "projectiles": "발수", "pierce": "관통", "radius_cm": "폭발 반경(cm)", "hit_budget": "명중 상한",
+              "chain_targets": "연쇄 수", "branches": "갈래", "ring_radius_cm": "원형 반경(cm)", "ring_targets": "원형 대상 수", "ring_pulses": "원형 파동 수",
+              "range_cm": "사거리(cm)", "width_cm": "선 폭(cm)"}
+    for sid, d in cfg.spells["spells"].items():
+        sh = sid.replace(SK, "")
+        for k, v in d["base"].items():
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                lo, hi, st = rng_of(v)
+                add("spells.%s.base.%s" % (sh, k), v, lo, hi, st, "%s의 %s" % (sh, labels.get(k, k)), "스킬 팩터", "있음" if k in ("damage_raw", "cooldown_ticks", "projectiles", "pierce", "radius_cm", "chain_targets", "branches", "hit_budget", "range_cm") else "코어에 새로 필요")
+        for fld in ("vs_strong_bps", "crit_bps", "crit_dmg_bps"):
+            if fld in d:
+                lo, hi, st = rng_of(d[fld])
+                add("spells.%s.%s" % (sh, fld), d[fld], lo, hi, st, "%s: %s" % (sh, fld), "스킬 팩터", "코어에 새로 필요")
+        for grp in ("extra", "dot", "on_kill", "cc", "vuln", "utility"):
+            for k, v in (d.get(grp) or {}).items():
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    lo, hi, st = rng_of(v)
+                    add("spells.%s.%s.%s" % (sh, grp, k), v, lo, hi, st, "%s: %s.%s" % (sh, grp, k), "스킬 팩터", "코어에 새로 필요")
+        for dk, bpf in (("detonates", None),):
+            for sn, dd in (d.get("detonates") or {}).items():
+                for k, v in dd.items():
+                    if isinstance(v, int) and not isinstance(v, bool):
+                        lo, hi, st = rng_of(v)
+                        add("spells.%s.detonates.%s.%s" % (sh, sn, k), v, lo, hi, st, "%s가 %s를 터뜨리는 배율" % (sh, sn), "스킬 팩터", "없음(D12 B0 새 구성)")
+    ax = cfg.spells["axis"]["power"]
+    for nm in ("damage_bps", "cooldown_bps"):
+        for i in range(1, len(ax[nm])):
+            add("spells.axis.power.%s[%d]" % (nm, i), ax[nm][i], 4000 if nm == "cooldown_bps" else 10000, 10000 if nm == "cooldown_bps" else 45000, 250, "축 %d점의 %s" % (i, "피해 배율" if nm == "damage_bps" else "쿨타임 배율"), "스킬 팩터", "없음(D12 B0 새 구성)")
+    for k in ("axis_sum", "partner_axis_sum", "partner_detonate_bps"):
+        v = cfg.spells["evolve"][k]
+        add("spells.evolve.%s" % k, v, 1 if v < 100 else 10000, 6 if v < 100 else 30000, 1 if v < 100 else 500, "진화 조건·배율: " + k, "스킬 팩터", "없음(D12 B0 새 구성)")
+    T = cfg.tuning
+    for i, b in enumerate(T["rhythm"]["beats"]):
+        add("rhythm.beats[%d].amount" % i, b["amount"], round(b["amount"] * 0.5, 2), round(b["amount"] * 2, 2), 0.5, "마디 %s 생성 양" % b["id"], "리듬", "있음(rhythm)")
+        add("rhythm.beats[%d].alive_cap" % i, b["alive_cap"], 8, 140, 1, "마디 %s 살아 있는 적 상한" % b["id"], "리듬", "있음(rhythm)")
+        add("rhythm.beats[%d].hp_bps" % i, b["hp_bps"], 5000, 60000, 500, "마디 %s 체력 배율 [시작, 끝] bps" % b["id"], "리듬", "있음(rhythm)")
+    for z, v in enumerate(T["seal_kills"]):
+        add("seal_kills[%d]" % z, v, int(v * 0.5), int(v * 1.6), 10, "구역 %d 봉인 처치 수" % (z + 1), "리듬", "있음")
+    for i, ch in enumerate(T["champions"]):
+        add("champions[%d].hp" % i, ch["hp"], int(ch["hp"] * 0.5), int(ch["hp"] * 1.8), 50, "수호자·우두머리 %d 체력" % (i + 1), "리듬", "있음")
+        add("champions[%d].damage" % i, ch["damage"], int(ch["damage"] * 0.5), int(ch["damage"] * 1.5), 1, "수호자·우두머리 %d 공격 피해" % (i + 1), "리듬", "있음")
+    for k in ("amount", "hp_bps", "hold_ticks"):
+        v = T["rhythm"]["trial"][k]
+        add("rhythm.trial.%s" % k, v, v * 0.5, v * 1.6, v / 20, "버티기 " + k, "리듬", "있음(trial)")
+    for k, desc, dv, (lo, hi, st) in GEAR_KEYS:
+        add("gear." + k, dv, lo, hi, st, "장비 묶음: " + desc, "장비", "(장비 접사 한도는 D12 D2)")
+    for k, v in cfg.cal.items():
+        meta = cfg.calib_doc["params"][k]
+        add("calib." + k, v, round(v * 0.5, 5) if v else 0, round(v * 2, 5) if v else 1, round(abs(v) / 20, 5) if v else 0.05, "모델 상수(%s): %s" % (meta["source"], meta["note"][:60]), "모델 상수", "(모델 가설)")
+    return {"schema": 1, "preset": cfg.spec.get("preset"), "mode": cfg.mode, "spells_file": Path(cfg.spells_path).name, "spells_sha": cfg.spells_sha,
+            "gear_kits": list(GEAR_KITS) + ["kit.now"], "keys": keys, "factor_templates": {k: {"default": v[0], "min": v[1], "max": v[2], "step": v[3]} for k, v in FACTOR_TEMPLATES.items()},
+            "factors": [dict(zip(("id", "group", "desc", "field", "model", "core"), f)) for f in FACTORS], "spell_ids": [s.replace(SK, "") for s in cfg.spells["spells"]],
+            "kits": list(cfg.spells.get("kits", {}).keys()), "policies": default_policies(cfg.mode) + ["kit:" + k for k in cfg.spells.get("kits", {})],
+            "set_syntax": "--set <key>=<json>. 주문은 spells.<짧은 id>..., 배열은 [i], 점이 든 키는 [\"react.steam\"]. 장비는 --gear kit.d1_end 또는 dmg=1.2,crit=0.1,range=1.2"}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="균형 시뮬레이터 (모델의 답이지 게임의 답이 아니다)")
     ap.add_argument("--calibrate", action="store_true")
     ap.add_argument("--fit", action="store_true")
+    ap.add_argument("--calibrate2", action="store_true", help="builds2 실측(장비 없음/켬)과 모델의 오차 표")
+    ap.add_argument("--fit2", action="store_true", help="builds2 실측에 자유 상수를 맞춘다(결과 출력만)")
+    ap.add_argument("--write-calib", action="store_true", help="--fit2 결과를 balance_sim_calib.json에 쓴다(기본은 쓰지 않음)")
+    ap.add_argument("--sensitivity", action="store_true", help="서열 간격(synergy−narrow, narrow−random)을 가장 크게 움직이는 값을 순서대로(balance_search.py의 값 목록으로). --set은 고정 조건")
+    ap.add_argument("--describe", action="store_true", help="고른 주문 묶음·프리셋에서 바꿔 볼 수 있는 키 목록을 JSON으로 낸다(관리 툴 입력 칸용)")
+    ap.add_argument("--jobs", type=int, default=None, help="병렬 프로세스 수(기본: 코어-2, 최대 14)")
     ap.add_argument("--preset", default=None, help="spec1 | spec1p(압력·격앙 포함) | current_on")
     ap.add_argument("--skills", default=None, choices=["s", "legacy"])
     ap.add_argument("--spells", default=None)
@@ -1750,6 +2518,32 @@ def main(argv=None):
     ap.add_argument("--trace", default=None, help="정책:마녀:시드 — 한 판의 초별 흔적 출력")
     args = ap.parse_args(argv)
     t0 = time.time()
+    set_jobs(args.jobs if args.jobs else default_jobs())
+    if args.sensitivity:
+        import balance_search
+        av = ["--sensitivity", "--preset", args.preset or "spec1p", "--seeds", str(args.seeds), "--seed0", str(args.seed0), "--witches", args.witches]
+        for s in args.set or []:
+            av += ["--set", s]
+        if args.gear:
+            av += ["--gear", args.gear]
+        if args.out:
+            av += ["--out", args.out]
+        return balance_search.main(av)
+    if args.calibrate2 or args.fit2:
+        real_dir = Path(args.real_dir) if args.real_dir else find_real_dir2()
+        if not real_dir:
+            raise SystemExit("실측 폴더(_local/builds2/sim-noequip.json)를 찾지 못했다. --real-dir로 알려 달라")
+        if args.fit2:
+            do_fit2(args)
+        else:
+            txt = calib2_table(load_real2(real_dir), list(args.set or []))
+            print(txt)
+            if args.out:
+                Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+                Path(args.out).write_text(txt + "\n", encoding="utf-8", newline="\n")
+        print("걸린 시간 %.1fs" % (time.time() - t0))
+        close_pool()
+        return 0
     if args.calibrate or args.fit:
         cfg = load_cfg(args, sets=args.set, preset="current")
         if args.fit:
@@ -1762,6 +2556,14 @@ def main(argv=None):
                 Path(args.out).write_text(txt + "\n", encoding="utf-8", newline="\n")
         return 0
     cfg = load_cfg(args, sets=args.set, preset=args.preset)
+    if args.describe:
+        doc = describe(cfg, args)
+        txt = json.dumps(doc, ensure_ascii=False, indent=1)
+        print(txt)
+        if args.out:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(txt + "\n", encoding="utf-8", newline="\n")
+        return 0
     witches = args.witches.split(",")
     seeds = list(range(args.seed0, args.seed0 + args.seeds))
     pols = args.policies.split(",") if args.policies else default_policies(cfg.mode)
@@ -1783,7 +2585,13 @@ def main(argv=None):
     print("걸린 시간 %.1fs (%d판)" % (time.time() - t0, sum(len(v) for v in mx.values())))
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.out).write_text(json.dumps({"preset": args.preset, "mode": cfg.mode, "set": args.set, "results": summarize_for_json(mx)},
+        Path(args.out).write_text(json.dumps({"preset": args.preset, "mode": cfg.mode, "set": args.set, "results": summarize_for_json(mx),
+                                              # 2차에서 더한 키(1차의 키는 그대로)
+                                              "meta": {"version": 2, "spells_file": Path(cfg.spells_path).name, "spells_sha": cfg.spells_sha, "gear": cfg.spec.get("gear"),
+                                                       "seeds": [seeds[0], seeds[-1]], "n_seeds": len(seeds), "jobs": JOBS, "policies": pols, "witches": witches,
+                                                       "model_answer_not_game_answer": True, "fun": "미평가"},
+                                              "calibration": calib_summary_text(), "trust": TRUST,
+                                              "win_ci95": {"%s|%s" % k: [round(x, 3) for x in wilson(sum(1 for r in v if r["win"]), len(v))[1:]] for k, v in mx.items()}},
                                              ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
         Path(args.out).with_suffix(".txt").write_text(txt + "\n", encoding="utf-8", newline="\n")
     return 0
