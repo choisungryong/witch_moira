@@ -1,0 +1,3076 @@
+{
+  "schema": 1,
+  "scope": "chapter1/art/ 아래 모든 에셋 파일(.glb, .gltf, .jpeg, .jpg, .mp3, .ogg, .otf, .png, .svg, .ttf, .wav, .webp). 문서·메타데이터 JSON·스크립트·.import 는 대상이 아니다.",
+  "created": "2026-11-19",
+  "conventions": [
+    "경로는 chapter1/art 기준 상대 경로.",
+    "값을 모르면 '미확인' 으로 시작하는 글로 적는다. 지어내지 않는다.",
+    "배포 가능 여부는 원장에 적지 않고 `python tools/art/asset_ledger.py check` 가 계산한다. release_cleared 는 사람이 확인한 뒤에만 true 로 바꾼다.",
+    "생성물(ai_generated)은 모델·프롬프트·약관 확인(terms_checked)이 있어야 출처 기록이 갖춰진 것으로 본다."
+  ],
+  "records": [
+    {
+      "path": "quality03/ART-METADATA-RECOVERY.json",
+      "sha256": "b5ee34ba4e9c8ac35181867bfbc37014d0d3fefdfcca59e10538d6b55aab08cb",
+      "role": "메타데이터 스크립트 첫 실행 실패(exit1)와 복구 기록. 게임 결함 아님"
+    },
+    {
+      "path": "quality03/ASSET-LEDGER-v01.json",
+      "sha256": "5dde45b6e58b27d400e0ff20beea33911ba560153c951d3e2841ec05d879bcc2",
+      "role": "옛 원장(ASSET-LEDGER-v01.json). 지우지 않고 보존. 최신은 v04"
+    },
+    {
+      "path": "quality03/ASSET-LEDGER-v03.json",
+      "sha256": "9773a0c390eee24c57896bfc1f1c597c04086e7c8de4e747fc17f51449c34d72",
+      "role": "옛 원장(ASSET-LEDGER-v03.json). 지우지 않고 보존. 최신은 v04"
+    },
+    {
+      "path": "quality03/ASSET-LEDGER-v04.json",
+      "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3",
+      "role": "옛 원장(ASSET-LEDGER-v04.json). 지우지 않고 보존. 최신은 v04"
+    },
+    {
+      "path": "quality03/FOLIAGE-INSPECTION.json",
+      "sha256": "79f24898625817548ebdd2a9fdf5d22e2c0395106c1a1a932d5127592c976d85",
+      "role": "알파·연결 요소 검사 결과. 해당 항목의 inspection 에 복사"
+    },
+    {
+      "path": "quality03/GENERATED-FOLIAGE-RUN.json",
+      "sha256": "2722dde8c762fdf85246d7f618f3c12617a5cfb1743512e59a24a15a1f5ff561",
+      "role": "생성 프롬프트·원본 경로 기록. 원장 항목의 prompt 와 대조해 다른 문장은 prompt_other_records 에 보존"
+    },
+    {
+      "path": "quality03/GENERATED-HERO.json",
+      "sha256": "7fc21ebe00b993875f56ff024bb95d92d02afef5a1c892817447bb50c2e1e06b",
+      "role": "생성 프롬프트·원본 경로 기록. 원장 항목의 prompt 와 대조해 다른 문장은 prompt_other_records 에 보존"
+    },
+    {
+      "path": "quality03/GENERATED-SOIL.json",
+      "sha256": "17ce14a36fa8287df1baee255c45a47546917a880681b3c0e64504fbdd4e8aee",
+      "role": "생성 프롬프트·원본 경로 기록. 원장 항목의 prompt 와 대조해 다른 문장은 prompt_other_records 에 보존"
+    },
+    {
+      "path": "quality03/GENERATION-PROMPTS.json",
+      "sha256": "c19aaa7cd4373993f4e0ce7b5b8e02a2d95dd940365d4d9906626fe0c20ed6bc",
+      "role": "생성 프롬프트·원본 경로 기록. 원장 항목의 prompt 와 대조해 다른 문장은 prompt_other_records 에 보존"
+    },
+    {
+      "path": "quality03/HERO-CAST-INSPECTION.json",
+      "sha256": "087a947567c973ef58d477385f41dbd35f7f6619856e4c80626fc4164055c970",
+      "role": "알파·연결 요소 검사 결과. 해당 항목의 inspection 에 복사"
+    },
+    {
+      "path": "quality03/PROP-INSPECTION.json",
+      "sha256": "ff073b086498822d01ab656872c5ef3848ee562aa10796453f1eaa6d4a275425",
+      "role": "알파·연결 요소 검사 결과. 해당 항목의 inspection 에 복사"
+    }
+  ],
+  "assets": [
+    {
+      "path": "actors/battle_mage_walk_4x4_v01.png",
+      "sha256": "8ff6f65f27cb75c26ae55db8ae4bfcebe75bd3caa9b2f133359cdcbf54712a6a",
+      "size": 1441909,
+      "kind": "image",
+      "width": 1247,
+      "height": 1261,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/charger.png",
+      "sha256": "bcf2dedd8895d31fb8e1fbfb77a9edcf8e703150831f8a386a0f0ef04e049220",
+      "size": 1997130,
+      "kind": "image",
+      "width": 1268,
+      "height": 1240,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/charger_actions.png",
+      "sha256": "5ebc1cc4d620eb94e40c82b4871682936e03d5d14f197da0049d99dec1b97a89",
+      "size": 1980396,
+      "kind": "image",
+      "width": 1441,
+      "height": 1092,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/elite.png",
+      "sha256": "924ed57b296ba48d6078e1a45be5ff80c94dd29cabca88a95eadda1504d4d2d3",
+      "size": 1443056,
+      "kind": "image",
+      "width": 1312,
+      "height": 1199,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/elite_actions.png",
+      "sha256": "76f102745659470a5ba4c6ff2b647ddc0f22aae91121715e1174f845cc177926",
+      "size": 1607373,
+      "kind": "image",
+      "width": 1448,
+      "height": 1086,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/hero.png",
+      "sha256": "cab77bfff78e1fa183ee4026d3b6d85ccb8f10d1b1357eb1624ca06be5013d14",
+      "size": 1108239,
+      "kind": "image",
+      "width": 1254,
+      "height": 1254,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/hero_actions.png",
+      "sha256": "ebe895e56df903771bd46ca6744f220811310839d2e8a803b849569a04c044eb",
+      "size": 1370796,
+      "kind": "image",
+      "width": 1448,
+      "height": 1086,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/ranged.png",
+      "sha256": "44148ba55343f38b0d56e71774fc61e7a46c79a68224bdc95433ae0457c7b77f",
+      "size": 1227411,
+      "kind": "image",
+      "width": 1266,
+      "height": 1242,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/ranged_actions.png",
+      "sha256": "7c414e8ae65b7a75550ef0a4aadf0cfd799f77e906c5a5ffb7160da610969864",
+      "size": 1298201,
+      "kind": "image",
+      "width": 1438,
+      "height": 1093,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/walker.png",
+      "sha256": "42c1f7a76b016b7f54d6d5f9d081e79badbfc9bad2387d45b41432c2d27ed848",
+      "size": 1356430,
+      "kind": "image",
+      "width": 1295,
+      "height": 1214,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "actors/walker_actions.png",
+      "sha256": "2880e1d81fee17e3b3332e0299e07d653e45c6546eaf2570524d161dda804e8f",
+      "size": 1417543,
+      "kind": "image",
+      "width": 1448,
+      "height": 1086,
+      "source_type": "ai_generated",
+      "creator": "미확인: 기록 없음",
+      "origin": "README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",
+      "license": "미확인: README 는 CC0·제3자 라이선스 모델로 표기하지 않는다고만 적는다",
+      "date": "미확인: 생성일 기록 없음(README 표제 2026-10-31)",
+      "postprocess": "미확인: README 는 분석 스크립트로 픽셀을 고치지 않았다고 서술하나 근거 기록 없음",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "README.ko.md",
+          "sha256": "8e935e9177bd06ef2bd49f2beb30834e00fa98f4329205e9112c2bf376ea44b9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "chained_warden/v01/chained_demon_animated.glb",
+      "sha256": "1aa069466e8666461f7b1844435167772cec9d2fe4d56196da34c7c0d38d571c",
+      "size": 1270600,
+      "kind": "model",
+      "source_type": "third_party_derived",
+      "creator": "Mophs",
+      "origin": "OpenGameArt 'Chained Demon' https://opengameart.org/content/chained-demon (원본·파생 source 는 저장소 밖 C:/Project/game-research/art-sources/oga-chained-demon-20261101-01/)",
+      "license": "CC BY 3.0 (제공된 대안 중 선택) https://creativecommons.org/licenses/by/3.0/",
+      "date": "미확인: 취득일 기록 없음(보존 폴더 이름에 20261101)",
+      "postprocess": "구형 재질의 PBR 변환/packed diffuse, smooth shading, 정점 가중치 4개 보정, 새 RootMotion, 자체 FK 8클립, 미터 변환, 피부/가면/사슬 재질 분리(원본 diffuse 픽셀 유지)",
+      "obligations": "CC BY 3.0 저작자 표시(원작자·출처·라이선스·변경 사실)를 게임 크레딧에 넣어야 한다",
+      "record_files": [
+        {
+          "path": "chained_warden/v01/ATTRIBUTION.ko.md",
+          "sha256": "e9dc6cf17334612e68b43d483782c597836388d0fc1faeb954ce68b3666bb43b"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "원본·파생 source 가 저장소 밖에 있어 이 저장소만으로는 원본 대조 불가(도구 검토 G2 와 같은 종류)."
+    },
+    {
+      "path": "chained_warden/v01/chained_demon_animated_diffuse.png",
+      "sha256": "991ec801e2c1886586ba277ad15c1fa37662ff9e37af11a3c2c2ccbc96c71baf",
+      "size": 739231,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "third_party_derived",
+      "creator": "Mophs",
+      "origin": "OpenGameArt 'Chained Demon' https://opengameart.org/content/chained-demon (원본·파생 source 는 저장소 밖 C:/Project/game-research/art-sources/oga-chained-demon-20261101-01/)",
+      "license": "CC BY 3.0 (제공된 대안 중 선택) https://creativecommons.org/licenses/by/3.0/",
+      "date": "미확인: 취득일 기록 없음(보존 폴더 이름에 20261101)",
+      "postprocess": "구형 재질의 PBR 변환/packed diffuse, smooth shading, 정점 가중치 4개 보정, 새 RootMotion, 자체 FK 8클립, 미터 변환, 피부/가면/사슬 재질 분리(원본 diffuse 픽셀 유지)",
+      "obligations": "CC BY 3.0 저작자 표시(원작자·출처·라이선스·변경 사실)를 게임 크레딧에 넣어야 한다",
+      "record_files": [
+        {
+          "path": "chained_warden/v01/ATTRIBUTION.ko.md",
+          "sha256": "e9dc6cf17334612e68b43d483782c597836388d0fc1faeb954ce68b3666bb43b"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "원본·파생 source 가 저장소 밖에 있어 이 저장소만으로는 원본 대조 불가(도구 검토 G2 와 같은 종류)."
+    },
+    {
+      "path": "characters/ember_witch_v02.png",
+      "sha256": "ddd01c33b3abf257d14c9e58c43504c628855ef61a3d199134c6a1fb2e1ebdf3",
+      "size": 2307237,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "creator": "사용자(이미지 생성 도구로 직접 생성해 제공)",
+      "origin": "사용자가 이미지 생성 도구로 직접 만들어 제공한 원화, 2026-11-16. 프롬프트 바탕 plans/director-redesign-20261114/ART-PROMPTS-v2.ko.md(옛 저장소 문서)",
+      "license": "미확인: 사용자 제공 생성물, 생성 도구 이용 약관 확인 전(ATTRIBUTION: 배포 전 약관·수위 기준 확인)",
+      "date": "2026-11-16",
+      "postprocess": "없음(배경 제거·크기 조정 안 함)",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 생성 뒤 대화로 고쳐 최종 문장이 기록되지 않았다(ATTRIBUTION 서술)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "characters/ATTRIBUTION.ko.md",
+          "sha256": "c7078b671cd5b26364713c03d17b2a3ee3f1b97c9073af1036e7da357206d92d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "ATTRIBUTION 이 말하는 v01 파일(ember_witch/, frost_witch/ 등)은 이 폴더에 없다. v02 는 1024x1536 PNG, 배경 포함."
+    },
+    {
+      "path": "characters/frost_witch_v02.png",
+      "sha256": "0a31862570081df3a7761b47d73d196cb00976b6aacc9874e7513ae6b545373d",
+      "size": 2296295,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "creator": "사용자(이미지 생성 도구로 직접 생성해 제공)",
+      "origin": "사용자가 이미지 생성 도구로 직접 만들어 제공한 원화, 2026-11-16. 프롬프트 바탕 plans/director-redesign-20261114/ART-PROMPTS-v2.ko.md(옛 저장소 문서)",
+      "license": "미확인: 사용자 제공 생성물, 생성 도구 이용 약관 확인 전(ATTRIBUTION: 배포 전 약관·수위 기준 확인)",
+      "date": "2026-11-16",
+      "postprocess": "없음(배경 제거·크기 조정 안 함)",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 생성 뒤 대화로 고쳐 최종 문장이 기록되지 않았다(ATTRIBUTION 서술)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "characters/ATTRIBUTION.ko.md",
+          "sha256": "c7078b671cd5b26364713c03d17b2a3ee3f1b97c9073af1036e7da357206d92d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "ATTRIBUTION 이 말하는 v01 파일(ember_witch/, frost_witch/ 등)은 이 폴더에 없다. v02 는 1024x1536 PNG, 배경 포함."
+    },
+    {
+      "path": "characters/storm_witch_v02.png",
+      "sha256": "0cba4a5b0deadab522c5dcaf913a288f50e37ae9636e0bc62403528278b8892b",
+      "size": 2421941,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "creator": "사용자(이미지 생성 도구로 직접 생성해 제공)",
+      "origin": "사용자가 이미지 생성 도구로 직접 만들어 제공한 원화, 2026-11-16. 프롬프트 바탕 plans/director-redesign-20261114/ART-PROMPTS-v2.ko.md(옛 저장소 문서)",
+      "license": "미확인: 사용자 제공 생성물, 생성 도구 이용 약관 확인 전(ATTRIBUTION: 배포 전 약관·수위 기준 확인)",
+      "date": "2026-11-16",
+      "postprocess": "없음(배경 제거·크기 조정 안 함)",
+      "model": "미확인: 생성 도구 이름·버전 기록 없음",
+      "prompt": "미확인: 생성 뒤 대화로 고쳐 최종 문장이 기록되지 않았다(ATTRIBUTION 서술)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "characters/ATTRIBUTION.ko.md",
+          "sha256": "c7078b671cd5b26364713c03d17b2a3ee3f1b97c9073af1036e7da357206d92d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "ATTRIBUTION 이 말하는 v01 파일(ember_witch/, frost_witch/ 등)은 이 폴더에 없다. v02 는 1024x1536 PNG, 배경 포함."
+    },
+    {
+      "path": "equipment_icons35/body.svg",
+      "sha256": "659a0b666fe9ab966ec8831460c3642ef98209d992dbb2044028c61728db9062",
+      "size": 1686,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/charm.svg",
+      "sha256": "8c153807706dae4b36747112bf1ebcc5f303c3271f0e6b25d1c00ee11d196dbe",
+      "size": 1754,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/feet.svg",
+      "sha256": "159c1b73e548b5ab46c72d2a0e9dde4d8bf8d2d974593c375ec35d0037702463",
+      "size": 1038,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/hands.svg",
+      "sha256": "1038f7d2d8469465e1c0678aefe4c884e2c7cd453ea63c7154b8920b518b1aec",
+      "size": 959,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/head.svg",
+      "sha256": "6dadcc55fa959a62c1aa74c77eee9d7b4686603bf7e9ef2bfb8e658be960301c",
+      "size": 978,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/ring.svg",
+      "sha256": "501de4e7a6826c1b311e34881ae1b3c6a72c1f63e45ce22529b162ce2f7a86af",
+      "size": 1630,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "equipment_icons35/weapon.svg",
+      "sha256": "2bd6b13a7b0a7b380a3a69e37ce2778ededc20afaff39e2f571aa3792da4b2cf",
+      "size": 1764,
+      "kind": "image",
+      "source_type": "project_original",
+      "creator": "프로젝트",
+      "origin": "프로젝트 자체 SVG 벡터 드로잉. 외부 그림·글꼴·필터·원격 리소스 없음(ATTRIBUTION 서술)",
+      "license": "프로젝트 자체 제작(제3자 요소 없음, ATTRIBUTION 서술)",
+      "date": "미확인: 제작일 기록 없음",
+      "postprocess": "없음(벡터 직접 작성, tools/art/make_equipment_icons.py 가 만든 것으로 보이나 기록에는 없음)",
+      "record_files": [
+        {
+          "path": "equipment_icons35/ATTRIBUTION.ko.md",
+          "sha256": "25793f5e44378023a5c2276c3fc323e85c3a76e017aea7be3b1c504e53afb48d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "제품34 런타임 미연결로 기록돼 있다."
+    },
+    {
+      "path": "fonts/NotoSerifKR-VF.ttf",
+      "sha256": "11f8d5de6f1b79195efba3828aaa2ec95c1178f5ae976fb23c8d53250a9938f3",
+      "size": 23795420,
+      "kind": "font",
+      "source_type": "third_party",
+      "creator": "Google Fonts 프로젝트의 Noto Serif KR 저작자들",
+      "origin": "google/fonts 저장소 ofl/notoserifkr (https://github.com/google/fonts/tree/main/ofl/notoserifkr), 판 2.003. 원래 이름 NotoSerifKR[wght].ttf",
+      "license": "SIL Open Font License 1.1 (원문 fonts/NotoSerifKR-OFL.txt)",
+      "date": "2026-11-18",
+      "postprocess": "없음(파일 내용 그대로, 이름만 NotoSerifKR-VF.ttf 로 바꿈)",
+      "obligations": "OFL 원문을 배포 폴더·크레딧에 포함(T4 고지 항목)",
+      "record_files": [
+        {
+          "path": "fonts/ATTRIBUTION.ko.md",
+          "sha256": "3b99b3631e7c397664113f87037225512aab9ec1e15507839ae5a2c4b49fd299"
+        },
+        {
+          "path": "fonts/NotoSerifKR-OFL.txt",
+          "sha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "fonts/PretendardVariable.ttf",
+      "sha256": "3090ccde0442bb347aa7685d9ba8b17436a60682df6e8f92a9a670de14056e22",
+      "size": 6739336,
+      "kind": "font",
+      "source_type": "third_party",
+      "creator": "Pretendard 저작자(orioncactus)",
+      "origin": "orioncactus/pretendard (https://github.com/orioncactus/pretendard) v1.3.9",
+      "license": "SIL Open Font License 1.1 (원문 fonts/Pretendard-LICENSE.txt), 예약 글꼴 이름 Pretendard",
+      "date": "2026-11-18",
+      "postprocess": "없음(파일 내용 그대로)",
+      "obligations": "OFL 원문을 배포 폴더·크레딧에 포함(T4 고지 항목). 부분 집합 등 수정판을 만들면 이름을 바꿔야 한다",
+      "record_files": [
+        {
+          "path": "fonts/ATTRIBUTION.ko.md",
+          "sha256": "3b99b3631e7c397664113f87037225512aab9ec1e15507839ae5a2c4b49fd299"
+        },
+        {
+          "path": "fonts/Pretendard-LICENSE.txt",
+          "sha256": "d31ddd9f2bed32fd7e302a205cf2380ba0de6529152d239ef99cfb6f261bfc04"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/ember_eyes_closed.png",
+      "sha256": "aa8a445a89cd1d45f2c2373a25456913a7d5caae45bd08ec0c7beb95476dc227",
+      "size": 12052,
+      "kind": "image",
+      "width": 116,
+      "height": 43,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/ember_eyes_half.png",
+      "sha256": "8f1363377e46e31feb5d9c7d21ff5c13494563f919e0e4da7fc357043624482e",
+      "size": 12035,
+      "kind": "image",
+      "width": 116,
+      "height": 43,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L0_background.png",
+      "sha256": "5e923b8be2fff63b49fafff9eebe1abf4d36eaf4b9c175e3e51e847ca2d1dd6c",
+      "size": 1985381,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L1_cape_back.png",
+      "sha256": "de140e51fa7897892a59bc612cb64da9594193b58a243ef593ce00b10409b89c",
+      "size": 2571896,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L2_body.png",
+      "sha256": "b48ee0de3e8402035fd51f9d8dea5e83c372212c8a09a1e0ac6077b4345106f3",
+      "size": 2568632,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L2b_leg_back.png",
+      "sha256": "242b77c3387ec824663af5af0a3775ebeb6b52b18842e5c8425088da377cff31",
+      "size": 2568233,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L2c_leg_front.png",
+      "sha256": "2368eef1685a1946dfb81bf22ca88986d9beae498e3583b3c9ce18e7b5f37a33",
+      "size": 2570303,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L3_skirt_front.png",
+      "sha256": "34df85891224e45e47efbafdfd289523dce25a8fd58f0d35f53eb18b14c4b8b7",
+      "size": 2574401,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L4_head.png",
+      "sha256": "fac5a1e6dffedf4d9d1ada2d98d42aa5ec5c1b2975bc2d2d72e696ccaeb2ee6d",
+      "size": 2570085,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L5a_hair_left.png",
+      "sha256": "14a1d04bf65410d85916190704c1706e3e2d8eec54ae126a90f6bc9c41e4db34",
+      "size": 2567499,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L5b_hair_right.png",
+      "sha256": "4e61edb0d2668b258cb74b4cbb020deaa3251754415dd6219db2a6201fc0e5d2",
+      "size": 2567351,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L6_left_arm.png",
+      "sha256": "3bf0d3394c55214fc29a5835c5ddbe719a3555a440512d21412bb66cd9d962d5",
+      "size": 2571600,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/ember/layers/L7_right_arm.png",
+      "sha256": "6a62bc0da15f644f8915be1e2a33a8a9f793e3ea6ce3a8625fe295fa5616fb22",
+      "size": 2571440,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/ember_witch_pose/p2-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "손으로 잡은 다각형을 윤곽 밝기에 맞춰 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 불꽃 띠·불똥 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/ember/layers_source.json",
+          "sha256": "a3b053ba5a1b426b592cbb39f1d800503c63bf2bd8eca4f4e3966f4c0f6a05c4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/frost_eyes_closed.png",
+      "sha256": "18bfbe0775f9b7ccb6c5f42ec8ed685ff504d4668912d3029d381d094314e1ce",
+      "size": 17188,
+      "kind": "image",
+      "width": 121,
+      "height": 63,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/frost_eyes_half.png",
+      "sha256": "79be63b732645d56c8024fd725a65b377b9b115f436d165109b5b1f5aba5fc18",
+      "size": 17165,
+      "kind": "image",
+      "width": 121,
+      "height": 63,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L0_background.png",
+      "sha256": "88009834a074ccb72376be7b8c8b37a510af672d31cf93af8f68fe3030c4c7bf",
+      "size": 1812368,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L1_cape_back.png",
+      "sha256": "1a4d292b0e9006265d9905a3607b941ad0ab50430326d1fcb0e14fcd39ca2f98",
+      "size": 2357886,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L2_body_legs.png",
+      "sha256": "4c345518c0d62416d7e0c2c149958d0f0e8a94c4d707caffcfe1bf5e11d2ff88",
+      "size": 2378202,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L3_skirt_front.png",
+      "sha256": "45ac651f2d5b81fd09c3bd9230c307ff7f48d907ab804bc199b4990ff415820e",
+      "size": 2414975,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L4_head.png",
+      "sha256": "8e7dbc151389775521eb3f0bca3f1344184dbf50ec1b05a5a45e0b313cd81b85",
+      "size": 2415157,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L5_braid.png",
+      "sha256": "71e8bd9c14aaf585643f0f0c1e740a0fb6335c6f51ea1bdbbbeb23ed864434d2",
+      "size": 2412773,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L6_left_arm.png",
+      "sha256": "9af23879cd3e3baa1a5626374b509843fe9196901a80aec2583286692c52fbfa",
+      "size": 2418277,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/frost/layers/L7_right_arm.png",
+      "sha256": "82713aa61a143d29e672a81a83ef4da11bf39deb3cda10bdb83455415e50c162",
+      "size": 2421282,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy 로 원화를 부위별로 나눔)",
+      "origin": "원화 chapter1/art/characters/frost_witch_v02.png 에서 파생. 2026-11-17 제작, 2026-11-18 저장소로 복사",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 원화의 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "부위별 다각형·밝기 경계로 분할, 가려진 곳은 거울 반사와 번짐으로 채움, 속성 효과 지움",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/frost/layers_source.json",
+          "sha256": "e4390a9f9ba2209c49958f85fbac63ab8877107b747d008cd61a22b5becd33ba"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L0_background.png",
+      "sha256": "eeaffc1001d99874c5f001261a836e08ca8a10afe6f357b3deebe5170fe9fd15",
+      "size": 2290159,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L1_cape_back.png",
+      "sha256": "2851e38236558f7e134ee59735ac0fbdf436102cc01cf438445fbb69c27c8637",
+      "size": 2668072,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L2_body.png",
+      "sha256": "274d998b9abb16e0bc23a1ed353198e08d20278e76040d878f9b345c7bb9e49f",
+      "size": 2743408,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L2b_leg_left.png",
+      "sha256": "d2dfdda4a3db72e42bbba8b3f1476a18db095501af74f17046525723dbbd5e7b",
+      "size": 2753137,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L2c_leg_right.png",
+      "sha256": "422491ab69b77cde090f361a024531276ef8a80e675580b8107fd54e3ef95bef",
+      "size": 2736049,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L3_skirt_front.png",
+      "sha256": "20feae87b4c9df0fb48dab9dd18aca00a08999acfe7694647d13484d4725eb32",
+      "size": 2752292,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L3b_bells.png",
+      "sha256": "6c98ebd80b6a6cff29907141d2ebf9c41ef33b3db7827afd4c1377f1d3781fab",
+      "size": 2748956,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L4_head.png",
+      "sha256": "6024df7aa8e208aa1bd459e3af590fbabf8c8c5ec81b6c006809f75e24ef6207",
+      "size": 2748435,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L5a_hair_left.png",
+      "sha256": "5510ac438a5acedb16059ef67e13efa7f32f719839f50a0422878018228c9932",
+      "size": 2744555,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L5b_hair_right.png",
+      "sha256": "f6e9431c063e71763cfc85e870f1692d882263a73cba0d023118ebaa954ae412",
+      "size": 2744106,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L6_left_arm.png",
+      "sha256": "65f28bbb509d5243b85b7a2dfc6b6b0b8bed9a33d2e29fa58a5a884cc1e14e6b",
+      "size": 2748864,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/layers/L7_right_arm.png",
+      "sha256": "f0cdd816fddf282f935ad7cb4f830079c1bd9635afe30f88c1eff4d27a471ce3",
+      "size": 2748512,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "derived",
+      "creator": "프로젝트(Python PIL, numpy, scipy)",
+      "origin": "자세 시안 _local/art/drafts/storm_witch_pose/p3-r1.png(저장소 밖, 시안의 생성 도구·프롬프트 미확인)에서 파생",
+      "license": "미확인: 시안의 생성 출처·약관 미확인",
+      "date": "2026-11-17",
+      "postprocess": "분할 후 두 손 사이 번개를 몸통·팔·배경에서 지우고 채움(배경 보정 fix_bg.py 는 저장소 밖)",
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        },
+        {
+          "path": "portraits/storm/layers_source.json",
+          "sha256": "50cbe343b3d6bd99cb77994e7dd2f3cd2706f27d5e363a7281277bc5dded3602"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/storm_eyes_closed.png",
+      "sha256": "4d886b9ef1e2aa08dd44d1818cae2ef75fb4ab12e30f1dd500e997a21961c5e7",
+      "size": 11756,
+      "kind": "image",
+      "width": 116,
+      "height": 43,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "portraits/storm/storm_eyes_half.png",
+      "sha256": "ea52b60e3e34f41b274c08bb803044bb0e7e30044826a80b77461668fc846150",
+      "size": 11841,
+      "kind": "image",
+      "width": 116,
+      "height": 43,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex CLI 그림 생성의 국소 편집)",
+      "origin": "원화의 눈 자리만 Codex CLI 로 다시 그려 원화 좌표에 맞춰 잘라 냄. 작업 폴더 _local/art/drafts/*_witch_blink/(저장소 밖)",
+      "license": "미확인: 원화와 같은 권리를 따른다고 보나 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "원화 좌표에 맞춰 잘라 냄",
+      "model": "미확인: Codex CLI 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음(작업 폴더는 저장소 밖)",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "portraits/ATTRIBUTION.ko.md",
+          "sha256": "d49ca43f579ed89cd563316e62e9820951ba387d3b3c92ab96320af679fc8b7a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03/attempts/hero_run_attempt01.png",
+      "sha256": "0e1a323dfadd0df897619f580dc65fd5d6552b10213bb4b116dbe0a306e1aa36",
+      "size": 1690809,
+      "kind": "image",
+      "width": 1774,
+      "height": 887,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-faa0d529-b053-40fd-8a48-363c721a1bfc.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "0e1a323dfadd0df897619f580dc65fd5d6552b10213bb4b116dbe0a306e1aa36",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; PNG pixels copied unchanged",
+      "prompt": "Use case: identity-preserve. Asset type: actual32-frame production RUN animation atlas for an original adult dark-fantasy isometric action RPG. Input images1 and2 are identity/costume/camera references ONLY. Preserve the SAME pale-haired adult female armored battle mage: realistic adultproportions, steel-blue splitrobe, charcoalmetal/leather armor, bronze details and dark tealcrystalstaff. Make one WIDE2:1 transparent sprite sheet, exactly8equalcolumns×4equalrows,32isolated fullbodyposes. Eachrow is ONE smooth in-place RUN CYCLE across8columns, notwalk andnotrandomstancevariants. Row1 SOUTH/towardviewer, row2 EAST/right, row3 NORTH/away, row4 WEST/left. Sameorthographicdownwardcamera asrefs. Torsoleansslightlyforward, robe swingswithmomentum, staffsecuredclose notwavingwildly. Across eachrow the eight successive phases are:1LEFTfoot forward groundcontact/rightlegback;2leftlegcompresses underweight/rightlegswings;3leftfootpushesoff/rightkneecomesforward;4briefairborne/rightfootreachesforward;5RIGHTfoot forward groundcontact/leftlegback;6rightlegcompresses/leftlegswings;7rightfootpushesoff/leftkneecomesforward;8briefairborne/leftfootreachesforward. The samecycle mustrepeatcleanly8→1. Strong clearlyalternating kneesandfeet and coherentanatomy, exactlytwoarms/twolegs ineachpose. Samebodyheight/hipcenter/costume/lighting/camera inallframes; noidentitydrift. Eachfullfigure andfullstaff occupiesonly65% ofitscellheight leavingtransparentpadding, noadjacentoverlap orclipping. Footgroundplane staysat80%ofeachcellheight; airbornefeet mayliftjustaboveit. Samecellcenteracrossphases. Genuinealpha, nofloor, castshadows, particles, effects, background, letters, numbers, gridlines, guides, borderorUI. Render gameassetsonly, photorealisticpainted3D finishnotcartoon. Independentlygeneratedcharacter, notanexistinggamehero.",
+      "reference_inputs": [
+        "C:/Project/d2r-combat-baseline/chapter1/art/actors/hero.png",
+        "C:/Project/d2r-combat-baseline/chapter1/art/quality03/hero_cast_v01.png"
+      ],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license assertion",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "rejected_motion_coherence",
+      "reject_reason": "Visual inspection found repeated leading foot across phases; cape/stance variation does not establish genuine alternating run contacts or suspension.",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1774,
+        887,
+        "RGBA"
+      ],
+      "earlier_records": [],
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/GENERATED-FOLIAGE-RUN.json",
+          "sha256": "2722dde8c762fdf85246d7f618f3c12617a5cfb1743512e59a24a15a1f5ff561"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/attempts/hero_run_attempt02.png",
+      "sha256": "9cd8d2e54e5df99b958af4d37472488d438fdd90f1cf6afb81a8e289232efe13",
+      "size": 1742361,
+      "kind": "image",
+      "width": 1774,
+      "height": 887,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-ac8f97cc-0e95-4f31-b864-c29487ee8601.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "9cd8d2e54e5df99b958af4d37472488d438fdd90f1cf6afb81a8e289232efe13",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; PNG pixels copied unchanged",
+      "prompt": "Use case: precise-object-edit. Asset type: corrected32-frameRUNspriteatlas. Image1 is the EDIT TARGET. Preserve exactsamecharacteridentity, costume, staff, viewdirections, camera, lighting,8columns×4rows layout, transparentbackground andbody scale. Change ONLY lower-body running motion and robe openings required to reveal that motion. The current target FAILS because the SAME leadingboot remains forward in almostallcolumns. FIXTHIS: the left andright legs MUST visiblyexchange front/back. Columns1-4: LEFTleg iscontact/push-off whileRIGHTlegswingsforward. Columns5-8: RIGHTleg iscontact/push-off whileLEFTlegswingsforward. Atcolumn1leftbootreachesoutfrontandrightboottrailsfarbehind; atcolumn5thismustbevisiblyREVERSED. Atcolumn3rightkneeisraisedhighforward,leftlegextendsback; atcolumn7leftkneeisraisedhighforward,rightlegextendsback. Columns4and8showbriefairbornenarrowstride, BOTHbootsclearlyaboveothercontactbaseline. Eastrowandwestrow musthaveobviousoppositelegpositions betweencolumns1and5, notjustcapevariation. Southandnorthrowsmustshowalternatingleft/rightkneeandbootpositions inrobeopening. Twoarms/twolegsonly. Staffstayssteady, upperbodyconsistent. Itmustreadasasequentialin-placeRUNcyclein4facingdirections, not8similarportraitposes. Allspritesfullyinsidecellswithpadding; nooverlaps, effects, writing, gridlines, groundplaneorcastshadows. Preservegenuinealpha.",
+      "reference_inputs": [
+        "%USERPROFILE%/.codex/generated_images/01a191b7-2f06-71f2-8374-65bd3e9e4f7a/exec-faa0d529-b053-40fd-8a48-363c721a1bfc.png"
+      ],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license assertion",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "rejected_motion_coherence",
+      "reject_reason": "Visual inspection found repeated leading foot across phases; cape/stance variation does not establish genuine alternating run contacts or suspension.",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1774,
+        887,
+        "RGBA"
+      ],
+      "earlier_records": [],
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/GENERATED-FOLIAGE-RUN.json",
+          "sha256": "2722dde8c762fdf85246d7f618f3c12617a5cfb1743512e59a24a15a1f5ff561"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/cloister_foliage_v01.png",
+      "sha256": "52f53659589ae92b62637a607e99659dc272ff286fd1114d52ba6a462d9ca42f",
+      "size": 3112540,
+      "kind": "image",
+      "width": 1774,
+      "height": 887,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-62a96c8b-34f5-4975-be6a-3f1aa1efeed9.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "52f53659589ae92b62637a607e99659dc272ff286fd1114d52ba6a462d9ca42f",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; PNG pixels copied unchanged",
+      "prompt": "Use case: stylized-concept. Asset type: production transparent foliage sprite atlas for an original mature dark-fantasy isometric action RPG. Make exactly8 separate dense natural vegetation CLUSTERS in a4-column×2-row grid, broad transparentpadding percell, fixedorthographiccamera lookingdown48degrees. Row1: thick tuftoflongolivegrasswithdrytipvariations; densewidefountainofsagegrassblades; lowlushfernclusterwith4-6unfurlingfronds; windbentdarkolivegrassclump. Row2: mixedolivegrassandtinydeadleavescluster; mottledmoss-edgeferncluster; thickdesaturatedgreentussockwithshortbrownbase; lowfernandgrassmixedcluster. Eachisoneusefulgameprop withmanyfineleavesandclearfullsilhouette, rootcontactatbottomcenter. Mature realisticpainted3D-render finish, detailedthinblades/serratedferns, restrainedcoolgreen/olive/sagepalettewithfewwarmdrytips. Notcartoontriangles, notlowpolycones, notindividualgiantleaves. Modestnatural variation, noflowers. Everyclustercompletelyfitsowncellwithwidegutterandnoadjacentoverlap. Genuinetransparentbackground, NOgroundtile/slab/soilpatch, no castshadow onbackground, no bakedroundshadow, no text,numbers,gridlines,labels,UIorborder. Newindependentgameassets, notcopiedfromanynamedgame.",
+      "reference_inputs": [],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license assertion",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "Candidate art; real-engine approval pending",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1774,
+        887,
+        "RGBA"
+      ],
+      "earlier_records": [],
+      "inspection": {
+        "record": "quality03/FOLIAGE-INSPECTION.json",
+        "data": {
+          "width": 1774,
+          "height": 887,
+          "alpha_min": 0,
+          "alpha_max": 255,
+          "transparent_pixels": 522406,
+          "major_components": 8,
+          "unassigned_visible_minor_pixels": 0,
+          "components": [
+            {
+              "id": "grass_a",
+              "component": 2,
+              "pixels": 101888,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "grass_b",
+              "component": 3,
+              "pixels": 103717,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "fern_a",
+              "component": 8,
+              "pixels": 90223,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "grass_bent",
+              "component": 1,
+              "pixels": 86262,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "grass_leaf",
+              "component": 184,
+              "pixels": 91748,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "fern_moss",
+              "component": 182,
+              "pixels": 101091,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "grass_sedge",
+              "component": 181,
+              "pixels": 99448,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "id": "fern_grass",
+              "component": 183,
+              "pixels": 85555,
+              "neighbor_major_pixels": 0
+            }
+          ],
+          "scope": "Alpha-only metadata analysis. Major components fully contained, no neighboring major pixels. Tiny detached alpha fragments may be trimmed."
+        }
+      },
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/cloister_foliage_v01.json",
+          "sha256": "d5f279f4ec847511722bec65329e78056009fa6f6ea064560d259a9f298af7a8"
+        },
+        {
+          "path": "quality03/GENERATED-FOLIAGE-RUN.json",
+          "sha256": "2722dde8c762fdf85246d7f618f3c12617a5cfb1743512e59a24a15a1f5ff561"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/cloister_props_v01.png",
+      "sha256": "da0fb08565041cecd47aeeabbe796d4508394eb0196562d75b8102083f2d0369",
+      "size": 1649729,
+      "kind": "image",
+      "width": 1448,
+      "height": 1086,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-22dad67e-49ea-4d63-9ef6-ea14c9bb239f.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "da0fb08565041cecd47aeeabbe796d4508394eb0196562d75b8102083f2d0369",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; all PNG pixels preserved unchanged",
+      "prompt": "Use case: stylized-concept. Asset type: actual transparent environment prop sprite atlas for an original mature dark-fantasy isometric action RPG. Create exactly 12 isolated game props in a precise 4-column by 3-row grid, equal cells, on a genuinely transparent background. Camera fixed orthographic looking down 48 degrees, same orientation and lighting for every prop, front three-quarter view. Weathered sculptural stone, worn iron, aged bark; detailed believable painted 3D-render finish, muted slate grey and umber with sparse dry moss, adult realistic scale, no cartoon low-poly toy appearance. Row1 left to right: intact tall gothic cloister stone column with carved capital; broken half column with jagged fracture; ruined pointed stone arch with two feet; low broken monastery stone wall segment. Row2 left to right: eroded stone grave marker with subtle cross-shaped silhouette but NO letters; cracked horizontal tomb slab; iron brazier on stone pedestal with a restrained amber ember flame; gnarled leafless dead tree. Row3 left to right: exposed tangled root cluster; dry thorn shrub; a different low dead bramble cluster; scattered fractured stone masonry rubble. IMPORTANT: every complete prop must fit entirely inside its OWN cell using only60% of cell height/width, leaving wide TRANSPARENT gutters on all sides. Feet/ground-contact points near75% cell height. Tree, arch, roots, wall and rubble must not overlap adjacent cells. No platforms or attached ground tiles, no cast shadows onto background, no baked round shadow blobs, no characters, no environment/background scene, no text, numbers, labels, gridlines, UI or borders. Ground contact must be easy to anchor in an engine. All12 props are separate useful assets, not a conceptart scene. New independent artwork, not a named game's assets.",
+      "reference_inputs": [],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license asserted",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "Art supplied for actual runtime integration trial; final quality approval remains open",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1448,
+        1086,
+        "RGBA"
+      ],
+      "earlier_records": [
+        {
+          "record": "quality03/ASSET-LEDGER-v01.json",
+          "sha256_then": "da0fb08565041cecd47aeeabbe796d4508394eb0196562d75b8102083f2d0369",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        },
+        {
+          "record": "quality03/ASSET-LEDGER-v03.json",
+          "sha256_then": "da0fb08565041cecd47aeeabbe796d4508394eb0196562d75b8102083f2d0369",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        }
+      ],
+      "inspection": {
+        "record": "quality03/PROP-INSPECTION.json",
+        "data": {
+          "alpha_min": 0,
+          "alpha_max": 255,
+          "transparent_pixels": 1035594,
+          "major_components": 12,
+          "props": [
+            {
+              "id": "pillar_whole",
+              "major_component": 2,
+              "major_pixels": 23127,
+              "inside_pixels": 23127,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 23127
+            },
+            {
+              "id": "pillar_broken",
+              "major_component": 4,
+              "major_pixels": 20649,
+              "inside_pixels": 20649,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 20649
+            },
+            {
+              "id": "arch",
+              "major_component": 1,
+              "major_pixels": 43359,
+              "inside_pixels": 43359,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 43359
+            },
+            {
+              "id": "wall",
+              "major_component": 3,
+              "major_pixels": 37967,
+              "inside_pixels": 37967,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 37967
+            },
+            {
+              "id": "grave_cross",
+              "major_component": 8,
+              "major_pixels": 30215,
+              "inside_pixels": 30215,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 30215
+            },
+            {
+              "id": "grave_slab",
+              "major_component": 12,
+              "major_pixels": 33476,
+              "inside_pixels": 33476,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 33476
+            },
+            {
+              "id": "brazier",
+              "major_component": 10,
+              "major_pixels": 25658,
+              "inside_pixels": 25658,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 25658
+            },
+            {
+              "id": "tree",
+              "major_component": 5,
+              "major_pixels": 34811,
+              "inside_pixels": 34811,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 34817
+            },
+            {
+              "id": "roots",
+              "major_component": 15,
+              "major_pixels": 33446,
+              "inside_pixels": 33446,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 33455
+            },
+            {
+              "id": "shrub_a",
+              "major_component": 14,
+              "major_pixels": 31419,
+              "inside_pixels": 31419,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 31502
+            },
+            {
+              "id": "shrub_b",
+              "major_component": 18,
+              "major_pixels": 27181,
+              "inside_pixels": 27181,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 27211
+            },
+            {
+              "id": "rubble",
+              "major_component": 19,
+              "major_pixels": 29625,
+              "inside_pixels": 29625,
+              "neighbor_major_pixels": 0,
+              "opaque_pixels": 35507
+            }
+          ],
+          "scope": "Read-only alpha/component metadata analysis; not image pixel editing or visual approval"
+        }
+      },
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/cloister_props_v01.json",
+          "sha256": "1095377c3458754886ca907fccbd568f556dc71e63b69df99161509a862720bc"
+        },
+        {
+          "path": "quality03/GENERATION-PROMPTS.json",
+          "sha256": "c19aaa7cd4373993f4e0ce7b5b8e02a2d95dd940365d4d9906626fe0c20ed6bc"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/ground_flagstone_v01.png",
+      "sha256": "f6a3cd679f4137186a047235724113dba4d3dd358f4764d9a2c7b3c902f1f851",
+      "size": 3823337,
+      "kind": "image",
+      "width": 1254,
+      "height": 1254,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-bdd9375f-b3ce-4eea-86c9-9d3a9ae2ba3d.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "f6a3cd679f4137186a047235724113dba4d3dd358f4764d9a2c7b3c902f1f851",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; all PNG pixels preserved unchanged",
+      "prompt": "Use case: stylized-concept. Asset type: production diffuse/albedo terrain material for an original dark fantasy isometric action RPG. Make a single square seamless tiling texture of an abandoned medieval cloister floor: irregular large grey slate flagstones, hairline cracks and worn chiselled edges, dark brown earth compacted in narrow joints, a few tiny dull moss fibres. Straight 90-degree overhead orthographic material scan, no perspective. Physically believable detailed stone surface with restrained local contrast. Neutral soft FLAT DIFFUSE illumination only: absolutely no directional lighting, cast shadows, circular shadow/light patches, ambient occlusion blobs, vignette or highlights. The floor must have no circular stains, no large isolated hero object, no grass tufts sticking up, no game props, no bones, no characters, no inscriptions, no symbols, no text, no UI, no border. Subdued grey and earth palette suitable beneath bright fire/ice/lightning combat; not toy low-poly, not cartoon. Exact seamless continuity on all four edges, fairly even pattern frequency across canvas. Fill image only with the surface. This is independent new artwork; do not reproduce a named game asset.",
+      "reference_inputs": [],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license asserted",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "Art supplied for actual runtime integration trial; final quality approval remains open",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1254,
+        1254,
+        "RGB"
+      ],
+      "earlier_records": [
+        {
+          "record": "quality03/ASSET-LEDGER-v01.json",
+          "sha256_then": "f6a3cd679f4137186a047235724113dba4d3dd358f4764d9a2c7b3c902f1f851",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        },
+        {
+          "record": "quality03/ASSET-LEDGER-v03.json",
+          "sha256_then": "f6a3cd679f4137186a047235724113dba4d3dd358f4764d9a2c7b3c902f1f851",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        }
+      ],
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/GENERATION-PROMPTS.json",
+          "sha256": "c19aaa7cd4373993f4e0ce7b5b8e02a2d95dd940365d4d9906626fe0c20ed6bc"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/ground_soil_v01.png",
+      "sha256": "751f561c71cedec70c87c189a4c42b461c016794bc2639dda6f88f5489520f3b",
+      "size": 4438894,
+      "kind": "image",
+      "width": 1254,
+      "height": 1254,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-2fed0e2f-c733-40b1-99f6-1122445ed17a.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "751f561c71cedec70c87c189a4c42b461c016794bc2639dda6f88f5489520f3b",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; all PNG pixels preserved unchanged",
+      "prompt": "Use case: stylized-concept. Asset type: seamless square diffuse/albedo ground material for an original mature dark-fantasy action RPG. Straight overhead 90-degree material scan of compacted charcoal-brown soil in a long-abandoned stone cloister verge: fine gravel, tiny shale chips, thin roots embedded flush in dirt, sparse crumbled dull dead leaves and minute dry moss fibres. Fairly even small-scale texture detail, no large patches or individual focal objects. Physically believable surface, subdued umber/grey with restrained contrast for bright combat readability. FLAT DIFFUSE neutral soft illumination, absolutely no directional highlights, cast shadows, ambient shadow blobs, round stains, dark circular areas, vignette, perspective or raised grass tufts. No flagstones, no paths drawn into the texture, no big stones, no props, characters, bones, writing, symbols, UI, frame or border. Seamless edge continuation all4edges, texture fills whole image. New independent game material, not a screenshot or copied game asset.",
+      "reference_inputs": [],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license asserted",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "Art supplied for actual runtime integration trial; final quality approval remains open",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1254,
+        1254,
+        "RGB"
+      ],
+      "earlier_records": [
+        {
+          "record": "quality03/ASSET-LEDGER-v03.json",
+          "sha256_then": "751f561c71cedec70c87c189a4c42b461c016794bc2639dda6f88f5489520f3b",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        }
+      ],
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/GENERATED-SOIL.json",
+          "sha256": "17ce14a36fa8287df1baee255c45a47546917a880681b3c0e64504fbdd4e8aee"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03/hero_cast_v01.png",
+      "sha256": "fb2f5d50edd5c00ef735176505554011e1dfcdf27604cd4cdd13923bc6c17ea1",
+      "size": 1294267,
+      "kind": "image",
+      "width": 1254,
+      "height": 1254,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 내장 이미지 생성)",
+      "origin": "생성 원본 %USERPROFILE%\\.codex\\generated_images\\01a191b7-2f06-71f2-8374-65bd3e9e4f7a\\exec-505b0369-9141-47cc-8241-3633d9d465e7.png (quality03 원장 v04). 이 경로는 저장소 밖이며 홈 경로는 %USERPROFILE% 로 치환",
+      "original_sha256": "fb2f5d50edd5c00ef735176505554011e1dfcdf27604cd4cdd13923bc6c17ea1",
+      "model": "built-in image_gen.imagegen (모델 이름·버전 기록 없음, 원장 v04 의 generation_mode 표기)",
+      "generation_mode": "built-in image_gen.imagegen; all PNG pixels preserved unchanged",
+      "prompt": "Use case: identity-preserve. Asset type: production directional CAST animation sprite atlas for the original game character shown in reference image1. Reference image1 is ONLY identity/costume/camera reference: keep the SAME adult pale-haired female battle mage, realistic 7.5-head proportions, layered weathered charcoal leather/metal armor and split desaturated steel-blue robe, bronze details, dark staff with teal crystal. Produce a NEW square transparent 4-column×4-row atlas of16 full-body CAST poses. Same orthographic camera asreference, looking down approximately40degrees, same subdued lighting/materials and body scale. Row1 faces SOUTH/towardviewer, row2 EAST/screenright, row3 NORTH/awayfromviewer, row4 WEST/screenleft. Within EACH ROW, columns are four coherent successive casting phases:1feetplanted ready withstaffupright,2anticipation torso coils andfreehand drawsback,3release freearm extends clearly in facingdirection andstaffleansforward,4recovery armreturns towardready. This is a compact animation, NOT walking: bothboots remain on the SAME ground-contact line and samecenter across that row. Identity/staff/armor must remainconsistent and there must be exactlytwoarms/twolegs in eachframe. Everypose entirely insideowncell, fullstaffincluded, use only60% of cellheight withbroadtransparentgutters. Staffneverextendsbelowboots. No overlapbetweenneighbors, no text/gridlines/labels/border, no groundplane, no castshadows, no spellparticles/glow/smoke or background. Clear silhouettes and believable planted casting motion; northmustshowback, east/westmustrespecttheirfacing and aim. Independently generated game asset, do notcopyanynamedgame character.",
+      "reference_inputs": [
+        "C:/Project/d2r-combat-baseline/chapter1/art/actors/hero.png"
+      ],
+      "terms_checked": false,
+      "license": "Independently generated project artwork; no third-party or CC0 license asserted",
+      "date": "2026-10-31",
+      "postprocess": "없음: 생성 원본 PNG 를 그대로 복사(원본 sha256 일치 확인됨)",
+      "status": "Art supplied for actual runtime integration trial; final quality approval remains open",
+      "notes": "날짜는 quality03/README.ko.md 표제(2026-10-31). 최종 품질 승인 아님(v04 status). 모델 이름·버전은 기록에 없다.",
+      "width_height_in_v04": [
+        1254,
+        1254,
+        "RGBA"
+      ],
+      "earlier_records": [
+        {
+          "record": "quality03/ASSET-LEDGER-v03.json",
+          "sha256_then": "fb2f5d50edd5c00ef735176505554011e1dfcdf27604cd4cdd13923bc6c17ea1",
+          "same_hash_as_now": true,
+          "same_prompt_as_v04": true
+        }
+      ],
+      "inspection": {
+        "record": "quality03/HERO-CAST-INSPECTION.json",
+        "data": {
+          "width": 1254,
+          "height": 1254,
+          "major_components": 16,
+          "transparent_pixels": 1099341,
+          "pixels_per_meter_by_direction": {
+            "south": 127.805,
+            "east": 119.0,
+            "north": 122.662,
+            "west": 120.927
+          },
+          "frames": [
+            {
+              "direction": "south",
+              "phase": 0,
+              "component": 1,
+              "pixels": 20964,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "south",
+              "phase": 1,
+              "component": 3,
+              "pixels": 21505,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "south",
+              "phase": 2,
+              "component": 4,
+              "pixels": 20983,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "south",
+              "phase": 3,
+              "component": 2,
+              "pixels": 19981,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "east",
+              "phase": 0,
+              "component": 7,
+              "pixels": 20965,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "east",
+              "phase": 1,
+              "component": 6,
+              "pixels": 23434,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "east",
+              "phase": 2,
+              "component": 8,
+              "pixels": 25904,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "east",
+              "phase": 3,
+              "component": 5,
+              "pixels": 22525,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "north",
+              "phase": 0,
+              "component": 9,
+              "pixels": 23202,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "north",
+              "phase": 1,
+              "component": 11,
+              "pixels": 24299,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "north",
+              "phase": 2,
+              "component": 10,
+              "pixels": 24221,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "north",
+              "phase": 3,
+              "component": 12,
+              "pixels": 22878,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "west",
+              "phase": 0,
+              "component": 15,
+              "pixels": 22936,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "west",
+              "phase": 1,
+              "component": 16,
+              "pixels": 23887,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "west",
+              "phase": 2,
+              "component": 17,
+              "pixels": 24713,
+              "neighbor_major_pixels": 0
+            },
+            {
+              "direction": "west",
+              "phase": 3,
+              "component": 14,
+              "pixels": 22605,
+              "neighbor_major_pixels": 0
+            }
+          ],
+          "scope": "Alpha-only metadata analysis; PNG bytes copied unchanged. No motion quality approval implied."
+        }
+      },
+      "record_files": [
+        {
+          "path": "quality03/ASSET-LEDGER-v04.json",
+          "sha256": "ff55950cd89b2fc259a2d636f99468a521eec4d79a15333274e3205940ff17f3"
+        },
+        {
+          "path": "quality03/hero_cast_v01.json",
+          "sha256": "1e4ca95c49bf7fa568a185c9bf88ed8bea5784dca78b3ef3fd8bdf0718bc0009"
+        },
+        {
+          "path": "quality03/GENERATED-HERO.json",
+          "sha256": "7fc21ebe00b993875f56ff024bb95d92d02afef5a1c892817447bb50c2e1e06b"
+        }
+      ],
+      "release_cleared": false,
+      "limitations_from_v04": [
+        "Materials requested seamless; runtime edge/repetition check required.",
+        "Props are 2.5D billboards, not physical 3D geometry.",
+        "Height and feet anchors initially authored; verify occlusion/grounding at game camera.",
+        "Hero directional cast has four poses/facing; temporal coherence and moving-cast transition must be reviewed in-game.",
+        "Existing enemy and hero hit/death action direction limitations remain.",
+        "Eight-frame directional run not supplied: both32-pose attempts failed visible leg alternation; hero_run_v01.json deliberately absent.",
+        "Existing4-frame walk remains runtime fallback; do not advertise a finished run cycle."
+      ]
+    },
+    {
+      "path": "quality03_audio/ambience.wav",
+      "sha256": "50b13d1cd4617aa9a42430428a94eda4c387ddedf8876617e868964250e99480",
+      "size": 384044,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[ambience.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "AUDIO-LEDGER 서술: 설계한 드론 후보이며 현장 녹음이 아니다."
+    },
+    {
+      "path": "quality03_audio/cold_0.wav",
+      "sha256": "4440f31ee680db67f9de4946a2602faac0d79c8868015a141c7a79fab47553fe",
+      "size": 41324,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[cold_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/cold_1.wav",
+      "sha256": "40f17f1c39552b6600b666759c656a53a3295d03dff9555f224f2c48f9b32a21",
+      "size": 41324,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[cold_1.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/death_0.wav",
+      "sha256": "de6bb9cdf26735adc75b39da3b5165f09c535c3687c4a42b801905c2348e145f",
+      "size": 32684,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[death_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/death_1.wav",
+      "sha256": "716497ad375cce469b8b5872ab4265a031bfbbe97db2ec863dab96a6b18fc9f9",
+      "size": 32684,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[death_1.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/death_2.wav",
+      "sha256": "2928fa5f1ae275a4fafd0134289800e4d98488f5b8e9e6cd36ad6a7a4e1d29c5",
+      "size": 32684,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[death_2.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/drop_0.wav",
+      "sha256": "bdc209fe306a4de70bc17860599b27f79f517ab098b9f16f99e00835b6c04173",
+      "size": 48044,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[drop_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/equip_0.wav",
+      "sha256": "4b5ffcf58978b9fc39f889adc62e7f0ecc1c4593508257df451e7cd63233d1e4",
+      "size": 26924,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[equip_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/explosion_0.wav",
+      "sha256": "2c13efe5cf11c78eecd9614b6d6679ad07126ae95f981a8736df1df43711f3d9",
+      "size": 61484,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[explosion_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/fire_0.wav",
+      "sha256": "104e55e0d7e0a21cd0fb16b374c21cab62e3ba1eaf9fdd9a6f1e83c08cf6d851",
+      "size": 40364,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[fire_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/fire_1.wav",
+      "sha256": "143e6f86353e6b65f12599d7a5c52b5f480df1c34896faa53ba34607dc1d2f70",
+      "size": 40364,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[fire_1.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/fire_2.wav",
+      "sha256": "7e64ea804e41f91ffdf7d2ca316369e4c69e5db200639813185b3d8f35dfd5dd",
+      "size": 40364,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[fire_2.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/hurt_0.wav",
+      "sha256": "7db6938639d47b1ec669cfc80ee643cbf7e855b6478d8c18fd0c567741dd7797",
+      "size": 28844,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[hurt_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/impact_0.wav",
+      "sha256": "b358eb2e9d0f9514de92761adc1115c071b38b848bb7186116b3b60d9bd79537",
+      "size": 24044,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[impact_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/impact_1.wav",
+      "sha256": "95afb80f03ef26ed39e269095dbef07192ddf3f1f3fc83c3fe8b49f991c969ee",
+      "size": 24044,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[impact_1.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/impact_2.wav",
+      "sha256": "72df38fb736c106d8ecb5e886442364456f6d91fdea601e48162a1d0d9cc099c",
+      "size": 24044,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[impact_2.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/jewel_0.wav",
+      "sha256": "67a73219a712285d90e8457eca3f5bce9f7268693ba450da4bd08e37a45861b8",
+      "size": 72044,
+      "kind": "audio",
+      "source_type": "project_original",
+      "creator": "프로젝트(tools/dev/make_drop_sounds.py)",
+      "origin": "외부 소스 없이 tools/dev/make_drop_sounds.py 가 사인파 배음으로 합성(quality03_audio/SYNTHESIZED.ko.md)",
+      "license": "프로젝트 자체 합성(제3자 요소 없음, SYNTHESIZED.ko.md 서술)",
+      "date": "미확인: 합성일 기록 없음",
+      "postprocess": "없음(스크립트 출력)",
+      "record_files": [
+        {
+          "path": "quality03_audio/SYNTHESIZED.ko.md",
+          "sha256": "2fa9aace5d450d187a025d61bcf4e134d8e5a3dd92c0d78953f4f246ddbbfd10"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "AUDIO-LEDGER.json 에는 없다(도구 검토 G3). 소리 원장 정리는 sound-designer 몫."
+    },
+    {
+      "path": "quality03_audio/legend_0.wav",
+      "sha256": "4d9b50a4578ec8947e0cbd63d543deddd15aab748c4eed6a8c73f204c0765999",
+      "size": 153644,
+      "kind": "audio",
+      "source_type": "project_original",
+      "creator": "프로젝트(tools/dev/make_drop_sounds.py)",
+      "origin": "외부 소스 없이 tools/dev/make_drop_sounds.py 가 사인파 배음으로 합성(quality03_audio/SYNTHESIZED.ko.md)",
+      "license": "프로젝트 자체 합성(제3자 요소 없음, SYNTHESIZED.ko.md 서술)",
+      "date": "미확인: 합성일 기록 없음",
+      "postprocess": "없음(스크립트 출력)",
+      "record_files": [
+        {
+          "path": "quality03_audio/SYNTHESIZED.ko.md",
+          "sha256": "2fa9aace5d450d187a025d61bcf4e134d8e5a3dd92c0d78953f4f246ddbbfd10"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "AUDIO-LEDGER.json 에는 없다(도구 검토 G3). 소리 원장 정리는 sound-designer 몫."
+    },
+    {
+      "path": "quality03_audio/lightning_0.wav",
+      "sha256": "f46dd0fdfca7a081da0f494a665747e5c4e5ca6e31508eb59415808f23d4475e",
+      "size": 28844,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[lightning_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/pickup_0.wav",
+      "sha256": "dd20035e5f9fafaf10864d52185f6dc42929ce7287a0aa05dc7b4659dc2e6c6e",
+      "size": 26924,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[pickup_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/step_0.wav",
+      "sha256": "cef9bd4d3d46f27abe5345b751f4a2b1407e4ab223ce49f4b79ebb08fdded1e0",
+      "size": 21164,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[step_0.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "quality03_audio/step_1.wav",
+      "sha256": "2c5be03b5380fd7b6995ebc46003c666f7eec201f97ddecbf54e2418e57e59a6",
+      "size": 21164,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Kenney",
+      "origin": "Kenney 에셋 가공(소스 페이지: https://kenney.nl/assets/impact-sounds, https://kenney.nl/assets/rpg-audio, https://kenney.nl/assets/sci-fi-sounds). 층별 소스·가중은 quality03_audio/AUDIO-LEDGER.json products[step_1.wav].layers",
+      "license": "CC0 1.0 Universal (원문 quality03_audio/LICENSE-Kenney-*.txt)",
+      "date": "미확인: 가공일 기록 없음",
+      "postprocess": "Mono48kPCM16, selected licensed source layers, rate variation, edge fades, DC removal and per-cue peak normalization. No synthesized sine cues. Ambience remains designed drone candidate, not field-recording claim.",
+      "record_files": [
+        {
+          "path": "quality03_audio/AUDIO-LEDGER.json",
+          "sha256": "09849ff565d9aa235629dc78b8fb50bd7337750cecbdf4fdf8c9f3f2c92dca4e"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "rigged_mage/v01/mage_animated.glb",
+      "sha256": "9a37da85a99d2f50e1c122ee3ab36c7028c26512de68c4c98ccb68fecebd0e65",
+      "size": 24162060,
+      "kind": "model",
+      "source_type": "third_party_derived",
+      "creator": "thecubber (원 리그 크레딧 Julius)",
+      "origin": "OpenGameArt 'Rigged textured mage' https://opengameart.org/content/rigged-textured-mage",
+      "license": "CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0/ (파생물도 같은 CC BY-SA 3.0)",
+      "date": "미확인: 취득일 기록 없음(변경일 2026-11-17)",
+      "postprocess": "구형 재질 변환, 자체 IK 보행/대기/시전/피격/사망 베이크, 무가중치 정점 보정, 미터 변환. 2026-11-17 색·노멀 텍스처에서 망토 등판 문양을 지움(Pillow, numpy, scipy)",
+      "obligations": "CC BY-SA 3.0 저작자 표시와 동일 조건 변경 허락(파생물 공개 조건). 배포 전 검토 필요",
+      "record_files": [
+        {
+          "path": "rigged_mage/v01/ATTRIBUTION.ko.md",
+          "sha256": "5d47ca53a8d399341877bf8dbcbe5af4fbdaf91d2172eb4027b11bfcb2eca030"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "rigged_mage/v01/mage_animated_color.png",
+      "sha256": "8a7cd8e4f43c8ae8e0fca26f6eb6d62e9ab235e99eca18fe082f1558d49dbfb6",
+      "size": 6502431,
+      "kind": "image",
+      "width": 2048,
+      "height": 2048,
+      "source_type": "third_party_derived",
+      "creator": "thecubber (원 리그 크레딧 Julius)",
+      "origin": "OpenGameArt 'Rigged textured mage' https://opengameart.org/content/rigged-textured-mage",
+      "license": "CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0/ (파생물도 같은 CC BY-SA 3.0)",
+      "date": "미확인: 취득일 기록 없음(변경일 2026-11-17)",
+      "postprocess": "구형 재질 변환, 자체 IK 보행/대기/시전/피격/사망 베이크, 무가중치 정점 보정, 미터 변환. 2026-11-17 색·노멀 텍스처에서 망토 등판 문양을 지움(Pillow, numpy, scipy)",
+      "obligations": "CC BY-SA 3.0 저작자 표시와 동일 조건 변경 허락(파생물 공개 조건). 배포 전 검토 필요",
+      "record_files": [
+        {
+          "path": "rigged_mage/v01/ATTRIBUTION.ko.md",
+          "sha256": "5d47ca53a8d399341877bf8dbcbe5af4fbdaf91d2172eb4027b11bfcb2eca030"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "rigged_mage/v01/mage_animated_normal.png",
+      "sha256": "7952d1010c599e9bf2b24b7bb37e0a73131df61c020ef1a7ac9a72ba2547aa4a",
+      "size": 6488960,
+      "kind": "image",
+      "width": 2048,
+      "height": 2048,
+      "source_type": "third_party_derived",
+      "creator": "thecubber (원 리그 크레딧 Julius)",
+      "origin": "OpenGameArt 'Rigged textured mage' https://opengameart.org/content/rigged-textured-mage",
+      "license": "CC BY-SA 3.0 https://creativecommons.org/licenses/by-sa/3.0/ (파생물도 같은 CC BY-SA 3.0)",
+      "date": "미확인: 취득일 기록 없음(변경일 2026-11-17)",
+      "postprocess": "구형 재질 변환, 자체 IK 보행/대기/시전/피격/사망 베이크, 무가중치 정점 보정, 미터 변환. 2026-11-17 색·노멀 텍스처에서 망토 등판 문양을 지움(Pillow, numpy, scipy)",
+      "obligations": "CC BY-SA 3.0 저작자 표시와 동일 조건 변경 허락(파생물 공개 조건). 배포 전 검토 필요",
+      "record_files": [
+        {
+          "path": "rigged_mage/v01/ATTRIBUTION.ko.md",
+          "sha256": "5d47ca53a8d399341877bf8dbcbe5af4fbdaf91d2172eb4027b11bfcb2eca030"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "skeleton_outlaw/v02/skeleton_outlaw_merged.glb",
+      "sha256": "d18afc044b043eef4933d38603d05973fd7fa2eb76e210728734b2a1736e1ab4",
+      "size": 5487548,
+      "kind": "model",
+      "source_type": "third_party_derived",
+      "creator": "KevDev",
+      "origin": "미확인: ATTRIBUTION 은 ../v01/ATTRIBUTION.ko.md 와 SOURCE.json 을 가리키나 둘 다 저장소에 없다",
+      "license": "CC0 (ATTRIBUTION 서술; 근거가 되는 v01 기록은 저장소에 없다)",
+      "date": "미확인: 기록 없음",
+      "postprocess": "8mesh/6skin 을 같은 bind 공간으로 변환해 1mesh/2surface/1skin 으로 병합, 재질 정리(원본 삼각형·UV·스킨 가중치·9클립·텍스처 유지)",
+      "record_files": [
+        {
+          "path": "skeleton_outlaw/v02/ATTRIBUTION.ko.md",
+          "sha256": "b193a6e62726747cd82db65d752e2ed7a2469cd83350d4af7222fc5d8b8c2f04"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "원본 기록(v01, SOURCE.json)이 저장소에 없어 CC0 근거를 확인할 수 없다."
+    },
+    {
+      "path": "skeleton_outlaw/v02/skeleton_outlaw_merged_0.png",
+      "sha256": "8e3b74cbbaccbac7cc24549a17d2c4b77146d71fd9cdcfcb844b205afdb70a3d",
+      "size": 2975811,
+      "kind": "image",
+      "width": 2048,
+      "height": 2048,
+      "source_type": "third_party_derived",
+      "creator": "KevDev",
+      "origin": "미확인: ATTRIBUTION 은 ../v01/ATTRIBUTION.ko.md 와 SOURCE.json 을 가리키나 둘 다 저장소에 없다",
+      "license": "CC0 (ATTRIBUTION 서술; 근거가 되는 v01 기록은 저장소에 없다)",
+      "date": "미확인: 기록 없음",
+      "postprocess": "8mesh/6skin 을 같은 bind 공간으로 변환해 1mesh/2surface/1skin 으로 병합, 재질 정리(원본 삼각형·UV·스킨 가중치·9클립·텍스처 유지)",
+      "record_files": [
+        {
+          "path": "skeleton_outlaw/v02/ATTRIBUTION.ko.md",
+          "sha256": "b193a6e62726747cd82db65d752e2ed7a2469cd83350d4af7222fc5d8b8c2f04"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "원본 기록(v01, SOURCE.json)이 저장소에 없어 CC0 근거를 확인할 수 없다."
+    },
+    {
+      "path": "skeleton_outlaw/v02/skeleton_outlaw_merged_1.png",
+      "sha256": "b31c17930efb0cc1ac249d166a09c3563520236784487c21d4ae5480b9bb4eb0",
+      "size": 485860,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "third_party_derived",
+      "creator": "KevDev",
+      "origin": "미확인: ATTRIBUTION 은 ../v01/ATTRIBUTION.ko.md 와 SOURCE.json 을 가리키나 둘 다 저장소에 없다",
+      "license": "CC0 (ATTRIBUTION 서술; 근거가 되는 v01 기록은 저장소에 없다)",
+      "date": "미확인: 기록 없음",
+      "postprocess": "8mesh/6skin 을 같은 bind 공간으로 변환해 1mesh/2surface/1skin 으로 병합, 재질 정리(원본 삼각형·UV·스킨 가중치·9클립·텍스처 유지)",
+      "record_files": [
+        {
+          "path": "skeleton_outlaw/v02/ATTRIBUTION.ko.md",
+          "sha256": "b193a6e62726747cd82db65d752e2ed7a2469cd83350d4af7222fc5d8b8c2f04"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)",
+      "notes": "원본 기록(v01, SOURCE.json)이 저장소에 없어 CC0 근거를 확인할 수 없다."
+    },
+    {
+      "path": "ui/kit/button_disabled_64x40.png",
+      "sha256": "50810df154d1f726f9f6579aa3dfca03dbb2a9ca0c849254ff8479414394032c",
+      "size": 2472,
+      "kind": "image",
+      "width": 64,
+      "height": 40,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/button_hover_64x40.png",
+      "sha256": "40d6589fb55779df2768843a2bcf36b99d5fd8b13340094d60d6bd7c136f245e",
+      "size": 2665,
+      "kind": "image",
+      "width": 64,
+      "height": 40,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/button_normal_64x40.png",
+      "sha256": "05d1ffa865662246f85018311cd08b43ecb334ea3de54b32649c39906843d746",
+      "size": 2582,
+      "kind": "image",
+      "width": 64,
+      "height": 40,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/button_pressed_64x40.png",
+      "sha256": "92be9dcd4d4c7b63862666a9f0a4f31b1996fe64cc6829142163b8ca53dfd5ce",
+      "size": 2590,
+      "kind": "image",
+      "width": 64,
+      "height": 40,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/hud_atlas.png",
+      "sha256": "99359aba13c05b1781f1f1025d9cd7cfe7e7630f0c0098a02e3249107b89c2bb",
+      "size": 2277984,
+      "kind": "image",
+      "width": 2048,
+      "height": 1392,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 시안을 잘라 보정)",
+      "origin": "Codex 생성 시안(2026-11-17) kit_c rim60 의 조각 36개를 build_kit.py 로 한 장에 모음",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "시안 그림에서 조각을 잘라 마젠타 바탕을 떼고 보정(ui/kit/build_kit.py)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 파일이 _local/art/drafts/ui_kit_v2/kit_c/ 에 있다고 기록돼 있으나 저장소에 없다",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        },
+        {
+          "path": "ui/kit/build_kit.py",
+          "sha256": "d0aade59fc056c266040c8db9901a0494334c831efa7b249af7f32c44a949e93"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/panel_small_48.png",
+      "sha256": "b4603fb152b4a677c4999231e25ed2f44abed4e575219140064adb2b45978ab9",
+      "size": 2947,
+      "kind": "image",
+      "width": 48,
+      "height": 48,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "ui/kit/window_96.png",
+      "sha256": "df6563a5569578a9335c63d34702979c35cfff4b49eb38de3a81ac087ca335e9",
+      "size": 12942,
+      "kind": "image",
+      "width": 96,
+      "height": 96,
+      "source_type": "ai_generated",
+      "creator": "프로젝트(Codex 생성 1차 키트 + 코드)",
+      "origin": "Codex 생성(1차 키트) + 코드, 2026-11-17. 전투 HUD 밖 화면용",
+      "license": "미확인: 생성 도구 약관 확인 전",
+      "date": "2026-11-17",
+      "postprocess": "코드 가공(내용은 기록에 없음, build_kit.py 참조)",
+      "model": "미확인: Codex 로 기록됨, 모델 이름·버전 기록 없음",
+      "prompt": "미확인: 프롬프트 기록 없음",
+      "terms_checked": false,
+      "record_files": [
+        {
+          "path": "ui/kit/ATTRIBUTION.ko.md",
+          "sha256": "17120aedbe835c4b7e85b18d4c9f8522f5c1b9c78ae48abae2f3e994cc6b375c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "기록 이관(원장 migrate)"
+    }
+  ]
+}
