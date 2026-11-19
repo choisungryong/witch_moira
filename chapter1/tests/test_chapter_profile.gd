@@ -1,8 +1,8 @@
 extends SceneTree
-## Profile checks (schema 4). Every check of the schema-3 file is here again, moved to schema 4; where the rule changed
+## Profile checks (schema 5). Every check of the schema-3 file is here again, moved to schema 5; where the rule changed
 ## (an item that does not match the data is set aside instead of refusing the file, a broken investment is returned
 ## instead of refusing, the worn set is per witch) the check says what it asserts now. The mapping from each old check to
-## its schema-4 form is in the S1 report. Only isolated paths under res://_local/ are used.
+## its schema-5 form is in the T6-S1 report. Only isolated paths under res://_local/ are used.
 const Profile=preload("res://chapter1/core/chapter_profile.gd")
 const Items=preload("res://chapter1/core/chapter_items.gd")
 const Chapter=preload("res://chapter1/core/chapter_core.gd")
@@ -21,13 +21,13 @@ func write_text(file_path: String,text: String) -> void:
 	var f := FileAccess.open(file_path,FileAccess.WRITE);f.store_string(text);f.close()
 func progress(xp: int,kills: Array=[],who: String=FROST) -> Dictionary:
 	return {"character_id":who,"xp_gained":xp,"first_kills":kills,"sources":{},"level_before":1,"level_after":1}
-## A schema-2 document (the old shape) from a v4 memory state and one witch's worn set.
+## A schema-2 document (the old shape) from a v5 memory state and one witch's worn set.
 func as_v2(source: Dictionary,worn: Dictionary) -> Dictionary:
 	return {"schema_version":2,"revision":source.revision,"next_id":source.next_id,"items":source.items.duplicate(true),"equipped":worn.duplicate(true),
 		"completed_runs":source.completed_runs,"best_ticks":source.best_ticks,"essence":source.essence,"receipts":source.receipts.duplicate()}
 func v2_fresh() -> Dictionary:
 	return {"schema_version":2,"revision":0,"next_id":1,"items":[],"equipped":{},"completed_runs":0,"best_ticks":0,"essence":0,"receipts":[]}
-## A v4 file made from a real saved profile with `mutate` applied to its parsed document; the file must be refused and stay as written.
+## A v5 file made from a real saved profile with `mutate` applied to its parsed document; the file must be refused and stay as written.
 func refused(base_text: String,target: String,mutate: Callable,label: String) -> void:
 	var doc: Dictionary=JSON.parse_string(base_text);mutate.call(doc)
 	var text := JSON.stringify(doc,"  ");write_text(target,text)
@@ -42,24 +42,24 @@ func returned(base_text: String,target: String,mutate: Callable,label: String) -
 	check(ok and loader.available and loader.characters[FROST].ranks.is_empty() and loader.notices.has(FROST) and int(loader.read_report.get("refunded_trees",0))==1 and FileAccess.get_file_as_string(target)==text,label)
 func g1_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator,v2_state: Dictionary) -> void:
 	var root := directory+"/g1"
-	# 1. v2 file -> v4 file; the v2 bytes never change.
+	# 1. v2 file -> v5 file; the v2 bytes never change.
 	var old_v2: Dictionary=v2_state.duplicate(true);old_v2.completed_runs=7;old_v2.revision=4
 	var v2_path := root+"/legacy/profile-v2.json";write_text(v2_path,JSON.stringify(old_v2,"  "))
 	var v2_bytes := FileAccess.get_file_as_string(v2_path)
-	var up=Profile.new();var v4_path := root+"/up/profile-v4.json"
+	var up=Profile.new();var v4_path := root+"/up/profile-v5.json"
 	check(up.configure(v4_path,true,v2_path) and up.imported_from_v2 and up.characters.has(FROST) and int(up.characters[FROST].xp)==5000 and not FileAccess.file_exists(v4_path),"v2 profile is read into memory: 7 runs migrate as 5 runs of xp, nothing written yet")
-	check(up.unselect("weapon",FROST) and FileAccess.file_exists(v4_path) and not up.imported_from_v2 and FileAccess.get_file_as_string(v2_path)==v2_bytes,"First save writes the v4 file and leaves the v2 bytes untouched")
+	check(up.unselect("weapon",FROST) and FileAccess.file_exists(v4_path) and not up.imported_from_v2 and FileAccess.get_file_as_string(v2_path)==v2_bytes,"First save writes the v5 file and leaves the v2 bytes untouched")
 	var v4_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(v4_path))
-	check(int(v4_doc.schema_version)==4 and int(v4_doc.revision)==5 and v4_doc.characters.has(FROST) and not v4_doc.characters[FROST].has("level"),"v4 file: schema 4, revision continues, level is not stored")
-	var up_again=Profile.new();check(up_again.configure(v4_path,true,v2_path) and up_again.state==up.state and up_again.characters==up.characters and not up_again.imported_from_v2,"v4 file reads back identically and wins over the v2 file")
-	check(Profile.normalize(v4_doc).is_empty(),"A schema-4 document is not accepted by the schema-2 normalizer")
+	check(int(v4_doc.schema_version)==5 and int(v4_doc.revision)==5 and v4_doc.characters.has(FROST) and not v4_doc.characters[FROST].has("level"),"v5 file: schema 5, revision continues, level is not stored")
+	var up_again=Profile.new();check(up_again.configure(v4_path,true,v2_path) and up_again.state==up.state and up_again.characters==up.characters and not up_again.imported_from_v2,"v5 file reads back identically and wins over the v2 file")
+	check(Profile.normalize(v4_doc).is_empty(),"A schema-5 document is not accepted by the schema-2 normalizer")
 	# 2. v1 only
 	var v1_path := root+"/legacy/profile-v1.json"
 	write_text(v1_path,JSON.stringify({"schema_version":1,"revision":3,"next_id":2,"items":[{"storage_id":1,"item":Items.roll(rng,8,"rare","weapon")}],"equipped":{"weapon":1},"completed_runs":2,"best_ticks":20000,"essence":5,"receipts":["old"]}))
 	var v1_bytes := FileAccess.get_file_as_string(v1_path)
-	var from_v1=Profile.new();var v1_target := root+"/from-v1/profile-v4.json"
+	var from_v1=Profile.new();var v1_target := root+"/from-v1/profile-v5.json"
 	check(from_v1.configure(v1_target,true,"",v1_path) and from_v1.imported_from_v1 and int(from_v1.characters[FROST].xp)==2000,"v1 only: read into memory with 2 runs of xp")
-	check(from_v1.unselect("weapon",FROST) and FileAccess.file_exists(v1_target) and FileAccess.get_file_as_string(v1_path)==v1_bytes,"v1 is carried into the v4 file and its bytes stay")
+	check(from_v1.unselect("weapon",FROST) and FileAccess.file_exists(v1_target) and FileAccess.get_file_as_string(v1_path)==v1_bytes,"v1 is carried into the v5 file and its bytes stay")
 	# 3/4. Experience pays once per receipt, a first kill pays once per witch
 	var run_path := root+"/runs/profile.json";var runs=Profile.new();runs.configure(run_path,true)
 	check(runs.record_run("g1-a",[],[],true,100,progress(640,["champion:0"])) and int(runs.characters[FROST].xp)==640,"record_run stores experience with the run's receipt in one write")
@@ -182,7 +182,7 @@ func mutate_file(target: String,mutate: Callable) -> void:
 func tamper_stats(doc: Dictionary) -> void:
 	var stats: Dictionary=doc.items[1].item.stats
 	var key: String=stats.keys()[0];stats[key]=int(stats[key])+777
-## Breaks the structure of a v4 file (two items with one storage id), which still refuses the whole file.
+## Breaks the structure of a v5 file (two items with one storage id), which still refuses the whole file.
 func break_ids(doc: Dictionary) -> void:
 	doc.items[1].storage_id=doc.items[0].storage_id
 func rename_items(doc: Dictionary) -> void:
@@ -230,10 +230,10 @@ func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) 
 	check(not huge.configure(c_dir+"/huge.json",true) and huge.reject_kind=="damaged" and huge.reject_reason=="size" and file_hashes(c_dir)==before_c,"P-4 oversize file is damaged, nothing changes")
 	write_text(c_dir+"/old-v2.json",'{"schema_version":2}');before_c=file_hashes(c_dir)
 	var legacy=Profile.new()
-	check(not legacy.configure(c_dir+"/absent-v4.json",true,c_dir+"/old-v2.json") and legacy.reject_kind=="legacy" and file_hashes(c_dir)==before_c and not FileAccess.file_exists(c_dir+"/absent-v4.json"),"P-4 refused schema-2 file is legacy, nothing is created")
+	check(not legacy.configure(c_dir+"/absent-v5.json",true,c_dir+"/old-v2.json") and legacy.reject_kind=="legacy" and file_hashes(c_dir)==before_c and not FileAccess.file_exists(c_dir+"/absent-v5.json"),"P-4 refused schema-2 file is legacy, nothing is created")
 	var v2_sha := FileAccess.get_sha256(c_dir+"/old-v2.json")
-	check(legacy.reject_source==c_dir+"/old-v2.json" and legacy.path==c_dir+"/absent-v4.json" and FileAccess.get_sha256(c_dir+"/old-v2.json")==v2_sha and file_hashes(c_dir)==before_c,"P-4 reject_source is the refused schema-2 file, not the absent v4 path; file bytes unchanged")
-	check(damaged.reject_source==c_dir+"/broken.json" and huge.reject_source==c_dir+"/huge.json","P-4 reject_source of a refused v4 file is that file")
+	check(legacy.reject_source==c_dir+"/old-v2.json" and legacy.path==c_dir+"/absent-v5.json" and FileAccess.get_sha256(c_dir+"/old-v2.json")==v2_sha and file_hashes(c_dir)==before_c,"P-4 reject_source is the refused schema-2 file, not the absent v5 path; file bytes unchanged")
+	check(damaged.reject_source==c_dir+"/broken.json" and huge.reject_source==c_dir+"/huge.json","P-4 reject_source of a refused v5 file is that file")
 	# P-6 / P-7 / P-8: a fresh save from the newest readable journal copy.
 	var d := d5_base(root+"/d",tables,rng,true)
 	var scout=Profile.new();scout.configure(d.main,true,"","",d.pointer)
@@ -248,7 +248,7 @@ func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) 
 	check(not refused_d.configure(d.main,true,"","",d.pointer) and refused_d.reject_kind=="incompatible","P-6 newest copy and main file are both refused")
 	var latest: Dictionary=refused_d.latest_readable_revision()
 	check(int(latest.get("revision",0))==3 and String(latest.get("file",""))==String(d_journals[1].file),"P-6 latest readable copy is revision 3")
-	check(refused_d.start_fresh_after_reject(true) and refused_d.available and refused_d.path!=d.main and refused_d.path.get_file().begins_with("chapter-one-profile-v4-r") and int(refused_d.state.revision)==4 and refused_d.state.items.size()==3 and refused_d.loadout(FROST).is_empty(),"P-6 new save starts from revision 3 and continues at revision 4")
+	check(refused_d.start_fresh_after_reject(true) and refused_d.available and refused_d.path!=d.main and refused_d.path.get_file().begins_with("chapter-one-profile-v5-r") and int(refused_d.state.revision)==4 and refused_d.state.items.size()==3 and refused_d.loadout(FROST).is_empty(),"P-6 new save starts from revision 3 and continues at revision 4")
 	var after_d := file_hashes(root+"/d")
 	var unchanged := true
 	for key in before_d:
@@ -262,15 +262,15 @@ func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) 
 	check(not plain_d.configure(d.main,true) and plain_d.reject_kind=="incompatible" and unchanged,"P-7 without the pointer the original is still refused and unchanged")
 	var pointer_bytes := FileAccess.get_file_as_string(d.pointer)
 	var ignored := true
-	for bad_name in ["../x.json","C:/x.json","/abs.json","other.json","chapter-one-profile-v4-r1/../x.json","chapter-one-profile-v4-r99999999-999999.json","chapter-one-profile-v3-r20261117-120000.json"]:
+	for bad_name in ["../x.json","C:/x.json","/abs.json","other.json","chapter-one-profile-v5-r1/../x.json","chapter-one-profile-v5-r99999999-999999.json","chapter-one-profile-v4-r20261117-120000.json","chapter-one-profile-v3-r20261117-120000.json"]:
 		write_text(d.pointer,JSON.stringify({"schema":1,"file":bad_name}))
 		var text_now := FileAccess.get_file_as_string(d.pointer)
 		var trial=Profile.new()
 		if trial.configure(d.main,true,"","",d.pointer) or trial.path!=d.main or FileAccess.get_file_as_string(d.pointer)!=text_now:ignored=false
 	check(ignored,"P-8 a pointer naming a path, another pattern, another schema or a missing file is ignored; the pointer is not rewritten")
 	write_text(d.pointer,pointer_bytes)
-	var name_rule := RegEx.create_from_string(Profile.FRESH_NAME_PATTERN)
-	check(name_rule.search("chapter-one-profile-v4-r20261117-070000-2.json")!=null and name_rule.search("chapter-one-profile-v4-r1.json\n")==null and name_rule.search("chapter-one-profile-v3-r1.json")==null,"L1 the pointer name rule accepts the fresh-save names and refuses a trailing line break and the v3 name")
+	var name_rule := RegEx.create_from_string(Profile.FRESH_NAME_PATTERN_V5)
+	check(name_rule.search("chapter-one-profile-v5-r20261117-070000-2.json")!=null and name_rule.search("chapter-one-profile-v5-r1.json\n")==null and name_rule.search("chapter-one-profile-v4-r1.json")==null and name_rule.search("chapter-one-profile-v3-r1.json")==null,"L1 the pointer name rule accepts the v5 fresh-save names and refuses a trailing line break, the v4 name and the v3 name")
 	# M1: the resume candidate is found once, when the file is refused, and is not looked for again.
 	var resume_before: Dictionary=refused_d.resume_info()
 	check(int(resume_before.get("revision",0))==3 and String(resume_before.get("file",""))==String(d_journals[1].file),"M1 the refused profile carries its resume candidate")
@@ -293,7 +293,7 @@ func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) 
 	for row in e_scout.journal_files():mutate_file(e_scout.journal_path(String(row.file)),break_ids)
 	mutate_file(e.main,break_ids)
 	var squatters := {}
-	for squat_name in ["chapter-one-profile-v4-r20000101-000000.json","chapter-one-profile-v4-r20000101-000000-2.json"]:
+	for squat_name in ["chapter-one-profile-v5-r20000101-000000.json","chapter-one-profile-v5-r20000101-000000-2.json"]:
 		var squat: String=e.root+"/"+squat_name
 		write_text(squat,"keep me "+squat_name);squatters[squat]=FileAccess.get_sha256(squat)
 	var before_e := file_hashes(root+"/e")
@@ -305,14 +305,14 @@ func d5_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator) 
 	for squat in squatters:
 		if FileAccess.get_sha256(squat)!=squatters[squat]:squatters_same=false
 	check(squatters_same and same_files(before_e,root+"/e"),"P-9 files already there stay byte for byte the same")
-	# P-10: only an old format refused -> empty v4 at the normal path, old file untouched, no pointer.
+	# P-10: only an old format refused -> empty v5 at the normal path, old file untouched, no pointer.
 	var f_dir := root+"/f";write_text(f_dir+"/old-v2.json",'{"schema_version":2}')
 	var old_bytes := FileAccess.get_file_as_string(f_dir+"/old-v2.json")
 	var only_old=Profile.new()
-	check(not only_old.configure(f_dir+"/profile-v4.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and only_old.reject_kind=="legacy","P-10 refused old format")
-	check(only_old.start_fresh_after_reject(false) and FileAccess.file_exists(f_dir+"/profile-v4.json") and FileAccess.get_file_as_string(f_dir+"/old-v2.json")==old_bytes and not FileAccess.file_exists(f_dir+"/active.json"),"P-10 empty v4 created at the normal path, old file unchanged, no pointer")
+	check(not only_old.configure(f_dir+"/profile-v5.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and only_old.reject_kind=="legacy","P-10 refused old format")
+	check(only_old.start_fresh_after_reject(false) and FileAccess.file_exists(f_dir+"/profile-v5.json") and FileAccess.get_file_as_string(f_dir+"/old-v2.json")==old_bytes and not FileAccess.file_exists(f_dir+"/active.json"),"P-10 empty v5 created at the normal path, old file unchanged, no pointer")
 	var after_old=Profile.new()
-	check(after_old.configure(f_dir+"/profile-v4.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and after_old.available,"P-10 the new v4 file reads back")
+	check(after_old.configure(f_dir+"/profile-v5.json",true,f_dir+"/old-v2.json","",f_dir+"/active.json") and after_old.available,"P-10 the new v5 file reads back")
 	# A save that was never refused cannot be replaced.
 	var healthy=Profile.new();healthy.configure(a.main,true,"","",a.pointer)
 	check(not healthy.start_fresh_after_reject(true),"A readable profile refuses start_fresh_after_reject")
@@ -329,7 +329,7 @@ func execute() -> void:
 	if DirAccess.dir_exists_absolute(directory):quit(1);return
 	DirAccess.make_dir_recursive_absolute(directory)
 	var profile=Profile.new()
-	check(Profile.PATH_V4.begins_with("user://"),"Product profile lives in the user directory; tests only use isolated fixture paths")
+	check(Profile.PATH_V5.begins_with("user://"),"Product profile lives in the user directory; tests only use isolated fixture paths")
 	check(profile.configure(directory+"/profile.json",true),"New QA profile configured")
 	var rng := RandomNumberGenerator.new();rng.seed=44
 	var item: Dictionary=Items.roll(rng,8,"rare","weapon");item.uid=3
@@ -402,9 +402,9 @@ func execute() -> void:
 	check(v2_again.salvage(ring_id) and not v2_again.loadout(FROST).has("ring2") and v2_again.loadout(FROST).has("ring"),"Salvaging the second ring frees only that slot")
 	var old_text := JSON.stringify({"schema_version":1,"revision":3,"next_id":3,"items":[{"storage_id":1,"item":Items.roll(rng,8,"rare","weapon")},{"storage_id":2,"item":Items.unique(1,9)}],"equipped":{"weapon":1,"charm":2},"completed_runs":2,"best_ticks":20000,"essence":5,"receipts":["old"]})
 	var carried=Profile.new();check(carried.configure(directory+"/carried.json",true) and carried.import_v1_text(old_text),"Schema-1 profile is read")
-	check(carried.imported_from_v1 and carried.state.schema_version==4 and carried.state.items.size()==2 and carried.loadout(FROST).size()==2 and carried.state.completed_runs==2,"Imported state keeps items, selection and progress")
+	check(carried.imported_from_v1 and carried.state.schema_version==5 and carried.state.items.size()==2 and carried.loadout(FROST).size()==2 and carried.state.completed_runs==2,"Imported state keeps items, selection and progress")
 	check(not FileAccess.file_exists(carried.path),"Import alone writes nothing")
-	check(carried.select_item(1,FROST) and carried.salvage(2) and FileAccess.file_exists(carried.path) and not carried.imported_from_v1,"First change after import saves a schema-4 file")
+	check(carried.select_item(1,FROST) and carried.salvage(2) and FileAccess.file_exists(carried.path) and not carried.imported_from_v1,"First change after import saves a schema-5 file")
 	var carried_again=Profile.new();check(carried_again.configure(carried.path,true) and carried_again.state.items.size()==1 and carried_again.state.essence==30,"Carried profile reloads from its own file")
 	var refuse=Profile.new();refuse.configure(directory+"/refuse.json",true)
 	check(not refuse.import_v1_text('{"schema_version":2}') and not refuse.import_v1_text("not json") and not refuse.imported_from_v1,"Non-v1 or broken text is refused as an import")

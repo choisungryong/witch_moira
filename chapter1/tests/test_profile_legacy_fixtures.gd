@@ -1,7 +1,7 @@
 extends SceneTree
 ## T5-V4 / S1 check against the frozen schema-3/2/1 files (S0, never regenerated). Two parts:
 ##  1. the frozen bytes are unchanged (sha256 listed in expected_v3.json),
-##  2. the schema-4 profile carries each file over exactly as expected_v3.json says the schema-3 code read it:
+##  2. the schema-5 profile carries each file over exactly as expected_v3.json says the schema-3 code read it:
 ##     same items with the same screen names, same numbers, same first-run kit for each witch (names and descriptions
 ##     left out of the kit comparison, then the names compared on their own), same blocked pieces, and the one worn set
 ##     copied to all three witches (T5-U1). Reading writes nothing and leaves every staged file as it was.
@@ -85,7 +85,13 @@ func compare(name: String,now: Dictionary,then: Dictionary) -> void:
 	var state: Dictionary=now.state
 	for key in ["next_id","completed_runs","best_ticks","essence","receipts","revision"]:
 		check(_same(state[key],old_state[key]),name+": "+key+" carried over")
-	check(int(state.schema_version)==4,name+": the memory state is schema 4")
+	check(int(state.schema_version)==5,name+": the memory state is schema 5")
+	check(_same(state.town,Profile.default_town()),name+": `town` is at its defaults (nothing in a schema-3/2/1 file fills it)")
+	var defaults_only := true
+	for witch in now.characters:
+		for key in Profile.NEW_CHAR_KEYS:
+			if not _same(now.characters[witch].get(key),Profile.default_additions()[key]):defaults_only=false
+	check(defaults_only and not now.characters.is_empty(),name+": every witch has `quests`, `records` and `grace` at their defaults")
 	check(not state.has("equipped"),name+": the shared worn table is gone from the state")
 	# the items, with their screen names and descriptions as the schema-3 code showed them
 	check(state.items.size()==old_state.items.size(),name+": same number of items")
@@ -142,9 +148,9 @@ func _broken_v3(folder: String) -> void:
 	handle.store_string(JSON.stringify(source,"  "));handle.close()
 	var before := FileAccess.get_sha256(main)
 	var profile=Profile.new()
-	var accepted: bool=profile.configure(folder+"/chapter-one-profile-v4.json",true,"","","",main)
+	var accepted: bool=profile.configure(folder+"/chapter-one-profile-v5.json",true,"","","",main)
 	check(not accepted and profile.reject_kind=="legacy" and profile.error_code=="old_rejected","a broken schema-3 file is refused as legacy with the code old_rejected")
-	check(FileAccess.get_sha256(main)==before and not FileAccess.file_exists(folder+"/chapter-one-profile-v4.json"),"the refused schema-3 file is untouched and no v4 file appears")
+	check(FileAccess.get_sha256(main)==before and not FileAccess.file_exists(folder+"/chapter-one-profile-v5.json"),"the refused schema-3 file is untouched and no v5 file appears")
 	check(not _has_hangul(profile.error),"the dev sentence in `error` has no Korean text")
 
 func _has_hangul(text: String) -> bool:

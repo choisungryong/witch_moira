@@ -1,6 +1,7 @@
 extends RefCounted
 ## Shared by make_profile_v4_fixtures.gd (once) and test_profile_v4_fixtures.gd (every run).
-## Reads the frozen schema-4 files with the chapter_profile.gd of the day and describes what comes out.
+## Reads the frozen schema-4 files with the chapter_profile.gd of the day and describes what comes out
+## (run_scenario: the schema-4 way; run_scenario_as_source: as the source a schema-5 profile carries over).
 ## Only isolated res://_local/ paths are written; the fixture folders themselves are only read.
 const Profile=preload("res://chapter1/core/chapter_profile.gd")
 const WITCHES := ["chapter1.character.frost","chapter1.character.ember","chapter1.character.arc"]
@@ -49,7 +50,17 @@ static func wipe_tree(folder: String) -> void:
 	for rel in list_files(folder):DirAccess.remove_absolute(folder+"/"+rel)
 
 ## Stage the scenario's files into `work` (wiped first), read them, and return a plain-data description.
+## This reads the frozen schema-4 file as the MAIN file, which is what the schema-4 code did (make_profile_v4_fixtures.gd
+## uses it). The schema-5 code would call that file incompatible; test_profile_v4_fixtures.gd uses run_scenario_as_source.
 static func run_scenario(name: String,fixture_dir: String,work: String) -> Dictionary:
+	return _run(name,fixture_dir,work,false)
+
+## The same staging, but the frozen files are handed to a schema-5 profile as the schema-4 SOURCE to carry over (the way the
+## product finds them): the v5 paths are new and empty, `legacy_v4` is the staged file, `legacy_v4_pointer` the staged pointer.
+static func run_scenario_as_source(name: String,fixture_dir: String,work: String) -> Dictionary:
+	return _run(name,fixture_dir,work,true)
+
+static func _run(name: String,fixture_dir: String,work: String,as_source: bool) -> Dictionary:
 	var spec: Dictionary=SCENARIOS[name]
 	wipe_tree(work)
 	var staged: Array[String]=[]
@@ -64,7 +75,10 @@ static func run_scenario(name: String,fixture_dir: String,work: String) -> Dicti
 	var before := {}
 	for rel in staged:before[rel]=FileAccess.get_sha256(work+"/"+rel)
 	var profile=Profile.new()
-	var ok: bool=profile.configure(work+"/"+MAIN,true,"","",work+"/"+POINTER if String(spec.mode)=="pointer" else "")
+	var pointed := String(spec.mode)=="pointer"
+	var ok: bool
+	if as_source:ok=profile.configure(work+"/chapter-one-profile-v5.json",true,"","",work+"/chapter-one-profile-v5-active.json","","",work+"/"+MAIN,work+"/"+POINTER if pointed else "")
+	else:ok=profile.configure(work+"/"+MAIN,true,"","",work+"/"+POINTER if pointed else "")
 	var untouched := true
 	for rel in before:
 		if not FileAccess.file_exists(work+"/"+rel) or FileAccess.get_sha256(work+"/"+rel)!=before[rel]:untouched=false

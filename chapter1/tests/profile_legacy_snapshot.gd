@@ -1,6 +1,6 @@
 extends RefCounted
 ## Shared by make_profile_legacy_fixtures.gd (once) and test_profile_legacy_fixtures.gd (every run).
-## Reads the frozen schema-3/2/1 files with the CURRENT (schema 4) chapter_profile.gd and describes what comes out.
+## Reads the frozen schema-3/2/1 files with the CURRENT (schema 5) chapter_profile.gd and describes what comes out.
 ## Only isolated res://_local/ paths are written; the fixture folder itself is only read.
 const Profile=preload("res://chapter1/core/chapter_profile.gd")
 const WITCHES := ["chapter1.character.frost","chapter1.character.ember","chapter1.character.arc"]
@@ -69,7 +69,7 @@ static func run_scenario(name: String,fixture_dir: String,work: String) -> Dicti
 	for file_name in staged:before[file_name]=FileAccess.get_sha256(work+"/"+file_name)
 	var profile=Profile.new()
 	var legacy_main := work+"/"+MAIN
-	var main := work+"/chapter-one-profile-v4.json"
+	var main := work+"/chapter-one-profile-v5.json"
 	var ok := false
 	match String(spec.mode):
 		"v3":ok=profile.configure(main,true,"","","",legacy_main)
@@ -92,7 +92,7 @@ static func run_scenario(name: String,fixture_dir: String,work: String) -> Dicti
 	description["read_wrote_new_files"]=written_extra
 	return description
 
-## What a schema-4 read of a frozen file looks like: the memory state, the witches' kits and the carry-over record.
+## What a schema-5 read of a frozen file looks like: the memory state, the witches' kits and the carry-over record.
 static func describe(profile: RefCounted,ok: bool) -> Dictionary:
 	var result := {"configure":ok,"available":profile.available,"reject_kind":profile.reject_kind,"reject_reason":profile.reject_reason,"error_code":profile.error_code,
 		"imported_from_v1":profile.imported_from_v1,"imported_from_v2":profile.imported_from_v2,"imported_from_v3":profile.imported_from_v3,"file":profile.path.get_file(),

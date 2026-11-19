@@ -1,5 +1,5 @@
 extends SceneTree
-## T5 S1 checks V-1 .. V-17 for the schema-4 profile. Everything runs on isolated paths under res://_local/.
+## T5 S1 checks V-1 .. V-17, now for the schema-5 profile (T6-S1: names, versions and the way the v4 compatibility file is read changed; the checks stay). Everything runs on isolated paths under res://_local/.
 ## The frozen schema-3/2/1 files (chapter1/tests/fixtures/profile_legacy) are only copied from; the copies are what get opened.
 ## Marker: CHAPTER1_PROFILE_V4_RESULT. `--write-compat` writes fixtures/profile_v4_compat.json once (refuses when it exists).
 const Profile=preload("res://chapter1/core/chapter_profile.gd")
@@ -56,11 +56,11 @@ func stage_v3(folder: String,source_name: String="v3_full.json") -> Dictionary:
 	Snap.wipe_files(folder)
 	var legacy := folder+"/chapter-one-profile-v3.json"
 	Snap.copy_bytes(FIXTURES+"/"+source_name,legacy)
-	return {"v3":legacy,"v4":folder+"/chapter-one-profile-v4.json","pointer":folder+"/chapter-one-profile-v4-active.json"}
+	return {"v3":legacy,"v5":folder+"/chapter-one-profile-v5.json","pointer":folder+"/chapter-one-profile-v5-active.json"}
 
 func open_v3(paths: Dictionary) -> RefCounted:
 	var profile=Profile.new()
-	profile.configure(paths.v4,true,"","",paths.pointer,paths.v3)
+	profile.configure(paths.v5,true,"","",paths.pointer,paths.v3)
 	return profile
 
 func v4_profile(path_: String) -> RefCounted:
@@ -101,43 +101,43 @@ func execute() -> void:
 	print("CHAPTER1_PROFILE_V4_RESULT ",JSON.stringify({"checks":checks,"failures":failures}))
 	quit(0 if failures.is_empty() else 1)
 
-# V-1, V-2, V-16: carrying schema 3 over reads only; the first save writes the v4 file; v3 files are never changed.
+# V-1, V-2, V-16: carrying schema 3 over reads only; the first save writes the v5 file; v3 files are never changed.
 func v1_checks() -> void:
 	var folder := work+"/v1"
 	var paths := stage_v3(folder)
 	var before := hashes(folder)
 	var profile := open_v3(paths)
-	check(profile.available and profile.imported_from_v3 and profile.path==paths.v4,"V-1 schema 3 is read in memory")
-	check(not FileAccess.file_exists(paths.v4) and hashes(folder)==before,"V-1 reading creates no file and changes none")
-	check(profile.wear_outfit(FROST,SWIM_1) and FileAccess.file_exists(paths.v4) and not profile.imported_from_v3,"V-1 the first save writes the v4 file")
+	check(profile.available and profile.imported_from_v3 and profile.path==paths.v5,"V-1 schema 3 is read in memory")
+	check(not FileAccess.file_exists(paths.v5) and hashes(folder)==before,"V-1 reading creates no file and changes none")
+	check(profile.wear_outfit(FROST,SWIM_1) and FileAccess.file_exists(paths.v5) and not profile.imported_from_v3,"V-1 the first save writes the v5 file")
 	var after := hashes(folder)
 	var v3_same := true
 	for key in before:
 		if not after.has(key) or after[key]!=before[key]:v3_same=false
 	check(v3_same,"V-1 every schema-3 file is byte for byte as before the first save")
-	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v4))
-	check(int(doc.schema_version)==4 and doc.origin.from_schema==3 and doc.origin.from_file=="chapter-one-profile-v3.json" and int(doc.origin.at_unix)>0,"V-1 the carry-over record names the schema-3 file")
-	check(not FileAccess.file_exists(folder+"/chapter-one-profile-v3-r20261117-120000.json") and DirAccess.dir_exists_absolute(folder+"/revisions"),"V-1 journal copies of the v4 file go to revisions/")
-	# V-2: with a v4 file present, the v3 file is not looked at any more.
+	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v5))
+	check(int(doc.schema_version)==5 and doc.origin.from_schema==3 and doc.origin.from_file=="chapter-one-profile-v3.json" and int(doc.origin.at_unix)>0,"V-1 the carry-over record names the schema-3 file")
+	check(not FileAccess.file_exists(folder+"/chapter-one-profile-v3-r20261117-120000.json") and DirAccess.dir_exists_absolute(folder+"/revisions"),"V-1 journal copies of the v5 file go to revisions/")
+	# V-2: with a v5 file present, the v3 file is not looked at any more.
 	var v3_bytes := FileAccess.get_file_as_string(paths.v3)
 	write_text(paths.v3,"{ this is no longer a profile")
 	var again := open_v3(paths)
-	check(again.available and not again.imported_from_v3 and again.state==profile.state and again.characters==profile.characters,"V-2 once the v4 file exists a changed v3 file does not matter")
+	check(again.available and not again.imported_from_v3 and again.state==profile.state and again.characters==profile.characters,"V-2 once the v5 file exists a changed v3 file does not matter")
 	write_text(paths.v3,v3_bytes)
 	# Carrying over twice gives the same state and no doubled copies (the second read starts from the same file).
 	var one := open_v3(stage_v3(work+"/v1b"))
 	var two := open_v3(stage_v3(work+"/v1c"))
 	check(one.state==two.state and one.characters==two.characters,"V-1 carrying the same file over twice gives the same memory state")
-	# V-16: the v3 pointer is read only; the v4 pointer ignores a v3 name.
+	# V-16: the v3 pointer is read only; the v5 pointer ignores a v3 name.
 	var jf := work+"/v16"
 	Snap.wipe_files(jf)
 	for file_name in Snap.journal_names(FIXTURES):Snap.copy_bytes(FIXTURES+"/"+Snap.JOURNAL_DIR+"/"+file_name,jf+"/"+file_name)
 	var pointer_before := FileAccess.get_sha256(jf+"/"+Snap.POINTER)
 	var viaptr=Profile.new()
-	check(viaptr.configure(jf+"/chapter-one-profile-v4.json",true,"","",jf+"/chapter-one-profile-v4-active.json",jf+"/"+Snap.MAIN,jf+"/"+Snap.POINTER) and viaptr.imported_from_v3 and viaptr._origin_hint.from_file.begins_with("chapter-one-profile-v3-r"),"V-16 the schema-3 pointer leads to its r-file")
-	write_text(jf+"/chapter-one-profile-v4-active.json",JSON.stringify({"schema":1,"file":"chapter-one-profile-v3-r20261117-120000.json"}))
+	check(viaptr.configure(jf+"/chapter-one-profile-v5.json",true,"","",jf+"/chapter-one-profile-v5-active.json",jf+"/"+Snap.MAIN,jf+"/"+Snap.POINTER) and viaptr.imported_from_v3 and viaptr._origin_hint.from_file.begins_with("chapter-one-profile-v3-r"),"V-16 the schema-3 pointer leads to its r-file")
+	write_text(jf+"/chapter-one-profile-v5-active.json",JSON.stringify({"schema":1,"file":"chapter-one-profile-v3-r20261117-120000.json"}))
 	var ignored=Profile.new()
-	check(ignored.configure(jf+"/chapter-one-profile-v4.json",true,"","",jf+"/chapter-one-profile-v4-active.json",jf+"/"+Snap.MAIN) and ignored.path==jf+"/chapter-one-profile-v4.json" and FileAccess.get_sha256(jf+"/"+Snap.POINTER)==pointer_before,"V-16 a v3 name in the v4 pointer is ignored; the v3 pointer is unchanged")
+	check(ignored.configure(jf+"/chapter-one-profile-v5.json",true,"","",jf+"/chapter-one-profile-v5-active.json",jf+"/"+Snap.MAIN) and ignored.path==jf+"/chapter-one-profile-v5.json" and FileAccess.get_sha256(jf+"/"+Snap.POINTER)==pointer_before,"V-16 a v3 name in the v4 pointer is ignored; the v3 pointer is unchanged")
 
 # V-5 / V-6
 func v5_text_checks() -> void:
@@ -145,14 +145,14 @@ func v5_text_checks() -> void:
 		var paths := stage_v3(work+"/v5-"+name.get_basename(),name)
 		var profile := open_v3(paths)
 		check(profile.wear_outfit(FROST,SWIM_1),"V-5 saved "+name)
-		var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v4))
+		var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v5))
 		var problems: Array=[]
 		var shell: Dictionary=doc.duplicate(true)
 		shell.items=[]
 		for record in doc.items:
 			if record.item.has("grammar"):shell.items.append(record)
 		text_problems(shell,"",problems)
-		check(problems.is_empty(),"V-5 the v4 file made from %s holds no sentence outside legacy_name, v1 items and quarantine (%s)"%[name,str(problems.slice(0,3))])
+		check(problems.is_empty(),"V-5 the v5 file made from %s holds no sentence outside legacy_name, v1 items and quarantine (%s)"%[name,str(problems.slice(0,3))])
 		var rare_words := 0;var legacy := 0
 		for record in doc.items:
 			if record.item.get("quality")=="rare":
@@ -166,7 +166,7 @@ func v7_rename_checks() -> void:
 	var paths := stage_v3(work+"/v7")
 	var profile := open_v3(paths)
 	profile.wear_outfit(FROST,SWIM_1)
-	var original_bytes := FileAccess.get_file_as_string(paths.v4)
+	var original_bytes := FileAccess.get_file_as_string(paths.v5)
 	var parser := JSON.new();parser.parse(FileAccess.get_file_as_string("res://chapter1/data/loot.json"))
 	var data: Dictionary=parser.data
 	var renamed: Dictionary=data.duplicate(true)
@@ -180,21 +180,21 @@ func v7_rename_checks() -> void:
 	write_text(data_path,JSON.stringify(renamed,"  "))
 	Profile.use_data_for_test(data_path)
 	var swapped=Profile.new()
-	var ok: bool=swapped.configure(paths.v4,true)
+	var ok: bool=swapped.configure(paths.v5,true)
 	var rare_count := 0
 	for record in swapped.state.items:
 		if record.item.get("quality")=="rare" and String(record.item.name).begins_with("X"):rare_count+=1
 	Profile.use_data_for_test("")
-	var plain=Profile.new();plain.configure(paths.v4,true)
-	check(ok and swapped.available and swapped.read_report.is_empty() and bare(swapped.state)==bare(plain.state) and JSON.stringify(swapped.characters)==JSON.stringify(plain.characters),"V-7 a data copy with every name changed reads the same v4 file: no fixes, same state")
+	var plain=Profile.new();plain.configure(paths.v5,true)
+	check(ok and swapped.available and swapped.read_report.is_empty() and bare(swapped.state)==bare(plain.state) and JSON.stringify(swapped.characters)==JSON.stringify(plain.characters),"V-7 a data copy with every name changed reads the same v5 file: no fixes, same state")
 	check(rare_count>=5 and swapped.state.items[0].item.name!=plain.state.items[0].item.name,"V-7 the screen names follow the data copy")
-	check(FileAccess.get_file_as_string(paths.v4)==original_bytes,"V-7 the read changed no byte")
+	check(FileAccess.get_file_as_string(paths.v5)==original_bytes,"V-7 the read changed no byte")
 	# one rare word renamed: the same words, the new name
 	var one_word: Dictionary=data.duplicate(true)
 	one_word.rare_names.first[0].name="Renamed"
 	write_text(data_path,JSON.stringify(one_word,"  "))
 	Profile.use_data_for_test(data_path)
-	var word=Profile.new();word.configure(paths.v4,true)
+	var word=Profile.new();word.configure(paths.v5,true)
 	Profile.use_data_for_test("")
 	var words_same := true;var shown := 0
 	for i in word.state.items.size():
@@ -220,7 +220,7 @@ func v8_quarantine_checks() -> void:
 	var paths := stage_v3(work+"/v8")
 	var profile := open_v3(paths)
 	profile.wear_outfit(FROST,SWIM_1)
-	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v4))
+	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v5))
 	var worn_id := int(doc.characters[FROST].loadout.values()[0])
 	var victim := -1;var other := -1
 	for index in doc.items.size():
@@ -237,7 +237,7 @@ func v8_quarantine_checks() -> void:
 	var worn_original: Dictionary=doc.items[worn_index].duplicate(true)
 	if doc.items[worn_index].item.affixes.size()>0:doc.items[worn_index].item.affixes[0].id="no_such_affix"
 	else:doc.items[worn_index].item.base_id="chapter1.full.no_such_base"
-	var path_ := work+"/v8/quarantine-v4.json"
+	var path_ := work+"/v8/quarantine-v5.json"
 	write_text(path_,JSON.stringify(doc,"  "))
 	var bytes := FileAccess.get_file_as_string(path_);var folder_before := hashes(work+"/v8")
 	var reader=Profile.new();var ok: bool=reader.configure(path_,true)
@@ -255,29 +255,29 @@ func v8_quarantine_checks() -> void:
 	raws_before.sort();raws_after.sort()
 	check(raws_before==raws_after and after.quarantine.size()==3 and after.characters[FROST].loadout.values().map(func(v): return int(v)).has(worn_id),"V-8 the next save keeps the original records as JSON and the kit slot")
 	# restore: put the saved original of the worn piece back into the quarantine list, with the data valid again
-	var restore_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v4))
+	var restore_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v5))
 	var removed: Dictionary={}
 	for index in restore_doc.items.size():
 		if int(restore_doc.items[index].storage_id)==worn_id:removed=restore_doc.items[index];restore_doc.items.remove_at(index);break
 	restore_doc.quarantine.append({"kind":"item","storage_id":worn_id,"reason":"unknown base","since_revision":1,"raw":removed})
-	write_text(work+"/v8/restore-v4.json",JSON.stringify(restore_doc,"  "))
+	write_text(work+"/v8/restore-v5.json",JSON.stringify(restore_doc,"  "))
 	var restored=Profile.new()
-	check(restored.configure(work+"/v8/restore-v4.json",true) and int(restored.read_report.get("restored_items",0))==1 and restored.state.quarantine.is_empty() and restored.starting_kit(FROST).gear.size()==restored.loadout(FROST).size()-restored.starting_kit(FROST).kept_slots.size(),"V-8 when the data matches again the set-aside item comes back under the same storage id and its kit slot is live")
+	check(restored.configure(work+"/v8/restore-v5.json",true) and int(restored.read_report.get("restored_items",0))==1 and restored.state.quarantine.is_empty() and restored.starting_kit(FROST).gear.size()==restored.loadout(FROST).size()-restored.starting_kit(FROST).kept_slots.size(),"V-8 when the data matches again the set-aside item comes back under the same storage id and its kit slot is live")
 	check(worn_original.storage_id==worn_id and restored.state.items.any(func(r): return int(r.storage_id)==worn_id),"V-8 the restored item has its old storage id")
 	# unknown character: set aside, kept across a save
-	var ghost: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v4))
+	var ghost: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(paths.v5))
 	ghost.characters["chapter1.character.ghost"]=ghost.characters[FROST].duplicate(true)
-	write_text(work+"/v8/ghost-v4.json",JSON.stringify(ghost,"  "))
+	write_text(work+"/v8/ghost-v5.json",JSON.stringify(ghost,"  "))
 	var haunted=Profile.new()
-	check(haunted.configure(work+"/v8/ghost-v4.json",true) and haunted.state.quarantine.size()==1 and haunted.state.quarantine[0].kind=="character" and not haunted.characters.has("chapter1.character.ghost"),"V-8 an unknown witch is set aside, not refused")
-	check(haunted.wear_outfit(FROST,"") and JSON.parse_string(FileAccess.get_file_as_string(work+"/v8/ghost-v4.json")).quarantine.size()==1,"V-8 the set-aside witch survives a save")
+	check(haunted.configure(work+"/v8/ghost-v5.json",true) and haunted.state.quarantine.size()==1 and haunted.state.quarantine[0].kind=="character" and not haunted.characters.has("chapter1.character.ghost"),"V-8 an unknown witch is set aside, not refused")
+	check(haunted.wear_outfit(FROST,"") and JSON.parse_string(FileAccess.get_file_as_string(work+"/v8/ghost-v5.json")).quarantine.size()==1,"V-8 the set-aside witch survives a save")
 
 # V-9
 func v9_reject_checks() -> void:
 	var paths := stage_v3(work+"/v9")
 	var profile := open_v3(paths)
 	profile.wear_outfit(FROST,SWIM_1);profile.wear_outfit(FROST,"")
-	var base_text := FileAccess.get_file_as_string(paths.v4)
+	var base_text := FileAccess.get_file_as_string(paths.v5)
 	var cases := {
 		"top key removed":func(d): d.erase("gambles"),
 		"extra top key":func(d): d["equipped"]={},
@@ -292,10 +292,11 @@ func v9_reject_checks() -> void:
 		"quarantine id repeats an item":func(d): d.quarantine.append({"kind":"item","storage_id":d.items[0].storage_id,"reason":"x","since_revision":1,"raw":{}}),
 		"origin keys":func(d): d.origin.erase("at_unix"),
 		"codex shape":func(d): d.codex=[],
+		"town removed":func(d): d.erase("town"),
 	}
 	for label in cases:
 		var doc: Dictionary=JSON.parse_string(base_text);cases[label].call(doc)
-		var target: String=work+"/v9/refused-v4.json"
+		var target: String=work+"/v9/refused-v5.json"
 		write_text(target,JSON.stringify(doc,"  "))
 		var before := hashes(work+"/v9")
 		var loader=Profile.new()
@@ -303,17 +304,17 @@ func v9_reject_checks() -> void:
 	var many: Dictionary=JSON.parse_string(base_text)
 	for i in 326:many.quarantine.append({"kind":"item","storage_id":100000+i,"reason":"x","since_revision":1,"raw":{}})
 	many.next_id=200000
-	write_text(work+"/v9/many-v4.json",JSON.stringify(many,"  "))
-	check(not Profile.new().configure(work+"/v9/many-v4.json",true),"V-9 more than 325 set-aside items are refused (never silently dropped)")
-	# a refused v4 file with no readable journal copy: the v3 source is carried over again (T5-D6)
+	write_text(work+"/v9/many-v5.json",JSON.stringify(many,"  "))
+	check(not Profile.new().configure(work+"/v9/many-v5.json",true),"V-9 more than 325 set-aside items are refused (never silently dropped)")
+	# a refused v5 file with no readable journal copy: the v3 source is carried over again (T5-D6)
 	var d6 := stage_v3(work+"/v9-d6")
 	var d6_profile := open_v3(d6)
 	d6_profile.wear_outfit(FROST,SWIM_1)
-	var broken: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(d6.v4));broken.schema_version=9
-	write_text(d6.v4,JSON.stringify(broken,"  "))
+	var broken: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(d6.v5));broken.schema_version=9
+	write_text(d6.v5,JSON.stringify(broken,"  "))
 	for row in d6_profile.journal_files():write_text(d6_profile.journal_path(String(row.file)),"{ nope")
 	var again=Profile.new()
-	check(not again.configure(d6.v4,true,"","",d6.pointer,d6.v3) and again.resume_info().get("kind")=="v3_source","V-9 with no readable v4 copy the resume candidate is the schema-3 source carried over again")
+	check(not again.configure(d6.v5,true,"","",d6.pointer,d6.v3) and again.resume_info().get("kind")=="v3_source","V-9 with no readable v5 copy the resume candidate is the schema-3 source carried over again")
 	var v3_before := FileAccess.get_sha256(d6.v3)
 	check(again.start_fresh_after_reject(true) and again.state.items.size()>=30 and FileAccess.get_sha256(d6.v3)==v3_before,"V-9 starting fresh from it keeps the schema-3 file as it was")
 
@@ -418,10 +419,10 @@ func v13_outfit_checks() -> void:
 	# an id the data does not know is kept through a read and a save, the screen ignores it
 	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(profile.path))
 	doc.characters[FROST].wardrobe.owned=["chapter1.outfit.frost.future_1"];doc.characters[FROST].wardrobe.worn="chapter1.outfit.frost.future_1"
-	write_text(work+"/v13/future-v4.json",JSON.stringify(doc,"  "))
+	write_text(work+"/v13/future-v5.json",JSON.stringify(doc,"  "))
 	var future=Profile.new()
-	check(future.configure(work+"/v13/future-v4.json",true) and int(future.read_report.get("unknown_ids",0))==2 and future.wardrobe_view(FROST).worn=="" and not "chapter1.outfit.frost.future_1" in future.wardrobe_view(FROST).owned,"V-13 an unknown outfit id is counted and not shown")
-	check(future.wear_outfit(FROST,"") and JSON.parse_string(FileAccess.get_file_as_string(work+"/v13/future-v4.json")).characters[FROST].wardrobe.owned==["chapter1.outfit.frost.future_1"],"V-13 the unknown id survives a save")
+	check(future.configure(work+"/v13/future-v5.json",true) and int(future.read_report.get("unknown_ids",0))==2 and future.wardrobe_view(FROST).worn=="" and not "chapter1.outfit.frost.future_1" in future.wardrobe_view(FROST).owned,"V-13 an unknown outfit id is counted and not shown")
+	check(future.wear_outfit(FROST,"") and JSON.parse_string(FileAccess.get_file_as_string(work+"/v13/future-v5.json")).characters[FROST].wardrobe.owned==["chapter1.outfit.frost.future_1"],"V-13 the unknown id survives a save")
 
 # V-14
 func v14_story_checks() -> void:
@@ -439,10 +440,10 @@ func v14_story_checks() -> void:
 	check(not profile.record_run("s-2",[],[],false,1,refused_progress) and FileAccess.get_file_as_string(profile.path)==before,"V-14 an unknown collectible refuses the save")
 	var doc: Dictionary=JSON.parse_string(before)
 	doc.characters[FROST].story.seen.append("beat.from_the_future")
-	write_text(work+"/v14/future-v4.json",JSON.stringify(doc,"  "))
+	write_text(work+"/v14/future-v5.json",JSON.stringify(doc,"  "))
 	Profile.use_ids_for_test({})
 	var future=Profile.new()
-	check(future.configure(work+"/v14/future-v4.json",true) and "beat.from_the_future" in future.characters[FROST].story.seen and future.wear_outfit(FROST,SWIM_1) and "beat.from_the_future" in JSON.parse_string(FileAccess.get_file_as_string(work+"/v14/future-v4.json")).characters[FROST].story.seen,"V-14 a stored id the data no longer knows is kept through a save")
+	check(future.configure(work+"/v14/future-v5.json",true) and "beat.from_the_future" in future.characters[FROST].story.seen and future.wear_outfit(FROST,SWIM_1) and "beat.from_the_future" in JSON.parse_string(FileAccess.get_file_as_string(work+"/v14/future-v5.json")).characters[FROST].story.seen,"V-14 a stored id the data no longer knows is kept through a save")
 
 # V-15: whatever was read passes the strict write rule
 func v15_invariant_checks() -> void:
@@ -456,10 +457,10 @@ func v15_invariant_checks() -> void:
 		var profile=Profile.new()
 		var ok := false
 		match String(spec.mode):
-			"v3":ok=profile.configure(folder+"/chapter-one-profile-v4.json",true,"","","",folder+"/"+Snap.MAIN)
-			"v3pointer":ok=profile.configure(folder+"/chapter-one-profile-v4.json",true,"","","",folder+"/"+Snap.MAIN,folder+"/"+Snap.POINTER)
-			"v2":ok=profile.configure(folder+"/chapter-one-profile-v4.json",true,folder+"/chapter-one-profile-v2.json")
-			"v1":ok=profile.configure(folder+"/chapter-one-profile-v4.json",true,"",folder+"/chapter-one-profile-v1.json")
+			"v3":ok=profile.configure(folder+"/chapter-one-profile-v5.json",true,"","","",folder+"/"+Snap.MAIN)
+			"v3pointer":ok=profile.configure(folder+"/chapter-one-profile-v5.json",true,"","","",folder+"/"+Snap.MAIN,folder+"/"+Snap.POINTER)
+			"v2":ok=profile.configure(folder+"/chapter-one-profile-v5.json",true,folder+"/chapter-one-profile-v2.json")
+			"v1":ok=profile.configure(folder+"/chapter-one-profile-v5.json",true,"",folder+"/chapter-one-profile-v1.json")
 		if not ok:refused+=1;continue
 		var document: Dictionary=profile._document(profile.state,profile.characters,profile._words)
 		check(not Profile.read_document(document,true).is_empty(),"V-15 what was read from %s passes the strict write rule"%name)
@@ -468,25 +469,21 @@ func v15_invariant_checks() -> void:
 	var compat := FileAccess.get_file_as_string(COMPAT)
 	if not compat.is_empty():
 		var parsed: Variant=JSON.parse_string(compat)
-		var read := Profile.read_document(parsed,false)
-		check(not read.is_empty() and not Profile.read_document(Profile.new()._document(read.state,read.characters,read.words),true).is_empty(),"V-15 the v4 compatibility file passes the strict write rule after being read")
+		var read := Profile.read_document(Profile.upgrade_v4(parsed),false,{},{},[],true)
+		check(not read.is_empty() and not Profile.read_document(Profile.new()._document(read.state,read.characters,read.words),true).is_empty(),"V-15 the v4 compatibility file passes the strict write rule after being carried over to schema 5")
 
 # V-17: the compatibility file is made once and every later build must read it without a single fix
 func v17_compat_checks() -> void:
 	if "--write-compat" in OS.get_cmdline_user_args():
-		if FileAccess.file_exists(COMPAT):
-			check(false,"V-17 refusing to overwrite the compatibility file");return
-		var paths := stage_v3(work+"/v17")
-		var profile := open_v3(paths)
-		profile.wear_outfit(FROST,SWIM_1)
-		profile.wear_outfit(EMBER,"chapter1.outfit.ember.swim_2")
-		var out := FileAccess.open(COMPAT,FileAccess.WRITE);out.store_string(FileAccess.get_file_as_string(paths.v4));out.close()
+		# This file is a schema-4 save. Only the schema-4 code could make it, and it exists, so it is never made again.
+		check(false,"V-17 refusing to write the compatibility file: it is a frozen schema-4 save (the schema-5 one is made by test_profile_v5.gd --write-compat)");return
 	check(FileAccess.file_exists(COMPAT),"V-17 the compatibility file exists")
 	if not FileAccess.file_exists(COMPAT):return
-	var target := work+"/v17-read/profile.json"
+	# It is a schema-4 save, so it is handed over as the schema-4 source of a new schema-5 profile.
+	var target := work+"/v17-read/chapter-one-profile-v4.json"
 	write_text(target,FileAccess.get_file_as_string(COMPAT))
 	var reader=Profile.new()
-	check(reader.configure(target,true) and reader.read_report.is_empty() and reader.state.quarantine.is_empty() and reader.state.items.size()>=30,"V-17 the compatibility file reads with no fix at all")
+	check(reader.configure(work+"/v17-read/chapter-one-profile-v5.json",true,"","","","","",target) and reader.imported_from_v4 and reader.read_report.is_empty() and reader.state.quarantine.is_empty() and reader.state.items.size()>=30,"V-17 the compatibility file is carried over with no fix at all")
 	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(COMPAT))
 	check(int(doc.schema_version)==4 and doc.origin.from_schema==3 and doc.characters[FROST].wardrobe.worn==SWIM_1 and doc.characters[EMBER].wardrobe.worn=="chapter1.outfit.ember.swim_2" and doc.characters[FROST].loadout.size()==8,"V-17 the compatibility file has the carried-over kit and the worn outfits")
 
@@ -497,13 +494,13 @@ func reset_checks() -> void:
 	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(profile.path))
 	check(doc.characters[FROST].tree_reset.granted==[] and doc.characters[FROST].tree_reset.used==[],"tree_reset: two empty lists in a fresh entry")
 	doc.characters[FROST].tree_reset={"granted":["d1","d1"],"used":["d1","d2"]}
-	write_text(work+"/reset/odd-v4.json",JSON.stringify(doc,"  "))
+	write_text(work+"/reset/odd-v5.json",JSON.stringify(doc,"  "))
 	var odd=Profile.new()
-	check(odd.configure(work+"/reset/odd-v4.json",true) and odd.characters[FROST].tree_reset.granted==["d1","d2"] and odd.characters[FROST].tree_reset.used==["d1","d2"] and int(odd.read_report.get("tree_reset_fixed",0))==1 and int(odd.read_report.get("deduped",0))==1,"tree_reset: duplicates become one, an id only in `used` is added to `granted`")
+	check(odd.configure(work+"/reset/odd-v5.json",true) and odd.characters[FROST].tree_reset.granted==["d1","d2"] and odd.characters[FROST].tree_reset.used==["d1","d2"] and int(odd.read_report.get("tree_reset_fixed",0))==1 and int(odd.read_report.get("deduped",0))==1,"tree_reset: duplicates become one, an id only in `used` is added to `granted`")
 	check(Profile.read_document(doc,true).is_empty(),"tree_reset: used without granted and duplicates are refused by the write rule")
 	doc.characters[FROST].tree_reset={"granted":["Bad Id"],"used":[]}
-	write_text(work+"/reset/bad-v4.json",JSON.stringify(doc,"  "))
-	check(not Profile.new().configure(work+"/reset/bad-v4.json",true),"tree_reset: an id of a wrong shape refuses the file")
+	write_text(work+"/reset/bad-v5.json",JSON.stringify(doc,"  "))
+	check(not Profile.new().configure(work+"/reset/bad-v5.json",true),"tree_reset: an id of a wrong shape refuses the file")
 
 # loot.gd's new word helpers
 func loot_checks() -> void:

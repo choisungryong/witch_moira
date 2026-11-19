@@ -39,7 +39,7 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 
 # --only accepts check names and these groups.
 ALIASES = {
-    'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'app-guard', 'app-loadout'],
+    'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'app-guard', 'app-loadout'],
     'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells'],
     'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
@@ -87,7 +87,7 @@ CHANGE_TABLE = [
 SELECTIONS = {
     'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
-    'app': ['loc', 'app-guard', 'app-loadout', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'manager', 'i18n-scan', 'glyphs', 'wording'],
+    'app': ['loc', 'app-guard', 'app-loadout', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
     'tools': ['tools-selftest', 'asset-ledger', 'audio-ledger'],
@@ -117,6 +117,7 @@ def checks():
         godot_check('profile-legacy', 'res://chapter1/tests/test_profile_legacy_fixtures.gd', 'CHAPTER1_PROFILE_LEGACY_RESULT', ['--work-dir=' + FIXTURES + 'legacy-' + stamp]),
         godot_check('profile-v4', 'res://chapter1/tests/test_profile_v4.gd', 'CHAPTER1_PROFILE_V4_RESULT', ['--work-dir=' + FIXTURES + 'v4-' + stamp]),
         godot_check('profile-v4-fixtures', 'res://chapter1/tests/test_profile_v4_fixtures.gd', 'CHAPTER1_PROFILE_V4_FIXTURES_RESULT', ['--work-dir=' + FIXTURES + 'v4fix-' + stamp]),
+        godot_check('profile-v5', 'res://chapter1/tests/test_profile_v5.gd', 'CHAPTER1_PROFILE_V5_RESULT', ['--work-dir=' + FIXTURES + 'v5-' + stamp]),
         godot_check('rhythm', 'res://chapter1/tests/test_rhythm.gd', 'CHAPTER1_RHYTHM_TEST_RESULT', timeout=600),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
         godot_check('run-record', 'res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),

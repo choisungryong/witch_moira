@@ -1,12 +1,14 @@
 extends RefCounted
-## Product profile, schema 4 (user://chapter-one-profile-v4.json).
+## Product profile, schema 5 (user://chapter-one-profile-v5.json).
 ## What the file holds: ids, numbers and flags, no sentences. Equipment name and description are not stored; a rare
 ## item keeps two word ids (`rare_words`) or, when an old name could not be matched, its old text (`legacy_name`).
 ## Each witch has her own worn kit (`loadout`), outfits (`wardrobe`), story record (`story`), cleared depths
-## (`depth_cleared`) and the reserved `tree_reset` slot. An item that no longer matches the data is moved to
-## `quarantine` with its original text instead of refusing the whole file.
-## Schema 3, 2 and 1 files are only ever read (never opened for writing, renamed or deleted); the first save writes
-## the v4 file. Journal copies of v4 saves go to the `revisions/` folder beside the file.
+## (`depth_cleared`), the reserved `tree_reset` slot, her quests (`quests`), her run records (`records`) and her
+## banned grace cards (`grace`). The account has the town (`town`: opened places, one-time purchases, the shop stock and
+## the luck counters). An item may carry `forge` and `rerolls` (both reserved; nothing writes them yet). An item that no
+## longer matches the data is moved to `quarantine` with its original text instead of refusing the whole file.
+## Schema 4, 3, 2 and 1 files are only ever read (never opened for writing, renamed or deleted); the first save writes
+## the v5 file. Journal copies of v5 saves go to the `revisions/` folder beside the file.
 ## In memory `state` holds the file's top level without `characters` and with every equipment item dressed again
 ## (name and description rebuilt from the data) so the core and the screens see the shape they always saw;
 ## `characters` holds the per-witch table. Level and points are computed from xp, never stored.
@@ -16,32 +18,58 @@ const Progression=preload("res://chapter1/core/character_progression.gd")
 const SkillTree=preload("res://chapter1/core/skill_tree.gd")
 const CAPACITY := 256
 const MAX_ITEMS := 325 # One final69-item recovery batch; start blocked above256.
+const PATH_V5 := "user://chapter-one-profile-v5.json"
 const PATH_V4 := "user://chapter-one-profile-v4.json"
 const PATH_V3 := "user://chapter-one-profile-v3.json"
 const PATH_V2 := "user://chapter-one-profile-v2.json"
 const PATH_V1 := "user://chapter-one-profile-v1.json"
+const POINTER_PATH_V5 := "user://chapter-one-profile-v5-active.json"
+## The schema-4 pointer file (read only, to find the schema-4 file to carry over).
 const POINTER_PATH := "user://chapter-one-profile-v4-active.json"
 const POINTER_PATH_V3 := "user://chapter-one-profile-active.json"
 const REVISIONS_DIR := "revisions"
 const OUTFITS_PATH := "res://chapter1/data/outfits.json"
+const FRESH_NAME_PATTERN_V5 := "^chapter-one-profile-v5-r[0-9-]+\\.json\\z"
 const FRESH_NAME_PATTERN := "^chapter-one-profile-v4-r[0-9-]+\\.json\\z"
 const FRESH_NAME_PATTERN_V3 := "^chapter-one-profile-v3-r[0-9-]+\\.json\\z"
+## Files of a later schema beside the save (only their names are looked at; see `newer_save_file`).
+const NEWER_NAME_PATTERN := "^chapter-one-profile-v([6-9]|[1-9][0-9])(-r[0-9-]+)?\\.json\\z"
 ## At most this many journal copies are read when looking for one to continue from (newest first).
 const MAX_JOURNAL_SCAN := 64
 const MAX_TEXT := 2000000
 const MAX_RAW := 8000
 const EQUIP_SLOTS := ["weapon","head","body","hands","feet","charm","ring","ring2"]
-const TOP_KEYS := ["schema_version","revision","next_id","items","completed_runs","best_ticks","essence","receipts","characters","codex","gambles","shared_story","quarantine","origin"]
+const TOP_KEYS_V4 := ["schema_version","revision","next_id","items","completed_runs","best_ticks","essence","receipts","characters","codex","gambles","shared_story","quarantine","origin"]
+const TOP_KEYS_V5 := ["schema_version","revision","next_id","items","completed_runs","best_ticks","essence","receipts","characters","codex","gambles","shared_story","quarantine","origin","town"]
 const TOP_KEYS_V3 := ["schema_version","revision","next_id","items","equipped","completed_runs","best_ticks","essence","receipts","characters"]
 const TOP_KEYS_V2 := ["schema_version","revision","next_id","items","equipped","completed_runs","best_ticks","essence","receipts"]
-const CHAR_KEYS := ["xp","tree_revision","ranks","first_rewards","respecs","loadout","depth_cleared","wardrobe","story","tree_reset"]
+const CHAR_KEYS_V4 := ["xp","tree_revision","ranks","first_rewards","respecs","loadout","depth_cleared","wardrobe","story","tree_reset"]
+const CHAR_KEYS_V5 := ["xp","tree_revision","ranks","first_rewards","respecs","loadout","depth_cleared","wardrobe","story","tree_reset","quests","records","grace"]
 const CHAR_KEYS_V3 := ["xp","tree_revision","ranks","first_rewards","respecs"]
+const NEW_CHAR_KEYS := ["quests","records","grace"]
+const TOWN_KEYS := ["unlocked","bought","shop","luck"]
+const SHOP_KEYS := ["seed","refreshed_run","stock"]
+const LUCK_KEYS := ["gamble_since_legendary","forge_fails_in_row"]
+const QUEST_KEYS := ["active","progress","done","claimed","bounty_offer","bounty_seed","bounty_run","repeat_claims"]
+const RECORD_KEYS := ["runs","wins","last","best"]
+const BEST_KEYS := ["ticks","grade","kills"]
+## records.last: the core keys are strict, every other key is an open slot (numbers, flags and id strings only).
+const LAST_CORE := ["depth","victory","ticks","kills","elite_kills","champion_kills","boss_kill","grade","potions_used","damage_taken","xp_gained","essence_gained","items","skills"]
+const SKILL_CORE := ["id","got_tick","got_level","rank","evolved","damage","kills"]
+const OPEN_KEY_PATTERN := "^[a-z][a-z0-9_]{0,31}\\z"
+const MAX_LAST_KEYS := 48
+const MAX_LAST_CHARS := 16000
+const OPEN_LIMIT := 1000000000000
 ## Schema 1/3 equipment and the v1 item: eight keys with the text in the file.
 const ITEM_KEYS := ["base_id","name","slot","stats","quality","item_level","affixes","description"]
 const ITEM_KEYS_V2 := ["grammar","required_level","legendary_id"]
 ## Schema 4 grammar-2 item: required keys, then the optional ones.
 const ITEM_KEYS_V4 := ["grammar","base_id","slot","stats","quality","item_level","affixes","required_level"]
 const ITEM_KEYS_V4_OPTIONAL := ["legendary_id","rare_words","legacy_name","veiled"]
+## Schema 5 adds `forge` (1..5) and `rerolls` (1..20); the key is absent when the value would be 0.
+const ITEM_KEYS_V5_OPTIONAL := ["legendary_id","rare_words","legacy_name","veiled","forge","rerolls"]
+## A piece in the shop stock is a file-form piece without the keys that only a owned piece has.
+const STOCK_OPTIONAL := ["legendary_id","rare_words","legacy_name"]
 const ESSENCE := {"common":1,"magic":3,"rare":8,"legendary":15,"unique":25}
 const UNIQUE_ID_PREFIX := "chapter1.full.unique."
 const ID_PATTERN := "^[a-z0-9][a-z0-9_.:-]{0,79}\\z"
@@ -55,7 +83,7 @@ static var _trees: Dictionary={}
 static var _outfits: Dictionary={}
 static var _test_ids: Dictionary={}
 var state: Dictionary={}
-## {character_id: {xp, tree_revision, ranks, first_rewards, respecs, loadout, depth_cleared, wardrobe, story, tree_reset}}.
+## {character_id: {xp, tree_revision, ranks, first_rewards, respecs, loadout, depth_cleared, wardrobe, story, tree_reset, quests, records, grace}}.
 var characters: Dictionary={}
 ## {character_id: true} when a tree revision change or a broken investment returned the ranks on read. Cleared by acknowledge_notice.
 var notices: Dictionary={}
@@ -72,30 +100,40 @@ var path := ""
 var _loaded_text := ""
 var available := false
 ## Why the last configure() refused a file: "" when it did not. Kinds: "damaged" (JSON or size),
-## "incompatible" (well-formed but failed validation), "legacy" (a schema-3/2/1 file was refused).
+## "incompatible" (well-formed but failed validation), "legacy" (a schema-4/3/2/1 file was refused).
 var reject_kind := ""
 var reject_reason := ""
-## The file that was actually refused (the v4 path, or the old-format file for "legacy"). Read-only for callers.
+## The file that was actually refused (the v5 path, or the old-format file for "legacy"). Read-only for callers.
 var reject_source := ""
-## Where the pointer file lives ("" = none). The product uses POINTER_PATH; QA passes an isolated path.
+## Where the pointer file lives ("" = none). The product uses POINTER_PATH_V5; QA passes an isolated path.
 var pointer_path := ""
-## The newest readable journal copy (or the re-migrated v3 source), computed once when a file is refused (see _reject).
+## The newest readable journal copy (or the re-migrated v4 / v3 source), computed once when a file is refused (see _reject).
 var _resume := {}
 ## Test hook: when set (digits and dashes only), replaces the time stamp in a new save's file name.
 var stamp_override := ""
-## True until the first save after reading a schema-1 / schema-2 / schema-3 file.
+## True until the first save after reading a schema-1 / schema-2 / schema-3 / schema-4 file.
 var imported_from_v1 := false
 var imported_from_v2 := false
 var imported_from_v3 := false
+var imported_from_v4 := false
+## The name of a file of a later schema found beside the save (names only, never opened); "" when there is none.
+var newer_save_file := ""
 ## Test hook: when >= 0 replaces respec.essence_per_point from the data.
 var respec_cost_override := -1
 ## Set by record_run to "kit_not_saved" when the run's worn set could not be validated and only the rewards were saved
 ## (the witch's kit stays as it was); "" otherwise. A code, not a sentence: the screen words it.
 var carry_note := ""
+## Set by record_run when the run's outcome could not be taken whole: "record_not_saved" (no record, or one whose core keys are
+## wrong) or "outcome_unknown_key" (a key of `outcome` this version does not take). The rewards and the run count are saved anyway.
+var outcome_note := ""
+## Names of open keys of the last record that were cut off by record_run (for the log and the checks).
+var outcome_trimmed: Array=[]
 var _words := {}
 var _origin_hint := {"from_schema":0,"from_file":"","from_revision":0}
 var _v3_path := ""
 var _v3_pointer := ""
+var _v4_path := ""
+var _v4_pointer := ""
 
 static func progression_doc() -> Dictionary:
 	if _progression.is_empty():
@@ -123,8 +161,9 @@ static func loot() -> RefCounted:
 static func use_data_for_test(loot_path: String="") -> void:
 	_loot=null;_loot_path=loot_path
 
-## Test hook: ids the story and collectible functions accept, {"story": [...], "collectibles": [...], "shared": [...]}.
-## The data files (story_beats.json, collectibles.json) do not exist yet, so without this hook no id is known.
+## Test hook: ids the story and collectible functions accept, {"story": [...], "collectibles": [...], "shared": [...]};
+## and the ids the read report counts as known: "quests", "places", "purchases", "cards".
+## The data files (story_beats.json, collectibles.json, the quest and town data) do not exist yet, so without this hook no id is known.
 static func use_ids_for_test(ids: Dictionary) -> void:
 	_test_ids=ids.duplicate(true)
 
@@ -147,37 +186,52 @@ static func outfits() -> Dictionary:
 	return _outfits
 
 static func fresh() -> Dictionary:
-	return {"schema_version":4,"revision":0,"next_id":1,"items":[],"completed_runs":0,"best_ticks":0,"essence":0,"receipts":[],
+	return {"schema_version":5,"revision":0,"next_id":1,"items":[],"completed_runs":0,"best_ticks":0,"essence":0,"receipts":[],
 		"codex":{"uniques":[],"legendaries":[],"set_pieces":[]},"gambles":0,"shared_story":{"seen":[],"true_ending":false},
-		"quarantine":[],"origin":{"from_schema":0,"from_file":"","from_revision":0,"at_unix":0}}
+		"quarantine":[],"origin":{"from_schema":0,"from_file":"","from_revision":0,"at_unix":0},"town":default_town()}
+
+## The account's town: opened places, one-time purchases, the shop stock and the luck counters.
+static func default_town() -> Dictionary:
+	return {"unlocked":[],"bought":[],"shop":{"seed":0,"refreshed_run":0,"stock":[]},"luck":{"gamble_since_legendary":0,"forge_fails_in_row":0}}
+
+## The three keys schema 5 added to a witch's entry, at their defaults.
+static func default_additions() -> Dictionary:
+	return {"quests":{"active":[],"progress":{},"done":[],"claimed":[],"bounty_offer":[],"bounty_seed":0,"bounty_run":0,"repeat_claims":0},
+		"records":{"runs":0,"wins":0,"last":{},"best":{}},"grace":{"banned":[]}}
 
 ## The record of a witch with no saved entry yet.
 static func default_entry(character_id: String) -> Dictionary:
 	var known := Progression.character_entry(progression_doc(),character_id)
 	var revision := 0
 	if not known.is_empty() and known.get("tree_id")!=null and trees().has(known.tree_id):revision=int(trees()[known.tree_id].revision)
-	return {"xp":0,"tree_revision":revision,"ranks":{},"first_rewards":[],"respecs":0,"loadout":{},"depth_cleared":{},
+	var entry := {"xp":0,"tree_revision":revision,"ranks":{},"first_rewards":[],"respecs":0,"loadout":{},"depth_cleared":{},
 		"wardrobe":{"owned":[],"worn":""},"story":{"found":[],"seen":[],"duel_cleared":false,"final_cleared":false},"tree_reset":{"granted":[],"used":[]}}
+	entry.merge(default_additions())
+	return entry
 
 # ---------------------------------------------------------------- opening a profile
 
-## Reads `destination` (schema 4). When it does not exist, reads the schema-3 file (through its pointer when there
-## is one), then the schema-2 file, then the schema-1 file, into memory only; nothing is written until the next save.
+## Reads `destination` (schema 5). When it does not exist, reads the schema-4 file (through its pointer when there
+## is one), then the schema-3 file (through its pointer), then the schema-2 file, then the schema-1 file, into memory
+## only; nothing is written until the next save. The first one that exists decides, and when it is refused the older
+## ones are not looked at.
 ## In QA mode every path is an optional argument and must be an isolated QA path.
-func configure(destination: String=PATH_V4,qa: bool=false,legacy_v2: String="",legacy_v1: String="",pointer: String="",legacy_v3: String="",legacy_v3_pointer: String="") -> bool:
+func configure(destination: String=PATH_V5,qa: bool=false,legacy_v2: String="",legacy_v1: String="",pointer: String="",legacy_v3: String="",legacy_v3_pointer: String="",legacy_v4: String="",legacy_v4_pointer: String="") -> bool:
 	reject_source="";available=false;error="";reject_kind="";reject_reason="";_resume={};state=fresh();characters={};notices={};path=destination;_loaded_text=""
-	imported_from_v1=false;imported_from_v2=false;imported_from_v3=false;pointer_path="";read_report={};_words={};_origin_hint={"from_schema":0,"from_file":"","from_revision":0};_v3_path="";_v3_pointer=""
+	imported_from_v1=false;imported_from_v2=false;imported_from_v3=false;imported_from_v4=false;pointer_path="";read_report={};_words={};_origin_hint={"from_schema":0,"from_file":"","from_revision":0};_v3_path="";_v3_pointer="";_v4_path="";_v4_pointer="";newer_save_file=""
 	if qa:
 		var base := "res://_local/"
-		for candidate_path in [path,legacy_v2,legacy_v1,pointer,legacy_v3,legacy_v3_pointer]:
+		for candidate_path in [path,legacy_v2,legacy_v1,pointer,legacy_v3,legacy_v3_pointer,legacy_v4,legacy_v4_pointer]:
 			if String(candidate_path).is_empty():continue
 			if not String(candidate_path).begins_with(base) or not String(candidate_path).ends_with(".json") or ".." in String(candidate_path):_err("isolated_path_invalid","Invalid isolated QA profile path");return false
 		pointer_path=pointer
 	else:
-		if destination!=PATH_V4 or not ProjectSettings.get_setting("application/config/use_custom_user_dir",false) or not String(ProjectSettings.get_setting("application/config/custom_user_dir_name","")).begins_with("WitchMoira"):
+		if destination!=PATH_V5 or not ProjectSettings.get_setting("application/config/use_custom_user_dir",false) or not String(ProjectSettings.get_setting("application/config/custom_user_dir_name","")).begins_with("WitchMoira"):
 			_err("preview_only","Preview build without a dedicated save path");return false
-		legacy_v3=PATH_V3;legacy_v3_pointer=POINTER_PATH_V3;legacy_v2=PATH_V2;legacy_v1=PATH_V1;pointer_path=POINTER_PATH
-	_v3_path=legacy_v3;_v3_pointer=legacy_v3_pointer
+		legacy_v4=PATH_V4;legacy_v4_pointer=POINTER_PATH;legacy_v3=PATH_V3;legacy_v3_pointer=POINTER_PATH_V3;legacy_v2=PATH_V2;legacy_v1=PATH_V1;pointer_path=POINTER_PATH_V5
+	_v3_path=legacy_v3;_v3_pointer=legacy_v3_pointer;_v4_path=legacy_v4;_v4_pointer=legacy_v4_pointer
+	newer_save_file=_find_newer_file(destination)
+	if not newer_save_file.is_empty():print("CHAPTER1_PROFILE_NEWER_PRESENT ",JSON.stringify({"file":newer_save_file}))
 	path=_pointed(destination)
 	if FileAccess.file_exists(path):
 		_loaded_text=FileAccess.get_file_as_string(path)
@@ -186,13 +240,16 @@ func configure(destination: String=PATH_V4,qa: bool=false,legacy_v2: String="",l
 		if parser.parse(_loaded_text)!=OK:_err("file_rejected","Save file failed validation; original kept");return _reject("damaged","json",path)
 		var report := {};var seen := {};var why := []
 		var read := read_document(parser.data,false,report,seen,why)
-		if read.is_empty():_err("file_rejected","Save file failed validation; original kept");return _reject("incompatible",String(why[0]) if not why.is_empty() else "schema 4 document",path)
+		if read.is_empty():_err("file_rejected","Save file failed validation; original kept");return _reject("incompatible",String(why[0]) if not why.is_empty() else "schema 5 document",path)
 		_adopt(read);notices=seen;read_report=report;_log_fixes(path.get_file())
 	else:
+		var v4_source := _v4_source()
 		var source := _v3_source()
-		if not source.is_empty():
+		if not v4_source.is_empty():
+			if not import_v4_text(FileAccess.get_file_as_string(v4_source),v4_source.get_file()):return _reject("legacy",reject_reason,v4_source,4)
+		elif not source.is_empty():
 			var text := FileAccess.get_file_as_string(source)
-			if not import_v3_text(text,source.get_file()):return _reject("legacy",reject_reason,source,true)
+			if not import_v3_text(text,source.get_file()):return _reject("legacy",reject_reason,source,3)
 		elif not legacy_v2.is_empty() and FileAccess.file_exists(legacy_v2):
 			if not import_v2_text(FileAccess.get_file_as_string(legacy_v2)):return _reject("legacy",reject_reason,legacy_v2)
 		elif not legacy_v1.is_empty() and FileAccess.file_exists(legacy_v1):
@@ -203,8 +260,31 @@ func configure(destination: String=PATH_V4,qa: bool=false,legacy_v2: String="",l
 ## `destination` with the fresh-save naming rule. Anything else (a path, "..", another pattern, a missing file,
 ## a name of another schema) is ignored and `destination` is used. The pointer is only read here.
 func _pointed(destination: String) -> String:
-	var named := _pointer_target(pointer_path,destination,FRESH_NAME_PATTERN)
+	var named := _pointer_target(pointer_path,destination,FRESH_NAME_PATTERN_V5)
 	return named if not named.is_empty() else destination
+
+## The name of a file of a later schema (v6 and up, plain or -r) beside `destination`, found by its name alone. "" when none.
+## Nothing is opened or read, and nothing is refused because of it.
+static func _find_newer_file(destination: String) -> String:
+	var dir := DirAccess.open(destination.get_base_dir())
+	if dir==null:return ""
+	var rule := RegEx.create_from_string(NEWER_NAME_PATTERN)
+	var found: Array[String]=[]
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while not entry.is_empty():
+		if not dir.current_is_dir() and rule.search(entry)!=null:found.append(entry)
+		entry=dir.get_next()
+	dir.list_dir_end()
+	found.sort()
+	return found[found.size()-1] if not found.is_empty() else ""
+
+## The schema-4 file to carry over: the one its pointer names, else the plain v4 file. "" when there is none.
+func _v4_source() -> String:
+	if _v4_path.is_empty():return ""
+	var named := _pointer_target(_v4_pointer,_v4_path,FRESH_NAME_PATTERN)
+	if not named.is_empty():return named
+	return _v4_path if FileAccess.file_exists(_v4_path) else ""
 
 static func _pointer_target(pointer_file: String,destination: String,pattern: String) -> String:
 	if pointer_file.is_empty() or not FileAccess.file_exists(pointer_file):return ""
@@ -279,7 +359,41 @@ func latest_readable_revision() -> Dictionary:
 		if not read.is_empty():return {"kind":"journal","file":row.file,"revision":int(read.state.revision),"unix":int(FileAccess.get_modified_time(full)),"read":read}
 	return {}
 
-## The newest schema-3 journal copy beside the refused v3 file that the v4 rules can carry over. Reads only.
+## The newest schema-4 journal copy of the refused v4 file that the v5 rules can carry over. Schema 4 kept its copies in
+## `<folder of the file>/revisions/<file name>.revision-*`, not beside the file. Reads only.
+func _v4_journal_resume(source: String) -> Dictionary:
+	var scanned := 0
+	var folder := source.get_base_dir()
+	folder=(folder.left(folder.length()-1) if folder.ends_with("/") else folder)+"/"+REVISIONS_DIR
+	for row in _journal_rows(folder,_v3_base(source)+".revision-"):
+		scanned+=1
+		if scanned>MAX_JOURNAL_SCAN:break
+		var full := folder+"/"+String(row.file)
+		var carried := _carry_v4_text(FileAccess.get_file_as_string(full))
+		if not carried.is_empty():return {"kind":"v4_journal","file":row.file,"revision":int(carried.read.state.revision),"unix":int(FileAccess.get_modified_time(full)),"read":carried.read,"origin":{"from_schema":4,"from_file":String(row.file),"from_revision":int(carried.read.state.revision)}}
+	return {}
+
+## After a refusal of the v5 file: the v4 source carried over again, when it can be. Reads only.
+func _v4_source_resume() -> Dictionary:
+	var source := _v4_source()
+	if source.is_empty():return {}
+	var carried := _carry_v4_text(FileAccess.get_file_as_string(source))
+	if carried.is_empty():return {}
+	return {"kind":"v4_source","file":source.get_file(),"revision":int(carried.read.state.revision),"unix":int(FileAccess.get_modified_time(source)),"read":carried.read,"origin":{"from_schema":4,"from_file":source.get_file(),"from_revision":int(carried.read.state.revision)}}
+
+## {read, report, notices} for schema-4 text read with the v5 rules, or {} when it is not a readable schema-4 document.
+func _carry_v4_text(text: String) -> Dictionary:
+	if text.length()>MAX_TEXT:return {}
+	var parser := JSON.new()
+	if parser.parse(text)!=OK:return {}
+	var upgraded := upgrade_v4(parser.data)
+	if upgraded.is_empty():return {}
+	var report := {};var seen := {}
+	var read := read_document(upgraded,false,report,seen,[],true)
+	if read.is_empty():return {}
+	return {"read":read,"report":report,"notices":seen}
+
+## The newest schema-3 journal copy beside the refused v3 file that the v5 rules can carry over. Reads only.
 func _v3_journal_resume(source: String) -> Dictionary:
 	var scanned := 0
 	for row in _journal_rows(source.get_base_dir(),_v3_base(source)+".revision-"):
@@ -290,7 +404,7 @@ func _v3_journal_resume(source: String) -> Dictionary:
 		if not carried.is_empty():return {"kind":"v3_journal","file":row.file,"revision":int(carried.read.state.revision),"unix":int(FileAccess.get_modified_time(full)),"read":carried.read,"origin":{"from_schema":3,"from_file":String(row.file),"from_revision":int(carried.read.state.revision)}}
 	return {}
 
-## After a refusal of the v4 file: the v3 source carried over again, when it can be. Reads only.
+## After a refusal of the v5 file: the v3 source carried over again, when it can be. Reads only.
 func _v3_source_resume() -> Dictionary:
 	var source := _v3_source()
 	if source.is_empty():return {}
@@ -302,20 +416,21 @@ static func _v3_base(file_path: String) -> String:
 	var file := file_path.get_file().get_basename()
 	return file if not file.contains(".revision-") else file.get_slice(".revision-",0)
 
-## {read, report, notices} for schema-3 text read with the v4 rules, or {} when it is not a readable schema-3 document.
+## {read, report, notices} for schema-3 text read with the v5 rules, or {} when it is not a readable schema-3 document.
 func _carry_v3_text(text: String) -> Dictionary:
 	if text.length()>MAX_TEXT:return {}
 	var parser := JSON.new()
 	if parser.parse(text)!=OK:return {}
-	var upgraded := upgrade_v3(parser.data)
+	var upgraded := upgrade_v4(upgrade_v3(parser.data))
 	if upgraded.is_empty():return {}
 	var report := {};var seen := {}
-	var read := read_document(upgraded,false,report,seen)
+	var read := read_document(upgraded,false,report,seen,[],true)
 	if read.is_empty():return {}
 	return {"read":read,"report":report,"notices":seen}
 
 ## {file, revision, unix, kind} of the copy a new save would continue from, or {}. Cached; no disk access.
-## kind: "journal" (a v4 copy), "v3_source" (the schema-3 file carried over again), "v3_journal" (a schema-3 copy).
+## kind: "journal" (a v5 copy), "v4_source" (the schema-4 file carried over again), "v4_journal" (a schema-4 copy),
+## "v3_source" (the schema-3 file carried over again), "v3_journal" (a schema-3 copy).
 func resume_info() -> Dictionary:
 	if _resume.is_empty():return {}
 	return {"kind":_resume.kind,"file":_resume.file,"revision":_resume.revision,"unix":_resume.unix}
@@ -324,9 +439,9 @@ func _err(code: String,text: String,args: Dictionary={}) -> void:
 	error=text;error_code=code;error_args=args
 
 ## After a refusal: begin a new save without touching the refused file or its journal copies.
-## - v4 file refused: a new file `chapter-one-profile-v4-r<YYYYMMDD-HHMMSS>[-n].json` beside it (never an existing
-##   name), from the newest readable journal copy (or the carried-over v3 source) when use_revision, else empty; the pointer names it.
-## - only an older schema refused (no v4 file exists): an empty v4 at the normal path (or from a readable v3 copy); no pointer.
+## - v5 file refused: a new file `chapter-one-profile-v5-r<YYYYMMDD-HHMMSS>[-n].json` beside it (never an existing
+##   name), from the newest readable journal copy (or the carried-over v4 / v3 source) when use_revision, else empty; the pointer names it.
+## - only an older schema refused (no v5 file exists): an empty v5 at the normal path (or from a readable v4 / v3 copy); no pointer.
 ## Returns false and leaves the refused state as it was when anything fails.
 func start_fresh_after_reject(use_revision: bool=true) -> bool:
 	if available or reject_kind.is_empty():_err("fresh_unavailable","A new save cannot be started in this state");return false
@@ -340,9 +455,9 @@ func start_fresh_after_reject(use_revision: bool=true) -> bool:
 		var stamp := "%04d%02d%02d-%02d%02d%02d"%[stamp_time.year,stamp_time.month,stamp_time.day,stamp_time.hour,stamp_time.minute,stamp_time.second]
 		if not stamp_override.is_empty():stamp=stamp_override
 		var number := 1
-		target=_sibling(refused_path,"chapter-one-profile-v4-r"+stamp+".json")
+		target=_sibling(refused_path,"chapter-one-profile-v5-r"+stamp+".json")
 		while FileAccess.file_exists(target):
-			number+=1;target=_sibling(refused_path,"chapter-one-profile-v4-r"+stamp+"-"+str(number)+".json")
+			number+=1;target=_sibling(refused_path,"chapter-one-profile-v5-r"+stamp+"-"+str(number)+".json")
 	if use_revision and not _resume.is_empty():
 		var latest: Dictionary=_resume
 		next_state=latest.read.state.duplicate(true);next_characters=latest.read.characters.duplicate(true);next_words=latest.read.words.duplicate(true)
@@ -372,12 +487,14 @@ func _write_pointer(file: String,replaces: String,kind: String,reason: String,fr
 
 ## Records why a file was refused and writes one log line. Writes no file and changes nothing on disk.
 ## The line holds the file name only (no user path) and no item names.
-func _reject(kind: String,reason: String,source: String,is_v3_file: bool=false) -> bool:
+## `legacy_schema` (3 or 4) names the schema of the refused older file; it picks where its journal copies are looked for.
+func _reject(kind: String,reason: String,source: String,legacy_schema: int=0) -> bool:
 	reject_kind=kind;reject_reason=reason;reject_source=source
 	if kind=="legacy":
-		_resume=_v3_journal_resume(source) if is_v3_file else {}
+		_resume=_v4_journal_resume(source) if legacy_schema==4 else (_v3_journal_resume(source) if legacy_schema==3 else {})
 	else:
 		_resume=latest_readable_revision()
+		if _resume.is_empty():_resume=_v4_source_resume()
 		if _resume.is_empty():_resume=_v3_source_resume()
 	var text := FileAccess.get_file_as_string(source) if FileAccess.file_exists(source) else ""
 	print("CHAPTER1_PROFILE_REJECTED ",JSON.stringify({"file":source.get_file(),"kind":kind,"reason":reason,"bytes":text.to_utf8_buffer().size(),"sha256_16":text.sha256_text().substr(0,16)}))
@@ -385,13 +502,27 @@ func _reject(kind: String,reason: String,source: String,is_v3_file: bool=false) 
 
 # ---------------------------------------------------------------- carrying older files over (memory only)
 
-## A schema-3 file's text into memory. Nothing is written until the next save, and that save goes to the v4 path.
+## A schema-4 file's text into memory. Nothing is written until the next save, and that save goes to the v5 path.
+func import_v4_text(text: String,file_name: String="") -> bool:
+	if text.length()>MAX_TEXT:_err("old_too_large","Old save file too large; original kept");reject_reason="size";return false
+	var parser := JSON.new()
+	if parser.parse(text)!=OK:_err("old_rejected","Old save file failed validation; original kept");reject_reason="json";return false
+	var why := []
+	var upgraded := upgrade_v4(parser.data,why)
+	if upgraded.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason=String(why[0]) if not why.is_empty() else "schema 4 document";return false
+	if not _take_document(upgraded,4,file_name):return false
+	imported_from_v4=true
+	return true
+
+## A schema-3 file's text into memory. Nothing is written until the next save, and that save goes to the v5 path.
 func import_v3_text(text: String,file_name: String="") -> bool:
 	if text.length()>MAX_TEXT:_err("old_too_large","Old save file too large; original kept");reject_reason="size";return false
 	var parser := JSON.new()
 	if parser.parse(text)!=OK:_err("old_rejected","Old save file failed validation; original kept");reject_reason="json";return false
 	var why := []
 	var upgraded := upgrade_v3(parser.data,why)
+	if upgraded.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason=String(why[0]) if not why.is_empty() else "schema 3 document";return false
+	upgraded=upgrade_v4(upgraded,why)
 	if upgraded.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason=String(why[0]) if not why.is_empty() else "schema 3 document";return false
 	if not _take_document(upgraded,3,file_name):return false
 	imported_from_v3=true
@@ -405,7 +536,7 @@ func import_v2_text(text: String) -> bool:
 	var why := []
 	var upgraded := normalize(parser.data,why)
 	if upgraded.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason=String(why[0]);return false
-	var document := upgrade_v3(_as_v3_document(upgraded),why)
+	var document := upgrade_v4(upgrade_v3(_as_v3_document(upgraded),why),why)
 	if document.is_empty() or not _take_document(document,2,""):
 		if error.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason="carry over"
 		return false
@@ -420,17 +551,17 @@ func import_v1_text(text: String) -> bool:
 	var upgraded := upgrade_v1(parser.data)
 	if upgraded.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason="schema 1 document";return false
 	var why := []
-	var document := upgrade_v3(_as_v3_document(upgraded),why)
+	var document := upgrade_v4(upgrade_v3(_as_v3_document(upgraded),why),why)
 	if document.is_empty() or not _take_document(document,1,""):
 		if error.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason="carry over"
 		return false
 	imported_from_v1=true
 	return true
 
-## A schema-4 document made from an older file: read with the v4 rules and adopted in memory.
+## A schema-5 document made from an older file: read with the v5 rules and adopted in memory.
 func _take_document(document: Dictionary,from_schema: int,source_name: String) -> bool:
 	var report := {};var seen := {};var why := []
-	var read := read_document(document,false,report,seen,why)
+	var read := read_document(document,false,report,seen,why,true)
 	if read.is_empty():_err("old_rejected","Old save file failed validation; original kept");reject_reason=String(why[0]) if not why.is_empty() else "carry over";return false
 	_adopt(read);notices=seen;read_report=report
 	_origin_hint={"from_schema":from_schema,"from_file":source_name,"from_revision":int(read.state.revision)}
@@ -468,6 +599,31 @@ static func upgrade_v1(value: Variant) -> Dictionary:
 	var candidate: Dictionary=value.duplicate(true)
 	candidate.schema_version=2
 	return normalize(candidate)
+
+## A schema-4 document as a schema-5 document (file form), or {} when its structure is not a schema-4 document.
+## Every key is copied; `town` and each witch's `quests`, `records` and `grace` start at their defaults. A witch entry that
+## is not in the schema-4 shape is left as it is (read_document then refuses or sets it aside, as the v4 rules did).
+## `origin` is always the empty record: the source is carried by `_origin_hint`, which the caller sets.
+## Quarantined witches get the three defaults in their `raw` too, so that they can come back under the v5 rules.
+static func upgrade_v4(value: Variant,reasons_out: Array=[]) -> Dictionary:
+	if not value is Dictionary or not Catalog.keys_match(value,TOP_KEYS_V4):return _bad(reasons_out,"schema 4 keys")
+	if not Catalog.integer(value.schema_version,4,4):return _bad(reasons_out,"schema version")
+	if not value.origin is Dictionary or not Catalog.keys_match(value.origin,["from_schema","from_file","from_revision","at_unix"]):return _bad(reasons_out,"origin")
+	var result: Dictionary=value.duplicate(true)
+	result.schema_version=5
+	result.town=default_town()
+	result.origin={"from_schema":0,"from_file":"","from_revision":0,"at_unix":0}
+	if result.characters is Dictionary:
+		for id_ in result.characters:
+			var row: Variant=result.characters[id_]
+			if row is Dictionary and Catalog.keys_match(row,CHAR_KEYS_V4):row.merge(default_additions())
+	if result.quarantine is Array:
+		for entry in result.quarantine:
+			if entry is Dictionary and entry.get("kind")=="character" and entry.get("raw") is Dictionary and Catalog.keys_match(entry.raw,CHAR_KEYS_V4):
+				var widened: Dictionary=entry.raw.duplicate(true)
+				widened.merge(default_additions())
+				if JSON.stringify(widened).length()<=MAX_RAW:entry.raw=widened
+	return result
 
 ## A schema-3 document as a schema-4 document (file form), or {} when its structure is not a schema-3 document.
 ## Only structure is checked here; whether each item still matches the data is decided by read_document, which
@@ -509,6 +665,7 @@ static func upgrade_v3(value: Variant,reasons_out: Array=[]) -> Dictionary:
 		var id_: String=entry.id
 		var carried: Dictionary=_plain(value.characters[id_]) if value.characters.has(id_) else default_entry(id_)
 		var full: Dictionary=default_entry(id_)
+		for key in NEW_CHAR_KEYS:full.erase(key) # the schema-4 shape; upgrade_v4 adds them
 		for key in CHAR_KEYS_V3:full[key]=carried[key]
 		full.loadout=_plain(value.equipped)
 		if full.first_rewards is Array and "boss" in full.first_rewards:full.depth_cleared={"d1":1}
@@ -604,7 +761,7 @@ static func _item_shape(item: Dictionary,with_text: bool) -> String:
 		affix.value=int(affix.value)
 	return ""
 
-# ---------------------------------------------------------------- the schema-4 document
+# ---------------------------------------------------------------- the schema-5 document
 
 static func _bump(report: Dictionary,key: String,count: int=1) -> void:
 	report[key]=int(report.get(key,0))+count
@@ -622,24 +779,26 @@ static func _id_list(value: Variant,limit: int,pattern: String,strict: bool,repo
 		result.append(entry)
 	return result
 
-## The schema-4 document read with the rules of section 6. strict=true is the write rule: anything that would need a
+## The schema-5 document read with the rules of section 6. strict=true is the write rule: anything that would need a
 ## fix (text in a file, an item that does not match, a broken investment, a bad slot) refuses. strict=false is the read
 ## rule: those are fixed in memory (and counted in `report`) or set aside in `quarantine`; only a broken structure refuses.
+## `from_v4` is true for a document made from an older file by upgrade_v4: a piece with `forge` or `rerolls` is then set aside
+## (the schema-4 rules did not know those keys), so carrying a file over judges its pieces as the older code did.
 ## Returns {} when refused (a short reason is appended to `reasons_out`), else {state, characters, words}:
 ## `state` has dressed items, `words` maps storage_id to {"rare_words": [...]} or {"legacy_name": "..."} for the rare ones.
-static func read_document(value: Variant,strict: bool=true,report: Dictionary={},notices_out: Dictionary={},reasons_out: Array=[]) -> Dictionary:
-	var accepted := _read_body(value,strict,report,notices_out,reasons_out)
-	if accepted.is_empty() and reasons_out.is_empty():reasons_out.append("schema 4 document")
+static func read_document(value: Variant,strict: bool=true,report: Dictionary={},notices_out: Dictionary={},reasons_out: Array=[],from_v4: bool=false) -> Dictionary:
+	var accepted := _read_body(value,strict,report,notices_out,reasons_out,from_v4)
+	if accepted.is_empty() and reasons_out.is_empty():reasons_out.append("schema 5 document")
 	return accepted
 
-static func _read_body(value: Variant,strict: bool,report: Dictionary,notices_out: Dictionary,reasons: Array) -> Dictionary:
-	if not value is Dictionary or not Catalog.keys_match(value,TOP_KEYS):return _bad(reasons,"top-level keys")
-	if not Catalog.integer(value.schema_version,4,4):return _bad(reasons,"schema version")
+static func _read_body(value: Variant,strict: bool,report: Dictionary,notices_out: Dictionary,reasons: Array,from_v4: bool=false) -> Dictionary:
+	if not value is Dictionary or not Catalog.keys_match(value,TOP_KEYS_V5):return _bad(reasons,"top-level keys")
+	if not Catalog.integer(value.schema_version,5,5):return _bad(reasons,"schema version")
 	for key in ["revision","next_id","completed_runs","best_ticks","essence","gambles"]:
 		if not Catalog.integer(value[key],0,1000000000):return _bad(reasons,key)
 	if value.next_id<1:return _bad(reasons,"next_id")
 	if not value.items is Array or value.items.size()>MAX_ITEMS or not value.quarantine is Array or value.quarantine.size()>MAX_ITEMS:return _bad(reasons,"items or quarantine size")
-	if not value.receipts is Array or value.receipts.size()>64 or not value.characters is Dictionary or not value.codex is Dictionary or not value.shared_story is Dictionary or not value.origin is Dictionary:return _bad(reasons,"shape")
+	if not value.receipts is Array or value.receipts.size()>64 or not value.characters is Dictionary or not value.codex is Dictionary or not value.shared_story is Dictionary or not value.origin is Dictionary or not value.town is Dictionary:return _bad(reasons,"shape")
 	var tables := loot()
 	var doc := progression_doc();var tree_table := trees()
 	if tables==null or doc.is_empty() or tree_table.is_empty():return _bad(reasons,"data")
@@ -687,11 +846,11 @@ static func _read_body(value: Variant,strict: bool,report: Dictionary,notices_ou
 			# The stored original is a whole record; it must name the same storage id.
 			var probe: Dictionary=source.duplicate(true);probe["storage_id"]=int(candidate.sid)
 			var probe_report := {}
-			result=_evaluate_record(probe,false,tables,probe_report) if source.has("item") else {"ok":false,"reason":"raw is not an item record"}
+			result=_evaluate_record(probe,false,tables,probe_report,from_v4) if source.has("item") else {"ok":false,"reason":"raw is not an item record"}
 			if result.ok:
 				for key in probe_report:_bump(report,String(key),int(probe_report[key]))
 		else:
-			result=_evaluate_record(source,strict,tables,report)
+			result=_evaluate_record(source,strict,tables,report,from_v4)
 		if result.ok:
 			var memory: Dictionary=result.record
 			items.append(memory);item_slots[int(memory.storage_id)]=memory.item.slot
@@ -730,11 +889,15 @@ static func _read_body(value: Variant,strict: bool,report: Dictionary,notices_ou
 		for set_aside in kept_quarantine:
 			if set_aside.kind=="character":
 				var known_again: Dictionary=Progression.character_entry(doc,String(set_aside.id))
-				if not known_again.is_empty() and not cleaned.has(set_aside.id) and set_aside.raw is Dictionary and Catalog.keys_match(set_aside.raw,CHAR_KEYS):
+				var raw_back: Variant=set_aside.raw
+				# A witch set aside in the schema-4 shape comes back with the three new cells at their defaults.
+				if raw_back is Dictionary and Catalog.keys_match(raw_back,CHAR_KEYS_V4):
+					raw_back=raw_back.duplicate(true);raw_back.merge(default_additions())
+				if not known_again.is_empty() and not cleaned.has(set_aside.id) and raw_back is Dictionary and Catalog.keys_match(raw_back,CHAR_KEYS_V5):
 					var probe_reasons := []
-					var back: Variant=_read_character(known_again,set_aside.raw,{"report":{},"notices":{},"doc":doc,"trees":tree_table,"item_slots":item_slots,"held":held,"strict":true},probe_reasons)
+					var back: Variant=_read_character(known_again,raw_back,{"report":{},"notices":{},"doc":doc,"trees":tree_table,"item_slots":item_slots,"held":held,"strict":true},probe_reasons)
 					if back!=null:
-						cleaned[String(set_aside.id)]=_read_character(known_again,set_aside.raw,context,probe_reasons);_bump(report,"restored_characters");continue
+						cleaned[String(set_aside.id)]=_read_character(known_again,raw_back,context,probe_reasons);_bump(report,"restored_characters");continue
 			still.append(set_aside)
 		kept_quarantine=still
 	if kept_quarantine.size()>MAX_ITEMS:return _bad(reasons,"quarantine size")
@@ -750,16 +913,18 @@ static func _read_body(value: Variant,strict: bool,report: Dictionary,notices_ou
 	var shared_seen: Variant=_id_list(shared.seen,64,ID_PATTERN,strict,report)
 	if shared_seen==null:return _bad(reasons,"shared_story seen")
 	var origin: Dictionary=value.origin
-	if not Catalog.keys_match(origin,["from_schema","from_file","from_revision","at_unix"]) or not Catalog.integer(origin.from_schema,0,4) or not Catalog.integer(origin.from_revision,0,1000000000) or not Catalog.integer(origin.at_unix,0,4000000000):return _bad(reasons,"origin")
+	if not Catalog.keys_match(origin,["from_schema","from_file","from_revision","at_unix"]) or not Catalog.integer(origin.from_schema,0,5) or not Catalog.integer(origin.from_revision,0,1000000000) or not Catalog.integer(origin.at_unix,0,4000000000):return _bad(reasons,"origin")
 	if not origin.from_file is String or origin.from_file.length()>120 or origin.from_file.contains("/") or origin.from_file.contains("\\"):return _bad(reasons,"origin file")
-	var memory_state := {"schema_version":4,"revision":revision,"next_id":next_id,"items":items,"completed_runs":int(value.completed_runs),"best_ticks":int(value.best_ticks),
+	var town: Variant=_read_town(value.town,strict,report,tables,reasons)
+	if town==null:return {}
+	var memory_state := {"schema_version":5,"revision":revision,"next_id":next_id,"items":items,"completed_runs":int(value.completed_runs),"best_ticks":int(value.best_ticks),
 		"essence":int(value.essence),"receipts":value.receipts.duplicate(),"codex":codex,"gambles":int(value.gambles),"shared_story":{"seen":shared_seen,"true_ending":shared.true_ending},
-		"quarantine":kept_quarantine,"origin":{"from_schema":int(origin.from_schema),"from_file":origin.from_file,"from_revision":int(origin.from_revision),"at_unix":int(origin.at_unix)}}
+		"quarantine":kept_quarantine,"origin":{"from_schema":int(origin.from_schema),"from_file":origin.from_file,"from_revision":int(origin.from_revision),"at_unix":int(origin.at_unix)},"town":town}
 	return {"state":memory_state,"characters":cleaned,"words":words}
 
 ## One stored equipment record -> {"ok": true, "record": memory record, "words": {...}} or {"ok": false, "reason": "..."}.
 ## The memory item has name and description again (rebuilt from the data; a rare one from its words or old text).
-static func _evaluate_record(record: Dictionary,strict: bool,tables: RefCounted,report: Dictionary) -> Dictionary:
+static func _evaluate_record(record: Dictionary,strict: bool,tables: RefCounted,report: Dictionary,from_v4: bool=false) -> Dictionary:
 	if not record.get("item") is Dictionary:return {"ok":false,"reason":"item is not an object"}
 	var work: Dictionary=_plain(record.item)
 	var out_record := {"storage_id":int(record.storage_id)}
@@ -782,10 +947,20 @@ static func _evaluate_record(record: Dictionary,strict: bool,tables: RefCounted,
 		if not v1_issues.is_empty():return {"ok":false,"reason":v1_issues[0]}
 		out_record["item"]=work
 	else:
+		var optional: Array=ITEM_KEYS_V4_OPTIONAL if from_v4 else ITEM_KEYS_V5_OPTIONAL
 		for key in work:
-			if not key in ITEM_KEYS_V4 and not key in ITEM_KEYS_V4_OPTIONAL and key!="name" and key!="description":return {"ok":false,"reason":"unknown key"}
+			if not key in ITEM_KEYS_V4 and not key in optional and key!="name" and key!="description":return {"ok":false,"reason":"unknown key"}
 		for key in ITEM_KEYS_V4:
 			if not work.has(key):return {"ok":false,"reason":"missing key"}
+		# forge (1..5) and rerolls (1..20): absent means 0, a stored 0 is not written (read: the key is removed and counted).
+		for pair in [["forge",5],["rerolls",20]]:
+			var key: String=pair[0]
+			if not work.has(key):continue
+			if Catalog.integer(work[key],0,0):
+				if strict:return {"ok":false,"reason":key}
+				work.erase(key);_bump(report,"dropped_flags")
+			elif not Catalog.integer(work[key],1,int(pair[1])):return {"ok":false,"reason":key}
+			else:work[key]=int(work[key])
 		if work.has("name") or work.has("description"):
 			if strict:return {"ok":false,"reason":"text in file"}
 			work.erase("name");work.erase("description");_bump(report,"stripped_text")
@@ -820,7 +995,7 @@ static func _evaluate_record(record: Dictionary,strict: bool,tables: RefCounted,
 ## One witch's record. Returns the cleaned entry or null when the structure is broken (a reason is appended).
 static func _read_character(known: Dictionary,entry: Variant,context: Dictionary,reasons: Array) -> Variant:
 	var strict: bool=context.strict;var report: Dictionary=context.report;var doc: Dictionary=context.doc
-	if not entry is Dictionary or not Catalog.keys_match(entry,CHAR_KEYS):_bad(reasons,"character keys");return null
+	if not entry is Dictionary or not Catalog.keys_match(entry,CHAR_KEYS_V5):_bad(reasons,"character keys");return null
 	if not Catalog.integer(entry.xp,0,1000000000) or not Catalog.integer(entry.tree_revision,0,1000000) or not Catalog.integer(entry.respecs,0,1000000000):_bad(reasons,"character numbers");return null
 	if not entry.ranks is Dictionary or not entry.first_rewards is Array or entry.first_rewards.size()>32:_bad(reasons,"character shape");return null
 	var firsts: Array=[];var known_firsts: Array=[]
@@ -913,9 +1088,212 @@ static func _read_character(known: Dictionary,entry: Variant,context: Dictionary
 			if strict:_bad(reasons,"tree_reset used without granted");return null
 			granted.append(spent);_bump(report,"tree_reset_fixed")
 	if granted.size()>16:_bad(reasons,"tree_reset size");return null
+	# quests, records and grace (schema 5)
+	var quests: Variant=_read_quests(entry.quests,strict,report,reasons)
+	if quests==null:return null
+	var records: Variant=_read_records(entry.records,strict,report,reasons)
+	if records==null:return null
+	var grace: Variant=entry.grace
+	if not grace is Dictionary or not Catalog.keys_match(grace,["banned"]):_bad(reasons,"grace");return null
+	var banned: Variant=_id_list(grace.banned,8,ID_PATTERN,strict,report)
+	if banned==null:_bad(reasons,"grace banned");return null
+	_count_unknown(banned,"cards",report)
 	return {"xp":xp,"tree_revision":revision,"ranks":ranks,"first_rewards":firsts,"respecs":int(entry.respecs),"loadout":loadout,"depth_cleared":depth,
 		"wardrobe":{"owned":owned,"worn":wardrobe.worn},"story":{"found":found,"seen":seen_list,"duel_cleared":story.duel_cleared,"final_cleared":story.final_cleared},
-		"tree_reset":{"granted":granted,"used":used_list}}
+		"tree_reset":{"granted":granted,"used":used_list},"quests":quests,"records":records,"grace":{"banned":banned}}
+
+## Counts the ids of `list` that the (test hook) id list `kind` does not know as unknown_ids. They are kept either way.
+static func _count_unknown(list: Array,kind: String,report: Dictionary) -> void:
+	var known: Array=_known_ids(kind)
+	for entry in list:
+		if not entry in known:_bump(report,"unknown_ids")
+
+## The account's town: opened places, one-time purchases, the shop stock, the luck counters. null when the structure is broken.
+static func _read_town(town: Variant,strict: bool,report: Dictionary,tables: RefCounted,reasons: Array) -> Variant:
+	if not town is Dictionary or not Catalog.keys_match(town,TOWN_KEYS):_bad(reasons,"town keys");return null
+	var unlocked: Variant=_id_list(town.unlocked,16,ID_PATTERN,strict,report)
+	var bought: Variant=_id_list(town.bought,32,ID_PATTERN,strict,report)
+	if unlocked==null or bought==null:_bad(reasons,"town lists");return null
+	_count_unknown(unlocked,"places",report);_count_unknown(bought,"purchases",report)
+	var shop: Variant=town.shop
+	if not shop is Dictionary or not Catalog.keys_match(shop,SHOP_KEYS) or not Catalog.integer(shop.seed,0,2147483647) or not Catalog.integer(shop.refreshed_run,0,1000000000) or not shop.stock is Array or shop.stock.size()>8:_bad(reasons,"town shop");return null
+	var stock: Array=[]
+	for element in shop.stock:
+		var kept := _read_stock_piece(element,strict,report,tables)
+		if kept.is_empty():
+			if strict:_bad(reasons,"town shop stock");return null
+			_bump(report,"dropped_stock");continue
+		stock.append(kept)
+	var luck: Variant=town.luck
+	if not luck is Dictionary or not Catalog.keys_match(luck,LUCK_KEYS) or not Catalog.integer(luck.gamble_since_legendary,0,1000000000) or not Catalog.integer(luck.forge_fails_in_row,0,10):_bad(reasons,"town luck");return null
+	return {"unlocked":unlocked,"bought":bought,"shop":{"seed":int(shop.seed),"refreshed_run":int(shop.refreshed_run),"stock":stock},
+		"luck":{"gamble_since_legendary":int(luck.gamble_since_legendary),"forge_fails_in_row":int(luck.forge_fails_in_row)}}
+
+## One shop piece in its file form (no text, no storage id). Returns the cleaned piece, or {} when it does not fit the data,
+## is a v1 piece, or has a key only an owned piece has (veiled, forge, rerolls, storage_id).
+static func _read_stock_piece(element: Variant,strict: bool,report: Dictionary,tables: RefCounted) -> Dictionary:
+	if not element is Dictionary or not element.has("grammar"):return {}
+	for key in element:
+		if not key in ITEM_KEYS_V4 and not key in STOCK_OPTIONAL and key!="name" and key!="description":return {}
+	var work: Dictionary=_plain(element)
+	var sub_report := {}
+	var verdict := _evaluate_record({"storage_id":1,"item":work},strict,tables,sub_report,true)
+	if not verdict.ok:return {}
+	for key in sub_report:_bump(report,String(key),int(sub_report[key]))
+	work.erase("name");work.erase("description")
+	return work
+
+## One witch's quests. null when the structure is broken. Overlapping lists keep the furthest stage (claimed, done,
+## active, bounty_offer); progress of a quest that is not active is dropped. Both are counted as quest_fixed (strict: refused).
+static func _read_quests(quests: Variant,strict: bool,report: Dictionary,reasons: Array) -> Variant:
+	if not quests is Dictionary or not Catalog.keys_match(quests,QUEST_KEYS):_bad(reasons,"quests keys");return null
+	var limits := {"active":8,"done":8,"claimed":256,"bounty_offer":3}
+	var lists := {}
+	for key in limits:
+		var list: Variant=_id_list(quests[key],int(limits[key]),ID_PATTERN,strict,report)
+		if list==null:_bad(reasons,"quests "+String(key));return null
+		lists[key]=list
+	if not Catalog.integer(quests.bounty_seed,0,2147483647) or not Catalog.integer(quests.bounty_run,0,1000000000) or not Catalog.integer(quests.repeat_claims,0,1000000000):_bad(reasons,"quests numbers");return null
+	var raw_progress: Variant=quests.progress
+	if not raw_progress is Dictionary or raw_progress.size()>8:_bad(reasons,"quests progress");return null
+	var id_rule := RegEx.create_from_string(ID_PATTERN)
+	var progress := {}
+	for key in raw_progress:
+		if not key is String or id_rule.search(key)==null or not Catalog.integer(raw_progress[key],0,1000000000):_bad(reasons,"quests progress entry");return null
+		progress[key]=int(raw_progress[key])
+	# one stage per id: claimed beats done beats active beats bounty_offer
+	var taken := {}
+	for id_ in lists.claimed:taken[id_]=true
+	for key in ["done","active","bounty_offer"]:
+		var kept: Array=[]
+		for id_ in lists[key]:
+			if taken.has(id_):
+				if strict:_bad(reasons,"quests overlap");return null
+				_bump(report,"quest_fixed");continue
+			taken[id_]=true;kept.append(id_)
+		lists[key]=kept
+	var live := {}
+	for key in progress:
+		if not key in lists.active:
+			if strict:_bad(reasons,"quests orphan progress");return null
+			_bump(report,"quest_fixed");continue
+		live[key]=progress[key]
+	var known: Array=_known_ids("quests")
+	for key in ["active","done","claimed","bounty_offer"]:
+		for id_ in lists[key]:
+			if not id_ in known:_bump(report,"unknown_ids")
+	return {"active":lists.active,"progress":live,"done":lists.done,"claimed":lists.claimed,"bounty_offer":lists.bounty_offer,
+		"bounty_seed":int(quests.bounty_seed),"bounty_run":int(quests.bounty_run),"repeat_claims":int(quests.repeat_claims)}
+
+## One witch's run records. null when the structure is broken. `last` and each `best` entry that do not fit are dropped
+## (strict: refused); `wins` above `runs` is lowered to `runs` (strict: refused).
+static func _read_records(records: Variant,strict: bool,report: Dictionary,reasons: Array) -> Variant:
+	if not records is Dictionary or not Catalog.keys_match(records,RECORD_KEYS):_bad(reasons,"records keys");return null
+	if not Catalog.integer(records.runs,0,1000000000) or not Catalog.integer(records.wins,0,1000000000):_bad(reasons,"records numbers");return null
+	var runs := int(records.runs);var wins := int(records.wins)
+	if wins>runs:
+		if strict:_bad(reasons,"records wins above runs");return null
+		wins=runs;_bump(report,"record_fixed")
+	var last := {}
+	if not records.last is Dictionary:
+		if strict:_bad(reasons,"records last");return null
+		_bump(report,"dropped_record")
+	elif not records.last.is_empty():
+		var trimmed: Array=[];var why: Array=[]
+		var cleaned: Variant=clean_last(records.last,trimmed,why)
+		if cleaned==null:
+			if strict:_bad(reasons,"records last: "+String(why[0] if not why.is_empty() else "shape"));return null
+			_bump(report,"dropped_record")
+		else:
+			if strict and not trimmed.is_empty():_bad(reasons,"records last: open key");return null
+			if not trimmed.is_empty():_bump(report,"dropped_record",trimmed.size())
+			last=cleaned
+	var raw_best: Variant=records.best
+	if not raw_best is Dictionary or raw_best.size()>16:_bad(reasons,"records best");return null
+	var best := {};var depth_rule := RegEx.create_from_string(DEPTH_KEY_PATTERN)
+	for key in raw_best:
+		var row: Variant=raw_best[key]
+		if not key is String or depth_rule.search(key)==null or not row is Dictionary or not Catalog.keys_match(row,BEST_KEYS) or not Catalog.integer(row.ticks,0,1000000000) or not Catalog.integer(row.grade,0,4) or not Catalog.integer(row.kills,0,1000000000):
+			if strict:_bad(reasons,"records best entry");return null
+			_bump(report,"dropped_record");continue
+		best[key]={"ticks":int(row.ticks),"grade":int(row.grade),"kills":int(row.kills)}
+	return {"runs":runs,"wins":wins,"last":last,"best":best}
+
+## Checks and cleans a `records.last` document: core keys strict, every other key an open slot. Returns the cleaned copy
+## (whole numbers as ints), or null when the core keys are wrong or the size limits are broken (`why` gets a short reason).
+## Open keys that break the rules are left out and their names appended to `trimmed` (a skill row's: "skills[0].name").
+static func clean_last(last: Variant,trimmed: Array,why: Array) -> Variant:
+	if not last is Dictionary:why.append("not an object");return null
+	var rule := RegEx.create_from_string(ID_PATTERN)
+	var open_rule := RegEx.create_from_string(OPEN_KEY_PATTERN)
+	var out := {}
+	for key in LAST_CORE:
+		if not last.has(key):why.append("missing "+String(key));return null
+	if not last.depth is String or RegEx.create_from_string(DEPTH_KEY_PATTERN).search(last.depth)==null:why.append("depth");return null
+	for key in ["victory","boss_kill"]:
+		if not last[key] is bool:why.append(String(key));return null
+	for key in ["ticks","kills","elite_kills","potions_used","damage_taken","xp_gained","essence_gained"]:
+		if not Catalog.integer(last[key],0,1000000000):why.append(String(key));return null
+	if not Catalog.integer(last.champion_kills,0,16):why.append("champion_kills");return null
+	if not Catalog.integer(last.grade,0,4):why.append("grade");return null
+	if not last.items is Dictionary or last.items.size()>16:why.append("items");return null
+	var items := {}
+	for key in last.items:
+		if not key is String or rule.search(key)==null or not Catalog.integer(last.items[key],0,1000000000):why.append("items entry");return null
+		items[key]=int(last.items[key])
+	if not last.skills is Array or last.skills.size()>16:why.append("skills");return null
+	var skills: Array=[]
+	for index in last.skills.size():
+		var row: Variant=last.skills[index]
+		if not row is Dictionary:why.append("skills row");return null
+		for key in SKILL_CORE:
+			if not row.has(key):why.append("skills row key");return null
+		if not row.id is String or rule.search(row.id)==null or not row.evolved is bool or not Catalog.integer(row.got_tick,0,1000000000) or not Catalog.integer(row.got_level,0,99) or not Catalog.integer(row.rank,0,99) or not Catalog.integer(row.damage,0,OPEN_LIMIT) or not Catalog.integer(row.kills,0,1000000000):why.append("skills row value");return null
+		var cleaned_row := {"id":row.id,"got_tick":int(row.got_tick),"got_level":int(row.got_level),"rank":int(row.rank),"evolved":row.evolved,"damage":int(row.damage),"kills":int(row.kills)}
+		for key in row:
+			if key in SKILL_CORE:continue
+			var open: Variant=_open_value(row[key],0)
+			if not key is String or open_rule.search(key)==null or open==null:trimmed.append("skills[%d].%s"%[index,str(key)]);continue
+			cleaned_row[key]=open[0]
+		skills.append(cleaned_row)
+	out={"depth":last.depth,"victory":last.victory,"ticks":int(last.ticks),"kills":int(last.kills),"elite_kills":int(last.elite_kills),"champion_kills":int(last.champion_kills),"boss_kill":last.boss_kill,
+		"grade":int(last.grade),"potions_used":int(last.potions_used),"damage_taken":int(last.damage_taken),"xp_gained":int(last.xp_gained),"essence_gained":int(last.essence_gained),"items":items,"skills":skills}
+	for key in last:
+		if key in LAST_CORE:continue
+		var open: Variant=_open_value(last[key],0)
+		if not key is String or open_rule.search(key)==null or open==null:trimmed.append(str(key));continue
+		out[key]=open[0]
+	if out.size()>MAX_LAST_KEYS:why.append("too many keys");return null
+	if JSON.stringify(out).length()>MAX_LAST_CHARS:why.append("too long");return null
+	return out
+
+## An open-slot value: an int (|n| up to 10^12), a bool, an id string, or an array (32 at most) / object (32 keys at most) of
+## those, nested one more level at most. Returns [cleaned value] or null when it does not fit (a float or free text never does).
+static func _open_value(value: Variant,depth: int) -> Variant:
+	if value is bool:return [value]
+	if value is int or value is float:
+		return [int(value)] if Catalog.integer(value,-OPEN_LIMIT,OPEN_LIMIT) else null
+	if value is String:
+		return [value] if RegEx.create_from_string(ID_PATTERN).search(value)!=null else null
+	if depth>=2:return null
+	if value is Array:
+		if value.size()>32:return null
+		var list: Array=[]
+		for entry in value:
+			var inner: Variant=_open_value(entry,depth+1)
+			if inner==null:return null
+			list.append(inner[0])
+		return [list]
+	if value is Dictionary:
+		if value.size()>32:return null
+		var table := {};var key_rule := RegEx.create_from_string(OPEN_KEY_PATTERN)
+		for key in value:
+			if not key is String or key_rule.search(key)==null:return null
+			var inner: Variant=_open_value(value[key],depth+1)
+			if inner==null:return null
+			table[key]=inner[0]
+		return [table]
+	return null
 
 ## The file form of the memory state: equipment without text, a rare item with its words.
 func _document(candidate: Dictionary,table: Dictionary,words: Dictionary) -> Dictionary:
@@ -936,10 +1314,10 @@ func _document(candidate: Dictionary,table: Dictionary,words: Dictionary) -> Dic
 		for flag in ["locked","new"]:
 			if record.has(flag):row[flag]=record[flag]
 		items.append(row)
-	return {"schema_version":4,"revision":int(candidate.revision),"next_id":int(candidate.next_id),"items":items,"completed_runs":int(candidate.completed_runs),
+	return {"schema_version":5,"revision":int(candidate.revision),"next_id":int(candidate.next_id),"items":items,"completed_runs":int(candidate.completed_runs),
 		"best_ticks":int(candidate.best_ticks),"essence":int(candidate.essence),"receipts":candidate.receipts.duplicate(),"characters":table.duplicate(true),
 		"codex":candidate.codex.duplicate(true),"gambles":int(candidate.gambles),"shared_story":candidate.shared_story.duplicate(true),
-		"quarantine":candidate.quarantine.duplicate(true),"origin":candidate.origin.duplicate(true)}
+		"quarantine":candidate.quarantine.duplicate(true),"origin":candidate.origin.duplicate(true),"town":candidate.town.duplicate(true)}
 
 ## Writes the candidate: a journal copy in revisions/, then a temporary file replaced over the main file.
 ## The candidate must pass the strict rule (read_document strict) first; nothing is written when it does not.
@@ -974,7 +1352,7 @@ func _persist(candidate: Dictionary,next_characters: Variant=null,next_words: Va
 	var rename := DirAccess.rename_absolute(temporary,path)
 	if rename!=OK:_err("save_replace_failed","Save replacement failed; previous file and new revision kept");return false
 	if FileAccess.get_file_as_string(path)!=text:_err("save_replace_verify_failed","Save replacement verification failed");return false
-	_adopt(checked);_loaded_text=text;error="";imported_from_v1=false;imported_from_v2=false;imported_from_v3=false;read_report={}
+	_adopt(checked);_loaded_text=text;error="";imported_from_v1=false;imported_from_v2=false;imported_from_v3=false;imported_from_v4=false;read_report={}
 	return true
 
 # ---------------------------------------------------------------- progress and receipts
@@ -1005,16 +1383,30 @@ static func apply_progress(current: Dictionary,progress: Dictionary) -> Dictiona
 ## `carry` = {character_id, equipped: {slot: uid}, kept_slots: [slot...]} sets that witch's loadout from what she wore
 ## at the end of the run (kept_slots keep their earlier value). An empty carry leaves every loadout as it was.
 ## Any invalid part refuses the whole save.
-func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ticks: int,progress: Dictionary={},carry: Dictionary={}) -> bool:
+## `progress.character_id` also counts the run in that witch's `records` (runs, and wins when `victory`), with or without `outcome`.
+## `outcome` = {"record": {...}} is the run's end record (see clean_last for the shape): it becomes that witch's `records.last` and
+## updates `records.best[depth]` (ticks only for a win and only when lower; grade and kills only when higher). A record whose
+## core keys are wrong is left out and `outcome_note` says "record_not_saved"; an open key that breaks the rules is cut off
+## and named in `outcome_trimmed`. A key other than `record` is not taken yet: the record is left out and `outcome_note` is
+## "outcome_unknown_key". Neither ever costs the run's rewards.
+func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ticks: int,progress: Dictionary={},carry: Dictionary={},outcome: Dictionary={}) -> bool:
 	if not available:return false
 	if receipt in state.receipts:return true
-	carry_note=""
+	carry_note="";outcome_note="";outcome_trimmed=[]
 	if receipt.length()<1 or receipt.length()>120 or inventory.size()>65 or pending.size()>4 or ticks<0:return false
 	var next_characters: Variant=null
 	if not progress.is_empty():
 		var applied := apply_progress(characters,progress)
 		if applied.has("error"):_err(String(applied.get("code","progress_rejected")),String(applied.error));return false
 		next_characters=applied
+		var run_witch := String(progress.character_id)
+		var tally: Dictionary=applied[run_witch].records
+		tally.runs=mini(1000000000,int(tally.runs)+1)
+		if victory:tally.wins=mini(int(tally.runs),int(tally.wins)+1)
+		_take_outcome(outcome,tally)
+	elif not outcome.is_empty():
+		outcome_note="outcome_unknown_key" if _outcome_has_other_key(outcome) else "record_not_saved"
+		print("CHAPTER1_PROFILE_RECORD_DROPPED ",JSON.stringify({"reason":"no witch in progress"}))
 	var collectibles: Array=progress.get("collectibles_found",[]) if progress.get("collectibles_found",[]) is Array else []
 	if not collectibles.is_empty():
 		var known_collectibles: Array=_known_ids("collectibles");var witch_id := String(progress.get("character_id",""))
@@ -1056,6 +1448,36 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 		candidate.completed_runs+=1
 		if candidate.best_ticks==0 or ticks<candidate.best_ticks:candidate.best_ticks=ticks
 	return _persist(candidate,next_characters)
+
+static func _outcome_has_other_key(outcome: Dictionary) -> bool:
+	for key in outcome:
+		if key!="record":return true
+	return false
+
+## Takes the run's end record into the witch's `records` table `tally` (in place). Sets `outcome_note` / `outcome_trimmed`.
+func _take_outcome(outcome: Dictionary,tally: Dictionary) -> void:
+	if outcome.is_empty():return
+	if _outcome_has_other_key(outcome):
+		outcome_note="outcome_unknown_key"
+		print("CHAPTER1_PROFILE_RECORD_DROPPED ",JSON.stringify({"reason":"unknown outcome key"}))
+		return
+	var trimmed: Array=[];var why: Array=[]
+	var cleaned: Variant=clean_last(_plain(outcome.record),trimmed,why) if outcome.get("record") is Dictionary else null
+	if cleaned==null:
+		outcome_note="record_not_saved"
+		print("CHAPTER1_PROFILE_RECORD_DROPPED ",JSON.stringify({"reason":String(why[0]) if not why.is_empty() else "no record"}))
+		return
+	if not trimmed.is_empty():
+		outcome_trimmed=trimmed
+		print("CHAPTER1_PROFILE_RECORD_TRIMMED ",JSON.stringify({"keys":trimmed}))
+	tally.last=cleaned
+	var best: Dictionary=tally.best;var depth := String(cleaned.depth)
+	# A seventeenth depth would not fit the file; its record is kept in `last` only.
+	if best.has(depth) or best.size()<16:
+		var row: Dictionary=best.get(depth,{"ticks":0,"grade":0,"kills":0})
+		if cleaned.victory and (int(row.ticks)==0 or int(cleaned.ticks)<int(row.ticks)):row.ticks=int(cleaned.ticks)
+		row.grade=maxi(int(row.grade),int(cleaned.grade));row.kills=maxi(int(row.kills),int(cleaned.kills))
+		best[depth]=row
 
 static func _codex_add(candidate: Dictionary,key: String,id_: String) -> void:
 	var list: Array=candidate.codex[key]
@@ -1252,6 +1674,32 @@ func character_view(character_id: String) -> Dictionary:
 
 func acknowledge_notice(character_id: String) -> void:
 	notices.erase(character_id)
+
+## The witch's quests / run records / grace settings (copies), or {} for an unknown witch or a profile that is not ready.
+func quests_view(character_id: String) -> Dictionary:
+	return _addition_view(character_id,"quests")
+
+func records_view(character_id: String) -> Dictionary:
+	return _addition_view(character_id,"records")
+
+func grace_view(character_id: String) -> Dictionary:
+	return _addition_view(character_id,"grace")
+
+func _addition_view(character_id: String,key: String) -> Dictionary:
+	if not available or Progression.character_entry(progression_doc(),character_id).is_empty():return {}
+	return character_entry(character_id)[key].duplicate(true)
+
+## The account's town (copy), `luck` included; the shop stock stays in its text-free file form. {} when the profile is not ready.
+func town_view() -> Dictionary:
+	if not available:return {}
+	return state.town.duplicate(true)
+
+## Runs finished by all known witches together (computed from `records.runs`, never stored).
+func total_runs() -> int:
+	if not available:return 0
+	var total := 0
+	for id_ in characters:total+=int(characters[id_].records.runs)
+	return total
 
 ## The dictionary the combat core receives before start() (spec 7.1):
 ## {character_id, tree_id, tree_revision, ranks, character_level, character_xp}.
