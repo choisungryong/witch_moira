@@ -54,6 +54,9 @@ BUILDS = {
     "SYEb": "A:d4r1+R:r2+crystal+evo",
     "SY0": "A:d4+R",             # 원형 0점(격자에서 --ring-* 절대값을 얹음)
     "SY0b": "A:d4",              # 노링 별칭(격자 기준)
+    "SY8": "A:d4+R:r4",          # N2-3 점수 8: 시너지
+    "NB8": "A:d4r4",             # 점수 8 하나만 쌓기(한 주문 합 8 > 상한 6: 게임에서는 못 만듦 = 하나만에게 후한 쪽)
+    "RO8": "R:d4r4",             # 점수 8 원형만(같은 사정)
 }
 
 
@@ -238,7 +241,262 @@ def exp_cut(witches):
     return [Job(w, n, "mix" + m, "S3", ["--inflow-mix=" + m]) for w in witches for n in ("noring", "SY6") for m in ("-charger", "-both")]
 
 
-EXPERIMENTS = {"base": exp_base, "grid": exp_grid, "gridl": exp_gridl, "hold": exp_hold, "i0": exp_i0, "width": exp_width, "mix": exp_mix, "cut": exp_cut, "cards7": exp_cards7, "i0d": exp_i0d, "ilk": exp_ilk, "evo": exp_evo, "bud": exp_bud, "slowx": exp_slowx}
+# ----------------------------------------------------------------------------- N2: 조합 줄(안 3)의 흉내
+# D16 2.3절: 줄의 곱은 빌드가 고정이라 칸에서 상수다. 그 상수를 base 피해에 미리 곱해 흉내 낸다(코어 줄 없이, 데이터 파일은 그대로).
+#   울타리 차단 1점마다 자기 기본기 피해 +sb%(상한 4점), 기본기 피해 1점마다 울타리 피해 +sr%(상한 4점), 거래 기본기 넓이 1점마다 자기 기본기 피해 +sx%(상한 3점)
+#   거래 기본기의 피해는 bm%로 시작(거래 감쇠), --cfg의 wh면 시험장 --basic-reach=half(기본기 넓이 축 약화)
+# 한 설정(Cfg) = 값 묶음(c = 권하는 접촉 값을 얹음 / d = 데이터 파일 값 그대로) + 줄 크기 + 거래 감쇠 + 넓이.
+
+SK = "chapter1.skill."
+BORROW = {"ember": "frost", "frost": "ember", "arc": "ember"}  # sim_power.gd의 BORROW와 같다
+CFGS = []   # --cfg 로 채움
+SCORE = 6   # --score 로 채움
+
+
+class Cfg:
+    def __init__(self, val="c", sb=0, sr=0, bm=100, sx=10, wh=False, rate=False):
+        self.val, self.sb, self.sr, self.bm, self.sx, self.wh, self.rate = val, sb, sr, bm, sx, wh, rate
+
+    @staticmethod
+    def parse(text):
+        """'c:15/25/60' = 접촉 값, 차단->기본기 15%, 피해->울타리 25%, 거래 피해 60%. 뒤에 ':x10'(거래 줄 %), ':wh'(넓이 반)를 붙일 수 있다."""
+        parts = text.split(":")
+        sb, sr, bm = [int(x) for x in parts[1].split("/")]
+        sx, wh, rate = 10, False, False
+        for p in parts[2:]:
+            if p == "wh":
+                wh = True
+            elif p == "rate":
+                rate = True
+            elif p.startswith("x"):
+                sx = int(p[1:])
+        return Cfg(parts[0], sb, sr, bm, sx, wh, rate)
+
+    def zero(self):
+        return Cfg(self.val, 0, 0, 100, 0, self.wh, self.rate)
+
+    def is_zero(self):
+        return self.sb == 0 and self.sr == 0 and self.bm == 100 and self.sx == 0
+
+    def tag(self):
+        if self.val == "d" and self.is_zero() and not self.wh:
+            return "base"   # N1의 base 원시와 같은 칸(인수 없음)
+        return "%s-s%d-%d-b%d-x%d%s%s" % (self.val, self.sb, self.sr, self.bm, self.sx, "-rt" if self.rate else "", "-wh" if self.wh else "")
+
+    def __str__(self):
+        return "%s:%d/%d/%d:x%d%s%s" % (self.val, self.sb, self.sr, self.bm, self.sx, ":rate" if self.rate else "", ":wh" if self.wh else "")
+
+
+_RAW = {}
+
+
+def spell_raw():
+    if not _RAW:
+        with open(ROOT / "chapter1/data/run_spells.json", encoding="utf-8") as fh:
+            for k, s in json.load(fh)["spells"].items():
+                _RAW[k] = int(s["base"]["damage_raw"])
+    return _RAW
+
+
+_CD = {}
+
+
+def spell_cd():
+    """spell id -> (base 쿨 틱, {reach 단계: 그 단계가 덮어쓰는 쿨 틱})."""
+    if not _CD:
+        with open(ROOT / "chapter1/data/run_spells.json", encoding="utf-8") as fh:
+            for k, s in json.load(fh)["spells"].items():
+                _CD[k] = (int(s["base"]["cooldown_ticks"]), {i: int(r["cooldown_ticks"]) for i, r in enumerate(s["reach"]) if "cooldown_ticks" in r})
+    return _CD
+
+
+def spec_axes(spec):
+    """'A:d4r2+R:r2+X:d1' -> {'A': (4, 2), 'R': (0, 2), 'X': (1, 0)}. crystal·evo 토큰은 무시."""
+    out = {}
+    for tok in spec.split("+"):
+        tok = tok.strip()
+        if tok in ("crystal", "evo", ""):
+            continue
+        key, _, ax = tok.partition(":")
+        d = r = 0
+        i = 0
+        while i < len(ax):
+            if ax[i] in "dr" and i + 1 < len(ax) and ax[i + 1].isdigit():
+                if ax[i] == "d":
+                    d = int(ax[i + 1])
+                else:
+                    r = int(ax[i + 1])
+                i += 2
+            else:
+                i += 1
+        out[key] = (d, r)
+    return out
+
+
+def contact_args(witch):
+    """N1 0절이 권한 접촉 값을 시험장 인수로: 쿨 0단 0.7초(42틱) 차단 2점 이상 0.5초(30틱), 0단 피해 = 그 마디 보행자 체력, 감쇠 바닥 4000."""
+    ring = SK + witch + "_ring"
+    return ["--ring-dmg-x-walker=1.0", "--set=spells/%s/base/cooldown_ticks=42" % ring, "--set=spells/%s/reach/2/cooldown_ticks=30" % ring,
+            "--set=spells/%s/reach/3/cooldown_ticks=30" % ring, "--set=spells/%s/base/falloff_floor_bps=4000" % ring]
+
+
+def cfg_args(witch, spec, cfg):
+    """빌드 문자열과 설정에서 시험장 인수를 계산한다(줄의 곱은 base 피해에 미리 곱함)."""
+    ax = spec_axes(spec)
+    raw = spell_raw()
+    a_id, x_id = SK + witch, SK + BORROW[witch]
+    out = []
+    if cfg.val == "c" and "R" in ax:
+        out += contact_args(witch)
+    am = 1.0
+    if "R" in ax:
+        am += cfg.sb / 100.0 * min(ax["R"][1], 4)
+    if "X" in ax:
+        am += cfg.sx / 100.0 * min(ax["X"][1], 3)
+    rm = 1.0 + cfg.sr / 100.0 * min(ax.get("A", (0, 0))[0], 4) if "R" in ax else 1.0
+    if cfg.rate:
+        # 탐침(D16 밖): 줄이 피해 대신 "쏘는 빈도"를 곱한다 = 쿨 ÷ 배율. 일반 적은 한 발에 죽어 피해 곱은 넘침이 되는지 보려는 것
+        if abs(am - 1.0) > 1e-9:
+            out.append("--set=spells/%s/base/cooldown_ticks=%d" % (a_id, max(12, round(spell_cd()[a_id][0] / am))))
+        if "R" in ax and abs(rm - 1.0) > 1e-9:
+            ring = SK + witch + "_ring"
+            base_cd, reach_cd = spell_cd()[ring]
+            if cfg.val == "c":
+                base_cd, reach_cd = 42, {i: 30 for i in reach_cd}
+            out.append("--set=spells/%s/base/cooldown_ticks=%d" % (ring, max(12, round(base_cd / rm))))
+            for i, v in reach_cd.items():
+                out.append("--set=spells/%s/reach/%d/cooldown_ticks=%d" % (ring, i, max(12, round(v / rm))))
+    else:
+        if abs(am - 1.0) > 1e-9:
+            out.append("--set=spells/%s/base/damage_raw=%d" % (a_id, round(raw[a_id] * am)))
+        if "R" in ax and abs(rm - 1.0) > 1e-9:
+            out.append("--ring-dmg=%.4f" % rm)
+    if "X" in ax and cfg.bm != 100:
+        out.append("--set=spells/%s/base/damage_raw=%d" % (x_id, round(raw[x_id] * cfg.bm / 100.0)))
+    if cfg.wh:
+        out.append("--basic-reach=half")
+    return out
+
+
+def cfg_job(witch, name, spec, cfg, vset):
+    return Job(witch, name, cfg.tag(), vset, cfg_args(witch, spec, cfg), spec=spec)
+
+
+def gen_samples(score, n=20, seed=2020):
+    """무작위 표본(D16 3.2): 점수 score를 주문 셋(A·R·X)의 축 여섯(피해·넓이)에 흩음. 축 상한 4, 한 주문 합 6, 셋 다 1점 이상. 가능한 배치 전부에서 시드로 균등하게 n개."""
+    import itertools
+    import random
+    vecs = []
+    for v in itertools.product(range(5), repeat=6):
+        if sum(v) != score or any(v[i] + v[i + 1] > 6 or v[i] + v[i + 1] == 0 for i in (0, 2, 4)):
+            continue
+        vecs.append(v)
+    picks = random.Random(seed + score).sample(vecs, n)
+    out = []
+    for i, v in enumerate(picks, 1):
+        toks = []
+        for key, (d, r) in zip("ARX", ((v[0], v[1]), (v[2], v[3]), (v[4], v[5]))):
+            toks.append("%s:%s%s" % (key, "d%d" % d if d else "", "r%d" % r if r else ""))
+        out.append(("R%dx%02d" % (score, i), "+".join(toks)))
+    return out, len(vecs)
+
+
+def exp_lines(witches):
+    """N2-1: 안 3(조합 줄) 흉내 + 거래 감쇠. 설정(--cfg)마다 SY6·SY6b·SY6p·RO6·RNDa·RNDb. 줄 끔 기준(--cfg c:0/0/100:x0)도 같은 실험."""
+    jobs = []
+    for cfg in (CFGS or [Cfg("c", 15, 25, 60)]):
+        for w in witches:
+            plan = [("SY6", ("S3", "L", "P")), ("RO6", ("S3", "P")), ("SY6p", ("S3",)), ("SY6b", ("S3", "P")), ("RNDa", ("S3", "L", "P")), ("RNDb", ("S3", "L", "P"))]
+            if cfg.is_zero():
+                plan = [("SY6", ("S3", "L", "P")), ("RO6", ("S3", "P")), ("RNDa", ("S3", "L", "P")), ("RNDb", ("S3", "L", "P"))]
+            for name, vs in plan:
+                for v in vs:
+                    jobs.append(cfg_job(w, name, BUILDS[name], cfg, v))
+            if cfg.wh:  # 넓이를 반으로 한 기준의 NB는 slow 칸이 N1에 없다
+                for n in ("NB6", "NB6w"):
+                    jobs.append(Job(w, n, "whalf", "L", ["--basic-reach=half"]))
+    return jobs
+
+
+def exp_scan(witches):
+    """N2-1 훑기: 줄 크기를 여러 개 빠르게 보려고 SY6·RO6·RNDa·RNDb만 stand 3마디 + pilot 승2(slow·SY6p·SY6b 없음). 설정(--cfg)마다."""
+    return [cfg_job(w, n, BUILDS[n], cfg, v) for cfg in (CFGS or [Cfg("c", 15, 25, 60)]) for w in witches for n in ("SY6", "RNDa", "RNDb", "RO6") for v in ("S3", "P")]
+
+
+def exp_scanr(witches):
+    """N2 거래 감쇠 훑기: RNDa·RNDb만 새로 돈다(stand 3마디 + pilot 승2). SY6·RO6는 거래가 없어 감쇠와 무관하므로 같은 줄 크기의 다른 감쇠 칸 원시를 복사해 쓴다(copy_sibling_raw)."""
+    return [cfg_job(w, n, BUILDS[n], cfg, v) for cfg in (CFGS or [Cfg("c", 15, 25, 10)]) for w in witches for n in ("RNDa", "RNDb") for v in ("S3", "P")]
+
+
+def copy_sibling_raw(outdir, witches):
+    """scanr용: --cfg마다 SY6·RO6의 같은 줄 크기·다른 감쇠 원시를 새 태그 이름으로 복사한다(같은 인수 = 같은 결과). 복사한 수를 돌려준다."""
+    import shutil
+    n = 0
+    for cfg in CFGS:
+        for w in witches:
+            for b in ("SY6", "RO6"):
+                for v in ("S3", "P"):
+                    if b == "RO6" and v == "L":
+                        continue
+                    dst = ROOT / outdir / "raw" / "scanr" / ("%s_%s_%s_%s.json" % (w, b, cfg.tag(), v))
+                    if dst.is_file():
+                        continue
+                    pat = "%s_%s_%s-s%d-%d-b*-x%d%s%s_%s.json" % (w, b, cfg.val, cfg.sb, cfg.sr, cfg.sx, "-rt" if cfg.rate else "", "-wh" if cfg.wh else "", v)
+                    hits = sorted(glob.glob(str(ROOT / outdir / "raw" / "*" / pat)))
+                    if hits:
+                        dst.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(hits[0], dst)
+                        n += 1
+    return n
+
+
+def hold1_args(witch):
+    """D16 2.1절 안 1 흉내: 울타리는 사실상 못 죽이고(피해 = 보행자 체력의 5%) 오래 묶고(150틱), 기본기는 제어된 적에게 3배(vs_cc 20000). 쿨·바닥은 접촉 값."""
+    ring = SK + witch + "_ring"
+    a = [x for x in contact_args(witch) if not x.startswith("--ring-dmg-x-walker")] + ["--ring-dmg-x-walker=0.05"]
+    key = {"frost": "freeze_ticks=150", "ember": "stagger_ticks=150", "arc": "stun_ticks=120"}[witch]
+    a.append("--set=spells/%s/base/%s" % (ring, key))
+    for sp in ("frost", "ember", "arc"):
+        for st in ("frozen", "stunned", "staggered"):
+            a.append("--set=spells/%s%s/vs_cc/%s=20000" % (SK, sp, st))
+    return a
+
+
+def exp_hold1(witches):
+    """N2-6: 안 1(울타리는 죽이지 않고 묶음, 기본기가 마무리) 흉내. SY6·RO6·RNDa·RNDb(거래 감쇠 없음)를 stand 3마디 + pilot 승2 + slow 3마디로. 태그 c-a1."""
+    return [Job(w, n, "c-a1", v, hold1_args(w), spec=BUILDS[n]) for w in witches for n in ("SY6", "RO6", "RNDa", "RNDb") for v in ("S3", "P", "L")]
+
+
+def exp_rnd20(witches):
+    """N2-2/3: 무작위 표본 20(--score 6|8, 시드 고정)을 설정(--cfg)마다 stand 3마디 + pilot 승2로(시간: slow는 뺌, L-10은 손으로 고른 둘로만)."""
+    samples, _ = gen_samples(SCORE)
+    vsets = ("S3",) if SCORE == 12 else ("S3", "P")   # 점수 12(N2-9)는 stand만
+    return [cfg_job(w, n, s, cfg, v) for cfg in (CFGS or [Cfg("c", 15, 25, 60)]) for w in witches for n, s in samples for v in vsets]
+
+
+def exp_pts8(witches):
+    """N2-3: 점수 8의 SY8(A:d4+R:r4)·NB8(A:d4r4, 한 주문 합 8 > 상한 6이라 게임에서는 못 만드는 하나만 쌓기 = 하나만에게 후한 쪽)·RO8(R:d4r4, 같은 사정)."""
+    jobs = []
+    for cfg in (CFGS or [Cfg("c", 15, 25, 60)]):
+        for w in witches:
+            for n, vs in (("SY8", ("S3", "L", "P")), ("RO8", ("S3", "P")), ("NB8", ("S3", "L", "P"))):
+                if n == "NB8":   # NB는 줄·접촉 값과 무관: 넓이 설정만 다르다
+                    jobs.append(Job(w, n, "whalf" if cfg.wh else "base", vs[0], ["--basic-reach=half"] if cfg.wh else [], spec=BUILDS[n]))
+                    for v in vs[1:]:
+                        jobs.append(Job(w, n, "whalf" if cfg.wh else "base", v, ["--basic-reach=half"] if cfg.wh else [], spec=BUILDS[n]))
+                else:
+                    for v in vs:
+                        jobs.append(cfg_job(w, n, BUILDS[n], cfg, v))
+    return jobs
+
+
+def exp_cards7l(witches):
+    """N2-4: 카드 수 같게(주문을 여는 카드도 한 장으로 셈). RND7a·RND7b를 설정마다. SY6·RO6(원형 열기 1 + 6점 = 7장)는 lines 실험, NB7은 N1 cards7 원시를 쓴다."""
+    return [cfg_job(w, n, BUILDS[n], cfg, v) for cfg in (CFGS or [Cfg("c", 15, 25, 60)]) for w in witches for n in ("RND7a", "RND7b") for v in ("S3", "L", "P")]
+
+
+EXPERIMENTS = {"base": exp_base, "grid": exp_grid, "gridl": exp_gridl, "hold": exp_hold, "i0": exp_i0, "width": exp_width, "mix": exp_mix, "cut": exp_cut, "cards7": exp_cards7, "i0d": exp_i0d, "ilk": exp_ilk, "evo": exp_evo, "bud": exp_bud, "slowx": exp_slowx,
+               "lines": exp_lines, "scan": exp_scan, "scanr": exp_scanr, "hold1": exp_hold1, "rnd20": exp_rnd20, "pts8": exp_pts8, "cards7l": exp_cards7l}
 
 
 def jobs_of(exp, witches):
@@ -472,7 +730,12 @@ def grid_summary(store, witches, tags_picker):
     return out
 
 
+N2_EXPS = ["lines", "scan", "scanr", "hold1", "rnd20", "pts8", "cards7l"]
+
+
 def table_exp(store, exp, witches):
+    if exp in N2_EXPS:
+        return table_lines(store, witches)
     if exp == "base":
         return table_base(store, witches)
     if exp == "grid":
@@ -613,6 +876,200 @@ def width_rank(store, w):
     return out
 
 
+# ----------------------------------------------------------------------------- N2 판정: D16 3.3절 통과선 L-1~L-14
+# 모든 칸은 봇 실측의 시드 평균. 같은 줄의 비 = (시너지 칸 평균) / (상대 칸 평균). * = 시드 흩어짐 >30%(판정 불가). o 통과 / x 미달 / . 판정 줄 아님(참고).
+
+KINDS = {  # 점수 묶음 -> (시너지, 하나만 목록, 원형만, 무작위 목록(손으로 고른 것))
+    6: ("SY6", ["NB6", "NB6w"], "RO6", ["RNDa", "RNDb"]),
+    7: ("SY6", ["NB7"], "RO6", ["RND7a", "RND7b"]),   # 카드 7장: NB7은 N1 cards7 원시(태그 cards7), SY6·RO6는 원형 열기 1 + 6점
+    8: ("SY8", ["NB8"], "RO8", []),
+    12: ("SY6", ["NB6", "NB6w"], "RO6", []),   # N2-9 기연의 크기 대리: 시너지는 +0점(6점), 무작위 표본은 +6점(12점)
+}
+SAMPLES = {6: "R6x", 8: "R8x", 12: "R12x"}
+B3 = ["seung2", "jeon_a", "trial"]
+
+
+def pct(xs, q):
+    xs = sorted(xs)
+    if not xs:
+        return float("nan")
+    i = q * (len(xs) - 1)
+    lo = int(math.floor(i))
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (i - lo)
+
+
+def pick_tag(store, w, build, tags, beat, var):
+    for t in tags:
+        if (w, build, t, beat, var) in store.g:
+            return t
+    return tags[0]
+
+
+def nb_cell(store, w, names, nbtags, beat, var, f, lower):
+    cand = []
+    for n in names:
+        for t in nbtags:
+            k = (w, n, t, beat, var)
+            if k in store.g:
+                cand.append((store.m(k, f), store.unstable(k, f)))
+                break
+    cand = [c for c in cand if c[0] == c[0]]
+    if not cand:
+        return float("nan"), False
+    return (min if lower else max)(cand, key=lambda c: c[0])
+
+
+def rnd_cells(store, w, rnd, tag, beat, var, f):
+    """무작위 목록(이름, 태그)의 칸 평균들."""
+    xs = []
+    for n in rnd:
+        k = (w, n, tag, beat, var)
+        if k in store.g:
+            x = store.m(k, f)
+            if x == x:
+                xs.append(x)
+    return xs
+
+
+def fmt(r, un, ok, judged):
+    if r != r:
+        return "%-9s" % "-"
+    return "%-9s" % (("%.2f" % r) + ("*" if un else "") + (("o" if ok(r) else "x") if judged and not un else ""))
+
+
+def lines_block(store, w, tag, kind, rnd_names, rnd_label, zero_tag):
+    sy, nbs, ro, _ = KINDS[kind]
+    nbtags = ["whalf"] if tag.endswith("-wh") else ["base"]
+    if kind == 7:
+        nbtags = ["cards7"]
+    P, CH, TK = "power_hp_s", contact_hits, "taken_30s_pct"
+    rows = []
+
+    def key(b, var, beat, t=None):
+        return (w, b, t or tag, beat, var)
+
+    def r_nb(f, var, beat, lower):
+        s = store.m(key(sy, var, beat), f)
+        nbv, nun = nb_cell(store, w, nbs, nbtags, beat, var, f, lower)
+        return ratio(s, nbv), store.unstable(key(sy, var, beat), f) or nun
+
+    def r_ro(f, var, beat):
+        k2 = key(ro, var, beat)
+        return ratio(store.m(key(sy, var, beat), f), store.m(k2, f)), store.unstable(key(sy, var, beat), f) or store.unstable(k2, f)
+
+    def r_rnd(f, var, beat, q=0.5, inv=False):
+        xs = rnd_cells(store, w, rnd_names, tag, beat, var, f)
+        if not xs:
+            return float("nan"), False
+        m = pct(xs, q)
+        s = store.m(key(sy, var, beat), f)
+        return (ratio(m, s) if inv else ratio(s, m)), store.unstable(key(sy, var, beat), f)
+
+    def r_off(b, beat):
+        t0 = pick_tag(store, w, b, [zero_tag, "base"], beat, "stand")
+        k0 = (w, b, t0, beat, "stand")
+        return ratio(store.m(key(b, "stand", beat), P), store.m(k0, P)), store.unstable(key(b, "stand", beat), P) or store.unstable(k0, P)
+
+    def r_p6(f, var, beat):
+        k2 = key("SY6p", var, beat)
+        return ratio(store.m(key(sy, var, beat), f), store.m(k2, f)), store.unstable(key(sy, var, beat), f) or store.unstable(k2, f)
+
+    J = lambda *bs: set(bs)
+    spec = [  # id, 설명, 계산, 판정 마디, 조건, 통과선 글
+        ("L-1", "SY/NB 밀착P(stand)", lambda b: r_nb(P, "stand", b, False), J("jeon_a", "trial"), lambda r: r >= 1.6, ">=1.6(1.6~2.0)"),
+        ("L-2", "SY/NB 열린P(pilot)", lambda b: r_nb(P, "pilot", b, False), J("seung2"), lambda r: r >= 0.7, ">=0.7"),
+        ("L-3", "SY/NB 접촉 맞은횟수", lambda b: r_nb(CH, "stand", b, True), J(*B3), lambda r: r <= 0.3, "<=0.3"),
+        ("L-4", "SY/NB slow 받은피해", lambda b: r_nb(TK, "slow", b, True), J(*B3), lambda r: r <= 0.6, "<=0.6"),
+        ("L-5", "SY/RO 밀착P(stand)", lambda b: r_ro(P, "stand", b), J("jeon_a", "trial"), lambda r: r >= 1.3, ">=1.3"),
+        ("L-6", "SY/RO 열린P(pilot)", lambda b: r_ro(P, "pilot", b), J("seung2"), lambda r: r >= 1.5, ">=1.5"),
+        ("L-8", "SY/무작위중앙 밀착P", lambda b: r_rnd(P, "stand", b), J("jeon_a", "trial"), (lambda r, _b=[0]: True), ">=1.6(전A)/1.5(버티기)"),
+        ("L-9", "SY/무작위중앙 열린P", lambda b: r_rnd(P, "pilot", b), J("seung2"), lambda r: r >= 1.5, ">=1.5"),
+        ("L-10", "SY/무작위중앙 slow 받은피해", lambda b: r_rnd(TK, "slow", b), J("jeon_a", "trial"), lambda r: r <= 0.8, "<=0.8"),
+        ("L-11", "무작위p90/SY 밀착P", lambda b: r_rnd(P, "stand", b, 0.9, True), J("jeon_a"), lambda r: r <= 0.85, "<=0.85"),
+        ("L-12", "SY 줄켬/줄끔 밀착P", lambda b: r_off(sy, b), J("jeon_a", "trial"), lambda r: 1.25 <= r <= 1.67, "1.25~1.67"),
+        ("L-13", "RO 줄켬/줄끔 밀착P", lambda b: r_off(ro, b), J("jeon_a", "trial"), lambda r: r <= 1.10, "<=1.10"),
+        ("L-14a", "SY/SY6p 밀착P", lambda b: r_p6(P, "stand", b), J("jeon_a", "trial"), lambda r: r > 1.0, ">1"),
+        ("L-14b", "SY/SY6p 접촉 맞은횟수", lambda b: r_p6(CH, "stand", b), J("jeon_a", "trial"), lambda r: r < 1.0, "<1"),
+    ]
+    out = ["-- %s %s (태그 %s; 무작위 = %s %d개) | %s" % (w, "점수" + str(kind), tag, rnd_label, len(rnd_names), "  ".join("%-9s" % BN[b] for b in B3))]
+    verdict = {}
+    for lid, label, fn, judged, ok, line in spec:
+        if kind == 8 and lid in ("L-14a", "L-14b"):
+            continue
+        cells = []
+        for b in B3:
+            if lid in ("L-2", "L-6", "L-9") and b != "seung2":
+                cells.append("%-9s" % "n/a")
+                continue
+            if lid == "L-11" and b == "seung2":
+                pass
+            try:
+                r, un = fn(b)
+            except KeyError:
+                r, un = float("nan"), False
+            if lid == "L-8":
+                okf = (lambda r, bb=b: r >= (1.6 if bb == "jeon_a" else 1.5))
+            else:
+                okf = ok
+            cells.append(fmt(r, un, okf, b in judged))
+            if b in judged and r == r and not un:
+                verdict.setdefault(lid, []).append(okf(r))
+            elif b in judged:
+                verdict.setdefault(lid, []).append(None)
+        out.append("%-7s %-30s %-24s | %s" % (lid, label, line, "  ".join(cells)))
+    ps = [lid for lid, v in verdict.items() if v and all(x is True for x in v)]
+    fl = [lid for lid, v in verdict.items() if any(x is False for x in v)]
+    un = [lid for lid, v in verdict.items() if any(x is None for x in v) and not any(x is False for x in v)]
+    out.append("   통과: %s | 미달: %s | 판정 못 함(*·칸 없음): %s" % (" ".join(ps) or "-", " ".join(fl) or "-", " ".join(un) or "-"))
+    # 기록줄: 울타리 처치 몫 R-2, 원거리 처치 중 기본기 몫 R-1
+    rec = []
+    for b in B3:
+        k = key(sy, "stand", b)
+        rk = store.m(k, lambda c: c.get("ranged_kills_basic", 0) / max(1, c.get("ranged_kills_basic", 0) + c.get("ranged_kills_ring", 0) + c.get("ranged_kills_other", 0)) * 100.0)
+        rec.append("%s: 울타리 처치 %.0f%% / 원거리 처치 중 기본기 %.0f%%" % (BN[b], store.m(k, "ring_kill_share_pct"), rk))
+    out.append("   기록(R-1·R-2, 판정 아님): " + " | ".join(rec))
+    # 가장 센 무작위 표본(표본일 때)
+    if rnd_label == "표본" and rnd_names:
+        top = []
+        for n in rnd_names:
+            xs = [store.m(key(n, "stand", b), P) for b in ("jeon_a", "trial")]
+            sy_x = [store.m(key(sy, "stand", b), P) for b in ("jeon_a", "trial")]
+            if all(x == x for x in xs + sy_x):
+                top.append((sum(x / s for x, s in zip(xs, sy_x)) / 2, n))
+        top.sort(reverse=True)
+        specs = {}
+        for n in rnd_names:
+            for c in store.g.get(key(n, "stand", "jeon_a"), [])[:1]:
+                specs[n] = c.get("spec", "?")
+        out.append("   무작위 표본 위 3(전A·버티기 P/SY 평균): " + ", ".join("%s %s %.2f" % (n, specs.get(n, "?"), x) for x, n in top[:3]))
+        out.append("   표본 중 SY를 넘은 수(전A/버티기): %s" % " / ".join("%d" % sum(1 for n in rnd_names if store.m(key(n, "stand", b), P) > store.m(key(sy, "stand", b), P)) for b in ("jeon_a", "trial")))
+    return out
+
+
+def table_lines(store, witches):
+    out = []
+    for w in witches:
+        tags = sorted({k[2] for k in store.g if k[0] == w and k[1] in ("SY6", "SY8", "RND7a") and k[2] not in ("base", "whalf", "wnone", "cards7", "evo", "i0off") and k[2][:2] in ("c-", "d-")})
+        for tag in tags:
+            val = tag[0]
+            zero_tag = "%s-s0-0-b100-x0%s" % (val, "-wh" if tag.endswith("-wh") else "")
+            out.append("")
+            out.append("######## %s  %s" % (w, tag))
+            for kind in (6, 7, 8, 12):
+                sy = KINDS[kind][0]
+                if (w, sy, tag, "jeon_a", "stand") not in store.g:
+                    continue
+                hand = KINDS[kind][3]
+                if hand and any((w, n, tag, "jeon_a", "stand") in store.g for n in hand):
+                    out += lines_block(store, w, tag, kind, hand, "손으로 고른", zero_tag)
+                if kind in SAMPLES:
+                    names = sorted({k[1] for k in store.g if k[0] == w and k[2] == tag and k[1].startswith(SAMPLES[kind])})
+                    if names:
+                        out += lines_block(store, w, tag, kind, names, "표본", zero_tag)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["list", "run", "table", "table-all"])
@@ -623,7 +1080,12 @@ def main(argv=None):
     ap.add_argument("--witches", default=",".join(WITCHES))
     ap.add_argument("--dry", action="store_true")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--cfg", default="", help="N2 설정(쉼표로 여러 개): 값묶음:차단->기본기%%/피해->울타리%%/거래피해%%[:x거래줄%%][:wh]. 예 c:15/25/60 (c=접촉 값, d=데이터 값). lines·rnd20·pts8·cards7l 실험에 쓴다")
+    ap.add_argument("--score", type=int, default=6, help="rnd20의 표본 점수(6 또는 8)")
     a = ap.parse_args(argv)
+    global SCORE
+    SCORE = a.score
+    CFGS[:] = [Cfg.parse(t) for t in a.cfg.split(",") if t.strip()]
     witches = a.witches.split(",")
     if not a.out.startswith("_local/") or ".." in a.out:
         ap.error("--out must be a relative path under _local/")
@@ -638,6 +1100,8 @@ def main(argv=None):
             ap.error("unknown experiment (see list)")
         if not 1 <= a.jobs <= 4:
             ap.error("--jobs must be 1..4")
+        if a.exp == "scanr" and not a.dry:
+            print("copied sibling raw:", copy_sibling_raw(a.out, witches))
         run_jobs(jobs_of(a.exp, witches), a.exp, a.out, a.seeds, a.jobs, a.dry, a.force)
         return 0
     exps = list(EXPERIMENTS) if a.cmd == "table-all" else [a.exp]
@@ -646,6 +1110,8 @@ def main(argv=None):
         store.load(a.out, exp)
         # 기준(NB 최선)은 base의 원시에서, slow 시드 보강(slowx)은 base와 같은 칸에 합쳐서 가져온다
         extra = {"cut": ["mix"], "ilk": ["grid"], "gridl": ["grid"], "evo": ["cards7"], "bud": ["grid"]}.get(exp, [])
+        if exp in N2_EXPS:   # N2 판정은 N2 실험 원시 전부 + N1의 base·width·cards7(하나만 쌓기 기준)을 함께 읽는다
+            extra = [e for e in N2_EXPS + ["width", "cards7"]]
         for dep in ["base", "slowx"] + extra:
             if dep != exp:
                 store.load(a.out, dep)
