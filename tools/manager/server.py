@@ -5,17 +5,17 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
-    from . import drafts, playlog
+    from . import drafts, playlog, balance_lab
 except ImportError:
     from catalog import ROOT, generate
-    import drafts, playlog
+    import drafts, playlog, balance_lab
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
 LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
-STATIC = {'index.html', 'app.js', 'drafts.js', 'playlog.js', 'app.css', 'vendor/model-viewer.min.js'}
+STATIC = {'index.html', 'app.js', 'drafts.js', 'playlog.js', 'balance.js', 'app.css', 'vendor/model-viewer.min.js'}
 FILE_TYPES = {'.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
               '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
               '.md': 'text/plain; charset=utf-8', '.po': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.gd': 'text/plain; charset=utf-8',
@@ -156,6 +156,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, drafts.load_selection())
         if route == '/api/playtests':
             return self.send_json(200, playlog.overview())
+        if route == '/api/balance/meta':
+            q = parse_qs(parts.query)
+            return self.send_json(200, balance_lab.meta(spells_id=(q.get('spells') or [None])[0], preset=(q.get('preset') or [None])[0]))
+        if route == '/api/balance/experiments':
+            return self.send_json(200, balance_lab.list_experiments())
         if route.startswith('/drafts/'):
             return self.send_draft(route[len('/drafts/'):])
         if route.startswith('/files/'):
@@ -184,7 +189,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not trusted_request(self.headers.get('Host'), self.headers.get('Origin'), self.server.server_port):
             return self.send_json(403, {'error': 'Untrusted Host or Origin'})
-        if self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests'):
+        if self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
+                         '/api/balance/run', '/api/balance/experiments', '/api/balance/export'):
             return self.send_json(404, {'error': 'Unknown route'})
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
             return self.send_json(415, {'error': 'application/json required'})
@@ -201,9 +207,19 @@ class Handler(BaseHTTPRequestHandler):
                 status, value = drafts.update_selection(payload, {e['id'] for e in entries})
             elif self.path == '/api/playtests':
                 status, value = 200, playlog.save(payload, playlog.questions()[0])
+            elif self.path == '/api/balance/run':
+                status, value = 200, balance_lab.run(payload)
+            elif self.path == '/api/balance/experiments':
+                status, value = 200, balance_lab.save_experiment(payload)
+            elif self.path == '/api/balance/export':
+                status, value = 200, balance_lab.export_sets(payload)
             else:
                 status, value = update_state(payload, self.server.valid_ids)
             self.send_json(status, value)
+        except balance_lab.BusyError as e:
+            self.send_json(429, {'error': str(e)})
+        except balance_lab.RunError as e:
+            self.send_json(502, {'error': str(e)})
         except (ValueError, UnicodeError) as e:
             self.send_json(400, {'error': str(e)})
         except OSError as e:
