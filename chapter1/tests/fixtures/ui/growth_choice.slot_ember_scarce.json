@@ -1,0 +1,240 @@
+{
+ "screen": "growth_choice",
+ "contract_version": 0,
+ "variant": "slot_ember_scarce",
+ "note": "slot machine direction: ember, fortune=scarce",
+ "requested": [
+  "cards[].grade / grade_name (growth cards have no grade yet; D11 276-283 colours)",
+  "moment.beat (short/long)",
+  "moment.kind (first/last/normal/evolve)",
+  "giver.line (mother's one line; placeholder text, narrative-lead to confirm)",
+  "cards[].emblem (per-kind big emblem; needs a per-card art table)",
+  "cards[].line (one short line for the low card, <= 14 chars; headline goes to the side frame)",
+  "cards[].path / meter / terms (side panel)",
+  "reroll.left (core has reroll, no screen field)",
+  "exclude (a decision, not in core)",
+  "owned.* (the run's spells and graces for the bottom row)",
+  "odds line, pity ('보장') flag, resonance {partner,text} on a fated card, exclude / keep counts (all fake values)"
+ ],
+ "strings": {
+  "title": "은총",
+  "title_last": "마지막 은총",
+  "owned": "가진 주문",
+  "graces": "은총",
+  "reroll": "다시 빌기",
+  "combo": "조합",
+  "path": "진화까지",
+  "terms": "낱말",
+  "no_combo": "가진 기술과 조합 없음",
+  "hint": "1 2 3 고르기 · Enter 확인",
+  "free_slot": "빈 칸",
+  "exclude": "빼기",
+  "key_reroll": "R",
+  "key_exclude": "X",
+  "fated_banner": "기연!",
+  "pull": "당기기",
+  "keep": "남겨 두기",
+  "slot_title": "은총",
+  "lever": "당기기"
+ },
+ "backdrop": "_local/shots/rs1/after-ember-1080/burst-cast_shape-ring-3-t478.png",
+ "witch": {
+  "id": "ember",
+  "element": "ember"
+ },
+ "giver": {
+  "line": null,
+  "mute": false,
+  "line_status": "temporary text from docs/story/GRACE-GRADES-AND-TITLE-VOICES-20261120 (narrative-lead's proposal); the storm demon does not speak",
+  "thread": false,
+  "figure": {
+   "file": "_local/art/drafts/ember_demon/ember-demon-v02.png",
+   "eye": [
+    542,
+    198
+   ],
+   "caption": "임시 그림 · 새 그림 대기",
+   "draft": "ember demon v02 (the ORIGINAL demon's throne painting; stand-in only, final figure is a standing full body)"
+  }
+ },
+ "moment": {
+  "beat": "slot",
+  "kind": "normal",
+  "index": 4,
+  "total": 11,
+  "label": "4 / 11"
+ },
+ "cards": [
+  {
+   "id": "unlock:chapter1.skill.ember_ring",
+   "element": "ember",
+   "grade": "scarce",
+   "grade_name": "희귀",
+   "kind": "new",
+   "kind_label": "새 기술",
+   "header": "서약",
+   "name": "잿불 울타리",
+   "tier": "",
+   "headline": "가까이 오는 적을 세게 쳐서 공격을 끊는다.",
+   "delta": null,
+   "meter": null,
+   "stats": [
+    "경직 1초 · 공격 준비를 끊음"
+   ],
+   "details": [
+    "반경 2.2m · 0.9초마다 · 한 번 32",
+    "멀리 선 적과 날아오는 탄은 막지 못한다."
+   ],
+   "line": "가까이 오는 적의 공격을 끊는다.",
+   "combo": [
+    {
+     "from": "ring",
+     "from_element": "ember",
+     "to": "ring",
+     "to_element": "ember",
+     "text": "그을린 적 터뜨림 +40% · 경직 1.5배"
+    },
+    {
+     "from": "ring",
+     "from_element": "ember",
+     "to": "orb",
+     "to_element": "ember",
+     "text": "울타리가 경직시킨 적에게 잿불탄 +60%"
+    }
+   ],
+   "path": null,
+   "terms": [
+    {
+     "word": "경직",
+     "gloss": "1초 동안 움직이지도 치지도 못한다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "ring",
+   "pair": null
+  },
+  {
+   "id": "axis:chapter1.skill.ember:damage",
+   "element": "ember",
+   "grade": "common",
+   "grade_name": "",
+   "kind": "upgrade",
+   "kind_label": "강화 · 피해",
+   "header": "서약",
+   "name": "잿불탄",
+   "tier": "Ⅱ",
+   "headline": "잿불탄이 더 세게 터진다.",
+   "delta": {
+    "label": "피해",
+    "before": "14",
+    "after": "20"
+   },
+   "meter": {
+    "label": "피해",
+    "filled": 2,
+    "total": 4
+   },
+   "stats": [],
+   "details": [
+    "피해 ●●○○ · 넓이 ●○○○"
+   ],
+   "line": "",
+   "combo": [],
+   "path": {
+    "label": "진화까지",
+    "filled": 2,
+    "total": 5,
+    "keys": [
+     {
+      "label": "잔불",
+      "done": false
+     },
+     {
+      "label": "짝 기술",
+      "done": false,
+      "value": "0/2"
+     }
+    ]
+   },
+   "terms": [
+    {
+     "word": "그을림",
+     "gloss": "맞은 자국. 울타리가 이 적을 치면 터뜨림이 일어난다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "orb",
+   "pair": null
+  },
+  {
+   "id": "unlock:chapter1.skill.arc",
+   "element": "arc",
+   "grade": "common",
+   "grade_name": "",
+   "kind": "trade",
+   "kind_label": "새 기술",
+   "header": "거래 · 번개의 악마",
+   "name": "연쇄 전류",
+   "tier": "",
+   "headline": "맞은 적에게서 적으로 전류가 옮겨 간다.",
+   "delta": null,
+   "meter": null,
+   "stats": [
+    "연쇄 전류가 기절시킨 적에게 잿불탄 +60%"
+   ],
+   "details": [
+    "맞은 적: 감전"
+   ],
+   "line": "전류가 적을 건너뛴다.",
+   "combo": [
+    {
+     "from": "bolt",
+     "from_element": "arc",
+     "to": "orb",
+     "to_element": "ember",
+     "text": "연쇄 전류가 기절시킨 적에게 잿불탄 +60%"
+    }
+   ],
+   "path": null,
+   "terms": [
+    {
+     "word": "감전",
+     "gloss": "전기가 몸에 남은 상태. 울타리가 터뜨린다."
+    }
+   ],
+   "action": "거래하기",
+   "emblem": "bolt",
+   "pair": null
+  }
+ ],
+ "owned": {
+  "spells": [
+   {
+    "name": "잿불탄",
+    "emblem": "orb",
+    "element": "ember",
+    "level": "2"
+   }
+  ],
+  "slots": 3,
+  "graces": [
+   {
+    "name": "잔불",
+    "owned": false
+   }
+  ],
+  "grace_slots": 2
+ },
+ "reroll": {
+  "left": 1,
+  "left_label": "1"
+ },
+ "exclude": {
+  "left": 1,
+  "left_label": "1"
+ },
+ "odds": "기연 5% · 희귀 25% · 보장까지 4",
+ "keep": {
+  "left_label": "1"
+ }
+}

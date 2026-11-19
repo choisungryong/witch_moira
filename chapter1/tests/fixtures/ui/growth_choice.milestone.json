@@ -1,0 +1,235 @@
+{
+ "screen": "growth_choice",
+ "contract_version": 0,
+ "variant": "milestone",
+ "note": "고비: 진화 카드(전설)가 든 화면, 긴 등장",
+ "requested": [
+  "cards[].grade / grade_name (growth cards have no grade yet; D11 276-283 colours)",
+  "moment.beat (short/long)",
+  "moment.kind (first/last/normal/evolve)",
+  "giver.line (mother's one line; placeholder text, narrative-lead to confirm)",
+  "cards[].emblem (per-kind big emblem; needs a per-card art table)",
+  "cards[].line (one short line for the low card, <= 14 chars; headline goes to the side frame)",
+  "cards[].path / meter / terms (side panel)",
+  "reroll.left (core has reroll, no screen field)",
+  "exclude (a decision, not in core)",
+  "owned.* (the run's spells and graces for the bottom row)"
+ ],
+ "strings": {
+  "title": "은총",
+  "title_last": "마지막 은총",
+  "owned": "가진 주문",
+  "graces": "은총",
+  "reroll": "다시 빌기",
+  "combo": "조합",
+  "path": "진화까지",
+  "terms": "낱말",
+  "no_combo": "가진 기술과 조합 없음",
+  "hint": "1 2 3 고르기 · Enter 확인",
+  "free_slot": "빈 칸",
+  "exclude": "제외",
+  "key_reroll": "R",
+  "key_exclude": "X"
+ },
+ "backdrop": "_local/shots/rs1/after-frost-1080/burst-cast_shape-ring-3-t396.png",
+ "witch": {
+  "id": "frost",
+  "element": "frost"
+ },
+ "giver": {
+  "line": null,
+  "thread": true
+ },
+ "moment": {
+  "beat": "long",
+  "kind": "evolve",
+  "index": 8,
+  "total": 11,
+  "label": "8 / 11"
+ },
+ "cards": [
+  {
+   "id": "evolve:chapter1.skill.frost",
+   "element": "frost",
+   "grade": "legendary",
+   "grade_name": "전설",
+   "kind": "evolve",
+   "kind_label": "기술 진화",
+   "header": "서약",
+   "name": "파쇄 물결",
+   "tier": "",
+   "headline": "서리창이 파쇄 물결로 바뀐다.",
+   "delta": null,
+   "meter": null,
+   "stats": [
+    "짝 기술: 서리 울타리",
+    "진화하면 이 조합의 터뜨림이 ×1.5"
+   ],
+   "details": [
+    "파쇄 물결: 얼어붙은 적이 쪼개지며 파편이 퍼진다.",
+    "짝 기술: 서리 울타리"
+   ],
+   "line": "서리창이 바뀐다.",
+   "combo": [
+    {
+     "from": "ring",
+     "from_element": "frost",
+     "to": "nova",
+     "to_element": "frost",
+     "text": "냉각된 적 터뜨림 +40% · 빙결 1.5배"
+    }
+   ],
+   "path": {
+    "label": "진화까지",
+    "filled": 5,
+    "total": 5,
+    "keys": [
+     {
+      "label": "결정",
+      "done": true
+     },
+     {
+      "label": "짝 기술",
+      "done": true,
+      "value": "2/2"
+     }
+    ]
+   },
+   "terms": [
+    {
+     "word": "진화",
+     "gloss": "기술이 한 번 바뀌고 다시 돌아가지 않는다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "nova",
+   "pair": {
+    "name": "서리 울타리",
+    "emblem": "ring"
+   }
+  },
+  {
+   "id": "axis:chapter1.skill.frost_ring:reach",
+   "element": "frost",
+   "grade": "magic",
+   "grade_name": "마법",
+   "kind": "upgrade",
+   "kind_label": "강화 · 차단",
+   "header": "서약",
+   "name": "서리 울타리",
+   "tier": "Ⅱ",
+   "headline": "울타리가 더 넓게, 더 자주 친다.",
+   "delta": {
+    "label": "반경",
+    "before": "2.2m",
+    "after": "2.6m"
+   },
+   "meter": {
+    "label": "차단",
+    "filled": 2,
+    "total": 4
+   },
+   "stats": [],
+   "details": [
+    "반경 2.2 → 2.6m · 0.9 → 0.5초마다"
+   ],
+   "line": "",
+   "combo": [
+    {
+     "from": "ring",
+     "from_element": "frost",
+     "to": "ring",
+     "to_element": "frost",
+     "text": "냉각된 적 터뜨림 +40% · 빙결 1.5배"
+    }
+   ],
+   "path": null,
+   "terms": [
+    {
+     "word": "차단",
+     "gloss": "반경과 간격이 함께 좋아진다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "ring",
+   "pair": null
+  },
+  {
+   "id": "unlock:chapter1.skill.ember",
+   "element": "ember",
+   "grade": "magic",
+   "grade_name": "마법",
+   "kind": "trade",
+   "kind_label": "새 기술",
+   "header": "거래 · 화염의 악마",
+   "name": "잿불탄",
+   "tier": "",
+   "headline": "맞은 적을 그을린다.",
+   "delta": null,
+   "meter": null,
+   "stats": [
+    "서리창이 얼린 적에게 잿불탄 +60% · 늦춘 적 +25%"
+   ],
+   "details": [
+    "맞은 적: 그을림",
+    "곁이 비면 원거리 적부터 노린다."
+   ],
+   "line": "맞은 적을 그을린다.",
+   "combo": [
+    {
+     "from": "lance",
+     "from_element": "frost",
+     "to": "orb",
+     "to_element": "ember",
+     "text": "서리창이 얼린 적에게 잿불탄 +60% · 늦춘 적 +25%"
+    }
+   ],
+   "path": null,
+   "terms": [
+    {
+     "word": "그을림",
+     "gloss": "맞은 자국. 울타리가 이 적을 치면 터뜨림이 일어난다."
+    }
+   ],
+   "action": "거래하기",
+   "emblem": "orb",
+   "pair": null
+  }
+ ],
+ "owned": {
+  "spells": [
+   {
+    "name": "서리창",
+    "emblem": "lance",
+    "element": "frost",
+    "level": "5"
+   },
+   {
+    "name": "서리 울타리",
+    "emblem": "ring",
+    "element": "frost",
+    "level": "1"
+   }
+  ],
+  "slots": 3,
+  "graces": [
+   {
+    "name": "결정",
+    "owned": true
+   },
+   {
+    "name": "잔불",
+    "owned": false
+   }
+  ],
+  "grace_slots": 2
+ },
+ "reroll": {
+  "left": 1,
+  "left_label": "1"
+ },
+ "exclude": {
+  "left": 0,
+  "requested": true
+ }
+}

@@ -1,0 +1,253 @@
+{
+ "screen": "growth_choice",
+ "contract_version": 0,
+ "variant": "slot_arc_fated",
+ "note": "slot machine direction: arc, fortune=fated",
+ "requested": [
+  "cards[].grade / grade_name (growth cards have no grade yet; D11 276-283 colours)",
+  "moment.beat (short/long)",
+  "moment.kind (first/last/normal/evolve)",
+  "giver.line (mother's one line; placeholder text, narrative-lead to confirm)",
+  "cards[].emblem (per-kind big emblem; needs a per-card art table)",
+  "cards[].line (one short line for the low card, <= 14 chars; headline goes to the side frame)",
+  "cards[].path / meter / terms (side panel)",
+  "reroll.left (core has reroll, no screen field)",
+  "exclude (a decision, not in core)",
+  "owned.* (the run's spells and graces for the bottom row)",
+  "odds line, pity ('보장') flag, resonance {partner,text} on a fated card, exclude / keep counts (all fake values)"
+ ],
+ "strings": {
+  "title": "은총",
+  "title_last": "마지막 은총",
+  "owned": "가진 주문",
+  "graces": "은총",
+  "reroll": "다시 빌기",
+  "combo": "조합",
+  "path": "진화까지",
+  "terms": "낱말",
+  "no_combo": "가진 기술과 조합 없음",
+  "hint": "1 2 3 고르기 · Enter 확인",
+  "free_slot": "빈 칸",
+  "exclude": "빼기",
+  "key_reroll": "R",
+  "key_exclude": "X",
+  "fated_banner": "기연!",
+  "pull": "당기기",
+  "keep": "남겨 두기",
+  "slot_title": "은총",
+  "lever": "당기기"
+ },
+ "backdrop": "_local/shots/rs1/after-arc-1080/burst-cast_shape-ring-3-t592.png",
+ "witch": {
+  "id": "arc",
+  "element": "arc"
+ },
+ "giver": {
+  "line": null,
+  "mute": true,
+  "line_status": "temporary text from docs/story/GRACE-GRADES-AND-TITLE-VOICES-20261120 (narrative-lead's proposal); the storm demon does not speak",
+  "thread": false,
+  "figure": {
+   "file": "_local/art/drafts/storm_demon/storm-demon-v02.png",
+   "eye": [
+    560,
+    266
+   ],
+   "caption": "임시 그림 · 새 그림 대기",
+   "draft": "storm demon v02 (the ORIGINAL demon on the bell; stand-in only)"
+  }
+ },
+ "moment": {
+  "beat": "slot",
+  "kind": "normal",
+  "index": 4,
+  "total": 11,
+  "label": "4 / 11"
+ },
+ "cards": [
+  {
+   "id": "unlock:chapter1.skill.arc_ring",
+   "element": "arc",
+   "grade": "common",
+   "grade_name": "",
+   "kind": "new",
+   "kind_label": "새 기술",
+   "header": "서약",
+   "name": "전류 울타리",
+   "tier": "",
+   "headline": "가까이 오는 적 여럿을 세게 쳐서 기절시킨다.",
+   "delta": null,
+   "meter": null,
+   "stats": [],
+   "details": [
+    "반경 2.2m · 0.9초마다 · 한 번 32",
+    "멀리 선 적과 날아오는 탄은 막지 못한다."
+   ],
+   "line": "가까이 오는 적을 기절시킨다.",
+   "combo": [
+    {
+     "from": "ring",
+     "from_element": "arc",
+     "to": "ring",
+     "to_element": "arc",
+     "text": "감전된 적 터뜨림 +40% · 대상 +1"
+    },
+    {
+     "from": "ring",
+     "from_element": "arc",
+     "to": "bolt",
+     "to_element": "arc",
+     "text": "울타리가 기절시킨 적에게 연쇄 전류 +60%"
+    }
+   ],
+   "path": null,
+   "terms": [
+    {
+     "word": "기절",
+     "gloss": "0.75초 동안 움직이지도 치지도 못한다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "ring",
+   "pair": null
+  },
+  {
+   "id": "axis:chapter1.skill.arc:reach",
+   "element": "arc",
+   "grade": "common",
+   "grade_name": "",
+   "kind": "upgrade",
+   "kind_label": "강화 · 넓이",
+   "header": "서약",
+   "name": "연쇄 전류",
+   "tier": "Ⅱ",
+   "headline": "전류가 한 번 더 건너뛴다.",
+   "delta": {
+    "label": "연쇄",
+    "before": "3",
+    "after": "4"
+   },
+   "meter": {
+    "label": "넓이",
+    "filled": 2,
+    "total": 4
+   },
+   "stats": [],
+   "details": [
+    "피해 ●○○○ · 넓이 ●●○○"
+   ],
+   "line": "",
+   "combo": [],
+   "path": {
+    "label": "진화까지",
+    "filled": 2,
+    "total": 5,
+    "keys": [
+     {
+      "label": "도체",
+      "done": false
+     },
+     {
+      "label": "짝 기술",
+      "done": false,
+      "value": "0/2"
+     }
+    ]
+   },
+   "terms": [
+    {
+     "word": "연쇄",
+     "gloss": "맞은 적에게서 다음 적으로 전류가 옮겨 간다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "bolt",
+   "pair": null
+  },
+  {
+   "id": "axis:chapter1.skill.arc:reach:fated",
+   "element": "arc",
+   "grade": "fated",
+   "grade_name": "기연",
+   "kind": "upgrade",
+   "kind_label": "강화 · 넓이",
+   "header": "서약",
+   "name": "연쇄 전류",
+   "tier": "기연",
+   "headline": "강화 세 번의 몫을 한 번에 얻는다.",
+   "delta": {
+    "label": "연쇄",
+    "before": "3",
+    "after": "7"
+   },
+   "meter": {
+    "label": "넓이",
+    "filled": 2,
+    "total": 4
+   },
+   "stats": [],
+   "details": [
+    "강화 세 번의 몫을 한 번에 얻는다.",
+    "기연의 크기는 임시 값이다(시스템 요청).",
+    "피해 ●○○○ · 넓이 ●●○○"
+   ],
+   "line": "조합이 맞으면 더 크게 받는다.",
+   "combo": [],
+   "path": {
+    "label": "진화까지",
+    "filled": 2,
+    "total": 5,
+    "keys": [
+     {
+      "label": "도체",
+      "done": false
+     },
+     {
+      "label": "짝 기술",
+      "done": false,
+      "value": "0/2"
+     }
+    ]
+   },
+   "terms": [
+    {
+     "word": "연쇄",
+     "gloss": "맞은 적에게서 다음 적으로 전류가 옮겨 간다."
+    }
+   ],
+   "action": "받아들이기",
+   "emblem": "bolt",
+   "pair": null
+  }
+ ],
+ "owned": {
+  "spells": [
+   {
+    "name": "연쇄 전류",
+    "emblem": "bolt",
+    "element": "arc",
+    "level": "2"
+   }
+  ],
+  "slots": 3,
+  "graces": [
+   {
+    "name": "도체",
+    "owned": false
+   }
+  ],
+  "grace_slots": 2
+ },
+ "reroll": {
+  "left": 1,
+  "left_label": "1"
+ },
+ "exclude": {
+  "left": 1,
+  "left_label": "1"
+ },
+ "odds": "기연 5% · 희귀 25% · 보장까지 4",
+ "keep": {
+  "left_label": "1"
+ }
+}
