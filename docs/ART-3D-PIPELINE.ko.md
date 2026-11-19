@@ -52,6 +52,25 @@ python tools/dev/godot_ps.py     # 끝난 뒤 자기 프로세스가 남지 않�
 ```
 한 번에 하나만, `--chapter1-profile-off`로. 프로브는 `hud_dump.gd`를 상속하므로 `--shots`, `--until`, `--primary`가 그대로 듣는다.
 
+## 2. 그림 시트만으로 모델 만들기 (char_from_sheets, 2026-11-20)
+
+생성 서비스 없이 Blender와 numpy/scipy/PIL만으로 "정면·측면·후면 그림(+3/4, 머리 클로즈업) -> 리깅된 주인공 glb"까지 한 명령으로 간다. 근거와 한계: `docs/reviews/3D-BLENDER-ONLY-PROOF-20261120.ko.md`(실증)와 개선 판의 측정(`_local/char3d-blender-only/v2/REPORT.txt`, git 밖).
+
+```powershell
+$PY = "C:/Users/twins/AppData/Local/Programs/Python/Python310/python.exe"; $W = "D:/Project/witch-moira-work/char3d-blender-only/v2/frost"
+# 전체(약 1분 반): 마스크 -> 부위 메시 -> 텍스처 굽기 -> glb -> 원본 대 렌더 -> rig_build -> rig_clips(6개) -> 동작 시트 -> rig_check
+& $PY tools/art/char_from_sheets.py --config tools/art/char_configs/frost.json --work $W
+# 걸음별: --stage geom|bake|glb|views|rig|poses|check   (views는 $W/compare.png, compare_head.png, poses는 $W/poses_sheet.png)
+& $PY tools/art/char_render.py game --model $W/final.glb --model chapter1/art/rigged_mage/v01/mage_animated.glb --out $W/game   # 게임 카메라 조건 320x180
+```
+
+- 부위(`char_geom.py`): 몸통, 목, 머리(목으로 좁힘), 머리카락 굵은 관 여러 개(locks)와 땋은 머리(braid), 팔 둘(손바닥 + 손가락 다섯 관), 다리 둘, 장화 발(밑창 그림에서 잰 폭), 치마 겹마다 바깥·속 껍질(바지면 `skirt` 없음).
+- 굽기(`char_from_sheets.py`): 시점마다 깊이 지도를 만들어 가려진 텍셀은 그 시점 색을 안 쓴다(팔은 따로 크게 키워 몸통이 팔 색에 안 물든다). 가장 정면에 가까운 시점이 이기고 `bake.margin` 안쪽만 섞는다(생성 그림끼리 기하가 어긋나 얼굴이 겹쳐 보이는 것을 막음). 3/4 그림의 카메라는 윤곽 겹침으로 맞춘다. 머리 클로즈업은 눈 두 점으로 크기·위치를 맞춘다(`head_views`). 못 본 텍셀은 같은 부위의 가장 가까운 본 텍셀 색을 잇는다. 그림 속 조명은 `flatten`(색 덩어리별 밝기 평탄화)으로 일부 덜어 낸다(효과가 작다: 보고서의 수치).
+- 설정 JSON(`tools/art/char_configs/<이름>.json`)이 캐릭터마다 다른 모든 것이다: 그림 경로와 시점별 발·정수리 행·가운데 열(+가장자리 `trim`, 이웃 그림이 걸치면 `window`), 몸통 폭 표(손으로 정한 값), 부위 행 구간, 머리카락 locks, 치마 겹, 장화 구간. `rig` 키는 rig_build/rig_clips에 넘기는 설정이다.
+- **새 캐릭터(화염 등)**: ① 그림 세 장의 크기를 `figure_mask`로 확인(배경이 단색 회색이어야 함) ② 설정을 `frost.json`(치마) 또는 `storm.json`(바지)에서 복사해 views 숫자부터 맞춘다 ③ `--stage bake`, `--stage glb`, `--stage views` 순으로 돌려 compare.png를 보며 몸통 표·치마 구간을 고친다 ④ 전체를 돌린다. 걸린 품은 번개 한 번의 실측이 보고서에 있다.
+- 화염·번개 고해상 그림이 오면: `tools/art/char_configs/ember.json`(틀만, 값은 냉기에서 복사)과 `storm.json`의 `views.*.image`를 새 그림 이름으로 바꾸고 위 전체 명령. 화염의 어깨 갑옷은 `rig_parts.py`로 별도 부품.
+- 자체 검사: `python tools/art/test_char_from_sheets.py`(Blender 없이), `RIG_BLENDER_TESTS=1`이면 번개를 끝까지(그림이 있을 때).
+
 ## 아는 한계
 
 - 몸·옷·얼굴의 조형은 이 도구가 하지 않는다(생성 도구나 모델러의 몫). 동작의 손맛과 미감은 사람이 평가한다.

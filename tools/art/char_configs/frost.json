@@ -1,0 +1,55 @@
+{
+  "_about": "냉기 마녀 설정. 좌표는 모두 그림 픽셀(정면·후면 1024x1536 기준 열/행). 행 구간표와 손으로 정한 값은 렌더를 보고 한 번 맞춘 것이다.",
+  "name": "frost",
+  "height": 2.02,
+  "art_root": "_local/art/3d-sheets/frost/hires/",
+  "views": {
+    "front": {"image": "front-r1.png", "feet": 1469, "top": 24, "cx": 511},
+    "side":  {"image": "side-r1.png",  "feet": 1498, "top": 17, "cx": 500},
+    "back":  {"image": "back-r1.png",  "feet": 1498, "top": 26, "cx": 511},
+    "3q":    {"image": "3q-r1.png", "az": -35, "fit": true, "fit_starts": [-25, -35, -45]}
+  },
+  "mask": {"threshold": 22},
+  "head_views": [{"name": "hfront", "image": "hfront-r1.png", "ref": "front", "groups": ["head"], "qual": 1.4}],
+  "flatten": {"strength": 0.8, "clusters": 12, "clamp": [0.65, 1.6]},
+  "bake": {"power": 4.0, "texture": 2048, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
+  "torso": {
+    "y0": 236, "y1": 700, "step": 12, "S": 24, "mask_from": 440, "side_from": 410, "hip_from": 500,
+    "key_y": [235, 255, 270, 290, 320, 350, 380, 410, 440],
+    "key_half_width": [34, 58, 104, 122, 118, 112, 104, 90, 72],
+    "key_zf": [462, 448, 430, 412, 398, 385, 376, 384, 392],
+    "key_zb": [540, 552, 558, 562, 564, 562, 558, 556, 552],
+    "hip": {"y": [500, 545, 600, 650, 700], "half_width": [82, 90, 92, 92, 88], "zf": [400, 400, 400, 398, 396], "zb": [552, 554, 556, 560, 556]}
+  },
+  "neck": {"y": [188, 210, 232, 252, 266], "half_width": [27, 26, 26, 30, 44], "half_depth": [30, 29, 29, 34, 48], "zc": 508},
+  "head": {"top_rows": [26, 30, 36, 44, 54], "y1": 203, "step": 7, "S": 20, "x_pick": 500, "dens": 1.6,
+           "taper": {"from_y": 165, "to_y": 203, "hw_end": 40, "hd_end": 44, "zc_end": 506}},
+  "hair": {
+    "dens": 1.0,
+    "z_y": [100, 170, 260, 350, 470], "z_c": [575, 596, 604, 604, 592],
+    "locks": [
+      {"x": 468, "y_top": 130, "y_end": 440, "r": 24, "sway": 6, "waves": 1.5, "rings": 14},
+      {"x": 500, "y_top": 120, "y_end": 468, "r": 26, "sway": -5, "waves": 1.5, "rings": 14, "z_off": 6},
+      {"x": 532, "y_top": 120, "y_end": 472, "r": 26, "sway": 5, "waves": 1.5, "rings": 14, "z_off": 6},
+      {"x": 562, "y_top": 130, "y_end": 450, "r": 24, "sway": -6, "waves": 1.5, "rings": 14}
+    ],
+    "braid": {"points": [[445, 150, 480], [440, 200, 478], [432, 250, 455], [424, 300, 403], [416, 340, 386], [410, 372, 384]],
+              "radius": [22, 21, 19, 17, 14, 11], "rings": 14}
+  },
+  "arm": {"y0": 380, "y1": 756, "min_dx": 110, "top_extrap": [300, 330, 356], "top_r": [34, 34, 33],
+          "depth_y": [300, 740], "depth_z": [560, 500], "hand_rings": 6, "flat": 0.85,
+          "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105}},
+  "leg": {"y0": 745, "y1": 1398, "step": 14, "min_dx": 20, "extend_up": [700, 722], "depth_k": 0.96},
+  "foot": {"x0": 380, "x1": 556, "step": 12, "y0": 1385, "y1": 1500, "width_x": [380, 420, 470, 520, 552], "width": [16, 26, 29, 25, 22],
+           "sole_image": "boots-r1.png", "sole_box": [1130, 0, 1536, 1024], "wmax": 29},
+  "skirt": {
+    "S": 28, "thick": 4.0, "dens": 1.0, "dens_in": 0.25,
+    "tiers": [
+      {"y0": 508, "y1": 672, "rings": 9, "ramp_y": [508, 565], "top_hw": 86, "top_hd": 76, "k_y": [508, 672], "k": [1.0, 1.0]},
+      {"y0": 590, "y1": 738, "rings": 8, "k_y": [590, 672, 738], "k": [0.9, 0.94, 1.0]}
+    ]
+  },
+  "rig": {
+    "mesh": {"min_vertices": 10}
+  }
+}
