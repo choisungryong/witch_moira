@@ -6,11 +6,22 @@ extends SceneTree
 ## The policy RNG is a separate RandomNumberGenerator (seeded from run seed + policy index); it never touches the core's streams.
 ## It does not load chapter_profile.gd, never writes the user folder, and --out must be under _local/.
 ##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_builds.gd -- --seeds=11 --runs=5 --primaries=ember,frost,arc --policies=pilot,random,worst,narrow --out=_local/builds/now.json [--rhythm-on]
+##   --no-equip   baseline state (D12 P10): dropped gear is picked up but never worn.   --policies=all   every policy.
+##   15 runs per cell: --runs=15 (seeds 11..25). A cell can be split over processes with --seeds=<first> --runs=<n> and recombined with --merge=<files> --out=...
+##   (merge re-aggregates; it keeps the rhythm_on / no_equip flags of the files, which must agree).
 ## Bot results are stability/balance reference only. Fun is NOT evaluated here.
 const Core = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
 
-const ALL_POLICIES := ["pilot", "random", "worst", "narrow", "greedy_area", "greedy_single", "greedy_chain", "spread"]
+## "synergy_now" is appended LAST on purpose: the policy RNG seed uses the index in this list, so inserting earlier would change the old runs.
+const ALL_POLICIES := ["pilot", "random", "worst", "narrow", "greedy_area", "greedy_single", "greedy_chain", "spread", "synergy_now"]
+## Loss-cause classification (D12 P8, adapted to what the core exposes; see classify_end). The window is the last 30 s of game time.
+const CAUSE_WINDOW_TICKS := 1800
+const CROWD_ALIVE_SHARE := 0.8
+const STRONG_FIGHT_FACTOR := 1.5
+const ELITE_WINDOW_S := 8.0
+const CHAMPION_WINDOW_S := [25.0, 30.0, 40.0]
+const CAUSES := ["crowd", "strong", "both", "other"]
 ## The card data has NO role field (only skill id, kind, numeric effects). Roles are assigned here by what the skill's numbers do:
 ## ember = projectiles + radius + death_burst (area burst), frost = pierce + slow + freeze + shatter (single line / control),
 ## arc = chain_targets + branches (chain). This table is a tool-side convention, not data.
@@ -27,6 +38,9 @@ const DIVERGE_DMG := 1.25
 var rhythm_on := false
 ## Step cap per run in seconds of game time. A run still going at the cap is recorded as "timeout" (neither win nor defeat).
 var cap_s := 600.0
+## --no-equip: the baseline state of D12 P10 (8 empty gear slots). Items still drop and are picked up exactly as before (same RNG flow);
+## the tool only hides the inventory from pilot.decide() for that one call so the pilot never finds anything to equip.
+var no_equip := false
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -55,6 +69,7 @@ func execute() -> void:
 				for p in spec.split(","): policies.append(String(p))
 		elif arg.begins_with("--out="): out = arg.trim_prefix("--out=")
 		elif arg == "--rhythm-on": rhythm_on = true
+		elif arg == "--no-equip": no_equip = true
 		elif arg.begins_with("--cap="): cap_s = maxf(60.0, float(arg.trim_prefix("--cap=")))
 		elif arg.begins_with("--merge="):
 			for p in arg.trim_prefix("--merge=").split(","): merge.append(String(p))
@@ -88,6 +103,7 @@ func execute() -> void:
 				quit(2)
 				return
 			rhythm_on = bool(doc.rhythm_on)
+			no_equip = bool(doc.get("no_equip", false))
 			for r in doc.runs:
 				runs.append(r)
 				var pk: String = "chapter1.skill." + String(r.primary)
@@ -112,11 +128,15 @@ func execute() -> void:
 					quit(2)
 					return
 				runs.append(r)
-				print("RUN %-13s %-5s seed=%d %-7s secs=%6.1f kills=%4d lvl=%2d hp_end=%.2f potions=%d death=%s build=%s" % [r.policy, r.primary, r.seed, r.mode, r.secs, r.kills, r.level, r.hp_end, r.potions, r.death_beat, r.build_text])
+				print("RUN %-13s %-5s seed=%d %-7s secs=%6.1f kills=%4d lvl=%2d hp_end=%.2f potions=%d death=%s cause=%s equipped=%d inv=%d build=%s" % [r.policy, r.primary, r.seed, r.mode, r.secs, r.kills, r.level, r.hp_end, r.potions, r.death_beat, r.cause, r.equipped_end, r.inventory_end, r.build_text])
 	var groups := aggregate(runs, prims, policies)
 	var gaps := gap_table(groups, prims, policies)
+	var summary := policy_summary(groups, prims, policies)
+	var verdict := rank_verdict(summary, groups, prims)
 	print_tables(groups, gaps, prims, policies)
-	var result := {"rhythm_on": rhythm_on, "cap_s": cap_s, "seeds": seeds, "primaries": prims, "policies": policies, "runs": runs, "groups": groups, "gaps": gaps,
+	print_summary(summary, verdict, prims)
+	var result := {"rhythm_on": rhythm_on, "no_equip": no_equip, "summary": summary, "rank_verdict": verdict, "cause_rules": {"window_s": CAUSE_WINDOW_TICKS / 60, "crowd_alive_share_of_cap": CROWD_ALIVE_SHARE,
+			"strong_fight_factor": STRONG_FIGHT_FACTOR, "elite_window_s": ELITE_WINDOW_S, "champion_window_s": CHAMPION_WINDOW_S},"cap_s": cap_s, "seeds": seeds, "primaries": prims, "policies": policies, "runs": runs, "groups": groups, "gaps": gaps,
 		"thresholds": {"diverge_kpm_ratio_below": DIVERGE_KPM, "diverge_dmg30_ratio_above": DIVERGE_DMG},
 		"roles": ROLE_OF, "note": "pilot movement/equipment/potions, no permanent tree, first_boss_kill=true; policy changes only the grace pick; bot results are stability/balance reference only, fun is unevaluated"}
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
@@ -133,7 +153,7 @@ func execute() -> void:
 		for pol in policies:
 			var g: Dictionary = groups[group_key(String(pol), String(pr))]
 			brief.append({"policy": pol, "primary": String(pr).trim_prefix("chapter1.skill."), "n": g.n, "wins": g.wins, "win_rate": g.win_rate, "secs_median": g.secs_median})
-	print("CHAPTER1_SIM_BUILDS_RESULT " + JSON.stringify({"out": out, "rhythm_on": rhythm_on, "groups": brief}))
+	print("CHAPTER1_SIM_BUILDS_RESULT " + JSON.stringify({"out": out, "rhythm_on": rhythm_on, "no_equip": no_equip, "groups": brief, "rank_verdict": verdict}))
 	quit(0)
 
 # ---------- growth pick policies ----------
@@ -163,6 +183,43 @@ func argmax_pilot(cards: Array, primary: String) -> int:
 		var s := pilot_score(cards[i], primary)
 		if s > bs:
 			bs = s
+			best = i
+	return best
+
+## Policy "synergy_now": plays the synergies the CURRENT data really has. There are exactly two (read from the data, not invented):
+##  (1) Mark resonance (combat_tuning.json marks {mark_bps 9000, mark_ticks 360}; chapter_core.gd hit logic): a hit of the primary on an enemy
+##      that a secondary skill marked in the last 6 s deals +90% per live mark. A secondary only marks once it has been unlocked (a card) and
+##      it marks as many enemies as it hits, so a ranked secondary keeps more marks alive. Both secondaries unlocked = up to +180%.
+##  (2) Crystal card + evolution (growth_quality37.json passive_id / evolution): evolve:<skill> needs rank 4 AND that skill's passive card.
+## There is no skill tree in the baseline state (no permanent tree) and no cross-skill rule beyond these two.
+## Order: evolve the primary > primary rank 2 (the base) > unlock a secondary (opens a mark) > the primary's crystal card > primary rank 3-4
+##        > the lowest-ranked secondary's rank card (keeps marks alive) > pilot score.
+## ---- Place for the new skill composition (run_spells.json does NOT exist yet; not created here) ----
+## When docs/specs/D12 B0's run_spells.json arrives, build this policy from its fields instead of the table above: read each spell's role
+## (single / around-hero circle / other), its pair field (which spell/element it combos with) and its axis (damage / range) from the file,
+## and score a card by "fills a missing role" + "adds to the axis the pair needs" + "completes a pair". Keep the old two-rule version as
+## "synergy_now" so the old numbers stay reproducible; name the new one e.g. "synergy_spells".
+func pick_synergy_now(cards: Array, snap: Dictionary, primary: String) -> int:
+	var best := 0
+	var bs := -1
+	for i in cards.size():
+		var c: Dictionary = cards[i]
+		var sk: String = String(c.skill_id)
+		var rk: int = int(snap.ranks.get(sk, 0))
+		var prim_rk: int = int(snap.ranks.get(primary, 1))
+		var score := 10
+		if sk == primary:
+			if c.kind == "evolve": score = 100
+			elif c.kind == "rank" and int(c.rank) == 2: score = 90
+			elif c.kind == "passive": score = 70
+			elif c.kind == "rank": score = 60
+			else: score = 50
+		else:
+			if c.kind == "unlock": score = 80 if prim_rk >= 2 else 55
+			elif c.kind == "rank": score = 55 - rk * 3
+			else: score = 20
+		if score > bs:
+			bs = score
 			best = i
 	return best
 
@@ -196,6 +253,8 @@ func pick(policy: String, cards: Array, run, rng: RandomNumberGenerator) -> int:
 					key = k
 					best2 = i
 			return best2
+		"synergy_now":
+			return pick_synergy_now(cards, snap, primary)
 		"greedy_area", "greedy_single", "greedy_chain":
 			var role := policy.trim_prefix("greedy_")
 			var best3 := -1
@@ -247,6 +306,9 @@ func play(seed_: int, prim: String, policy: String) -> Dictionary:
 	var hits_total := 0
 	var min_hp := 1.0
 	var marks: Array = []
+	var samples: Array = []
+	var hit_log: Array = []
+	var elite_first: Dictionary = {}
 	while run.mode not in ["victory", "defeat"] and guard < int(cap_s * 60.0):
 		if policy != "pilot":
 			var g2 := 0
@@ -259,7 +321,14 @@ func play(seed_: int, prim: String, policy: String) -> Dictionary:
 				if not run.choose(offer.token, chosen.id):
 					push_error("sim_builds: choice rejected %s" % str(run.errors))
 					return {}
+		var hidden_inv: Array = []
+		if no_equip:
+			# Hide the inventory from the pilot for this call only; restored before the core steps, so drops/pickups are untouched.
+			hidden_inv = run.inventory.duplicate()
+			run.inventory.clear()
 		var mv: Vector2 = pilot.decide()
+		if no_equip:
+			run.inventory.assign(hidden_inv)
 		run.step(mv)
 		guard += 1
 		var adv: int = int(run.tick) - last_tick
@@ -282,6 +351,18 @@ func play(seed_: int, prim: String, policy: String) -> Dictionary:
 				beats[bn0].dmg += d
 				dmg_total += d
 				hits_total += 1
+				# Attribution is approximate: `from` is the attacker's position for melee/circle hits and a projectile or hazard position
+				# otherwise. A hit counts as "from a strong enemy" when the nearest living enemy within 1.5 m of `from` is an elite.
+				var src_elite := false
+				var from_pos: Vector2 = ev.get("from", Vector2(1.0e6, 1.0e6))
+				var nd := 2.25
+				for e in run.enemies.values():
+					if e.hp_raw <= 0: continue
+					var dd: float = from_pos.distance_squared_to(e.position)
+					if dd < nd:
+						nd = dd
+						src_elite = bool(e.elite)
+				hit_log.append([int(ev.tick), d, src_elite])
 		var bn := cur_beat if event_beats else beat_by_time(sec)
 		if not beats.has(bn): beats[bn] = new_beat()
 		var b: Dictionary = beats[bn]
@@ -294,6 +375,24 @@ func play(seed_: int, prim: String, policy: String) -> Dictionary:
 		if adv > 0 and int(run.tick) % 6 == 0:
 			b.alive_sum += n
 			b.alive_n += 1
+			# One sample per 0.1 s for the loss-cause window: living enemies, elites alive and how long the longest-lived one has been fought.
+			var elite_n := 0
+			var fight_ratio := 0.0
+			var fight_s := 0.0
+			var live_ids: Dictionary = {}
+			for e in run.enemies.values():
+				if e.hp_raw <= 0 or not bool(e.elite): continue
+				elite_n += 1
+				var eid: int = int(e.id)
+				live_ids[eid] = true
+				if not elite_first.has(eid): elite_first[eid] = int(run.tick)
+				var win_s := ELITE_WINDOW_S
+				if String(e.get("title_key", "")) != "": win_s = float(CHAMPION_WINDOW_S[clampi(int(run.zone), 0, 2)])
+				var fs: float = float(int(run.tick) - int(elite_first[eid])) / 60.0
+				if fs / win_s > fight_ratio:
+					fight_ratio = fs / win_s
+					fight_s = fs
+			samples.append([int(run.tick), n, elite_n, fight_ratio, fight_s])
 		min_hp = minf(min_hp, float(run.hero.hp_raw) / maxf(1.0, float(run.hero.max_hp_raw)))
 	var snap: Dictionary = run.growth.snapshot()
 	var secs: float = float(run.tick) / 60.0
@@ -310,13 +409,59 @@ func play(seed_: int, prim: String, policy: String) -> Dictionary:
 	var beat_out: Dictionary = {}
 	for k in beats: beat_out[k] = beats[k]
 	var pos: Vector2 = run.hero.position
-	return {"policy": policy, "primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": mode, "secs": snappedf(secs, 0.1),
+	var cause_info: Dictionary = {"cause": "-"} if mode == "victory" else classify_end(samples, hit_log, int(run.tick), int(run.tuning.alive_cap))
+	return {"no_equip": no_equip, "equipped_end": run.equipped.size(), "inventory_end": run.inventory.size(), "cause": cause_info.cause, "cause_detail": cause_info,
+		"policy": policy, "primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": mode, "secs": snappedf(secs, 0.1),
 		"kills": int(run.kills), "level": int(snap.level), "hp_end": snappedf(hp_end, 0.01), "hp_min": snappedf(min_hp, 0.01),
 		"potions": int(pilot.potion_uses), "dmg_total": snappedf(dmg_total, 0.001), "hits_total": hits_total,
 		"death_beat": ("-" if mode == "victory" else (end_beat if mode == "defeat" else "T:" + end_beat)), "death_s": snappedf(secs, 0.1) if mode == "defeat" else -1.0,
 		"death_zone": int(run.zone) if mode == "defeat" else -1, "death_pos": [snappedf(pos.x, 0.1), snappedf(pos.y, 0.1)] if mode == "defeat" else [],
 		"ranks": ranks, "passives": passives, "evolved": evolved, "build_text": build_text, "beat_source": "beat_started event" if event_beats else "time table (A2)",
 		"picks": pilot.selections.map(func(s): return String(s.id).replace("chapter1.", "")), "beats": beat_out, "marks": marks}
+
+## Loss-cause classification for a run that ended in defeat or at the time cap (state of the last 30 s of game time).
+## D12 P8 gives: crowd = living enemies >= 80% of the cap and >= 60% of the damage from common contact; single-shortage = an elite/guardian/boss
+## alive with >= 50% of the damage from it OR a fight longer than the allowed window x 1.5. The core's hero_hit event has no attacker id, so:
+##  - crowd  : mean living enemies over the last 30 s >= CROWD_ALIVE_SHARE x tuning.alive_cap (the 60%-of-damage clause is NOT used; stated limit).
+##  - strong : at the end an elite is alive whose fight time (time since first seen alive) > STRONG_FIGHT_FACTOR x its window
+##             (plain elite 8 s; seal champion 25/30/40 s by zone, D12 P2), OR >= 50% of the damage taken in the window is attributed to elites
+##             (nearest-living-enemy attribution of the hit position; undercounts elite projectiles/hazards) with an elite alive at some sample.
+##  - both   : both of the above. other : neither (a fast death, charges, ranged fire...).
+## A time-cap run (the hero neither died nor won) is classified the same way and kept apart as a timeout.
+func classify_end(samples: Array, hit_log: Array, end_tick: int, alive_cap: int) -> Dictionary:
+	var from_tick := end_tick - CAUSE_WINDOW_TICKS
+	var alive_sum := 0.0
+	var alive_n := 0
+	var elite_samples := 0
+	for s in samples:
+		if int(s[0]) < from_tick: continue
+		alive_sum += float(s[1])
+		alive_n += 1
+		if int(s[2]) > 0: elite_samples += 1
+	var alive_mean := alive_sum / maxf(1.0, float(alive_n))
+	var last_ratio := 0.0
+	var last_fight_s := 0.0
+	var last_elite := 0
+	if not samples.is_empty():
+		var ls: Array = samples[samples.size() - 1]
+		last_elite = int(ls[2])
+		last_ratio = float(ls[3])
+		last_fight_s = float(ls[4])
+	var dmg_all := 0.0
+	var dmg_elite := 0.0
+	for h in hit_log:
+		if int(h[0]) < from_tick: continue
+		dmg_all += float(h[1])
+		if bool(h[2]): dmg_elite += float(h[1])
+	var elite_share := dmg_elite / dmg_all if dmg_all > 0.0 else 0.0
+	var crowd: bool = alive_mean >= CROWD_ALIVE_SHARE * float(alive_cap)
+	var strong: bool = (last_elite > 0 and last_ratio > STRONG_FIGHT_FACTOR) or (elite_samples > 0 and elite_share >= 0.5)
+	var cause := "other"
+	if crowd and strong: cause = "both"
+	elif crowd: cause = "crowd"
+	elif strong: cause = "strong"
+	return {"cause": cause, "alive_mean_30s": snappedf(alive_mean, 0.1), "alive_cap": alive_cap, "elite_alive_samples_share": snappedf(float(elite_samples) / maxf(1.0, float(alive_n)), 0.01),
+		"elite_fight_s_end": snappedf(last_fight_s, 0.1), "elite_fight_ratio_end": snappedf(last_ratio, 0.01), "elite_dmg_share_30s": snappedf(elite_share, 0.01), "dmg_30s": snappedf(dmg_all, 0.001)}
 
 # ---------- aggregation ----------
 func group_key(policy: String, prim: String) -> String:
@@ -350,6 +495,11 @@ func aggregate(runs: Array, prims: Array, policies: Array) -> Dictionary:
 			var kills_pm: Array = []
 			var death_beats: Dictionary = {}
 			var death_times: Array = []
+			var defeat_causes: Dictionary = {}
+			var timeout_causes: Dictionary = {}
+			for c in CAUSES:
+				defeat_causes[c] = 0
+				timeout_causes[c] = 0
 			var rank_sum: Dictionary = {}
 			var pas := 0.0
 			var evo := 0.0
@@ -365,6 +515,10 @@ func aggregate(runs: Array, prims: Array, policies: Array) -> Dictionary:
 				if r.mode == "victory": hp_end.append(r.hp_end)
 				else:
 					death_beats[r.death_beat] = int(death_beats.get(r.death_beat, 0)) + 1
+					var cz := String(r.get("cause", "other"))
+					if not cz in CAUSES: cz = "other"
+					if r.mode == "defeat": defeat_causes[cz] = int(defeat_causes[cz]) + 1
+					else: timeout_causes[cz] = int(timeout_causes[cz]) + 1
 					if r.mode == "defeat": death_times.append(r.death_s)
 				for k in r.ranks: rank_sum[k] = float(rank_sum.get(k, 0.0)) + float(r.ranks[k])
 				pas += float(r.passives.size())
@@ -400,9 +554,77 @@ func aggregate(runs: Array, prims: Array, policies: Array) -> Dictionary:
 				"win_rate": snappedf(float(wins) / maxf(1.0, float(n)), 0.01), "secs_median": snappedf(median(secs), 0.1), "secs_min": snappedf(float(secs.min()) if n > 0 else 0.0, 0.1),
 				"secs_max": snappedf(float(secs.max()) if n > 0 else 0.0, 0.1), "hp_end_mean_wins": snappedf(mean(hp_end), 0.01), "potions_mean": snappedf(mean(potions), 0.1),
 				"dmg_total_mean": snappedf(mean(dmg), 0.01), "kills_per_min_mean": snappedf(mean(kills_pm), 1.0), "level_mean": snappedf(mean(level), 0.1),
-				"death_beats": death_beats, "death_times": death_times, "rank_mean": rank_mean, "passives_mean": snappedf(pas / maxf(1.0, float(n)), 0.1),
+				"defeat_causes": defeat_causes, "timeout_causes": timeout_causes, "death_beats": death_beats, "death_times": death_times, "rank_mean": rank_mean, "passives_mean": snappedf(pas / maxf(1.0, float(n)), 0.1),
 				"evolved_mean": snappedf(evo / maxf(1.0, float(n)), 0.1), "per_beat": per_beat}
 	return groups
+
+## Per policy across the primaries: win rate, defeat-cause shares, timeout share. n counts every run of the policy (primaries x runs).
+func policy_summary(groups: Dictionary, prims: Array, policies: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for pol in policies:
+		var n := 0
+		var wins := 0
+		var timeouts := 0
+		var defeats := 0
+		var dc: Dictionary = {}
+		var tc: Dictionary = {}
+		for c in CAUSES:
+			dc[c] = 0
+			tc[c] = 0
+		var per_primary: Dictionary = {}
+		var kpm_sum := 0.0
+		var secs_sum := 0.0
+		var boss_end := 0
+		for pr in prims:
+			var short := String(pr).trim_prefix("chapter1.skill.")
+			var g: Dictionary = groups[group_key(String(pol), short)]
+			n += int(g.n)
+			wins += int(g.wins)
+			timeouts += int(g.timeouts)
+			defeats += int(g.n) - int(g.wins) - int(g.timeouts)
+			for c in CAUSES:
+				dc[c] = int(dc[c]) + int(g.defeat_causes[c])
+				tc[c] = int(tc[c]) + int(g.timeout_causes[c])
+			per_primary[short] = g.win_rate
+			kpm_sum += float(g.kills_per_min_mean)
+			secs_sum += float(g.secs_median)
+			for k in g.death_beats:
+				if String(k).ends_with("전C"): boss_end += int(g.death_beats[k])
+		var dratio: Dictionary = {}
+		for c in CAUSES: dratio[c] = snappedf(float(dc[c]) / float(defeats), 0.01) if defeats > 0 else 0.0
+		out[String(pol)] = {"n": n, "wins": wins, "win_rate": snappedf(float(wins) / maxf(1.0, float(n)), 0.001), "defeats": defeats, "timeouts": timeouts,
+			"timeout_rate": snappedf(float(timeouts) / maxf(1.0, float(n)), 0.001), "defeat_causes": dc, "defeat_cause_ratio": dratio, "timeout_causes": tc, "win_by_primary": per_primary,
+			"kills_per_min_mean": snappedf(kpm_sum / maxf(1.0, float(prims.size())), 1.0), "secs_median_mean_of_primaries": snappedf(secs_sum / maxf(1.0, float(prims.size())), 0.1),
+			"ended_at_boss_beat_non_win": boss_end}
+	return out
+
+## Rank check: target order synergy_now > narrow > random (user's rule, D12 P0). Reports each gap in percentage points, overall and per primary.
+## Holds only when both gaps are strictly positive. Nothing is judged when a needed policy was not run.
+func rank_verdict(summary: Dictionary, groups: Dictionary, prims: Array) -> Dictionary:
+	if not (summary.has("synergy_now") and summary.has("narrow") and summary.has("random")): return {"evaluated": false}
+	var s: float = float(summary.synergy_now.win_rate)
+	var nw: float = float(summary.narrow.win_rate)
+	var r: float = float(summary.random.win_rate)
+	var by_primary: Dictionary = {}
+	for pr in prims:
+		var short := String(pr).trim_prefix("chapter1.skill.")
+		var ps: float = float(groups[group_key("synergy_now", short)].win_rate)
+		var pn: float = float(groups[group_key("narrow", short)].win_rate)
+		var prr: float = float(groups[group_key("random", short)].win_rate)
+		by_primary[short] = {"synergy_minus_narrow_pp": snappedf((ps - pn) * 100.0, 0.1), "narrow_minus_random_pp": snappedf((pn - prr) * 100.0, 0.1), "holds": ps > pn and pn > prr}
+	var d1 := snappedf((s - nw) * 100.0, 0.1)
+	var d2 := snappedf((nw - r) * 100.0, 0.1)
+	var extra: Dictionary = {}
+	if summary.has("pilot"): extra["synergy_minus_pilot_pp"] = snappedf((s - float(summary.pilot.win_rate)) * 100.0, 0.1)
+	if summary.has("spread"): extra["random_minus_spread_pp"] = snappedf((r - float(summary.spread.win_rate)) * 100.0, 0.1)
+	# When every win rate is saturated (e.g. 0% in the no-equip baseline) the win gap says nothing; the same order is also checked on kills/min.
+	var ks: float = float(summary.synergy_now.kills_per_min_mean)
+	var kn: float = float(summary.narrow.kills_per_min_mean)
+	var kr: float = float(summary.random.kills_per_min_mean)
+	extra["kills_per_min_synergy_narrow_random"] = [ks, kn, kr]
+	extra["kills_per_min_order_holds"] = ks > kn and kn > kr
+	return {"evaluated": true, "holds": d1 > 0.0 and d2 > 0.0, "synergy_minus_narrow_pp": d1, "narrow_minus_random_pp": d2, "synergy_minus_random_pp": snappedf((s - r) * 100.0, 0.1),
+		"by_primary": by_primary, "extra": extra, "rule": "synergy_now > narrow > random; each gap > 0 pp. Bot result, fun unevaluated"}
 
 ## Per primary and policy: per beat, kpm and dmg30 ratio to the pilot policy, and the first beat that crosses the thresholds.
 ## Caveat (survivorship): a beat is only counted from runs that reached it (>= 5 s), so a policy that dies early is compared on a thinner sample.
@@ -431,6 +653,26 @@ func gap_table(groups: Dictionary, prims: Array, policies: Array) -> Dictionary:
 	return out
 
 # ---------- printing ----------
+func print_summary(summary: Dictionary, verdict: Dictionary, prims: Array) -> void:
+	print("== SUMMARY: per policy over %d primaries (rhythm_on=%s no_equip=%s) ==" % [prims.size(), str(rhythm_on), str(no_equip)])
+	print("policy         n   win%%  wins/def/timeout | defeat cause crowd/strong/both/other (share of defeats) | timeout%% | win%% by primary")
+	for pol in summary:
+		var g: Dictionary = summary[pol]
+		var dc: Dictionary = g.defeat_causes
+		var dr: Dictionary = g.defeat_cause_ratio
+		var wp: Array = []
+		for k in g.win_by_primary: wp.append("%s %.0f%%" % [k, float(g.win_by_primary[k]) * 100.0])
+		print("%-13s %3d %5.1f%%  %3d/%3d/%3d | %d/%d/%d/%d (%.0f%%/%.0f%%/%.0f%%/%.0f%%) | %5.1f%% | %s" % [pol, g.n, float(g.win_rate) * 100.0, g.wins, g.defeats, g.timeouts,
+			dc.crowd, dc.strong, dc.both, dc.other, float(dr.crowd) * 100.0, float(dr.strong) * 100.0, float(dr.both) * 100.0, float(dr.other) * 100.0, float(g.timeout_rate) * 100.0, " ".join(PackedStringArray(wp))])
+	if not bool(verdict.evaluated):
+		print("RANK: not evaluated (needs synergy_now, narrow, random)")
+		return
+	print("RANK synergy_now > narrow > random: %s | synergy-narrow %+.1f pp, narrow-random %+.1f pp, synergy-random %+.1f pp" % ["HOLDS" if verdict.holds else "DOES NOT HOLD", verdict.synergy_minus_narrow_pp, verdict.narrow_minus_random_pp, verdict.synergy_minus_random_pp])
+	for k in verdict.by_primary:
+		var v: Dictionary = verdict.by_primary[k]
+		print("  %-5s synergy-narrow %+.1f pp, narrow-random %+.1f pp -> %s" % [k, v.synergy_minus_narrow_pp, v.narrow_minus_random_pp, "holds" if v.holds else "no"])
+	if not verdict.extra.is_empty(): print("  extra: %s" % str(verdict.extra))
+
 func print_tables(groups: Dictionary, gaps: Dictionary, prims: Array, policies: Array) -> void:
 	print("== TABLE A: policy x primary (rhythm_on=%s) ==" % str(rhythm_on))
 	print("policy        prim  n  win%%  secs(med min-max)   kill/min lvl  hp_end potions dmg(xHP) | death beats | final build (mean ranks, passives, evolved)")
