@@ -118,7 +118,7 @@ const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const UsageProbe := preload("res://chapter1/tests/asset_usage_probe.gd")
 const BurstCapture := preload("res://chapter1/tests/burst_capture.gd")
-const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
+const SpellsPick := preload("res://chapter1/tests/spells_pick.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -513,39 +513,15 @@ func _on_physics_frame() -> void:
 
 ## RS0: the shipped run_spells.json with "enabled": true, parked in the core of this process before start().
 func _enable_run_spells() -> String:
-	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(RunSpellsDoc.DEFAULT_PATH))
-	if not doc is Dictionary: return "run_spells.json could not be read"
-	doc["enabled"] = true
-	if not view.run.set_run_spells(doc): return "run_spells document refused: "+str(view.run.errors)
+	var problem := SpellsPick.enable(view.run)
+	if not problem.is_empty(): return problem
 	print("HUD_SPELLS_ON ",JSON.stringify({"pick":spells_pick}))
 	return ""
 
-## RS0 pick rule. Same order the built-in pilot uses (chapter_pilot.decide) for everything the new rules do not name.
-func _spells_score(run: RefCounted, card: Dictionary, primary_id: String) -> int:
-	var spell: Dictionary = run.spells.get("spells",{}).get(String(card.skill_id),{})
-	var is_ring := String(spell.get("role","")) == "ring"
-	if card.kind == "unlock" and is_ring: return 300
-	if card.kind == "axis" and card.skill_id == primary_id and card.axis == "damage": return 200
-	if card.kind == "axis" and is_ring and card.axis == "reach": return 150
-	if card.skill_id == primary_id: return 100 if card.kind == "evolve" else (90 if card.kind == "rank" else 80)
-	if card.kind == "unlock": return 65
-	if card.kind == "evolve": return 60
-	if card.kind == "rank": return 50
-	return 10
-
+## RS0 pick rule: chapter1/tests/spells_pick.gd (shared with report_audio_requests.gd and sfx_capture.gd since AU-RS0).
 func _spells_pick(run: RefCounted) -> void:
-	var offer: Dictionary = run.get_offer()
-	if offer.is_empty() or offer.cards.is_empty(): return
-	var primary_id := String(run.growth.snapshot().primary)
-	var picked: Dictionary = offer.cards[0]
-	var best := -1
-	for card in offer.cards:
-		var score := _spells_score(run,card,primary_id)
-		if score > best: best = score; picked = card
-	var row := {"tick":int(run.tick),"level":int(offer.level),"id":String(picked.id),"kind":String(picked.kind),"score":best,"offered":offer.cards.map(func(c): return String(c.id))}
-	if not run.choose(offer.token,picked.id):
-		push_error("hud_dump: the synergy pick was rejected: "+str(run.errors))
-		return
+	var row := SpellsPick.pick(run,"hud_dump")
+	if row.is_empty(): return
 	spells_picks.append(row)
 	print("HUD_SPELLS_PICK ",JSON.stringify(row))
 	# The built-in pilot hands its pick events to the recorder the same way (chapter_one._pilot_input).

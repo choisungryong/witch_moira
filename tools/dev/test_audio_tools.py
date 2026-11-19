@@ -130,6 +130,26 @@ def main():
         rules = mo.parse_rules()
         check('parse_rules reads SILENT from combat_audio.gd', 'lightning' in rules['silent'], str(rules['silent']))
 
+        # AU-RS1: new run_spells names (no files yet), per-call gain_db, stepped pitch, ring hits left out of the impact alignment
+        check('parse_rules reads the pitch tables and the new names', rules['pitches'] == [.97, 1.0, 1.035] and len(rules['pitch_steps']) == 5
+              and 'ring_body' in rules['stepped'] and 'ring_body' not in rules['counts'], str((rules['pitches'], rules['pitch_steps'], rules['stepped'])))
+        check('every new name has a cooldown and a gain', all(c in rules['cooldowns'] and c in rules['gains'] for c in rules['stepped']))
+        fake = dict(rules, counts=dict(rules['counts'], ring_body=1), cooldowns=dict(rules['cooldowns'], ring_body=20), gains=dict(rules['gains'], ring_body=1.0))
+        body = [np.full(4800, .1)]
+        reqs = [[100, 'ring_body', 0, 1, 'cast(ring)', -6.0], [200, 'ring_body', 0, 1, 'cast(ring)', 0.0], [300, 'ring_body', 0, 1, 'cast(ring)'], [310, 'ring_body', 0, 1, 'cast(ring)']]
+        pl, st = mo.simulate(reqs, fake, {'ring_body': body})
+        check('stepped pitch goes one step per play, apart from the variant', [e['pitch'] for e in pl] == rules['pitch_steps'][:3], str([e['pitch'] for e in pl]))
+        base_gain = rules['master'] * rules['one_shot_gain']
+        check('gain_db trims one call (-6 dB), a missing column is 0 dB', abs(pl[0]['gain'] / base_gain - 10 ** (-6 / 20)) < 1e-9 and abs(pl[1]['gain'] - base_gain) < 1e-9 and abs(pl[2]['gain'] - base_gain) < 1e-9,
+              str([e['gain'] for e in pl]))
+        check('cooldown of a new name applies (310 is within 20 ticks of 300)', st['ring_body']['cooldown_skip'] == 1 and st['ring_body']['played'] == 3, str(st))
+        pl, st = mo.simulate([[100, 'ring_body', 0, 1, 'cast(ring)', 0.0]], rules, {})
+        check('a name without files is counted as no_file_skip and makes no sound', not pl and st['ring_body'].get('no_file_skip') == 1, str(st))
+        import audio_scene_audition as sa
+        cap_rows = [{'events': [{'type': 'cast', 'skill_id': 'r', 'shape': 'ring'}, {'type': 'hit', 'skill_id': 'r'}, {'type': 'hit', 'skill_id': 'b'}]}]
+        ok, notes, _ = sa.alignment_report({'rows': cap_rows, 'from': 1000, 'frames': 1, 'primary': None}, {'requests': [[1000, 'impact', 0, 1, 'hit']]})
+        check('alignment leaves a ring\'s hits out of the impact count', ok, str(notes))
+
         # ledger check
         led = tmp / 'led'
         led.mkdir()

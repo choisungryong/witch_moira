@@ -108,7 +108,8 @@
       {"path": "tools/dev/audio_measure.py", "use": "소리 파일 측정(길이·피크·음량·무음·대역). --compare-s1로 기준표 대조"},
       {"path": "tools/dev/audio_audition.py", "use": "후보 비교 묶음(음량 맞춤, 정답표 따로)"},
       {"path": "tools/dev/audio_mix_offline.py", "use": "녹음한 한 판에 지금의 재생 규칙을 적용해 WAV로"},
-      {"path": "chapter1/tests/report_audio_requests.gd", "use": "한 판에서 게임이 내는 소리 요청 기록"},
+      {"path": "chapter1/tests/report_audio_requests.gd", "use": "한 판에서 게임이 내는 소리 요청 기록(--run-spells=on --spells-pick=synergy로 켠 판의 새 이벤트 셈까지)"},
+      {"path": "chapter1/tests/sfx_capture.gd", "use": "한 판의 틱 구간을 한 틱 한 장 JPG와 이벤트(events.json)로 뜸. 소리 후보를 실제 장면에 입히는 재료(켠 판: --run-spells=on --spells-pick=synergy)"},
       {"path": "tools/dev/make_drop_sounds.py", "use": "허가된 원본이 없는 드랍 소리 합성"},
       {"path": "tools/dev/audio_ledger_check.py", "use": "소리 출처 기록과 큐 표가 맞는지(AU-run-spells-sound의 새 큐도 이 표에 올린다)"}
     ]},

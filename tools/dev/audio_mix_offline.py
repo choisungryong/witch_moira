@@ -7,8 +7,9 @@
 
 Rules are read from chapter1/presentation/combat_audio.gd so they follow the product code: COUNTS (variants, taken in
 turn), COOLDOWNS (ticks), GAINS, MAX_VOICES (13; voice 0 = ambience loop; one-shots use voices 1..10, and the
-critical cues hurt/drop/equip/pickup/jewel/legend also 11..12), pitch .97/1.0/1.035 by variant, voice gain
-master 0.8 * 0.11 * gain (ambience 0.8 * 0.025). A voice stays busy for file length / pitch seconds. A request while the
+critical cues hurt/drop/equip/pickup/jewel/legend also 11..12), pitch .97/1.0/1.035 by variant (the new run_spells names in DIRS:
+PITCH_STEPS, one step per play), voice gain master 0.8 * 0.11 * gain * the call's gain_db (6th column of a request row; none = 0)
+(ambience 0.8 * 0.025). A request for a name without files (not in COUNTS) is counted as no_file_skip and makes no sound. A voice stays busy for file length / pitch seconds. A request while the
 run is not "playing" is dropped unless it is a UI cue. Playback is linear-interpolated resampling (as the engine does for
 pitch_scale). The master bus has no limiter today, so the sum is written as is (clipping is counted, not hidden).
 Model limits: time is tick/60 (ticks do not advance in the choice screen), the player's real pause is not modelled, no
@@ -32,8 +33,16 @@ def parse_rules(player=am.PLAYER):
     def table(name):
         body = re.search(r'const %s\s*:?=\s*\{(.*?)\}' % name, text, re.S).group(1)
         return {k: float(v) for k, v in re.findall(r'"(\w+)"\s*:\s*([\d.]+)', body)}
-    pitches = [float(v) for v in re.search(r'voice\.pitch_scale\s*=\s*\[([^\]]*)\]', text).group(1).split(',')]
+    # pitch of the old sounds: by variant number (PITCHES; older player files wrote the list inside the voice.pitch_scale line)
+    m = re.search(r'const PITCHES\s*:?=\s*\[([^\]]*)\]', text) or re.search(r'voice\.pitch_scale\s*=\s*\[([^\]]*)\]', text)
+    pitches = [float(v) for v in m.group(1).split(',')]
+    # AU-RS1: the sounds listed in DIRS (the new run_spells names) take their pitch from PITCH_STEPS, one step per play, apart
+    # from the variant number. A player file without these constants has no such sounds.
+    steps = re.search(r'const PITCH_STEPS\s*:?=\s*\[([^\]]*)\]', text)
+    dirs = re.search(r'const DIRS\s*:?=\s*\{(.*?)\}', text, re.S)
     return {
+        'pitch_steps': [float(v) for v in steps.group(1).split(',')] if steps else [],
+        'stepped': re.findall(r'"(\w+)"\s*:', dirs.group(1)) if dirs else [],
         'counts': {k: int(v) for k, v in table('COUNTS').items()}, 'cooldowns': {k: int(v) for k, v in table('COOLDOWNS').items()},
         'gains': table('GAINS'), 'max_voices': int(re.search(r'const MAX_VOICES\s*:?=\s*(\d+)', text).group(1)),
         'master': float(re.search(r'var master_volume\s*:?=\s*([\d.]+)', text).group(1)), 'pitches': pitches,
@@ -56,14 +65,20 @@ def simulate(requests, rules, src):
     """requests: [tick, cue, ui, playing, source...]. Returns (played events, per-cue stats).
     A played event: dict(t, cue, variant, pitch, voice, len_s, gain)."""
     voice_end = [-1.0] * rules['max_voices']
-    last_tick, variants = {}, {}
+    last_tick, variants, pitch_turn = {}, {}, {}
     stats, played = {}, []
     for req in sorted(requests, key=lambda r: r[0]):  # stable: keeps the recorded order inside a tick
         tick, cue, ui, playing = int(req[0]), req[1], int(req[2]), int(req[3])
+        # 6th column (AU-RS1, only in logs of a run_spells run): this call's own trim in dB; older logs have none = 0
+        gain_db = float(req[5]) if len(req) > 5 and isinstance(req[5], (int, float)) else 0.0
         st = stats.setdefault(cue, {'requested': 0, 'paused_skip': 0, 'cooldown_skip': 0, 'no_voice': 0, 'played': 0})
         st['requested'] += 1
         if cue in rules.get('silent', ()):
             st['silent_skip'] = st.get('silent_skip', 0) + 1
+            continue
+        if cue not in rules['counts']:
+            # a name without files: the game has no stream for it and returns before cooldown and voice (combat_audio.gd _play_cue)
+            st['no_file_skip'] = st.get('no_file_skip', 0) + 1
             continue
         if not playing and not ui:
             st['paused_skip'] += 1
@@ -78,10 +93,14 @@ def simulate(requests, rules, src):
                 continue
             variant = variants.get(cue, 0) % rules['counts'][cue]
             variants[cue] = variant + 1
-            pitch = rules['pitches'][variant % len(rules['pitches'])]
+            if cue in rules.get('stepped', ()) and rules.get('pitch_steps'):
+                pitch = rules['pitch_steps'][pitch_turn.get(cue, 0) % len(rules['pitch_steps'])]
+                pitch_turn[cue] = pitch_turn.get(cue, 0) + 1
+            else:
+                pitch = rules['pitches'][variant % len(rules['pitches'])]
             length = len(src[cue][variant]) / SR
             voice_end[i] = now + length / pitch
-            gain = rules['master'] * rules['one_shot_gain'] * rules['gains'][cue]
+            gain = rules['master'] * rules['one_shot_gain'] * rules['gains'][cue] * (10 ** (gain_db / 20) if gain_db else 1.0)
             played.append({'t': now, 'cue': cue, 'variant': variant, 'pitch': pitch, 'voice': i, 'len_s': length / pitch, 'gain': gain})
             st['played'] += 1
             last_tick[cue] = tick

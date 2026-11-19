@@ -106,8 +106,13 @@ def load_capture(folder):
 def alignment_report(cap, log):
     t0, n = cap['from'], cap['frames']
     ev, rq = {}, {}
+    # AU-RS1: a ring's hits do not play "impact" (the ring pulse stands for them), so they are left out of the hit count.
+    # A ring is known from its cast (shape "ring"); older captures have no such field and nothing is left out.
+    ring_ids = {e.get('skill_id') for r in cap['rows'] for e in r['events'] if e['type'] == 'cast' and e.get('shape') == 'ring'}
     for r in cap['rows']:
         for e in r['events']:
+            if e['type'] == 'hit' and e.get('skill_id') in ring_ids:
+                continue
             ev[e['type']] = ev.get(e['type'], 0) + 1
     for q in log['requests']:
         if t0 <= int(q[0]) < t0 + n:

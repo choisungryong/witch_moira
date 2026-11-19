@@ -6,6 +6,7 @@ extends Node3D
 ## C2 scene glue. Fixed-tick core owns all gameplay; UI/actors/VFX only present it.
 const Audio=preload("res://chapter1/presentation/combat_audio.gd")
 const FrameProbe=preload("res://chapter1/presentation/frame_probe.gd")
+const AudioRoutes=preload("res://chapter1/presentation/audio_routes.gd")
 ## Assigned in _init (chapter_core, chapter_world, chapter_actors, chapter_effects, chapter_hud).
 var run
 var world
@@ -16,6 +17,8 @@ const CombatJuice=preload("res://chapter1/view/fx/combat_juice.gd")
 var juice: RefCounted
 var hud
 var audio=Audio.new()
+## Core event -> sound request (the same mapping the request recorder uses). Its only state is the ring pulse habituation.
+var audio_routes=AudioRoutes.new()
 var _frame_probe=FrameProbe.new()
 var _probe_quit_after_complete := false
 ## Verification arguments and the F1 diagnostics screen only work in debug builds and builds with the "qa" feature tag.
@@ -124,7 +127,7 @@ func start_run__chapter(id_: String) -> void:
 	if not run.start(seed_,primary):
 		push_error(str(run.errors));get_tree().quit(1);return
 	_qa_run_sequence+=1
-	actors.reset();effects.reset();hud.reset();audio.reset()
+	actors.reset();effects.reset();hud.reset();audio.reset();audio_routes.reset()
 	if juice!=null:juice.reset()
 	_last_audio_event=-1;_last_result="";_captured.clear();_frame_ms.clear()
 	_has_move_target=false
@@ -223,19 +226,18 @@ func _consume_events__chapter() -> void:
 	effects.consume(run.events)
 	if juice!=null:juice.consume(run.events)
 	actors.consume(run.events)
+	var fresh: Array=[]
 	for event in run.events:
 		if int(event.seq)<=_last_audio_event:continue
 		_last_audio_event=int(event.seq)
-		match String(event.type):
-			"cast":audio.play({"chapter1.skill.ember":"fire","chapter1.skill.frost":"cold","chapter1.skill.arc":"lightning"}.get(event.skill_id,"fire"),run.tick)
-			"hit":audio.play("impact",run.tick)
-			"death":audio.play("death",run.tick)
-			"explosion":audio.play("explosion",run.tick)
-			"shatter":audio.play("cold",run.tick)
-			"hero_hit":audio.play("hurt",run.tick)
-			"item_drop":audio.play("drop",run.tick)
-			"item_pickup":audio.play("pickup",run.tick)
-			"growth":audio.play_ui("equip",run.tick)
+		fresh.append(event)
+	_play_routes(audio_routes.route(fresh,run.spells,run.tick))
+
+## Plays what audio_routes.gd made of the events: one request each, UI cues through play_ui.
+func _play_routes(list: Array) -> void:
+	for request in list:
+		if request.ui:audio.play_ui(request.cue,run.tick)
+		else:audio.play(request.cue,run.tick,request.gain_db)
 
 func _process__chapter(delta: float) -> void:
 	if _qa_quit_sent:return
@@ -485,7 +487,7 @@ func return_to_menu() -> void:
 	run=ChapterRun.new();_apply_trial();full_pilot.run=run
 	actors.reset();actors.rest_for_menu();effects.reset()
 	if juice!=null:juice.reset()
-	hud.reset();audio.reset();audio.set_paused(true)
+	hud.reset();audio.reset();audio_routes.reset();audio.set_paused(true)
 	if hud.skill_tree_is_open():hud.skill_panel.visible=false
 	hud.stash_open=false
 	hud.set_growth_result("",{},{},{})
@@ -629,16 +631,15 @@ func _consume_events() -> void:
 				_save_terminal()
 			"item_pickup":_offer_if_better(event.item)
 			"item_drop":
-				# A ring or amulet has its own bright cue; a legendary or unique adds a chime.
-				if event.item.slot in ["ring","charm"]:audio.play("jewel",run.tick)
-				if event.item.quality in ["legendary","unique"]:audio.play("legend",run.tick)
-			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+Loc.t("zone.%d.name"%int(event.zone)));audio.play_ui("equip",run.tick)
+				# A ring or amulet has its own bright cue; a legendary or unique adds a chime (audio_routes.late).
+				_play_routes(audio_routes.late(event))
+			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+Loc.t("zone.%d.name"%int(event.zone)));_play_routes(audio_routes.late(event))
 			"zone_entered":hud.notify(Loc.t("zone.%d.name"%run.zone)+" · 새로운 봉인을 돌파하세요")
 			"chapter_champion":hud.notify(Loc.t("enemy.champion.%d.name"%int(event.zone))+" 출현");world.kick_camera(.45)
 			"boss_phase":hud.notify("파수왕의 격노 · 재의 낙인을 피하세요");world.kick_camera(.6)
-			"chapter_burst":audio.play("explosion",run.tick)
-			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);audio.play("pickup",run.tick)
-			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");audio.play_ui("equip",run.tick)
+			"chapter_burst":_play_routes(audio_routes.late(event))
+			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);_play_routes(audio_routes.late(event))
+			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");_play_routes(audio_routes.late(event))
 			"reward_pending":hud.notify("가방이 가득 찼습니다 · 의식 보상을 보관 대기합니다")
 func _process(delta: float) -> void:
 	_process__chapter(delta)
