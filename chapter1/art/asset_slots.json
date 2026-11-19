@@ -574,6 +574,168 @@
         "square": true,
         "alpha": true
       }
+    },
+    "actor.elite_guard.model": {
+      "kind": "model",
+      "inherit": "actor.walker.model",
+      "used": "no",
+      "source": "look study: the guarding elite is the skeleton walker model enlarged (contract.scale 0.62 x 1.75) with code-drawn marks; replace file and bones here when a real elite model arrives. Not drawn by any code yet (the core has no elite grade)",
+      "contract": {
+        "scale": 1.085,
+        "clips": {
+          "idle": "idle",
+          "alert": "idle_alert",
+          "attack": "attack_slam",
+          "death": "death",
+          "hit": "hit"
+        }
+      }
+    },
+    "world.prop.shrine.luck": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used",
+      "contract": {
+        "states": [
+          "locked",
+          "open",
+          "used"
+        ],
+        "size": [
+          512,
+          512
+        ],
+        "alpha": true
+      }
+    },
+    "world.prop.shrine.power": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used",
+      "contract": {
+        "states": [
+          "locked",
+          "open",
+          "used"
+        ],
+        "size": [
+          512,
+          512
+        ],
+        "alpha": true
+      }
+    },
+    "world.prop.shrine.swift": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used",
+      "contract": {
+        "states": [
+          "locked",
+          "open",
+          "used"
+        ],
+        "size": [
+          512,
+          512
+        ],
+        "alpha": true
+      }
+    },
+    "world.prop.chest.plain": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used",
+      "contract": {
+        "states": [
+          "locked",
+          "open",
+          "used"
+        ],
+        "size": [
+          512,
+          512
+        ],
+        "alpha": true
+      }
+    },
+    "world.prop.chest.fine": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used",
+      "contract": {
+        "states": [
+          "locked",
+          "open",
+          "used"
+        ],
+        "size": [
+          512,
+          512
+        ],
+        "alpha": true
+      }
+    },
+    "world.mark.guard_ring": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used; ground mark around a guarded site (ring, 4 m aggro / 6 m leash), tinted in code",
+      "contract": {
+        "size": [
+          1024,
+          1024
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.shrine.luck": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used; edge-of-screen marker and buff icon",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.shrine.power": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used; edge-of-screen marker and buff icon",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
+    },
+    "icon.shrine.swift": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md (look study, 2026-11-20); no art yet, so the placeholder is used; edge-of-screen marker and buff icon",
+      "contract": {
+        "size": [
+          128,
+          128
+        ],
+        "square": true,
+        "alpha": true
+      }
     }
   }
 }
