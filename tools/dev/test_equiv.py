@@ -151,6 +151,16 @@ class Volatile(unittest.TestCase):
         for word in ('MultiMesh', '셰이더', '그림자', '픽셀'):
             self.assertIn(word, text)
 
+    def test_game_args_are_split_like_a_shell_would(self):
+        self.assertEqual(E.split_game_args(''), [])
+        self.assertEqual(E.split_game_args('--chapter1-trial=spells'), ['--chapter1-trial=spells'])
+        self.assertEqual(E.split_game_args('--chapter1-trial=spells,rhythm  --chapter1-opening=returning'), ['--chapter1-trial=spells,rhythm', '--chapter1-opening=returning'])
+        self.assertEqual(E.split_game_args('--x="a b"'), ['--x=a b'])
+
+    def test_the_dump_scripts_copied_into_the_base_tree_include_what_hud_dump_preloads(self):
+        self.assertIn('chapter1/tests/support/trial_docs.gd', E.DUMPERS)
+        self.assertIn('chapter1/tests/spells_pick.gd', E.DUMPERS)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=1)

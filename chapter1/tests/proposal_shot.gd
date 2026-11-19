@@ -18,6 +18,7 @@ extends SceneTree
 ## <shots>/strip-<fixture>.<W>x<H>.png, and PROPOSAL_SHOT lines (events with times, the held time t_u).
 const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
 const LayoutDump = preload("res://chapter1/tests/layout_dump.gd")
+const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const STRIP_COLS := 8
 const STRIP_W := 400
@@ -47,12 +48,16 @@ func _initialize() -> void:
 		elif arg == "--input-test": input_test = true
 		elif arg == "--reduce-motion": reduce = true
 		elif arg.begins_with("--strip-step="): step = int(arg.trim_prefix("--strip-step="))
+		elif arg.begins_with("--fixture-prefix="): prefix = arg.trim_prefix("--fixture-prefix=")
+		elif arg.begins_with("--stage="): stage = arg.trim_prefix("--stage=")
+		elif arg.begins_with("--strip-kind="): strip_kind = arg.trim_prefix("--strip-kind=")
 	var problem := _check(wanted)
 	if not problem.is_empty():
 		push_error("proposal_shot: " + problem)
 		print("PROPOSAL_SHOT_ARGS ", JSON.stringify({"error": problem}))
 		quit(2)
 		return
+	if not TrialDocs.tag(OS.get_cmdline_user_args()).is_empty(): print("PROPOSAL_SHOT_TRIAL ", JSON.stringify(TrialDocs.switches(OS.get_cmdline_user_args())))
 	_run.call_deferred()
 
 func _check(wanted: String) -> String:
@@ -62,6 +67,8 @@ func _check(wanted: String) -> String:
 	screen = proposal.get_slice("/", 0)
 	if prefix.is_empty(): prefix = screen
 	if not FileAccess.file_exists("res://chapter1/tests/proposals/%s.gd" % proposal): return "no such proposal: " + proposal
+	if not stage in ["select", "title"]: return "--stage=%s is unknown (select, title)" % stage
+	if not strip_kind.is_empty() and not strip_kind in ["intro", "focus", "confirm", "title", "reduced"]: return "--strip-kind=%s is unknown" % strip_kind
 	if shots.is_empty(): return "--shots=<dir under _local/shots> is required"
 	var folder := shots if shots.begins_with("res://") or shots.is_absolute_path() else "res://" + shots
 	if not ("/_local/shots/" in ProjectSettings.globalize_path(folder).replace("\\", "/") + "/"): return "--shots must be under _local/shots/"
@@ -91,6 +98,7 @@ func _run() -> void:
 		root.add_child(node)
 		await _frames(3)
 		if input_test: await _input_test(node, name_)
+		elif not strip_kind.is_empty(): await _strip_kind(node, name_)
 		elif strip: await _strip(node, name_)
 		else: await _still(node, name_, contract)
 		node.queue_free()
@@ -120,8 +128,11 @@ func _still(node: Control, name_: String, contract: Dictionary) -> void:
 	image.save_png(shots.path_join(stem + ".png"))
 	var rows: Array = []
 	LayoutDump.describe(root, 0, rows, true)
+	LayoutDump.fill_bg_from_image(rows, image, root.get_visible_rect().size)  # window run: the colour under a text over a picture, from the shot
 	var doc := {"order": [name_], "dumps": {name_: rows}, "meta": {"extra": true, "note": "proposal screen on a contract fixture", "scene": proposal, "variant": name_,
 		"fixture": name_, "combat": false, "canvas": [root.get_visible_rect().size.x, root.get_visible_rect().size.y], "window": [root.size.x, root.size.y]}}
+	var trial := TrialDocs.switches(OS.get_cmdline_user_args())
+	if not trial.is_empty(): doc.meta["trial"] = trial
 	var f := FileAccess.open(shots.path_join(stem + ".json"), FileAccess.WRITE)
 	f.store_string(JSON.stringify(doc))
 	f.close()

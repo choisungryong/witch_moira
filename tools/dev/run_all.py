@@ -363,6 +363,8 @@ def run_screen_contract(check):
         if failures:
             return False, 'contract test: %d failures · %s' % (len(failures), str(failures[0])[:200])
         command.append('--dumps=' + str(ROOT / out_dir))
+        if (ROOT / out_dir / 'layout').is_dir():  # the layout rows of the screens built on fixtures: the contrast check reads them
+            command.append('--layout-dump=' + str(ROOT / out_dir / 'layout'))
         dumps_note = ''
     code, text = run_tool(check, command)
     if code is None:

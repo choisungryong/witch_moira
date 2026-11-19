@@ -11,6 +11,20 @@ func check(ok: bool, message: String) -> void:
 		push_error(message)
 func _initialize() -> void:
 	call_deferred("execute")
+## One child process of trial_state_probe.gd; its TRIAL_STATE line as a Dictionary ({} when none came).
+func _probe(user_args: Array) -> Dictionary:
+	var arguments: PackedStringArray = ["--headless","--path",ProjectSettings.globalize_path("res://"),"--script","res://chapter1/tests/trial_state_probe.gd","--"]
+	arguments.append_array(PackedStringArray(user_args))
+	var output: Array = []
+	OS.execute(OS.get_executable_path(),arguments,output,true)
+	for line in String(output[0] if output.size() > 0 else "").split("
+"):
+		if line.begins_with("TRIAL_STATE "):
+			var parsed: Variant = JSON.parse_string(line.trim_prefix("TRIAL_STATE "))
+			if parsed is Dictionary: return parsed
+	check(false,"F-4 the probe printed no TRIAL_STATE line for "+str(user_args))
+	return {}
+
 func execute() -> void:
 	var app = App.new()
 	app.profile.available = false
@@ -28,5 +42,18 @@ func execute() -> void:
 	check(other.play_without_save() and other._profile_session_off and not other.profile_rejected(),"from the menu play_without_save() works")
 	app.free()
 	other.free()
+	# F-4 (TECH-REVIEW-20261120): the dev trial `--chapter1-trial=` of the app, in child processes with their own arguments
+	# (the app reads its arguments from the command line, so each case is a process: trial_state_probe.gd).
+	var on := _probe(["--chapter1-trial=spells,rhythm","--chapter1-profile-off"])
+	check(on.get("first",{}).get("spells",false) and on.get("first",{}).get("rhythm",false),"F-4 trial with --chapter1-profile-off: spells and rhythm are on in the core")
+	check(not on.get("first",{}).get("descent",true),"F-4 trial spells,rhythm leaves the descent off")
+	var unsafe := _probe(["--chapter1-trial=spells,rhythm"])
+	check(not unsafe.get("first",{}).get("spells",true) and not unsafe.get("first",{}).get("rhythm",true),"F-4 trial WITHOUT --chapter1-profile-off is ignored (a trial never meets the player's save)")
+	var back := _probe(["--chapter1-trial=spells,rhythm","--chapter1-profile-off","--probe-fresh"])
+	check(back.get("again",{}).get("spells",false) and back.get("again",{}).get("rhythm",false),"F-4 a fresh core built the way return_to_menu() builds it keeps the trial")
+	var qa_off := _probe(["--chapter1-trial=spells","--chapter1-profile-off","--probe-qa-off"])
+	check(qa_off.get("first",{}).get("spells",false) and not qa_off.get("again",{}).get("spells",true),"F-4 with qa_allowed = false the arguments are ignored")
+	var typo := _probe(["--chapter1-trial=spel","--chapter1-profile-off"])
+	check(not typo.get("first",{}).get("spells",true),"F-4 an unknown trial name turns nothing on (today it is dropped without a word: F-2)")
 	print("CHAPTER1_APP_GUARD_RESULT ",JSON.stringify({"checks":checks,"failures":failures}))
 	quit(0 if failures.is_empty() else 1)

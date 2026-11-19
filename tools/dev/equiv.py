@@ -3,6 +3,7 @@
     python tools/dev/equiv.py                                   # base HEAD vs this folder, frost, --until 1600
     python tools/dev/equiv.py --base f36b0a7 --primary frost,ember,arc --until 2400
     python tools/dev/equiv.py --until 600 --primary frost --skip-golden
+    python tools/dev/equiv.py --until 2400 --primary frost,ember,arc --game-args="--chapter1-trial=spells"   # the same run with a test switch on, both sides
 
 What it does
   1. Prints, first, what it does NOT compare. "EQUIV IDENTICAL" holds only for the fields the dumps hold.
@@ -37,7 +38,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 GODOT_PY = HERE / 'godot.py'
 VOLATILE = HERE / 'equiv_volatile.json'
-DUMPERS = ['chapter1/tests/hud_dump.gd', 'chapter1/tests/layout_dump.gd', 'chapter1/tests/equiv_dump.gd']
+DUMPERS = ['chapter1/tests/hud_dump.gd', 'chapter1/tests/layout_dump.gd', 'chapter1/tests/equiv_dump.gd',
+           'chapter1/tests/spells_pick.gd', 'chapter1/tests/support/trial_docs.gd']  # the last two are preloaded by hud_dump.gd (S0-b)
 PILOT_ARGS = ['--chapter1-pilot', '--chapter1-profile-off', '--chapter1-qa-ignore-focus', '--chapter1-seed=11']
 SKILLS = {'frost': 'chapter1.skill.frost', 'ember': 'chapter1.skill.ember', 'arc': 'chapter1.skill.arc'}
 EQ_TICKS = [300, 600, 1200, 2400, 6000, 9000, 12000, 16000, 20000]
@@ -71,6 +73,13 @@ def norm_name(name, vol=None):
     p = (vol or {}).get('normalize_names', {}).get('pattern', r'@(\w+)@\d+')
     r = (vol or {}).get('normalize_names', {}).get('replace', r'@\1')
     return re.sub(p, r, str(name))
+
+
+def split_game_args(text):
+    """`--game-args="--chapter1-trial=spells --chapter1-profile-off"` -> ['--chapter1-trial=spells', '--chapter1-profile-off'].
+    Quotes keep a value with spaces together. Empty text -> []. The same list goes to BOTH sides, after the pilot arguments."""
+    import shlex
+    return shlex.split(text or '')
 
 
 def deep_diff(a, b, path, out, limit=12):
@@ -311,6 +320,8 @@ def main(argv=None):
     ap.add_argument('--max-diffs', type=int, default=40, help='differences printed per primary')
     ap.add_argument('--volatile', default=str(VOLATILE))
     ap.add_argument('--timeout', type=int, default=1800)
+    ap.add_argument('--game-args', default='', help='more game arguments for BOTH sides of every dump run, e.g. "--chapter1-trial=spells" '
+                    '(the golden step does not take them: it has its own cases)')
     args = ap.parse_args(argv)
 
     print('비교하지 않은 것: ' + '; '.join(NOT_COMPARED) + '. "EQUIV IDENTICAL"은 덤프가 담는 필드에 한해서다.')
@@ -321,6 +332,10 @@ def main(argv=None):
         print('unknown primary: %s (frost, ember, arc)' % ','.join(bad), file=sys.stderr)
         return 2
     only = set(args.only.split(','))
+    game_args = split_game_args(args.game_args)
+    pilot_args = PILOT_ARGS + game_args
+    if game_args:
+        print('게임 인수(양쪽에 같이): ' + ' '.join(game_args))
     stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     out = (Path(args.out) if args.out else ROOT / '_local' / 'equiv' / stamp).resolve()  # absolute: Godot changes its working folder to --path
     try:
@@ -352,10 +367,10 @@ def main(argv=None):
                 d.mkdir(exist_ok=True)
                 if 'hud' in only or 'scene' in only:
                     tasks.append((side, n, 'hud', 'res://chapter1/tests/hud_dump.gd',
-                                  PILOT_ARGS + ['--primary=' + skill, '--until=%d' % args.until, '--dump=%s/%s-hud.json' % (str(d).replace('\\', '/'), n), '--scene=%s/%s-scene.json' % (str(d).replace('\\', '/'), n)]))
+                                  pilot_args + ['--primary=' + skill, '--until=%d' % args.until, '--dump=%s/%s-hud.json' % (str(d).replace('\\', '/'), n), '--scene=%s/%s-scene.json' % (str(d).replace('\\', '/'), n)]))
                 if 'eq' in only:
                     tasks.append((side, n, 'eq', 'res://chapter1/tests/equiv_dump.gd',
-                                  PILOT_ARGS + ['--primary=' + skill, '--eq-until=%d' % args.until, '--eq-ticks=' + ticks, '--eq-out=%s/%s-eq.json' % (str(d).replace('\\', '/'), n), '--eq-full=%s/%s-eqfull.json' % (str(d).replace('\\', '/'), n)]))
+                                  pilot_args + ['--primary=' + skill, '--eq-until=%d' % args.until, '--eq-ticks=' + ticks, '--eq-out=%s/%s-eq.json' % (str(d).replace('\\', '/'), n), '--eq-full=%s/%s-eqfull.json' % (str(d).replace('\\', '/'), n)]))
 
         def do(task):
             side, n, kind, script, uargs = task

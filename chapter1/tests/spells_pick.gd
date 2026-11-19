@@ -3,15 +3,12 @@ extends RefCounted
 ## (RS0 of A6-RS, moved here from hud_dump.gd by AU-RS0 so report_audio_requests.gd and sfx_capture.gd use the same rule).
 ## Nothing here changes a data file: chapter1/data/run_spells.json stays "enabled": false; the copy is parked in the core
 ## of this process with run.set_run_spells() before the run starts.
-const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
+const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 
 ## The shipped document with "enabled": true, handed to the core. "" when it worked, else one sentence.
+## The turning-on itself lives in support/trial_docs.gd (the one place; S0-b F-5).
 static func enable(run: RefCounted) -> String:
-	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(RunSpellsDoc.DEFAULT_PATH))
-	if not doc is Dictionary: return "run_spells.json could not be read"
-	doc["enabled"] = true
-	if not run.set_run_spells(doc): return "run_spells document refused: "+str(run.errors)
-	return ""
+	return TrialDocs.enable_spells_problem(run)
 
 ## RS0 pick rule. Same order the built-in pilot uses (chapter_pilot.decide) for everything the new rules do not name.
 static func score(run: RefCounted, card: Dictionary, primary_id: String) -> int:

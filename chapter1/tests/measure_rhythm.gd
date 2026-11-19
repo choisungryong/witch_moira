@@ -8,6 +8,7 @@ extends SceneTree
 const Core = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
 const DescentPolicy = preload("res://chapter1/tests/descent_policy.gd")
+const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
 
 ## D11 A2 targets [hypothesis]. from/to are the time boundaries used when the core has no beat_started event.
 ## The guardian windows in the A2 table overlap the neighbouring beats; they are folded into those beats here.
@@ -138,25 +139,19 @@ func play(seed_: int, prim: String) -> Dictionary:
 	pilot.run = run
 	run.first_boss_kill = true
 	if rhythm_on:
-		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
-		doc.rhythm.enabled = true
-		doc.rhythm.trial.enabled = true
-		# D15 O-1: the run opening comes with the rhythm in a trial run (`--chapter1-trial=...,rhythm`), so it does here.
-		if doc.rhythm.has("opening"): doc.rhythm.opening.enabled = true
-		if not run.set_tuning(doc):
-			push_error("measure_rhythm: rhythm document rejected %s" % str(run.errors))
+		var rhythm_problem := TrialDocs.enable_rhythm_problem(run, true)
+		if not rhythm_problem.is_empty():
+			push_error("measure_rhythm: " + rhythm_problem)
 			return {}
 	if spells_on:
-		var spells_doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
-		spells_doc.enabled = true
-		if not run.set_run_spells(spells_doc):
-			push_error("measure_rhythm: spells document rejected %s" % str(run.errors))
+		var spells_problem := TrialDocs.enable_spells_problem(run)
+		if not spells_problem.is_empty():
+			push_error("measure_rhythm: " + spells_problem)
 			return {}
 	if descent_policy != "":
-		var descent_doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/descent.json"))
-		descent_doc.enabled = true
-		if not run.set_descent(descent_doc):
-			push_error("measure_rhythm: descent document rejected %s" % str(run.errors))
+		var descent_problem := TrialDocs.enable_descent_problem(run)
+		if not descent_problem.is_empty():
+			push_error("measure_rhythm: " + descent_problem)
 			return {}
 	if not run.start(seed_, prim):
 		push_error("measure_rhythm: start failed %s" % str(run.errors))

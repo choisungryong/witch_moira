@@ -15,6 +15,11 @@ extends SceneTree
 ##
 ## Arguments: --scenes=<a,b|all>  --variants=<normal,long|all> (default all; a scene without that variant is skipped and
 ## printed)  --shots=<dir>  --list  (prints the scene names and exits).
+## --contract=<id> --variant=<v[,v]|all>  (T8 S0-b) a screen of the new structure, WITHOUT the core and the game: chapter1/view/hud/screens/<id>.gd is
+## built alone, the contract fixture (chapter1/tests/support/contract_schema.gd load_fixture) goes into its apply(contract), it is shot at the
+## window size and dumped as <dir>/<id>.<variant>.<W>x<H>.png/.json. A screen file that does not exist yet ends with SCENE_SHOT_SKIP, exit 0.
+## A fixture of another contract_version than the screen's const is skipped the same way. Every output names the test switches that were on
+## (SCENE_SHOT_TRIAL line and meta.trial; nothing is added when none is on).
 ## Output per scene and variant: <dir>/<scene>.<variant>.<W>x<H>.png and .json (hud_dump's {"order","dumps"} format plus a
 ## "meta" entry), and SCENE_SHOT lines. Exit code 2 for bad arguments, 1 if a scene could not be set up.
 ##
@@ -34,6 +39,8 @@ extends SceneTree
 ##   3. A screen that does not exist yet (town hub, card with an interlock line) is NOT added here: add it
 ##      together with the screen.
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
+const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
+const ContractSchema := preload("res://chapter1/tests/support/contract_schema.gd")
 const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
@@ -53,6 +60,7 @@ class FixtureRun extends "res://chapter1/core/chapter_core.gd":
 		return super.can_equip(item)
 
 var shots := ""
+var contract_id := ""
 var scene_list: Array[String] = []
 var variant_list: Array[String] = []
 var view: Node
@@ -70,17 +78,23 @@ func _initialize() -> void:
 		elif arg.begins_with("--variants="): wanted_variants = arg.trim_prefix("--variants=")
 		elif arg.begins_with("--shots="): shots = arg.trim_prefix("--shots=")
 		elif arg == "--list": list_only = true
+		elif arg.begins_with("--contract="): contract_id = arg.trim_prefix("--contract=")
+		elif arg.begins_with("--variant="): wanted_variants = arg.trim_prefix("--variant=")
 	if list_only:
 		print("SCENE_SHOT_SCENES ",JSON.stringify({"scenes":SCENES,"variants":VARIANTS}))
 		quit(0)
 		return
-	var problem := _check_args(wanted_scenes,wanted_variants)
+	var problem := _check_args("none" if not contract_id.is_empty() else wanted_scenes,wanted_variants)
 	if not problem.is_empty():
 		push_error("scene_shot: "+problem)
 		print("SCENE_SHOT_ARGS ",JSON.stringify({"error":problem}))
 		quit(2)
 		return
 	print(NOTE)
+	if not TrialDocs.tag(OS.get_cmdline_user_args()).is_empty(): print("SCENE_SHOT_TRIAL ",JSON.stringify(TrialDocs.switches(OS.get_cmdline_user_args())))
+	if not contract_id.is_empty():
+		_run_contract.call_deferred()
+		return
 	_run_all.call_deferred()
 
 func _check_args(wanted_scenes: String, wanted_variants: String) -> String:
@@ -94,6 +108,9 @@ func _check_args(wanted_scenes: String, wanted_variants: String) -> String:
 	if not ("/_local/shots/" in ProjectSettings.globalize_path(folder).replace("\\","/")+"/"):
 		return "--shots must be a folder under _local/shots/ (got %s)" % shots
 	shots = folder
+	if wanted_scenes == "none":
+		variant_list.assign(wanted_variants.split(","))
+		return ""
 	for name_ in (SCENES if wanted_scenes == "all" else wanted_scenes.split(",")):
 		if not name_ in SCENES: return "unknown scene '%s' (have: %s)" % [name_,", ".join(SCENES)]
 		scene_list.append(name_)
@@ -169,10 +186,13 @@ func _capture(scene: String, variant: String, fx: Dictionary) -> void:
 	image.save_png(shots.path_join(stem+".png"))
 	var rows: Array = []
 	LayoutDump.describe(root,0,rows,true)
+	LayoutDump.fill_bg_from_image(rows,image,root.get_visible_rect().size)
 	var label := scene+"."+variant
 	var document := {"order":[label],"dumps":{label:rows},
 		"meta":{"extra":true,"note":NOTE,"scene":scene,"variant":variant,"fixture":String(fx.get("__path","")),"combat":false,
 			"canvas":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"window":[root.size.x,root.size.y]}}
+	var trial := TrialDocs.switches(OS.get_cmdline_user_args())
+	if not trial.is_empty(): document.meta["trial"] = trial
 	var file := FileAccess.open(shots.path_join(stem+".json"),FileAccess.WRITE)
 	if file == null:
 		_fail(scene,"cannot write the dump")
@@ -184,6 +204,45 @@ func _capture(scene: String, variant: String, fx: Dictionary) -> void:
 	for row in rows:
 		if row.visible: visible += 1
 	print("SCENE_SHOT ",JSON.stringify({"scene":scene,"variant":variant,"window":[root.size.x,root.size.y],"controls":rows.size(),"visible":visible,"png":shots.path_join(stem+".png"),"note":NOTE}))
+
+## --contract: the screen alone on a contract fixture (no core, no game scene).
+func _run_contract() -> void:
+	DirAccess.make_dir_recursive_absolute(shots)
+	var screen_path := "res://chapter1/view/hud/screens/%s.gd" % contract_id
+	if not FileAccess.file_exists(screen_path):
+		print("SCENE_SHOT_SKIP ",JSON.stringify({"contract":contract_id,"why":"no screen file yet: "+screen_path}))
+		print("SCENE_SHOT_RESULT ",JSON.stringify({"written":0,"failures":failures,"note":NOTE}))
+		quit(0)
+		return
+	var script: GDScript = load(screen_path)
+	var version: Variant = script.get_script_constant_map().get("CONTRACT_VERSION",null) if script != null else null
+	var all_variants: Array[String] = []
+	if variant_list.size() == 1 and variant_list[0] == "all":
+		for folder in ["res://chapter1/tests/fixtures/contracts/","res://chapter1/tests/fixtures/ui/"]:
+			if not DirAccess.dir_exists_absolute(folder): continue
+			for file_name in DirAccess.get_files_at(folder):
+				var parts := file_name.trim_suffix(".json").split(".")
+				if parts.size() == 2 and not parts[1] in all_variants and not ContractSchema.load_fixture(contract_id,parts[1]).is_empty(): all_variants.append(parts[1])
+		all_variants.sort()
+	else: all_variants = variant_list
+	for variant in all_variants:
+		var fx := ContractSchema.load_fixture(contract_id,variant)
+		if fx.is_empty():
+			print("SCENE_SHOT_SKIP ",JSON.stringify({"contract":contract_id,"variant":variant,"why":"no fixture"}))
+			continue
+		if float(fx.get("contract_version",-1)) != float(version if version != null else -2):
+			print("SCENE_SHOT_SKIP ",JSON.stringify({"contract":contract_id,"variant":variant,"why":"contract_version %s, the screen takes %s" % [str(fx.get("contract_version")),str(version)]}))
+			continue
+		var node = script.new()
+		root.add_child(node)
+		node.call("apply",fx.duplicate(true))
+		await _frames(6)
+		await RenderingServer.frame_post_draw
+		_capture(contract_id,variant,fx)
+		node.queue_free()
+		await _frames(3)
+	print("SCENE_SHOT_RESULT ",JSON.stringify({"written":written.size(),"failures":failures,"note":NOTE}))
+	quit(1 if not failures.is_empty() else 0)
 
 # ---- scenes ----
 
@@ -257,13 +316,9 @@ func _scene_boon(fx: Dictionary) -> bool:
 ## parked in the FixtureRun before it starts (data file and app untouched). The state is given the way test_run_spells.gd's give()
 ## does it; the cards are the real ones from the growth's own pool, picked by id.
 func _scene_boon_spells(fx: Dictionary) -> bool:
-	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
-	if not doc is Dictionary:
-		_fail("boon_spells","run_spells.json could not be read")
-		return false
-	doc["enabled"] = true
-	if not run.set_run_spells(doc):
-		_fail("boon_spells","run_spells document refused: "+str(run.errors))
+	var problem := TrialDocs.enable_spells_problem(run)
+	if not problem.is_empty():
+		_fail("boon_spells",problem)
 		return false
 	view.start_run(String(fx.primary))
 	await _frames(3)

@@ -99,8 +99,8 @@ def check_schema(schema, label):
     if not isinstance(schema.get('screen'), str) or not schema.get('screen'):
         out.append('%s: "screen" must be the screen id' % label)
     version = schema.get('contract_version')
-    if isinstance(version, bool) or not isinstance(version, int) or version < 1:
-        out.append('%s: "contract_version" must be an integer of 1 or more' % label)
+    if isinstance(version, bool) or not isinstance(version, int) or version < 0:
+        out.append('%s: "contract_version" must be an integer of 0 or more (0 = the draft of the design step, 1 = the first closed version)' % label)
     if not isinstance(schema.get('fields'), dict):
         out.append('%s: "fields" must be an object' % label)
     else:
@@ -428,6 +428,8 @@ def run(root, dumps=None, layout_dumps=(), min_contrast=4.5, update_baseline=Fal
                 continue
             if folder.endswith('/ui') and not (isinstance(doc, dict) and 'screen' in doc):
                 continue  # an older core-state seed, not a contract
+            if folder.endswith('/ui') and isinstance(doc.get('screen'), str) and doc['screen']:
+                screen_id = doc['screen']  # a draft fixture may carry a prefix in its name (title_v0.normal.json is a "title" contract)
             if screen_id not in schemas:
                 # a design in progress (the fixtures come before the schema is closed): not checkable yet, so a note, and counted
                 notes.append('%s: no schema for the screen %r yet, not checked' % (rel(path), screen_id))
@@ -437,6 +439,9 @@ def run(root, dumps=None, layout_dumps=(), min_contrast=4.5, update_baseline=Fal
             fixtures += 1
             key = (screen_id, variant)
             if key in seen:
+                if folder.endswith('/ui') and seen[key].startswith(FIXTURE_DIRS[0] + '/'):
+                    notes.append('%s: the same variant of %r exists in %s, which counts; this draft fixture is not checked' % (rel(path), screen_id, seen[key]))
+                    continue
                 failures.append('%s: the same fixture exists in %s too' % (rel(path), seen[key]))
             seen[key] = rel(path)
             failures += check_document(doc, schema, rel(path), True)

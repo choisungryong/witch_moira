@@ -331,7 +331,10 @@ var recorder=RunRecord.new()
 var run_record_view: Dictionary={}
 ## Dev trial: `--chapter1-trial=spells,rhythm` switches the systems that are parked off in the data files on, for this
 ## process only (the files stay off). Only together with --chapter1-profile-off, so a trial never writes to the player's save.
+## Which trial switches this process runs with (F-1: a capture, a recording or a window title can say it; empty = the default game).
+var trial_switches:PackedStringArray=PackedStringArray()
 func _apply_trial() -> void:
+	trial_switches=PackedStringArray()
 	var wanted:=""
 	for arg in _user_args():
 		if arg.begins_with("--chapter1-trial="):wanted=arg.trim_prefix("--chapter1-trial=")
@@ -339,6 +342,10 @@ func _apply_trial() -> void:
 	if not "--chapter1-profile-off" in _user_args():
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
+	for part in parts:
+		if part in ["spells","rhythm","descent"]:trial_switches.append(part)
+		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent), ignored"%part)
+	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
 	# The run opening (D15 B) is the long one unless asked otherwise: the app has no play counter yet (no schema change).
 	if "--chapter1-opening=returning" in _user_args():run.opening_first_visit=false
 	if "rhythm" in parts:
@@ -375,7 +382,7 @@ func _ready() -> void:
 	hud.skill_tree_commit.connect(_commit_skill_tree)
 	hud.skill_tree_respec.connect(_respec_skill_tree)
 	_ready__chapter()
-	DisplayServer.window_set_title("잿빛 회랑 · 제1장")
+	DisplayServer.window_set_title("잿빛 회랑 · 제1장"+(" [시험: %s]"%",".join(trial_switches) if not trial_switches.is_empty() else ""))
 	print("FULL_CHAPTER_READY ",JSON.stringify({"scene":"chapter1/ChapterOne.tscn","three_connected_zones":true,"scope":"Full chapter implementation candidate; quality/pacing/manual/audio gates open"}))
 ## The stash window's "equip for the next run": onto the witch the title menu shows.
 func _equip_from_stash(id_: int) -> void:

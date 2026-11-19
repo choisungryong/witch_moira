@@ -9,6 +9,7 @@ extends SceneTree
 ##       --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11
 ##
 ## Output: MODAL_INPUT lines and a MODAL_INPUT_RESULT line; exit 1 when a check failed or a check never found its moment.
+const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 var view: Node
 var frame := 0
 var wait_until := 0
@@ -29,12 +30,9 @@ func _initialize() -> void:
 	root.add_child(view)
 	# Optional: the run with the spell composition on (this tool only; the data file stays off). The run has not started yet here.
 	if "--run-spells=on" in OS.get_cmdline_user_args():
-		var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
-		if not doc is Dictionary:
-			print("MODAL_INPUT_ARGS ",JSON.stringify({"error":"run_spells.json unreadable"}));quit(2);return
-		doc["enabled"] = true
-		if not view.run.set_run_spells(doc):
-			print("MODAL_INPUT_ARGS ",JSON.stringify({"error":"run_spells refused","errors":view.run.errors}));quit(2);return
+		var problem := TrialDocs.enable_spells_problem(view.run)
+		if not problem.is_empty():
+			print("MODAL_INPUT_ARGS ",JSON.stringify({"error":problem}));quit(2);return
 
 func _find_buttons(node: Node, prefix: String, out: Array) -> void:
 	if node is Button and String(node.text).begins_with(prefix): out.append(node)

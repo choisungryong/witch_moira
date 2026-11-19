@@ -120,10 +120,28 @@ class PassingTests(Base):
         self.assertClean(result)
         self.assertEqual(result['fixtures'], 2)
 
-    def test_the_same_fixture_in_both_places_fails(self):
+    def test_a_draft_fixture_in_ui_is_shadowed_by_the_contracts_folder(self):
+        # S0-b: the design-step fixtures stay in ui/ while the closed ones come to contracts/; the closed one counts, the draft is a note
         make_tree(self.root)
         write(self.root, 'chapter1/tests/fixtures/ui/demo.long.json', FIXTURE)
+        result = check(self.root)
+        self.assertClean(result)
+        self.assertTrue([n for n in result['notes'] if 'not checked' in n and 'demo.long' in n])
+
+    def test_the_same_variant_twice_in_ui_fails(self):
+        make_tree(self.root)
+        write(self.root, 'chapter1/tests/fixtures/ui/demo.mine.json', FIXTURE)
+        write(self.root, 'chapter1/tests/fixtures/ui/demo_v0.mine.json', FIXTURE)  # the screen key says demo for both
         self.has(check(self.root), 'exists in', 'too')
+
+    def test_a_prefixed_draft_fixture_is_read_as_the_screen_it_names(self):
+        make_tree(self.root, fixtures={})
+        write(self.root, 'chapter1/tests/fixtures/ui/demo_v0.normal.json', FIXTURE)
+        result = check(self.root)
+        self.assertEqual(result['unchecked_fixtures'], 0)
+        self.assertEqual(result['fixtures'], 1)  # (the schema's other variant has no file: that failure is not this test's subject)
+        write(self.root, 'chapter1/tests/fixtures/ui/demo_v0.broken.json', dict(FIXTURE, count='x'))
+        self.has(check(self.root), 'count')
 
 
 class SchemaTests(Base):
@@ -134,7 +152,8 @@ class SchemaTests(Base):
             'enum without values': dict(SCHEMA, fields={'a': {'type': 'enum'}}),
             'array without item': dict(SCHEMA, fields={'a': {'type': 'array'}}),
             'object without fields': dict(SCHEMA, fields={'a': {'type': 'object'}}),
-            'bad version': dict(SCHEMA, contract_version=0),
+            'bad version': dict(SCHEMA, contract_version=-1),
+            'version as text': dict(SCHEMA, contract_version='0'),
             'top level key': dict(SCHEMA, colors=1),
             'variant twice': dict(SCHEMA, variants=['normal', 'normal']),
             'optional not bool': dict(SCHEMA, fields={'a': {'type': 'bool', 'optional': 'yes'}}),

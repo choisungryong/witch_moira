@@ -59,6 +59,13 @@ extends SceneTree
 ##                                the witch's ring unlock > the main skill's damage axis > a ring's reach axis > the pilot's own
 ##                                scoring for everything else. Each pick prints a HUD_SPELLS_PICK line (tick, level, card, score).
 ##                                The choice-1 / choice-2 moments are dumped before the tool picks, as before.
+## T8 S0-b (opt-in; without them the dump and the run are byte-for-byte what they were):
+##   --dump-contracts=<folder under _local/>   at the moments below, also write what the screen ADAPTER makes from this very run
+##                                (chapter1/view/contracts/<id>_contract.gd, build(run, app_state)) as <folder>/<id>.<moment>.json, for
+##                                tools/dev/screen_contract_check.py --dumps. Moments: "menu" -> title, "choice-1" and "choice-2" -> growth_choice.
+##                                A screen whose adapter does not exist yet is skipped and printed (HUD_CONTRACT_SKIP). The default dump is untouched.
+##   The test switches that are on (--chapter1-trial=..., --run-spells=on, ...) are named in the dump ("trial" next to "order"/"dumps") and on one
+##   HUD_TRIAL line, and only when one is on (chapter1/tests/support/trial_docs.gd).
 ##   Missing or contradicting arguments end at once with one HUD_DUMP_ARGS line and exit code 2 (a flow that needs a
 ##   fixture never starts and waits for a window that does not come): --tree-shots needs --profile-fixture=l8,
 ##   every --profile-fixture needs --chapter1-profile-off, --shots needs a real renderer, unknown values are refused.
@@ -119,6 +126,9 @@ const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const UsageProbe := preload("res://chapter1/tests/asset_usage_probe.gd")
 const BurstCapture := preload("res://chapter1/tests/burst_capture.gd")
 const SpellsPick := preload("res://chapter1/tests/spells_pick.gd")
+const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
+const CONTRACT_MOMENTS := {"menu": "title", "choice-1": "growth_choice", "choice-2": "growth_choice"}
+var contract_dir := ""
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -145,6 +155,7 @@ func _initialize() -> void:
 		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
+		elif arg.begins_with("--dump-contracts="): contract_dir = arg.trim_prefix("--dump-contracts=")
 	var args_error := _check_args()
 	if not args_error.is_empty():
 		push_error("hud_dump: "+args_error)
@@ -152,6 +163,7 @@ func _initialize() -> void:
 		quit(2)
 		return
 	started_msec = Time.get_ticks_msec()
+	if not TrialDocs.tag(OS.get_cmdline_user_args()).is_empty(): print("HUD_TRIAL ",JSON.stringify(TrialDocs.switches(OS.get_cmdline_user_args())))
 	# A project without its import cache (a fresh worktree) loads the scene with errors and then spins forever: refuse at once.
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://.godot/imported")):
 		push_error("hud_dump: res://.godot/imported is missing, the project is not imported here (python tools/dev/run_dev.py --import-only)")
@@ -191,6 +203,11 @@ func _initialize() -> void:
 ## One sentence for the first argument problem, or "". Runs before anything is loaded.
 func _check_args() -> String:
 	var user_args := OS.get_cmdline_user_args()
+	if not contract_dir.is_empty():
+		var absolute := contract_dir if contract_dir.is_absolute_path() else ProjectSettings.globalize_path("res://" + contract_dir)
+		if not ("/_local/" in absolute.replace("\\", "/") + "/"): return "--dump-contracts=%s must be a folder under _local/" % contract_dir
+		contract_dir = absolute
+		if DirAccess.make_dir_recursive_absolute(contract_dir) != OK: return "--dump-contracts folder cannot be created: " + contract_dir
 	if not run_spells_arg.is_empty() and run_spells_arg != "on":
 		return "--run-spells=%s is unknown (on)" % run_spells_arg
 	if not spells_pick.is_empty():
@@ -315,12 +332,18 @@ func _setup_rejected() -> void:
 	rj_files_before = _file_hashes(rj_folder)
 	print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"fixture","configure":loaded,"available":profile.available,"kind":profile.reject_kind,"reason":profile.reject_reason,"resume":profile.resume_info(),"files":rj_files_before}))
 
-func _describe(node: Node, depth: int, rows: Array, alpha := 1.0, clip := Rect2(), has_clip := false) -> void:
+func _describe(node: Node, depth: int, rows: Array, alpha := 1.0, clip := Rect2(), has_clip := false, tint := Color.WHITE, paints = null) -> void:
+	# --dump-extra only: the text colour "fc" and the colour under it "bg" (layout_dump.gd) need the tint and the paints of the whole tree.
+	var top := dump_extra and paints == null
+	if top: paints = []
 	var child_alpha := alpha
 	var child_clip := clip
 	var child_has_clip := has_clip
+	var child_tint := tint
 	if node is CanvasItem:
 		child_alpha = alpha*node.modulate.a*node.self_modulate.a
+		var own_tint: Color = node.modulate*node.self_modulate
+		child_tint = Color(tint.r*own_tint.r,tint.g*own_tint.g,tint.b*own_tint.b,1.0)
 	if node is Control:
 		var c: Control = node
 		var row := {"d":depth,"class":c.get_class(),"name":String(c.name),"visible":c.is_visible_in_tree(),
@@ -330,14 +353,20 @@ func _describe(node: Node, depth: int, rows: Array, alpha := 1.0, clip := Rect2(
 		if c is BaseButton: row.disabled = c.disabled
 		if c is Range: row.value = snappedf(c.value,.001); row.max = snappedf(c.max_value,.001)
 		if c is TextureRect: row.texture = c.texture.resource_path if c.texture != null else ""
-		if dump_extra: _describe_extra(c,row,child_alpha,clip,has_clip)
+		if dump_extra: LayoutDump.extra(c,row,child_alpha,clip,has_clip,child_tint)
 		rows.append(row)
+		if paints != null:
+			var paint: Dictionary = LayoutDump.paint_of(c,child_alpha)
+			if not paint.is_empty():
+				paint["i"] = rows.size()-1
+				paints.append(paint)
 		if c.clip_contents or c is ScrollContainer:
 			var own := Rect2(c.global_position,c.size)
 			child_clip = clip.intersection(own) if has_clip else own
 			child_has_clip = true
 	for child in node.get_children():
-		_describe(child,depth+1,rows,child_alpha,child_clip,child_has_clip)
+		_describe(child,depth+1,rows,child_alpha,child_clip,child_has_clip,child_tint,paints)
+	if top: LayoutDump.fill_bg(rows,paints,node.get_viewport() != null and node.get_viewport().get_camera_3d() == null)
 
 ## Layout fields for tools/dev/hud_layout_check.py. Only with --dump-extra (shared with scene_shot.gd).
 func _describe_extra(c: Control, row: Dictionary, alpha: float, clip: Rect2, has_clip: bool) -> void:
@@ -398,6 +427,31 @@ func _dump(label: String) -> void:
 	for row in rows:
 		if row.visible: visible += 1
 	print("HUD_DUMP ",JSON.stringify({"label":label,"controls":rows.size(),"visible":visible,"tick":view.run.tick,"mode":view.run.mode,"hash":JSON.stringify(rows).sha256_text().left(16)}))
+	if not contract_dir.is_empty(): _dump_contract(label)
+
+## --dump-contracts: what the adapter of the screen at this moment makes from the live run. Reads only; a missing adapter is skipped.
+func _dump_contract(label: String) -> void:
+	if not CONTRACT_MOMENTS.has(label): return
+	var id_: String = CONTRACT_MOMENTS[label]
+	var path := "res://chapter1/view/contracts/%s_contract.gd" % id_
+	if not FileAccess.file_exists(path):
+		print("HUD_CONTRACT_SKIP ",JSON.stringify({"moment":label,"screen":id_,"why":"no adapter yet"}))
+		return
+	var adapter: GDScript = load(path)
+	var app_state := {}
+	if id_ == "title":
+		# The host's own state, read only (the shape T8 S2 fixes; the adapter takes what it needs).
+		for key in ["profile_state","character_views","temporary_art","motion_enabled","profile_note"]:
+			var value: Variant = view.hud.get(key)
+			if value != null: app_state[key] = value
+	var contract: Variant = adapter.call("build",view.run,app_state)
+	var file := FileAccess.open(contract_dir.path_join("%s.%s.json" % [id_,label]),FileAccess.WRITE)
+	if file == null or not contract is Dictionary:
+		push_error("hud_dump: cannot write the contract of "+label)
+		return
+	file.store_string(JSON.stringify(contract," "))
+	file.close()
+	print("HUD_CONTRACT ",JSON.stringify({"moment":label,"screen":id_,"keys":contract.size()}))
 
 func _mark(key: String) -> bool:
 	if done_marks.has(key): return false
@@ -553,6 +607,8 @@ func _finish() -> void:
 	if not out_path.is_empty():
 		var file := FileAccess.open(out_path,FileAccess.WRITE)
 		var document := {"order":order,"dumps":dumps}
+		var trial := TrialDocs.switches(OS.get_cmdline_user_args())
+		if not trial.is_empty(): document["trial"] = trial
 		if dump_extra:
 			document["meta"] = {"canvas":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"window":[root.size.x,root.size.y],"extra":true}
 		if file == null:
