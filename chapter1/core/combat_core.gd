@@ -223,8 +223,13 @@ func get_offer() -> Dictionary:
 	return growth.next_offer() if mode == "choice" else {}
 
 func choose(token: String, card_id: String) -> bool:
-	if mode != "choice" or not growth.choose(token,card_id): return false
-	_emit("growth",hero.position,{"card_id":card_id,"growth":growth.snapshot()})
+	if mode != "choice": return false
+	# The picked card's identity for the record and the screen, read from the standing offer before choose() clears it (no card is drawn here).
+	var picked := {}
+	for card in growth.snapshot().offer.get("cards",[]):
+		if card.id == card_id: picked = {"kind":String(card.kind),"skill_id":String(card.get("skill_id","")),"title_key":String(card.title_key),"rank":int(card.get("rank",0)),"axis":String(card.get("axis","")),"level":int(card.get("level",0))}
+	if not growth.choose(token,card_id): return false
+	_emit("growth",hero.position,{"card_id":card_id,"card":picked,"growth":growth.snapshot()})
 	_refresh_mode()
 	return true
 

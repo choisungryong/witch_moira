@@ -23,6 +23,8 @@ const DEPTH_PATTERN := "^d[0-9]{1,2}\\z"
 ## How far back a hit may be matched to the attack that caused it (seconds; the core's attack events come before the hit).
 const ATTRIBUTE_BACK_SECONDS := 3
 const ATTRIBUTE_DISTANCE_SQ := 0.05
+## The "recent damage per second" of summary() looks this many seconds back from the end of the run.
+const RECENT_SECONDS := 60
 
 var depth := "d1"
 var _begun := false
@@ -34,6 +36,10 @@ var _last_seq := -1
 var _now := 0
 var _level := 1
 var _primary := ""
+## Life really taken off enemies per second of play ({second index: dealt_raw}); only the last RECENT_SECONDS are kept.
+var _dealt_by_second: Dictionary = {}
+var _max_hp_raw := 1
+var _final_level := 1
 
 var _damage_raw: Dictionary = {}
 var _kills_by_skill: Dictionary = {}
@@ -77,6 +83,9 @@ func begin(run: Object, depth_key: String = "d1", loss_window_seconds: int = 30)
 	var growth: Dictionary = run.growth.snapshot()
 	_level = int(growth.level)
 	_primary = String(growth.primary)
+	_dealt_by_second = {}
+	_max_hp_raw = maxi(1, int(run.hero.get("max_hp_raw", 1)))
+	_final_level = _level
 	_damage_raw = {}
 	_kills_by_skill = {}
 	_skill_meta = {}
@@ -129,6 +138,7 @@ func consume(events: Array) -> void:
 				var dealt := int(event.get("dealt_raw", event.get("damage_raw", 0)))
 				_damage_raw[skill] = int(_damage_raw.get(skill, 0)) + dealt
 				_hit_events += 1
+				_dealt_by_second[tick / _hz] = int(_dealt_by_second.get(tick / _hz, 0)) + dealt
 				_touch_skill(skill, tick)
 				_beat_add("damage_raw", dealt)
 			"death":
@@ -151,7 +161,7 @@ func consume(events: Array) -> void:
 				var raw := int(event.get("damage_raw", 0))
 				_taken_raw += raw
 				_beat_add("taken_raw", raw)
-				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO), String(event.get("source_kind", ""))])
+				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO), String(event.get("source_kind", "")), int(event.get("hp_after_raw", -1))])
 			"enemy_attack":
 				_attacks.append([tick, event.get("position", Vector2.ZERO), String(event.get("kind", "unknown"))])
 			"chapter_burst":
@@ -200,6 +210,7 @@ func observe(run: Object) -> void:
 func _sample(run: Object) -> void:
 	_last_sample_tick = int(run.tick)
 	var max_hp := maxi(1, int(run.hero.get("max_hp_raw", 1)))
+	_max_hp_raw = max_hp
 	_samples.append([int(run.tick), int(run.alive_count()), int(run.hero.get("hp_raw", 0)) * 10000 / max_hp])
 
 ## Ends the record. Reads the final state once; a second call changes nothing.
@@ -210,6 +221,7 @@ func finish(run: Object) -> void:
 	_sample(run)
 	_ticks = int(run.tick)
 	_now = maxi(_now, _ticks)
+	_final_level = maxi(_level, int(run.growth.snapshot().level))
 	# The victory event is what the core emits; the mode is "inventory" while the bag is open after the win.
 	_victory = _victory or String(run.mode) == "victory"
 	var progress: Dictionary = run.progress_summary()
@@ -234,7 +246,7 @@ func _touch_skill(skill: String, tick: int) -> void:
 func _on_growth(event: Dictionary, tick: int) -> void:
 	var growth: Dictionary = event.get("growth", {})
 	_level = maxi(_level, int(growth.get("level", _level)))
-	_picks.append({"tick": tick, "level": int(growth.get("level", _level)), "card": String(event.get("card_id", ""))})
+	_picks.append(_pick_row(event, tick, int(growth.get("level", _level))))
 	var ranks: Dictionary = growth.get("ranks", {})
 	for id_ in ranks:
 		var key := String(id_)
@@ -244,6 +256,37 @@ func _on_growth(event: Dictionary, tick: int) -> void:
 	for id_ in growth.get("evolved", []):
 		if _skill_meta.has(String(id_)):
 			_skill_meta[String(id_)].evolved = true
+
+## One pick of the card list. `card` stays the id; the rest comes from the core's growth event (`card`), and from the id itself
+## ("kind:skill:axis|rank") for an event that has none, so the screen never has to take the id apart.
+func _pick_row(event: Dictionary, tick: int, level: int) -> Dictionary:
+	var id_ := String(event.get("card_id", ""))
+	var named: Dictionary = event.get("card", {})
+	var parts := id_.split(":")
+	var kind := String(named.get("kind", parts[0] if parts.size() > 0 else ""))
+	var skill := String(named.get("skill_id", ""))
+	var axis := String(named.get("axis", ""))
+	var rank := int(named.get("rank", 0))
+	if named.is_empty():
+		match kind:
+			"unlock", "evolve":
+				skill = parts[1] if parts.size() > 1 else ""
+			"axis":
+				skill = parts[1] if parts.size() > 1 else ""
+				axis = parts[2] if parts.size() > 2 else ""
+			"rank":
+				skill = parts[1] if parts.size() > 1 else ""
+				rank = int(parts[2]) if parts.size() > 2 else 0
+	var title := String(named.get("title_key", ""))
+	if title.is_empty():
+		match kind:
+			"unlock", "rank", "axis":
+				title = "skill.%s.name" % skill
+			"evolve":
+				title = "skill.%s.evolved_name" % skill
+			"passive":
+				title = "grace.passive.%s.name" % (parts[1] if parts.size() > 1 else "")
+	return {"tick": tick, "level": level, "card": id_, "kind": kind, "skill_id": skill, "title_key": title, "rank": rank, "axis": axis, "axis_level": int(named.get("level", 0))}
 
 func _beat_add(key: String, amount: int) -> void:
 	if _beats.is_empty():
@@ -259,6 +302,10 @@ func _trim() -> void:
 		_attacks.pop_front()
 	while not _samples.is_empty() and int(_samples[0][0]) < cut:
 		_samples.pop_front()
+	var recent_from := (_now - RECENT_SECONDS * _hz) / _hz - 1
+	for second in _dealt_by_second.keys():
+		if int(second) < recent_from:
+			_dealt_by_second.erase(second)
 
 # ---------------------------------------------------------------- results
 
@@ -347,7 +394,13 @@ func _build_summary() -> Dictionary:
 	var beats: Array = []
 	for beat in _beats:
 		beats.append({"id": beat.id, "tick": beat.tick, "kills": beat.kills, "taken": int(beat.taken_raw) / _unit, "damage": int(beat.damage_raw) / _unit})
-	var result := {"ready": true, "record": record, "total_damage": total, "dps_tenths": total * _hz * 10 / maxi(1, _ticks),
+	var recent_ticks := mini(_ticks, RECENT_SECONDS * _hz)
+	var recent_raw := 0
+	for second in _dealt_by_second:
+		if int(second) * _hz >= _ticks - RECENT_SECONDS * _hz:
+			recent_raw += int(_dealt_by_second[second])
+	var result := {"ready": true, "record": record, "level": _final_level, "primary_id": _primary,
+		"recent_window_ticks": recent_ticks, "recent_dps_tenths": recent_raw * _hz * 10 / _unit / maxi(1, recent_ticks), "total_damage": total, "dps_tenths": total * _hz * 10 / maxi(1, _ticks),
 		"skills": rows, "pairs": pairs, "beats": beats, "picks": _picks.duplicate(true), "abandoned": _abandoned, "events_dropped": _events_dropped, "hit_events": _hit_events}
 	result.loss = {} if _victory else _loss_material()
 	return result
@@ -360,9 +413,14 @@ func _loss_material() -> Dictionary:
 	var attributed := 0
 	var window_taken := 0
 	var last_hit := {}
+	var hp_low_bps := -1
 	for hit in _hero_hits:
 		if int(hit[0]) < from_tick:
 			continue
+		# hero_hit.hp_after_raw is the hero's real life right after the blow (-1 for an older event without it).
+		if hit.size() > 4 and int(hit[4]) >= 0:
+			var after_bps := int(hit[4]) * 10000 / _max_hp_raw
+			hp_low_bps = after_bps if hp_low_bps < 0 else mini(hp_low_bps, after_bps)
 		# The core names the source on the event since KS-3; the position match is only for events without it.
 		var kind := String(hit[3]) if hit.size() > 3 and not String(hit[3]).is_empty() else _kind_of(int(hit[0]), hit[2])
 		var row: Dictionary = by_kind.get(kind, {"hits": 0, "life": 0, "raw": 0})
@@ -385,7 +443,7 @@ func _loss_material() -> Dictionary:
 			trend.append({"ticks_before_end": _ticks - int(sample[0]), "alive": int(sample[1]), "hp_bps": int(sample[2])})
 			alive_peak = maxi(alive_peak, int(sample[1]))
 	return {"window_ticks": _window_ticks, "taken": window_taken / _unit, "hits": window_hits, "by_source": by_kind,
-		"attributed_bps": attributed * 10000 / maxi(1, window_hits), "alive_trend": trend, "alive_peak": alive_peak, "last_hit": last_hit}
+		"attributed_bps": attributed * 10000 / maxi(1, window_hits), "alive_trend": trend, "alive_peak": alive_peak, "last_hit": last_hit, "hp_low_bps": hp_low_bps}
 
 func _kind_of(tick: int, from: Variant) -> String:
 	if not from is Vector2:

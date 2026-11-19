@@ -553,6 +553,49 @@ func part_e() -> void:
 	var stream: String = drawn.growth.snapshot().rng_state
 	drawn.run_spells_view()
 	check(drawn.growth.snapshot().rng_state == stream, "E the view never draws an offer or moves the random stream")
+	# The card contract (screen reads this, not the core): the stored offer is untouched, the view carries the extra keys.
+	check(not (standing.cards[0] as Dictionary).has("pair_links") and not (standing.cards[0] as Dictionary).has("changed"), "E card contract: the cards of the standing offer (and so the snapshot) carry no contract keys")
+	var cc_axis_id := ""
+	for card in standing.cards:
+		if card.kind == "axis" and card.skill_id == EMBER: cc_axis_id = String(card.id)
+	var cc_cards := pool(view_run)
+	var cc_axis: Dictionary = {}
+	for card in cc_cards:
+		if card.kind == "axis" and card.id == "axis:%s:damage" % EMBER: cc_axis = card
+	var cc: Dictionary = view_run.growth.card_contract(cc_axis)
+	check(not cc.is_empty() and cc.passive_id == "chapter1.passive.embers" and not cc.passive_owned, "E card contract: an axis card carries the passive id that its evolution needs (%s)" % str(cc.get("passive_id")))
+	check(cc.before == view_run.growth.effective_skill(EMBER).effects and cc.after == cc_axis.after and cc.changed.has("damage_raw") and int(cc.changed.damage_raw.before) == int(cc.before.damage_raw) and int(cc.changed.damage_raw.after) == int(cc_axis.after.damage_raw), "E card contract: an axis card names before, after and the changed keys")
+	check(not cc.changed.has("cooldown_ticks") == (int(cc.before.cooldown_ticks) == int(cc.after.cooldown_ticks)) and not cc.changed.has("ring_radius_cm"), "E card contract: changed lists only the keys that move")
+	var cc_links: Array = cc.pair_links
+	check(cc_links.size() == 2 and cc_links[0].kind == "detonate" and cc_links[0].status == "heat" and cc_links[0].other == EMBER_RING and cc_links[0].card_is == "a" and cc_links[1].kind == "interlock" and cc_links[1].card_is == "b" and cc_links[1].via == ["staggered"], "E card contract: a spell and its ring link both ways (detonate and interlock): " + JSON.stringify(cc_links))
+	check(cc.pairs_if_taken == view_run.growth.pairs_if_taken(cc_axis), "E card contract: the older pairs_if_taken list is kept as it was")
+	check(cc.applies == ["heat"] and cc.prefer == "" and cc.prefer_i0 and cc.prefer_kinds == ["ranged"] and cc.role == "basic" and cc.element == "ember", "E card contract: a basic spell card names its status, prefer and I0: " + JSON.stringify(cc))
+	check(JSON.stringify(view_run.run_spells_view().offer.get(cc_axis_id, {}).get("passive_id", "")) == '"chapter1.passive.embers"' or cc_axis_id == "", "E card contract: the view's offer entry carries the contract")
+	var cc_ring_card := {"skill_id": EMBER_RING, "kind": "axis", "after": {}}
+	check(view_run.growth.card_contract(cc_ring_card).passive_id == "" and (view_run.growth.card_contract(cc_ring_card).before as Dictionary).has("ring_radius_cm"), "E card contract: a ring has no passive and its own effect")
+	check(view_run.growth.card_contract({"skill_id": "chapter1.skill.nothing"}).is_empty() and view_run.growth.card_contract({}).is_empty(), "E card contract: a card naming no spell gets nothing")
+	# Both directions of a borrowed pair (the frost spell with the arc spell owned: frost-then-arc and arc-then-frost).
+	var cc_arc := bench(ARC)
+	give(cc_arc, FROST)
+	var cc_frost: Dictionary = cc_arc.growth.card_contract({"skill_id": FROST, "kind": "axis", "after": {}})
+	var cc_ids: Array = cc_frost.pair_links.map(func(l): return String(l.id))
+	check(cc_ids == ["pair.borrow.frost_arc", "pair.borrow.arc_frost"] or (cc_ids.has("pair.borrow.frost_arc") and cc_ids.has("pair.borrow.arc_frost") and cc_ids.size() == 2), "E card contract: a borrowed pair shows both interlock directions: " + str(cc_ids))
+	var cc_react: Array = view_run.growth.card_contract({"skill_id": FROST, "kind": "unlock", "after": {}}).pair_links
+	check(cc_react.any(func(l): return l.kind == "reaction" and l.other == EMBER_RING and l.reaction == "react.steam"), "E card contract: a pair with no detonate or interlock link shows the element reaction link")
+	var cc_before := JSON.stringify(view_run.snapshot())
+	view_run.growth.card_contract(cc_axis)
+	check(JSON.stringify(view_run.snapshot()) == cc_before and drawn.growth.card_contract({"skill_id": EMBER}).is_empty() == false, "E card contract: reading it changes nothing")
+	# An evolve card names the passive id too.
+	var cc_evo := bench(EMBER)
+	cc_evo.growth._axes[EMBER] = {"damage": 3, "reach": 2}
+	cc_evo.growth._owned_passives.append("chapter1.passive.embers")
+	give(cc_evo, EMBER_RING, 1, 1)
+	var cc_evolve: Dictionary = {}
+	for card in pool(cc_evo):
+		if card.kind == "evolve": cc_evolve = card
+	check(not cc_evolve.is_empty() and cc_evo.growth.card_contract(cc_evolve).passive_id == "chapter1.passive.embers" and cc_evo.growth.card_contract(cc_evolve).passive_owned, "E card contract: an evolve card names the owned passive id")
+	var cc_off := make_run(null)
+	check(cc_off.growth.card_contract({"skill_id": EMBER}).is_empty(), "E card contract: empty while the composition is off")
 
 func Spells_pair(run: RefCounted, id_: String) -> Array[String]:
 	return run.growth.pairs_if_taken({"skill_id": id_})

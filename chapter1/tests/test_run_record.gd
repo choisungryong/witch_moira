@@ -107,6 +107,8 @@ func play(seed_: int, primary: String, with_recorder: bool, stand_still: bool = 
 	var guard := 0
 	var started := Time.get_ticks_msec()
 	var tally_seq := -1
+	var hit_log: Array = []
+	var hp_log: Array = []
 	while run.mode not in ["victory", "defeat"] and guard < tick_limit:
 		var move: Vector2 = pilot.decide()
 		if with_recorder:
@@ -129,11 +131,13 @@ func play(seed_: int, primary: String, with_recorder: bool, stand_still: bool = 
 				"hit":
 					var id_ := String(event.skill_id)
 					dealt[id_] = int(dealt.get(id_, 0)) + int(event.dealt_raw)
+					hit_log.append([int(event.tick), int(event.dealt_raw)])
 					full[id_] = int(full.get(id_, 0)) + int(event.damage_raw)
 				"death":
 					deaths[String(event.skill_id)] = int(deaths.get(String(event.skill_id), 0)) + 1
 				"hero_hit":
 					taken += int(event.damage_raw)
+					hp_log.append([int(event.tick), int(event.hp_after_raw)])
 		if run.tick % HASH_EVERY == 0:
 			hashes.append(JSON.stringify(run.snapshot()).sha256_text())
 		if abandon_at >= 0 and run.tick >= abandon_at and run.mode == "playing":
@@ -146,7 +150,7 @@ func play(seed_: int, primary: String, with_recorder: bool, stand_still: bool = 
 		if feed_twice:
 			recorder.finish(run)
 	print("RUN_RECORD_TIME ", primary, " recorder=", with_recorder, " ticks=", guard, " ms=", Time.get_ticks_msec() - started)
-	return {"run": run, "pilot": pilot, "recorder": recorder, "dealt": dealt, "full": full, "deaths": deaths, "taken": taken, "hashes": hashes, "ticks": guard}
+	return {"run": run, "pilot": pilot, "recorder": recorder, "dealt": dealt, "full": full, "deaths": deaths, "taken": taken, "hit_log": hit_log, "hp_log": hp_log, "hashes": hashes, "ticks": guard}
 
 func sample_lines(label: String, data: Dictionary) -> void:
 	var recorder: RefCounted = data.recorder
@@ -214,6 +218,26 @@ func check_run(label: String, data: Dictionary) -> void:
 		share += int(row.share_bps)
 	check(absi(share - 10000) <= summary.skills.size(), "%s: shares add up to 100 %% (%d bps)" % [label, share])
 	check((summary.loss as Dictionary).is_empty() == (run.mode == "victory"), "%s: loss material only for a lost run" % label)
+	# The screen's extra material: final level, primary skill, damage per second of the last 60 seconds, the named picks.
+	check(int(summary.level) == int(run.growth.snapshot().level) and int(summary.level) >= 2, "%s: summary.level is the final level (%d)" % [label, int(summary.level)])
+	check(String(summary.primary_id) == primary, "%s: summary.primary_id is the primary skill" % label)
+	var recent_raw := 0
+	for entry in data.hit_log:
+		if int(entry[0]) / int(run.HZ) * int(run.HZ) >= int(run.tick) - 60 * int(run.HZ):
+			recent_raw += int(entry[1])
+	var recent_ticks := mini(int(run.tick), 60 * int(run.HZ))
+	check(int(summary.recent_window_ticks) == recent_ticks and int(summary.recent_dps_tenths) == recent_raw * int(run.HZ) * 10 / unit / maxi(1, recent_ticks), "%s: recent_dps_tenths %d equals the last-60-second event sum" % [label, int(summary.recent_dps_tenths)])
+	check(int(summary.recent_dps_tenths) > 0 or run.mode == "defeat", "%s: a run that ended has recent damage per second" % label)
+	check(summary.picks.size() > 0, "%s: the record lists the picks" % label)
+	for pick in summary.picks:
+		var named_ok: bool = String(pick.title_key).begins_with("skill.") or String(pick.title_key).begins_with("grace.passive.")
+		var expect_key := ""
+		match String(pick.kind):
+			"unlock", "rank", "axis": expect_key = "skill.%s.name" % pick.skill_id
+			"evolve": expect_key = "skill.%s.evolved_name" % pick.skill_id
+			"passive": expect_key = String(pick.title_key)
+		check(named_ok and String(pick.title_key) == expect_key and String(pick.card).begins_with(String(pick.kind) + ":"), "%s: pick %s carries kind, skill and title_key (%s)" % [label, pick.card, JSON.stringify(pick)])
+		check(String(pick.kind) != "rank" or int(pick.rank) >= 2, "%s: a rank pick carries its rank" % label)
 	summary.record.kills = -5
 	check(int(recorder.summary().record.kills) == int(record.kills), "%s: summary() is a copy" % label)
 
@@ -273,8 +297,38 @@ func execute() -> void:
 		check(by_source_life == int(loss.hits), "F hits by source add up")
 		check(int(loss.last_hit.ticks_before_end) <= int(loss.window_ticks), "F the last blow lies inside the window")
 		check(not bool(summary.abandoned), "F a real defeat is not marked abandoned")
+		# alive_trend.hp_bps is the real life (sampled from the hero), and hp_low_bps comes from hero_hit.hp_after_raw.
+		var lost_run: RefCounted = lost.run
+		var trend: Array = loss.alive_trend
+		var low := 10001
+		var high := -1
+		var end_bps := -1
+		for sample in trend:
+			low = mini(low, int(sample.hp_bps))
+			high = maxi(high, int(sample.hp_bps))
+			if int(sample.ticks_before_end) == 0:
+				end_bps = int(sample.hp_bps)
+		check(low < high and low >= 0 and high <= 10000, "F alive_trend.hp_bps moves with the hero's real life (%d..%d)" % [low, high])
+		check(end_bps == int(lost_run.hero.hp_raw) * 10000 / int(lost_run.hero.max_hp_raw), "F the sample at the end equals the hero's real life (%d)" % end_bps)
+		var expect_low := -1
+		for entry in lost.hp_log:
+			if int(entry[0]) >= int(lost_run.tick) - int(loss.window_ticks):
+				var bps := int(entry[1]) * 10000 / int(lost_run.hero.max_hp_raw)
+				expect_low = bps if expect_low < 0 else mini(expect_low, bps)
+		check(int(loss.hp_low_bps) == expect_low and expect_low >= 0, "F loss.hp_low_bps %d equals the lowest hero_hit.hp_after_raw in the window %d" % [int(loss.hp_low_bps), expect_low])
 		print("RUN_RECORD_LOSS ", JSON.stringify(loss))
 		check_run("lost", lost)
+	# Picks of an event without the core's `card` detail are named from the card id.
+	var fake_run: RefCounted = Chapter.new()
+	fake_run.start(seed_, "chapter1.skill.frost")
+	var fake: RefCounted = RunRecord.new()
+	fake.begin(fake_run, "d1")
+	fake.consume([{"seq": 1, "tick": 10, "type": "growth", "card_id": "axis:chapter1.skill.ember:reach", "growth": {"level": 3, "ranks": {}}},
+		{"seq": 2, "tick": 20, "type": "growth", "card_id": "rank:chapter1.skill.frost:3", "growth": {"level": 4, "ranks": {}}},
+		{"seq": 3, "tick": 30, "type": "growth", "card_id": "passive:chapter1.passive.crystal", "growth": {"level": 5, "ranks": {}}}])
+	fake.finish(fake_run)
+	var fake_picks: Array = fake.summary().picks
+	check(fake_picks.size() == 3 and fake_picks[0].axis == "reach" and fake_picks[0].skill_id == "chapter1.skill.ember" and fake_picks[0].title_key == "skill.chapter1.skill.ember.name" and fake_picks[1].rank == 3 and fake_picks[2].title_key == "grace.passive.chapter1.passive.crystal.name", "G picks without the core's card detail are named from the id: " + JSON.stringify(fake_picks))
 	var gave_up := play(seed_, "chapter1.skill.frost", true, false, 1800)
 	check(not gave_up.has("error") and gave_up.run.mode == "defeat" and bool(gave_up.recorder.summary().abandoned) and not bool(gave_up.recorder.to_last_record().victory), "F an abandoned run is a defeat marked abandoned")
 	print("CHAPTER1_RUN_RECORD_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))

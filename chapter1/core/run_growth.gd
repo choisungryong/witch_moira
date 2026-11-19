@@ -435,6 +435,55 @@ func pairs_if_taken(card: Dictionary) -> Array[String]:
 	if _spells.is_empty() or not card.has("skill_id"): return none
 	return _pairs_with(String(card.skill_id),owned_spells())
 
+## The card contract for the screen (read only, nothing is stored: the standing offer and the snapshot stay as they are).
+## {} when the composition is off or the card names no spell of the document. Keys:
+##  pairs_if_taken [pair id]  the older flat list (one pair per owned spell), kept for the screens that read it
+##  pair_links [{id,kind,other,a,b,card_is,status|via|elements+reaction}]  every link with an owned spell, BOTH directions of a
+##     spell pair (detonate and interlock), document order; `a` puts the state on, `b` finishes; card_is "a" or "b"
+##  role, element, passive_id ("" for a ring), passive_owned, applies [status id], prefer (status id or ""), prefer_kinds [kind],
+##  prefer_i0 (true when the spell aims at a kind of enemy first), before (the effect now; {} for an unlock), after (the card's),
+##  changed {effect key: {before, after}} (axis cards: only the keys that move)
+func card_contract(card: Dictionary) -> Dictionary:
+	if _spells.is_empty() or not card.has("skill_id"): return {}
+	var id_ := String(card.skill_id)
+	if not _spells.spells.has(id_): return {}
+	var spell: Dictionary = _spells.spells[id_]
+	var passive_id := String(_skills[id_].passive_id) if _skills.has(id_) else ""
+	var applies: Array[String] = []
+	for status in spell.applies: applies.append(String(status))
+	var kinds: Array[String] = []
+	for kind in spell.get("prefer_kinds",[]): kinds.append(String(kind))
+	var before: Dictionary = effective_skill(id_).get("effects",{}).duplicate(true) if _ranks.has(id_) else {}
+	var after: Dictionary = card.get("after",{}).duplicate(true)
+	var changed := {}
+	if String(card.get("kind","")) == "axis":
+		for key in after:
+			if before.get(key) != after[key]: changed[String(key)] = {"before":before.get(key,0),"after":after[key]}
+	return {"pairs_if_taken":pairs_if_taken(card),"pair_links":_pair_links(id_),"role":String(spell.role),"element":String(spell.element),
+		"passive_id":passive_id,"passive_owned":passive_id in _owned_passives,"applies":applies,"prefer":String(spell.get("prefer","")),
+		"prefer_kinds":kinds,"prefer_i0":not kinds.is_empty(),"before":before,"after":after,"changed":changed}
+
+func _pair_links(id_: String) -> Array[Dictionary]:
+	var links: Array[Dictionary] = []
+	for other in owned_spells():
+		if other == id_: continue
+		var found := false
+		for pair in _spells.pairs:
+			if not (pair.kind in ["detonate","interlock"]): continue
+			if not ((pair.a == id_ and pair.b == other) or (pair.a == other and pair.b == id_)): continue
+			found = true
+			var link := {"id":String(pair.id),"kind":String(pair.kind),"other":other,"a":String(pair.a),"b":String(pair.b),"card_is":"a" if pair.a == id_ else "b"}
+			if pair.kind == "detonate": link.status = String(pair.status)
+			else: link.via = pair.via.duplicate()
+			links.append(link)
+		if found: continue
+		var reaction := Spells.pair_between(_spells,id_,other)
+		if reaction.is_empty(): continue
+		for pair in _spells.pairs:
+			if pair.id == reaction:
+				links.append({"id":reaction,"kind":"reaction","other":other,"a":id_,"b":other,"card_is":"a","elements":pair.elements.duplicate(),"reaction":String(pair.reaction)})
+	return links
+
 ## How far a spell is from its evolution. {} for a spell that cannot evolve.
 ## {axis:{have,need}, passive:{have,need}, partner:{have,need,skill,pair}}
 func evolve_progress(id_: String) -> Dictionary:

@@ -1104,7 +1104,7 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 
 ## Read only, for the card screen (D12 B0.11) and the measurement policies. Changes nothing. {"enabled":false} while off.
 ## {enabled, slots, spells:{id:{role,element,axis:{damage,reach},pairs_owned:[pair id],evolve_progress:{axis,passive,partner}}},
-##  offer:{card id: {pairs_if_taken:[pair id]}} (the standing offer only), detonate:{count,extra_raw,pairs},
+##  offer:{card id: growth.card_contract(card), keys in run_growth.gd} (the standing offer only), detonate:{count,extra_raw,pairs},
 ##  ward:{casts,hits,kills,staggers,cuts,freezes,stuns,vs_cc_hits,vs_cc_extra_raw,i2_hits,i2_extra_raw,i0_casts,i0_kills}}
 func run_spells_view() -> Dictionary:
 	if spells.is_empty():return {"enabled":false}
@@ -1114,7 +1114,7 @@ func run_spells_view() -> Dictionary:
 		owned[id_]={"role":String(spell.role),"element":String(spell.element),"axis":growth.axis_levels(id_),"pairs_owned":growth.pairs_owned(id_),"evolve_progress":growth.evolve_progress(id_)}
 	var offer := {}
 	# Only an offer that was already drawn (get_offer()); this function never draws one, so it never moves the random stream.
-	for card in growth.snapshot().offer.get("cards",[]):offer[String(card.id)]={"pairs_if_taken":growth.pairs_if_taken(card)}
+	for card in growth.snapshot().offer.get("cards",[]):offer[String(card.id)]=growth.card_contract(card)
 	return {"enabled":true,"slots":int(spells.slots),"spells":owned,"offer":offer,"detonate":metrics.get("detonate",{}).duplicate(true),"ward":metrics.get("ward",{}).duplicate(true)}
 
 ## What the screen needs to word the goal. `kind`: "move" (walk to the next room), "seal_kills" (done/total kills around the
