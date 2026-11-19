@@ -13,8 +13,8 @@ var shards: MultiMeshInstance3D
 var impacts: MultiMeshInstance3D
 var plumes: MultiMeshInstance3D
 var shadows: MultiMeshInstance3D
-var telegraph: MeshInstance3D
-var telegraph_fill: MeshInstance3D
+var telegraph: MultiMeshInstance3D
+var telegraph_fill: MultiMeshInstance3D
 var beams: MeshInstance3D
 ## Debris particles as parallel arrays (was one Dictionary per particle). life/size stay 64-bit like the old
 ## Dictionary floats; p/v/color are the same 32-bit types, so every number matches the old per-particle values.
@@ -27,8 +27,6 @@ var item_nodes: Dictionary={}
 var strokes: Array[Dictionary]=[]
 var _last_event := -1
 var _rng := RandomNumberGenerator.new()
-var _line_mesh := ImmediateMesh.new()
-var _fill_mesh := ImmediateMesh.new()
 var _beam_mesh := ImmediateMesh.new()
 var _last_camera_tick := -100
 ## A6-2: debris cap 960 -> 400 (A6 4.5), paying for the new ground ring and ember marks.
@@ -51,10 +49,11 @@ var _key_cache: Dictionary={}
 var _routed_p := 0
 var _routed_i := 0
 var _routed_c := 0
-var _tele_blank := false
+## A6-5: the telegraph quads (one MultiMesh, drawn by `telegraph_fill` and `telegraph`).
+const TELE_MAX := 96
+var _tele_mm: MultiMesh
 var _flash_blank := false
 var _flash_blank_color: Variant=null
-var _ward_blank := false
 var _arc_blank := false
 var _loot26_blank := false
 
@@ -89,18 +88,22 @@ func setup__cloister(owner_view: Node3D) -> void:
 	shadows=_batch(shadow_plane,513)
 	var shadow_material := ShaderMaterial.new();shadow_material.shader=preload("res://chapter1/view/foot_shadow.gdshader")
 	shadows.material_override=shadow_material
-	telegraph=MeshInstance3D.new()
-	var line_mat := _glow(Color.WHITE,0)
-	line_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-	# D3: threat shapes draw after (above) additive effects and ignore depth, so bursts cannot hide them.
-	line_mat.no_depth_test=true;line_mat.render_priority=11
-	telegraph.material_override=line_mat
-	view.add_child(telegraph)
-	telegraph_fill=MeshInstance3D.new()
-	var warning := _glow(Color.WHITE,0)
-	warning.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;warning.no_depth_test=true;warning.render_priority=10
-	telegraph_fill.material_override=warning
-	view.add_child(telegraph_fill)
+	# A6-5: every telegraph is a quad in one MultiMesh that two nodes draw (fill pass, then edge pass). Both are
+	# alpha-blended and drawn after (above) the additive effects, so bursts cannot hide them (D3, A6 L2).
+	var tele_quad := PlaneMesh.new();tele_quad.size=Vector2(2,2)
+	_tele_mm=MultiMesh.new()
+	_tele_mm.transform_format=MultiMesh.TRANSFORM_3D
+	_tele_mm.use_colors=true;_tele_mm.use_custom_data=true
+	_tele_mm.mesh=tele_quad
+	_tele_mm.instance_count=TELE_MAX
+	_tele_mm.visible_instance_count=0
+	var fill_mat := ShaderMaterial.new();fill_mat.shader=preload("res://chapter1/view/fx/telegraph_fill.gdshader");fill_mat.render_priority=10
+	var edge_mat := ShaderMaterial.new();edge_mat.shader=preload("res://chapter1/view/fx/telegraph_edge.gdshader");edge_mat.render_priority=11
+	telegraph_fill=MultiMeshInstance3D.new();telegraph_fill.multimesh=_tele_mm;telegraph_fill.material_override=fill_mat
+	telegraph=MultiMeshInstance3D.new();telegraph.multimesh=_tele_mm;telegraph.material_override=edge_mat
+	for tele_node in [telegraph_fill,telegraph]:
+		tele_node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		view.add_child(tele_node)
 	beams=MeshInstance3D.new()
 	beams.material_override=particle_mat
 	view.add_child(beams)
@@ -243,6 +246,62 @@ func consume__cloister(events: Array) -> void:
 func _element(id_: String) -> float:
 	return .5 if id_=="chapter1.skill.frost" else (1.0 if id_=="chapter1.skill.arc" else 0.0)
 
+const TELE_Y := .12
+## Write one telegraph quad. custom = (kind, progress, half segment length, radius or half width); tint = (style, line weight, flash).
+func _tele_put(buf: PackedFloat32Array,n: int,at: Vector2,dir: Vector2,half_x: float,half_z: float,custom: Color,tint: Color) -> void:
+	var o := n*MM_STRIDE
+	_wx(buf,o,Transform3D(Basis(Vector3(dir.x,0,dir.y)*half_x,Vector3.UP,Vector3(-dir.y,0,dir.x)*half_z),Vector3(at.x,TELE_Y,at.y)))
+	_wc(buf,o+MM_COLOR,tint);_wc(buf,o+MM_CUSTOM,custom)
+
+## A6-5: enemy telegraphs and the boss floor strikes. Reads the core's telegraph record only (shape, direction, rays,
+## length, width/radius, remaining_ticks) and the enemy's own windup length: progress = 1 - remaining / windup.
+## The picture uses exactly the radii and lengths the core resolves the hit with.
+func _sync_telegraphs(run: RefCounted) -> void:
+	var buf := _mmbuf(_tele_mm)
+	var n := 0
+	for e in _enemies_frame:
+		if e.telegraph.is_empty() or e.hp_raw<=0: continue
+		if n>=TELE_MAX: break
+		var t: Dictionary=e.telegraph
+		var win := float(maxi(1,int(e.get("definition",run.ENEMY_DEFS[e.kind]).get("windup",48))))
+		var rem := float(t.get("remaining_ticks",win))
+		var p := clampf(1.0-rem/win,0,1)
+		var heavy: bool=e.elite
+		var tint := Color(1.0 if heavy else 0.0,1.6 if heavy else 1.0,1.0 if rem<=3.0 else 0.0,1)
+		var at: Vector2=e.position
+		var shape: String=t.shape
+		if shape=="fan":
+			# One thin ray per projectile; the faint band is the real bolt corridor (bolt .16 + hero .28 = width/2).
+			var length := float(t.length)
+			var half := float(t.width)*.5
+			for ray in t.rays:
+				if n>=TELE_MAX: break
+				_tele_put(buf,n,at+ray*length*.5,ray,length*.5+.25,half+.25,Color(2,p,length*.5,half),tint);n+=1
+		elif shape=="line":
+			var length := float(t.length)
+			var half := float(t.width)*.5
+			# The charger's record carries an empty ray list (it is one bar along `direction`), the guardian's cross four.
+			var rays: Array=t.get("rays",[])
+			if rays.is_empty(): rays=[t.direction]
+			# A cross arm has no back cap: the middle is a shared square (the core's two straight capsules).
+			var kind := 3.0 if rays.size()>1 else 1.0
+			for ray in rays:
+				if n>=TELE_MAX: break
+				_tele_put(buf,n,at+ray*length*.5,ray,length*.5+half+.25,half+.25,Color(kind,p,length*.5,half),tint);n+=1
+		else:
+			var radius := float(t.radius)
+			var ext := radius*(1.5 if heavy else 1.0)+.25
+			_tele_put(buf,n,at,Vector2.RIGHT,ext,ext,Color(0,p,0,radius),tint);n+=1
+	var hazards: Variant=run.get("chapter_hazards")
+	if hazards!=null:
+		for h in hazards:
+			if n>=TELE_MAX: break
+			var span := float(maxi(1,int(h.expires)-int(h.started)))
+			var left := float(int(h.expires)-int(run.tick))
+			var radius := float(h.radius)
+			_tele_put(buf,n,h.position,Vector2.RIGHT,radius+.25,radius+.25,Color(0,clampf(1.0-left/span,0,1),0,radius),Color(2,1.5,1.0 if left<=3.0 else 0.0,1));n+=1
+	_mmflush(_tele_mm,buf,n)
+
 func _kick(strength: float, tick: int) -> void:
 	if tick-_last_camera_tick<14:return
 	_last_camera_tick=tick
@@ -322,71 +381,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		index+=1
 	_mmflush(mm,gbuf,index)
 	_mm_show(gems,index)
-	var lines := _line_mesh
-	var vertices := 0
-	var fill := _fill_mesh
-	var fill_vertices := 0
-	var tele_open := false
-	for e in _enemies_frame:
-		if e.telegraph.is_empty() or e.hp_raw<=0: continue
-		if not tele_open:
-			# Surfaces are only rebuilt when there is something to draw (or once, to blank them).
-			tele_open=true
-			lines.clear_surfaces();lines.surface_begin(Mesh.PRIMITIVE_LINES)
-			fill.clear_surfaces();fill.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		var center := Vector3(e.position.x,.05,e.position.y)
-		var direction: Vector2=e.telegraph.direction
-		var imminent := 1.0-clampf(float(e.telegraph.get("remaining_ticks",40))/48.0,0,1)
-		var danger_color := Color(THREAT_COLOR,.95 if e.elite else .50+imminent*.35)
-		lines.surface_set_color(danger_color)
-		fill.surface_set_color(Color(THREAT_COLOR,.030 if e.elite else .022+imminent*.018))
-		if e.telegraph.shape=="fan":
-			# Fill the convex hull of the paid projectile capsules. It conservatively
-			# shows the volley region without a bright wireframe for every ray.
-			var points := PackedVector2Array()
-			var rays: Array=e.telegraph.rays
-			var radius := float(e.telegraph.width)*.5/cos(PI/12.0)
-			for ray in rays:
-				for end_ in [Vector2.ZERO,ray*float(e.telegraph.length)]:
-					for i in 12:points.append(end_+Vector2.from_angle(float(i)*TAU/12.0)*radius)
-			var hull := Geometry2D.convex_hull(points)
-			for i in range(1,hull.size()-1):
-				for point in [hull[0],hull[i],hull[i+1]]:fill.surface_add_vertex(center+Vector3(point.x,0,point.y));fill_vertices+=1
-			for ray in [rays.front(),rays.back()]:
-				lines.surface_add_vertex(center);lines.surface_add_vertex(center+Vector3(ray.x,0,ray.y)*float(e.telegraph.length));vertices+=2
-		elif e.telegraph.shape=="line":
-			var rays: Array=e.telegraph.get("rays",[direction])
-			for ray in rays:
-				var end: Vector3=center+Vector3(ray.x,0,ray.y)*float(e.telegraph.length)
-				var radius := float(e.telegraph.width)*.5
-				var side := Vector3(-ray.y,0,ray.x)*radius
-				for sign_ in [-1.0,1.0]:
-					lines.surface_add_vertex(center+side*sign_)
-					lines.surface_add_vertex(end+side*sign_)
-					vertices+=2
-				# Rounded ends match the core's capsule extent.
-				for cap in [center,end]:
-					vertices+=_circle(lines,cap,radius,16)
-		else:
-			vertices+=_circle(lines,center,float(e.telegraph.radius),40)
-	if tele_open:
-		if vertices==0:
-			lines.surface_add_vertex(Vector3(0,-20,0));lines.surface_add_vertex(Vector3(0,-20,0))
-		lines.surface_end()
-		telegraph.mesh=lines
-		if fill_vertices==0:
-			for i in 3:fill.surface_add_vertex(Vector3(0,-20,0))
-		fill.surface_end();telegraph_fill.mesh=fill
-		_tele_blank=false
-	elif not _tele_blank:
-		lines.clear_surfaces();lines.surface_begin(Mesh.PRIMITIVE_LINES)
-		lines.surface_add_vertex(Vector3(0,-20,0));lines.surface_add_vertex(Vector3(0,-20,0))
-		lines.surface_end()
-		telegraph.mesh=lines
-		fill.clear_surfaces();fill.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		for i in 3:fill.surface_add_vertex(Vector3(0,-20,0))
-		fill.surface_end();telegraph_fill.mesh=fill
-		_tele_blank=true
+	_sync_telegraphs(run)
 	var flash := _beam_mesh
 	var flash_open := false
 	var stroke_live: Array[Dictionary]=[]
@@ -538,14 +533,6 @@ func _ribbon_circle(mesh: ImmediateMesh, at: Vector3, radius: float, count: int,
 		_ribbon(mesh,a,b,width)
 	return count*6
 
-func _circle(mesh: ImmediateMesh, at: Vector3, radius: float, count: int) -> int:
-	for i in count:
-		var a := float(i)*TAU/count
-		var b := float(i+1)*TAU/count
-		mesh.surface_add_vertex(at+Vector3(cos(a),0,sin(a))*radius)
-		mesh.surface_add_vertex(at+Vector3(cos(b),0,sin(b))*radius)
-	return count*2
-
 func reset__cloister() -> void:
 	_last_event=-1
 	_d_p.clear();_d_v.clear();_d_life.clear();_d_size.clear();_d_color.clear()
@@ -555,45 +542,13 @@ func reset__cloister() -> void:
 	item_nodes.clear()
 
 # ---- chapter1/view/chapter_effects.gd ----
-## Full chapter hazards use the same paid positions/radii as damage checks.
-var ward_rings: MeshInstance3D
-var ward_fill: MeshInstance3D
+## Full chapter hazards use the same paid positions/radii as damage checks. They are drawn by the telegraph batch.
 var potions: Dictionary={}
-var _ward_lines := ImmediateMesh.new()
-var _ward_area := ImmediateMesh.new()
 func setup__chapter(owner_view: Node3D) -> void:
 	setup__cloister(owner_view)
-	ward_rings=MeshInstance3D.new();ward_fill=MeshInstance3D.new()
-	ward_rings.material_override=_glow(THREAT_COLOR,.25)
-	var fill := _glow(Color(THREAT_COLOR,.13),0);fill.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-	ward_fill.material_override=fill;view.add_child(ward_rings);view.add_child(ward_fill)
 func sync__chapter(run: RefCounted,delta: float) -> void:
 	sync__cloister(run,delta)
-	if run.chapter_hazards.is_empty():
-		if not _ward_blank:
-			_ward_lines.clear_surfaces();_ward_lines.surface_begin(Mesh.PRIMITIVE_LINES)
-			_ward_area.clear_surfaces();_ward_area.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-			for i in 2:_ward_lines.surface_add_vertex(Vector3(0,-20,0))
-			for i in 3:_ward_area.surface_add_vertex(Vector3(0,-20,0))
-			_ward_lines.surface_end();_ward_area.surface_end();ward_rings.mesh=_ward_lines;ward_fill.mesh=_ward_area
-			_ward_blank=true
-	else:
-		_ward_blank=false
-		_ward_lines.clear_surfaces();_ward_lines.surface_begin(Mesh.PRIMITIVE_LINES)
-		_ward_area.clear_surfaces();_ward_area.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		_sync_ward_hazards(run)
 	_sync_potions(run)
-func _sync_ward_hazards(run: RefCounted) -> void:
-	for h in run.chapter_hazards:
-		var center := Vector3(h.position.x,.075,h.position.y)
-		var radius: float=h.radius
-		var progress := clampf(float(run.tick-h.started)/float(h.expires-h.started),0,1)
-		_circle(_ward_lines,center,radius,48);_circle(_ward_lines,center,radius*progress,48)
-		for i in 48:
-			_ward_area.surface_add_vertex(center)
-			_ward_area.surface_add_vertex(center+Vector3(cos(TAU*i/48),0,sin(TAU*i/48))*radius)
-			_ward_area.surface_add_vertex(center+Vector3(cos(TAU*(i+1)/48),0,sin(TAU*(i+1)/48))*radius)
-	_ward_lines.surface_end();_ward_area.surface_end();ward_rings.mesh=_ward_lines;ward_fill.mesh=_ward_area
 func _sync_potions(run: RefCounted) -> void:
 	var wanted := {}
 	for pickup in run.potion_pickups:
@@ -904,7 +859,7 @@ func consume__q16(events: Array) -> void:
 ## After actual victory, expire only the combat presentation, retaining loot.
 var _ending20_age := 0.0
 var _ending20_active := false
-const ENDING20_NODES := ["projectiles","shards","impacts","plumes","telegraph","telegraph_fill","beams","arc_surface","ice_batch","ice_fragment_batch","ward_rings","ward_fill","contact_batch"]
+const ENDING20_NODES := ["projectiles","shards","impacts","plumes","telegraph","telegraph_fill","beams","arc_surface","ice_batch","ice_fragment_batch","contact_batch"]
 func sync__q20(run: RefCounted,delta: float) -> void:
 	sync__q14(run,delta)
 	if run.mode=="victory":_ending20_active=true
@@ -1260,7 +1215,7 @@ func _sync_fragments(run: RefCounted,delta: float) -> void:
 
 func reset() -> void:
 	reset__q36()
-	_tele_blank=false;_flash_blank=false;_ward_blank=false;_arc_blank=false;_loot26_blank=false
+	_flash_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
 	_ember_ring_tick=-100
