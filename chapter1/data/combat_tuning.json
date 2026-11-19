@@ -62,11 +62,11 @@
   "hero_shot": {"spread_mrad": 160},
   "rhythm": {
     "enabled": false,
-    "initial_pack": 3,
+    "initial_pack": 1,
     "gate_rest_ticks": 480,
     "beats": [
       {"id": "gi", "zone": 0, "from_bps": 0, "max_ticks": 4200,
-       "amount": 1, "interval_ticks": 60, "alive_cap": 10, "hp_bps": [10000, 12000],
+       "amount": 1, "interval_ticks": 150, "alive_cap": 6, "hp_bps": [10000, 12000],
        "mix": {"walker": 92, "ranged": 8, "charger": 0}, "ranged_from_ticks": 2400,
        "taste_crest": {"at_ticks": 2400, "count": 8, "arc_deg": 60}, "wave": null},
       {"id": "seung1", "zone": 0, "from_bps": 3400, "max_ticks": 4800,
