@@ -1,0 +1,105 @@
+{
+  "_about": "portrait_derive.py input. Draft 2026-11-19. 'anchors' are written by a person once per illustration (source px of the 1024x1536 original; the value in 'src' says where each came from). 'slots' are the places of A6 section 8.7; a slot whose display size is not known has display = null (UNDECIDED, ui-hud fills it) and out_px = null (the crop stays at native resolution). Nothing here is a judgement of size or look.",
+  "presets": {
+    "face_square": {"aspect": [1, 1], "span": ["head_top", "chin"], "margin_top": 0.45, "margin_bottom": 0.35, "center_x": "eye", "must_include_kinds": ["head"], "bg": "keep"},
+    "bust": {"aspect": [3, 4], "span": ["head_top", "waist"], "margin_top": 0.10, "margin_bottom": 0.12, "center_x": "axis", "must_include_kinds": ["head", "hand"], "bg": "keep"},
+    "full_vertical": {"aspect": [2, 3], "span": ["figure_top", "feet"], "margin_top": 0.02, "margin_bottom": 0.02, "center_x": "axis", "must_include_kinds": ["head", "hand", "foot"], "bg": "keep"},
+    "cutin_wide": {"aspect": [16, 9], "span": ["head_top", "waist"], "margin_top": 0.05, "margin_bottom": 0.12, "center_x": "axis", "must_include_kinds": ["head", "hand"], "bg": "keep"}
+  },
+  "slots": [
+    {"name": "boon_figure", "label": "은총 화면 인물(왼쪽 3분의 1 전신)", "preset": "full_vertical", "who": "patron",
+     "aspect": [640, 1080], "display": {"area": "화면 왼쪽 3분의 1, 전신(8.7)", "px_1080": [640, 1080], "px_720": [427, 720], "status": "비율은 A6 8.7에서, 표시 크기는 HUD가 확정"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 은총 화면, BOON-SCREEN-FIGURE-RULES",
+     "note": "서약 상대(어머니) 자리. 후원자 원화가 art/characters/에 없어 --all-who 로만 구도 시험(마녀로)"},
+    {"name": "evolve_cutin", "label": "진화 컷인(상반신)", "preset": "bust",
+     "aspect": [3, 4], "display": {"area": "화면 오른쪽에서 들어옴, 화면 높이의 55%, 가운데 60%의 오른쪽 끝을 넘지 않게(8.7)", "px_1080": null, "px_720": null, "height_ratio_of_screen": 0.55, "status": "높이 비율만 앎. 가로(비율)와 px는 미정 — 3:4는 이 도구의 초안"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 진화 첫 발동"},
+    {"name": "ultimate_cutin", "label": "궁극기 컷인", "same_as": "evolve_cutin", "ref": "A6 8.7 궁극기", "note": "진화 컷인과 같은 틀, 다른 그림. 궁극기 칸이 잠겨 있고 〔D12〕 확인 전이라 자르지 않음"},
+    {"name": "boss_kill_cutin", "label": "우두머리 처치 전신 컷인", "preset": "full_vertical",
+     "aspect": [2, 3], "display": {"area": "어두워진 화면 위 전신 1.0초(8.7)", "px_1080": null, "px_720": null, "status": "미정"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 우두머리 처치"},
+    {"name": "record_figure", "label": "전투 기록 오른쪽 전신", "preset": "full_vertical",
+     "aspect": [640, 1080], "display": {"area": "화면 오른쪽 끝 3분의 1 전신, 기술 표와 겹치지 않게(8.7)", "px_1080": [640, 1080], "px_720": [427, 720], "status": "비율은 A6 8.7에서, 표시 크기는 HUD가 확정"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 전투 기록"},
+    {"name": "town_portrait", "label": "마을 왼쪽 아래 정지 초상(움직이는 초상의 대체본)", "preset": "bust",
+     "aspect": [1, 1], "display": {"area": "왼쪽 아래 초상(움직이는 초상 재사용)", "px_1080": null, "px_720": null, "status": "미정"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 마을", "note": "본 자리는 움직이는 초상(living_portrait)이다. 이것은 움직임을 끈 때의 정지 대체본 후보"},
+    {"name": "equip_portrait", "label": "착용 창 초상", "preset": "bust",
+     "aspect": [3, 4], "display": {"area": "장비·의상에 따라 바뀌는 2D 초상(A3, D6-A2)", "px_1080": null, "px_720": null, "status": "미정"},
+     "out_px": null, "bg": "keep", "ref": "A6 8.7 착용 창"},
+    {"name": "cutin_wide_candidate", "label": "[후보] 가로 컷인", "preset": "cutin_wide",
+     "display": {"area": "8.7에 없음. 틀 시험용 후보", "px_1080": null, "px_720": null, "status": "후보(자리 아님)"},
+     "out_px": null, "bg": "keep", "ref": "—"},
+    {"name": "face_square_candidate", "label": "[후보] 얼굴 정사각", "preset": "face_square",
+     "display": {"area": "8.7에 없음. 틀 시험용 후보(목록·알림의 작은 얼굴 등)", "px_1080": null, "px_720": null, "status": "후보(자리 아님)"},
+     "out_px": null, "bg": "keep", "ref": "—"}
+  ],
+  "witches": {
+    "ember": {
+      "source": "chapter1/art/characters/ember_witch_v02.png",
+      "anchor_source": "눈대중 전부(그림을 직접 보고 격자 위에서 읽음, +-15px). living_portrait/ember.json 의 눈 위치(543,103)는 다른 그림(p2-r1)의 것이라 v02에는 맞지 않아 쓰지 않음(합성 비교: 평균 차 22.6)",
+      "anchors": {
+        "head_top": {"x": 520, "y": 5, "src": "눈대중"},
+        "figure_top": {"y": 5, "src": "눈대중(머리 윗끝 = 그림의 가장 위)"},
+        "eye": {"x": 516, "y": 98, "src": "눈대중(두 눈의 가운데)"},
+        "chin": {"x": 527, "y": 150, "src": "눈대중"},
+        "chest": {"x": 520, "y": 300, "src": "눈대중(가슴 한가운데)"},
+        "waist": {"x": 522, "y": 495, "src": "눈대중(배꼽)"},
+        "feet": {"y": 1505, "src": "눈대중(굽·발끝 가장 낮은 곳)"},
+        "axis": {"x": 520, "y": 750, "src": "눈대중(몸 가운데 세로선)"}
+      },
+      "extremes": [
+        {"name": "head_top", "kind": "head", "x": 520, "y": 5, "src": "눈대중"},
+        {"name": "hand_at_hair_top", "kind": "hand", "x": 640, "y": 95, "src": "눈대중(머리 만지는 손 윗끝)"},
+        {"name": "hand_at_hair_tip", "kind": "hand", "x": 606, "y": 112, "src": "눈대중(손가락 끝)"},
+        {"name": "wrist_band_right", "kind": "hand", "x": 748, "y": 235, "src": "눈대중(오른쪽 팔찌 바깥)"},
+        {"name": "coal_hand_tip", "kind": "hand", "x": 175, "y": 790, "src": "눈대중(숯 손 손가락 끝)"},
+        {"name": "toe_right", "kind": "foot", "x": 712, "y": 1503, "src": "눈대중"},
+        {"name": "toe_left", "kind": "foot", "x": 436, "y": 1450, "src": "눈대중"}
+      ]
+    },
+    "frost": {
+      "source": "chapter1/art/characters/frost_witch_v02.png",
+      "anchor_source": "눈 위치는 living_portrait/frost.json 의 eyes.pos + 눈 그림 크기/2 = (500.5, 97.5)(합성 비교로 같은 그림임을 확인: 평균 차 0.69), 격자로 읽은 (502, 97)과 일치. 나머지는 눈대중(+-15px)",
+      "anchors": {
+        "head_top": {"x": 500, "y": 12, "src": "눈대중"},
+        "figure_top": {"y": 12, "src": "눈대중(머리 윗끝. 눈송이 효과는 y36으로 더 아래)"},
+        "eye": {"x": 500.5, "y": 97.5, "src": "frost.json eyes.pos + 크기/2"},
+        "chin": {"x": 515, "y": 152, "src": "눈대중"},
+        "chest": {"x": 510, "y": 290, "src": "눈대중"},
+        "waist": {"x": 520, "y": 480, "src": "눈대중(배꼽)"},
+        "feet": {"y": 1492, "src": "눈대중"},
+        "axis": {"x": 510, "y": 750, "src": "눈대중"}
+      },
+      "extremes": [
+        {"name": "head_top", "kind": "head", "x": 500, "y": 12, "src": "눈대중"},
+        {"name": "hand_raised_tip", "kind": "hand", "x": 782, "y": 152, "src": "눈대중(든 손 가운뎃손가락 끝)"},
+        {"name": "snowflake_top", "kind": "hand", "x": 822, "y": 36, "src": "눈대중(눈송이 효과 윗끝, 손은 아님)"},
+        {"name": "hand_on_hip", "kind": "hand", "x": 278, "y": 492, "src": "눈대중(허리에 얹은 손 바깥)"},
+        {"name": "toe_right", "kind": "foot", "x": 690, "y": 1490, "src": "눈대중"},
+        {"name": "toe_left", "kind": "foot", "x": 372, "y": 1430, "src": "눈대중"}
+      ]
+    },
+    "storm": {
+      "source": "chapter1/art/characters/storm_witch_v02.png",
+      "anchor_source": "눈대중 전부(+-15px). living_portrait/storm.json 의 눈 위치(524,158)는 다른 그림(p3 정면)의 것이라 v02(낮은 시점)에 맞지 않아 쓰지 않음(합성 비교: 평균 차 37.3)",
+      "anchors": {
+        "head_top": {"x": 480, "y": 105, "src": "눈대중(날리는 머리카락 윗끝)"},
+        "figure_top": {"y": 28, "src": "눈대중(든 손 손가락 끝. 머리보다 위에 있음)"},
+        "eye": {"x": 537, "y": 218, "src": "눈대중(두 눈의 가운데)"},
+        "chin": {"x": 548, "y": 272, "src": "눈대중"},
+        "chest": {"x": 515, "y": 440, "src": "눈대중"},
+        "waist": {"x": 515, "y": 545, "src": "눈대중(배꼽)"},
+        "feet": {"y": 1475, "src": "눈대중"},
+        "axis": {"x": 520, "y": 800, "src": "눈대중"}
+      },
+      "extremes": [
+        {"name": "head_top", "kind": "head", "x": 480, "y": 105, "src": "눈대중"},
+        {"name": "hand_raised_tip", "kind": "hand", "x": 852, "y": 28, "src": "눈대중(든 손 손가락 끝)"},
+        {"name": "hand_lowered", "kind": "hand", "x": 172, "y": 700, "src": "눈대중(자락을 쥔 손 바깥)"},
+        {"name": "toe_right", "kind": "foot", "x": 880, "y": 1472, "src": "눈대중"},
+        {"name": "heel_left", "kind": "foot", "x": 252, "y": 1470, "src": "눈대중"}
+      ]
+    }
+  }
+}
