@@ -36,6 +36,12 @@ extends SceneTree
 ##   spells, only the frost witch's ring takes it; on the other two it is reported in meta.knobs_not_applied and NOT applied), --ring-freeze=N (ring applies N chill stacks; freeze_at is 4: 4 = freezes on the first hit).
 ##   NOT in the core (so NOT here): knockback / push, distance falloff of the ring damage, a stun on any spell other than the arc basic's chain contact. See REPORT "needs of the core".
 ##   Contact builds (--builds=): n_base n_A n_AR n_AR22 n_AX n_A6 n_R22 (see MELEE_PRESETS; they are not in the default list of the crowd test).
+## N0 (D12 B0.16 3.1), inflow mode only: --n0 adds to every inflow cell alive_walker/ranged/charger (mean alive by kind), ranged_in_6m (+ _hist_pct 0 / 1-3 / 4-6 / 7+), ranged_life_med_s (median seconds from spawn to death of the
+##   ranged enemies that died; ranged_died / ranged_alive_end / ranged_age_alive_mean_s say how many never died: the median alone is biased), ring_kill_share_pct, basic_hits and basic_hits_hardcc_pct / _slowcc_pct / _frozen_any_pct
+##   (the share of the basic spell's hits that landed on an enemy the RING had frozen / slowed at that tick; frozen by anything), hero hits split by what hit (hits_walker, hits_charger, hits_proj = a bullet or nothing within 0.3 m; dmg_*_hp),
+##   and `effects` (the effective numbers of each owned spell, to check ring cooldown/radius/damage). --inflow-mix=w:r:c replaces the rhythm's mix (also the trial's), or -ranged / -charger / -both zero those weights and keep the rest.
+##   --inflow-fine=R is a non-integer enemies-per-second rate. The core's tuning document is read-only, so --waves=off, --inflow=R, --inflow-fine and --inflow-mix are applied to a private copy installed with set_tuning() before start()
+##   (before this change --waves=off and --inflow=R wrote into the read-only document and did nothing). Without those switches nothing is installed and every old key of a cell is unchanged.
 ## --pretag=status:n (counterfactual) gives every ordinary enemy that status, n stacks, by the pair applier, before every step.
 ## --set=a/b/c=value overrides one value of the run_spells document in memory (path with "/", spell ids keep their dots), repeatable.
 ## Args: --witches=ember,frost,arc --beat=gi|seung1|seung2|jeon_a --hp=lo|mid|hi --density=15,35,60,85 --secs=60 --warmup=6
@@ -74,6 +80,9 @@ const POTION_START := 3
 var ring_knobs := {}
 var tally_on := false
 var inflow_on := false
+var n0_on := false
+var inflow_mix_arg := ""
+var inflow_fine := 0.0
 var inflow_kills := 0
 var iframes_override := -1
 var cur_walker_hp := 0
@@ -335,8 +344,12 @@ func pick_kind(rng: RandomNumberGenerator, beat: Dictionary) -> String:
 	if roll < int(mix.walker) + int(mix.ranged): return "ranged"
 	return "charger"
 
-func make_run(seed_: int, primary: String, doc: Dictionary) -> RefCounted:
+func make_run(seed_: int, primary: String, doc: Dictionary, tuning_override: Dictionary = {}) -> RefCounted:
 	var run = Chapter.new()
+	if not tuning_override.is_empty() and not run.set_tuning(tuning_override):
+		push_error("sim_power: tuning refused: " + str(run.errors))
+		checks_failed.append("tuning refused: " + str(run.errors))
+		return null
 	if not run.set_run_spells(doc):
 		push_error("sim_power: document refused: " + str(run.errors))
 		checks_failed.append("document refused: " + str(run.errors))
@@ -904,6 +917,122 @@ func contact_arena(witch: String, build: Dictionary, mode: String, variant: Stri
 	out.speed_mult = r2(speed_m)
 	return out
 
+## N0: --inflow-mix. "w:r:c" replaces the mix; "-ranged" / "-charger" / "-both" zero those weights and keep the others as they are.
+func apply_inflow_mix(mix: Dictionary, spec: String) -> void:
+	if ":" in spec:
+		var parts := spec.split(":")
+		if parts.size() == 3:
+			mix.walker = int(parts[0])
+			mix.ranged = int(parts[1])
+			mix.charger = int(parts[2])
+		return
+	if spec == "-ranged" or spec == "-both": mix.ranged = 0
+	if spec == "-charger" or spec == "-both": mix.charger = 0
+
+## A private, writable copy of the tuning document with the rhythm knobs applied; {} when no knob is given (nothing is installed then).
+func inflow_tuning(bidx: int) -> Dictionary:
+	var waves_off := arg_string("--waves", "on") == "off"
+	var rate := float(arg_string("--inflow", "0"))
+	if not waves_off and rate <= 0.0 and inflow_fine <= 0.0 and inflow_mix_arg.is_empty(): return {}
+	var doc: Dictionary = normalize_value(tuning_doc.duplicate(true))
+	var rule_beat: Dictionary = doc.rhythm.beats[bidx]
+	var trial: Dictionary = doc.rhythm.trial
+	if waves_off:
+		rule_beat.wave = null
+		rule_beat.erase("taste_crest")
+		trial.erase("wave")
+	if rate > 0.0:
+		rule_beat.amount = maxi(1, int(round(rate)))
+		rule_beat.interval_ticks = 60
+		trial.amount = rule_beat.amount
+		trial.interval_ticks = 60
+	if inflow_fine > 0.0:
+		## N0: a non-integer rate. amount a per interval i with a*60/i close to R (a = ceil(R/2) keeps the batches small).
+		var fa := maxi(1, int(ceil(inflow_fine / 2.0)))
+		var fi := maxi(1, int(round(float(fa) * 60.0 / inflow_fine)))
+		rule_beat.amount = fa
+		rule_beat.interval_ticks = fi
+		trial.amount = fa
+		trial.interval_ticks = fi
+	if not inflow_mix_arg.is_empty():
+		apply_inflow_mix(rule_beat.mix, inflow_mix_arg)
+		apply_inflow_mix(trial.mix, inflow_mix_arg)
+	return doc
+
+func new_n0() -> Dictionary:
+	return {"samples": 0, "alive": {"walker": 0, "ranged": 0, "charger": 0, "elite": 0}, "r6": 0, "r6_hist": [0, 0, 0, 0], "born": {}, "life": [], "ring_kills": 0, "kills": 0,
+		"basic_hits": 0, "basic_hard": 0, "basic_slow": 0, "basic_frozen_any": 0, "cc_hard": {}, "cc_slow": {}, "h_walker": 0, "h_charger": 0, "h_proj": 0, "h_other": 0, "d_walker": 0, "d_charger": 0, "d_proj": 0, "d_other": 0, "ring_hits_total": 0}
+
+## N0 tracker, once per tick after the step. counting=false during the warm-up (state is kept, nothing is counted).
+func collect_n0(run: RefCounted, n0: Dictionary, counting: bool, ring_id: String, basic_id: String) -> void:
+	for ev in run.events:
+		match String(ev.type):
+			"spawn":
+				if String(ev.kind) == "ranged": n0.born[int(ev.target_id)] = run.tick
+			"death":
+				var tid := int(ev.target_id)
+				if n0.born.has(tid):
+					if counting: n0.life.append(float(run.tick - int(n0.born[tid])) / 60.0)
+					n0.born.erase(tid)
+				n0.cc_hard.erase(tid)
+				n0.cc_slow.erase(tid)
+				if counting:
+					n0.kills += 1
+					if String(ev.skill_id) == ring_id: n0.ring_kills += 1
+			"hit":
+				var sid := String(ev.skill_id)
+				var tid := int(ev.target_id)
+				if sid == ring_id:
+					if bool(ev.get("frozen", false)) and run.enemies.has(tid): n0.cc_hard[tid] = int(run.enemies[tid].frozen_until)
+					if not n0.has("ring_slow"): n0["ring_slow"] = int(run.spells.spells[ring_id].get("slow_ticks", 0)) if int(run.effective_skill(ring_id).effects.get("slow_bps", 0)) > 0 else 0
+					n0.cc_slow[tid] = run.tick + int(n0.ring_slow)
+					if counting: n0.ring_hits_total += 1
+				elif sid == basic_id and counting:
+					n0.basic_hits += 1
+					if int(n0.cc_hard.get(tid, 0)) > run.tick: n0.basic_hard += 1
+					elif int(n0.cc_slow.get(tid, 0)) > run.tick: n0.basic_slow += 1
+					if bool(ev.get("frozen", false)): n0.basic_frozen_any += 1
+			"hero_hit":
+				if not counting: continue
+				var fp: Vector2 = ev.get("from", Vector2(1e9, 1e9))
+				var kind := "proj"
+				for en in run.enemies.values():
+					if en.hp_raw > 0 and String(en.kind) != "ranged" and en.position.distance_squared_to(fp) < 0.09:
+						kind = String(en.kind)
+						break
+				var key := "walker" if kind == "walker" else ("charger" if kind == "charger" else ("proj" if kind == "proj" else "other"))
+				n0["h_" + key] += 1
+				n0["d_" + key] += int(ev.damage_raw)
+	if counting and run.tick % 6 == 0:
+		n0.samples += 1
+		var r6 := 0
+		for e in run.enemies.values():
+			if e.hp_raw <= 0: continue
+			var kind := String(e.kind)
+			n0.alive[kind] = int(n0.alive.get(kind, 0)) + 1
+			if kind == "ranged" and e.position.distance_squared_to(run.hero.position) <= 36.0: r6 += 1
+		n0.r6 += r6
+		n0.r6_hist[0 if r6 == 0 else (1 if r6 <= 3 else (2 if r6 <= 6 else 3))] += 1
+
+func finish_n0(n0: Dictionary, run: RefCounted) -> Dictionary:
+	var samples := maxf(1.0, float(n0.samples))
+	var life: Array = n0.life
+	life.sort()
+	var ages := 0.0
+	var alive_ranged := 0
+	for id_ in n0.born:
+		ages += float(run.tick - int(n0.born[id_])) / 60.0
+		alive_ranged += 1
+	var out := {"alive_walker": r1(float(n0.alive.walker) / samples), "alive_ranged": r1(float(n0.alive.ranged) / samples), "alive_charger": r1(float(n0.alive.charger) / samples), "alive_elite": r1(float(n0.alive.elite) / samples),
+		"ranged_in_6m": r2(float(n0.r6) / samples), "ranged_in_6m_hist_pct": [r1(100.0 * float(n0.r6_hist[0]) / samples), r1(100.0 * float(n0.r6_hist[1]) / samples), r1(100.0 * float(n0.r6_hist[2]) / samples), r1(100.0 * float(n0.r6_hist[3]) / samples)],
+		"ranged_life_med_s": r2(float(life[life.size() / 2])) if not life.is_empty() else -1.0, "ranged_died": life.size(), "ranged_alive_end": alive_ranged, "ranged_age_alive_mean_s": r1(ages / maxf(1.0, float(alive_ranged))),
+		"ring_kill_share_pct": r1(100.0 * float(n0.ring_kills) / maxf(1.0, float(n0.kills))), "ring_hits_total": n0.ring_hits_total,
+		"basic_hits": n0.basic_hits, "basic_hits_hardcc_pct": r1(100.0 * float(n0.basic_hard) / maxf(1.0, float(n0.basic_hits))), "basic_hits_slowcc_pct": r1(100.0 * float(n0.basic_slow) / maxf(1.0, float(n0.basic_hits))),
+		"basic_hits_frozen_any_pct": r1(100.0 * float(n0.basic_frozen_any) / maxf(1.0, float(n0.basic_hits))),
+		"hits_walker": n0.h_walker, "hits_charger": n0.h_charger, "hits_proj": n0.h_proj, "hits_other": n0.h_other,
+		"dmg_walker_hp": r1(float(n0.d_walker) / UNIT), "dmg_charger_hp": r1(float(n0.d_charger) / UNIT), "dmg_proj_hp": r1(float(n0.d_proj) / UNIT)}
+	return out
+
 ## INFLOW mode: the core's OWN rhythm spawner (combat_tuning rhythm.beats / trial, zone damage/speed/hp, crests, lulls, alive_cap, ring distance) feeds the arena;
 ## nothing is topped up. beat_id = gi|seung1|seung2|jeon_a|trial (trial = the 12 m hold circle: the core's own trial clamp is switched on in memory).
 ## variant: stand | pilot | slow (pilot movement x 0.5). The spawn health is the beat's mid value. --waves=off removes crests and lulls, --inflow=R makes R enemies per second.
@@ -923,7 +1052,10 @@ func inflow_arena(witch: String, build: Dictionary, beat_id: String, variant: St
 	inflow_kills = (mid_bps * seal + 9999) / 10000
 	var hp_bps := int(tuning_doc.rhythm.trial.hp_bps) if trial else (int(beats[bidx].hp_bps[0]) + int(beats[bidx].hp_bps[1])) / 2
 	cur_walker_hp = maxi(1, int(tuning_doc.enemies.walker.hp[z]) * hp_bps / 10000)
-	var run := make_run(seed_, SK + witch, shipped_doc(witch))
+	## The core's tuning document is read-only, so rhythm knobs (--waves=off, --inflow, --inflow-fine, --inflow-mix) are applied to a private copy
+	## that is installed with set_tuning() before start(). Without those knobs nothing is installed and the cell is the shipped one.
+	var tdoc := inflow_tuning(bidx)
+	var run := make_run(seed_, SK + witch, shipped_doc(witch), tdoc)
 	if run == null: return {}
 	apply_build(run, build)
 	run.enemies.clear()
@@ -931,17 +1063,6 @@ func inflow_arena(witch: String, build: Dictionary, beat_id: String, variant: St
 	var real_max := int(run.hero.max_hp_raw)
 	var hero_hp_arg := arg_string("--hero-hp", "")
 	if not hero_hp_arg.is_empty(): real_max = int(float(hero_hp_arg)) * UNIT
-	var rule_beat: Dictionary = run.tuning.rhythm.beats[bidx]
-	if arg_string("--waves", "on") == "off":
-		rule_beat.wave = null
-		rule_beat.erase("taste_crest")
-		run.tuning.rhythm.trial.erase("wave")
-	var rate := float(arg_string("--inflow", "0"))
-	if rate > 0.0:
-		rule_beat.amount = maxi(1, int(round(rate)))
-		rule_beat.interval_ticks = 60
-		run.tuning.rhythm.trial.amount = rule_beat.amount
-		run.tuning.rhythm.trial.interval_ticks = 60
 	run.tick = 1900
 	run.zone = z
 	run.hero.position = Chapter.ZONES[z]
@@ -960,6 +1081,7 @@ func inflow_arena(witch: String, build: Dictionary, beat_id: String, variant: St
 	var m := new_m(real_max, run.tick + warm)
 	var t3 := {"ticks": 0, "contact": 0, "preps": 0, "preps_hit": 0, "windup_ids": {}, "close_ids": {}, "bt": [0, 0, 0, 0, 0, 0], "bh": [0, 0, 0, 0, 0, 0]}
 	var ring_id := SK + witch + "_ring"
+	var n0 := new_n0()
 	var done := 0
 	var cap := int(beats[bidx].alive_cap) if not trial else int(tuning_doc.rhythm.trial.alive_cap)
 	var aborted := false
@@ -975,6 +1097,7 @@ func inflow_arena(witch: String, build: Dictionary, beat_id: String, variant: St
 		if iframes_override >= 0:
 			for ev in run.events:
 				if String(ev.type) == "hero_hit": run._invulnerable_until = run.tick + iframes_override
+		if n0_on: collect_n0(run, n0, i >= warm, ring_id, SK + witch)
 		if i >= warm:
 			collect_m(run, m, -1, ring_id)
 			track_contact(run, t3)
@@ -998,6 +1121,11 @@ func inflow_arena(witch: String, build: Dictionary, beat_id: String, variant: St
 	out.hits_ranged = m.hits_ranged
 	out.taken_30s_pct = r2(100.0 * float(int(m.dmg30) if int(m.dmg30) >= 0 else int(m.dmg)) / float(real_max))
 	out.walker_hp = cur_walker_hp
+	if n0_on:
+		out.merge(finish_n0(n0, run), true)
+		var fx := {}
+		for id_ in build.spells: fx[short(id_)] = run.effective_skill(id_).effects
+		out.effects = fx
 	out.events_dropped = int(run.metrics.get("events_dropped", 0))
 	return out
 
@@ -1085,6 +1213,9 @@ func execute() -> void:
 		ring_knobs.slow_bps = float(slow_text.get_slice(",", 0))
 		if "," in slow_text: ring_knobs.slow_ticks = float(slow_text.get_slice(",", 1))
 	speed_mult = float(arg_string("--speed-mult", "1.0"))
+	n0_on = arg_flag("--n0")
+	inflow_mix_arg = arg_string("--inflow-mix", "")
+	inflow_fine = float(arg_string("--inflow-fine", "0"))
 	var modes := arg_names("--mode", [])
 	var legacy := modes.is_empty() or modes.has("crowd") or modes.has("single")
 	var do_crowd := (modes.is_empty() or modes.has("crowd")) and not arg_flag("--no-crowd")
@@ -1215,7 +1346,7 @@ func execute() -> void:
 	if legacy and not tally_on and crowd_modes == ["pilot"]: print_tables(results, witches, build_names, densities if do_crowd else [], single_mobs if do_single else [], single_modes if do_single else [])
 	var elapsed := r1(float(Time.get_ticks_msec() - started_ms) / 1000.0)
 	var meta := {"beat": beat_id, "hp_mode": hp_mode, "beat_hp_bps": beat.hp_bps, "beat_mix": beat.mix, "beat_zone": beat.zone, "secs": secs, "single_secs": single_secs, "warmup_s": warmup, "seeds": seeds, "witches": witches,
-		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed, "modes": modes, "ring_knobs": ring_knobs, "knobs_not_applied": unsupported, "tally": tally_on, "crowd_modes": crowd_modes, "mix": mix_text, "elite_hp": elite_hp_arg, "created_keys": created_keys, "iframes": iframes_override, "speed_mult": speed_mult,
+		"densities": densities, "single_mobs": single_mobs, "single_modes": single_modes, "overrides": doc_overrides, "borrow": borrow_override, "pretag": pretag, "elapsed_s": elapsed, "modes": modes, "ring_knobs": ring_knobs, "knobs_not_applied": unsupported, "tally": tally_on, "crowd_modes": crowd_modes, "mix": mix_text, "elite_hp": elite_hp_arg, "created_keys": created_keys, "iframes": iframes_override, "speed_mult": speed_mult, "n0": n0_on, "inflow_mix": inflow_mix_arg, "inflow_fine": inflow_fine,
 		"setup": "build fixed in memory; document enabled in memory; hero cannot die; xp discarded; gear hidden (no-equip); pilot movement unchanged; bot numbers are a reference only, fun not evaluated"}
 	if not out_path.is_empty():
 		var abs_path := ProjectSettings.globalize_path("res://" + out_path)
