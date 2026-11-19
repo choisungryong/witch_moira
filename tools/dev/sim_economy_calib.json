@@ -1,0 +1,1236 @@
+{
+ "schema_version": 1,
+ "note": "sim_economy.py의 가설 상수 모음. 판 사이 흐름의 계산 모델이 쓰는 값이며 게임 데이터가 아니다. source: data=게임 데이터에서 읽음(실행 때 파일이 우선), spec <문서>=명세의 값, balance_sim=balance_sim.py 쪽 값을 옮김, fit=목표 묶음에 맞춰 맞춘 값, hypo=명세 일정에서 환산한 가설, guess=명세에 값이 없어 작성자가 가정한 값(design-lead가 채울 빈칸). 모델의 답이며 게임의 답이 아니다.",
+ "presets": {
+  "spec": {},
+  "now": {
+   "loot.mode": "now",
+   "tree.levels_mode": "data",
+   "tree.has.ember": false,
+   "tree.has.arc": false,
+   "quests.enabled": false,
+   "prog.grade_xp_on": false,
+   "shop.open_by": "never",
+   "gamble.enabled": false,
+   "essence.grade_per_step": 0,
+   "shop.potion_upgrades": [],
+   "depth.max": 1
+  },
+  "sim_loot": {
+   "loot.mode": "sim_loot",
+   "tree.levels_mode": "data",
+   "tree.has.ember": false,
+   "tree.has.arc": false,
+   "quests.enabled": false,
+   "prog.grade_xp_on": false,
+   "shop.open_by": "never",
+   "gamble.enabled": false,
+   "essence.grade_per_step": 0,
+   "shop.potion_upgrades": [],
+   "depth.max": 1
+  }
+ },
+ "params": {
+  "run.secs_win": {
+   "value": 430,
+   "source": "spec D11 G1",
+   "note": "우두머리 처치까지 390~450초의 가운데. 플레이 시간 추정에만 쓴다"
+  },
+  "run.town_secs": {
+   "value": 90,
+   "source": "guess",
+   "note": "마을에서 정비·상점·퀘스트에 쓰는 시간. D11 G3-10이 사람 판정으로 남겨 둔 값"
+  },
+  "run.zone_start": {
+   "value": [
+    0.0,
+    0.275,
+    0.6
+   ],
+   "source": "hypo D12 E",
+   "note": "구역 시작을 판 진행(0~1)으로. 수호자1 1:45~2:05, 수호자2 4:10~4:35 / 전체 약 7:15"
+  },
+  "run.seal_end": {
+   "value": [
+    0.25,
+    0.57,
+    0.9
+   ],
+   "source": "hypo D12 E",
+   "note": "봉인이 차는 진행. 3구역은 우두머리 등장(6:30)"
+  },
+  "run.champ_t": {
+   "value": [
+    0.275,
+    0.6
+   ],
+   "source": "hypo D12 E",
+   "note": "수호자 둘이 쓰러지는 진행"
+  },
+  "run.chests_mean": {
+   "value": 4.5,
+   "source": "spec D11 C2",
+   "note": "판당 상자 4~5"
+  },
+  "run.shrines_mean": {
+   "value": 3.5,
+   "source": "spec D11 C3",
+   "note": "판당 사당 3~4"
+  },
+  "run.rituals": {
+   "value": 2,
+   "source": "spec D11 C",
+   "note": "의식 2개"
+  },
+  "run.ritual_t": {
+   "value": [
+    0.4,
+    0.72
+   ],
+   "source": "guess",
+   "note": "의식의 판 진행 위치"
+  },
+  "run.carrier_t": {
+   "value": 0.5,
+   "source": "guess",
+   "note": "운반자의 판 진행 위치"
+  },
+  "run.elite_total": {
+   "value": 6,
+   "source": "spec D11 D2",
+   "note": "판당 정예 6(구역마다 2). now에서는 정예가 아직 없다"
+  },
+  "run.forced_thresholds": {
+   "value": [
+    0.002,
+    0.012,
+    0.03,
+    0.055
+   ],
+   "source": "data combat+D11",
+   "note": "초반 확정 4개(처치 6·35·90·160 / 약 2,900)의 진행 환산"
+  },
+  "counts.normal_kills_now": {
+   "value": [
+    1245,
+    1941,
+    1587
+   ],
+   "source": "data sim_loot.gd NORMAL_KILLS",
+   "note": "골든 재생(시드 11, 냉기)의 구역별 일반 처치"
+  },
+  "counts.normal_kills_spec_total": {
+   "value": 2900,
+   "source": "spec D11 D2",
+   "note": "새 리듬의 일반 처치 약 2,900(구역 비율은 now와 같게)"
+  },
+  "loot.mode": {
+   "value": "spec",
+   "source": "preset",
+   "note": "sim_loot | now | spec. sim_loot은 sim_loot.gd의 가정 그대로(대조용), now는 지금 게임에 실제로 있는 출처만, spec은 D11 D2·D3"
+  },
+  "loot.spec.normal_drop": {
+   "value": 30,
+   "source": "spec D11 D2",
+   "note": "일반 적 드랍 30/10000"
+  },
+  "loot.spec.champion_picks": {
+   "value": 2,
+   "source": "spec D11 D2",
+   "note": "수호자 3회 → 2회"
+  },
+  "loot.spec.boss_picks": {
+   "value": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "source": "spec D11 D3",
+   "note": "보상 단계 Ⅰ~Ⅳ별 우두머리 전리품 수"
+  },
+  "loot.spec.boss_rares": {
+   "value": [
+    1,
+    1,
+    2,
+    2
+   ],
+   "source": "spec D11 D3",
+   "note": "단계별 희귀 확정 수"
+  },
+  "loot.spec.chest_quality": {
+   "value": [
+    0,
+    8500,
+    1200,
+    200,
+    100
+   ],
+   "source": "spec D11 D2",
+   "note": "상자 품질 가중(일반·마법·희귀·전설·고유). 뽑기 1, 장신구 칸 가중은 운반자와 같다"
+  },
+  "loot.spec.ritual_quality": {
+   "value": [
+    0,
+    7000,
+    2600,
+    250,
+    150
+   ],
+   "source": "spec D11 D2",
+   "note": "의식 상자. 뽑기 2"
+  },
+  "loot.spec.chest_level_bonus": {
+   "value": 0,
+   "source": "guess",
+   "note": "상자의 아이템 레벨 가산(명세에 없음)"
+  },
+  "loot.spec.ritual_level_bonus": {
+   "value": 2,
+   "source": "guess",
+   "note": "의식 상자 가산(운반자와 같게 가정)"
+  },
+  "loot.depth_rare_mult": {
+   "value": [
+    1.0,
+    1.15,
+    1.3
+   ],
+   "source": "spec D6 1.3",
+   "note": "깊이별 희귀 가중 배율"
+  },
+  "loot.depth_top_mult": {
+   "value": [
+    1.0,
+    1.3,
+    1.6
+   ],
+   "source": "spec D6 1.3",
+   "note": "깊이별 전설·고유 가중 배율"
+  },
+  "depth.zone_levels": {
+   "value": [
+    [
+     4,
+     8,
+     12
+    ],
+    [
+     8,
+     12,
+     16
+    ],
+    [
+     12,
+     16,
+     20
+    ]
+   ],
+   "source": "spec D6 1.3",
+   "note": "깊이별 구역 아이템 레벨"
+  },
+  "depth.max": {
+   "value": 3,
+   "source": "spec D6 1.3",
+   "note": "제1장 균열 깊이 최대"
+  },
+  "depth.threat": {
+   "value": [
+    1.0,
+    2.3,
+    4.0
+   ],
+   "source": "hypo D12 P10 역산 / guess",
+   "note": "깊이 n의 위협을 힘 M으로 환산한 배율. 깊이 2는 kit.d1_end + 트리 Lv10이 깊이 1 기준과 같은 승률(P10)이 되는 값. 깊이 3은 명세에 없어 가정"
+  },
+  "depth.up_rate": {
+   "value": 0.6,
+   "source": "guess",
+   "note": "최근 판의 승률이 이 값 이상이면 한 단계 깊이로 간다"
+  },
+  "depth.down_rate": {
+   "value": 0.25,
+   "source": "guess",
+   "note": "깊이를 올린 뒤 승률이 이 값 아래로 떨어지면 내려온다"
+  },
+  "depth.window": {
+   "value": 6,
+   "source": "guess",
+   "note": "승률을 보는 최근 판 수"
+  },
+  "gear.qv.common": {
+   "value": 0.12,
+   "source": "guess",
+   "note": "등급별 칸 하나의 가치(아이템 레벨 기준값에서)"
+  },
+  "gear.qv.magic": {
+   "value": 0.3,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.qv.rare": {
+   "value": 0.62,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.qv.legendary": {
+   "value": 0.9,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.qv.unique": {
+   "value": 1.0,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.spread.common": {
+   "value": 0.1,
+   "source": "guess",
+   "note": "굴림 편차(±)"
+  },
+  "gear.spread.magic": {
+   "value": 0.15,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.spread.rare": {
+   "value": 0.3,
+   "source": "guess",
+   "note": "희귀는 굴림 편차가 크다(D12 D4)"
+  },
+  "gear.spread.legendary": {
+   "value": 0.15,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.spread.unique": {
+   "value": 0.1,
+   "source": "guess",
+   "note": "고유는 수치 굴림(D12 D4.3)"
+  },
+  "gear.ilvl_ref": {
+   "value": 12,
+   "source": "guess",
+   "note": "가치 1.0의 기준 아이템 레벨(깊이 1 3구역)"
+  },
+  "gear.ilvl_exp": {
+   "value": 2.0,
+   "source": "fit kit",
+   "note": "아이템 레벨에 대한 가치의 지수"
+  },
+  "gear.slot_w.weapon": {
+   "value": 0.2,
+   "source": "guess",
+   "note": "칸별 힘의 몫(합 1.0, 반지는 두 칸)"
+  },
+  "gear.slot_w.head": {
+   "value": 0.11,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.slot_w.body": {
+   "value": 0.12,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.slot_w.hands": {
+   "value": 0.12,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.slot_w.feet": {
+   "value": 0.09,
+   "source": "guess",
+   "note": ""
+  },
+  "gear.slot_w.charm": {
+   "value": 0.14,
+   "source": "guess",
+   "note": "목걸이는 가장 큰 한 줄이 붙는 칸(D12 D3)"
+  },
+  "gear.slot_w.ring": {
+   "value": 0.11,
+   "source": "guess",
+   "note": "반지 한 칸의 몫. 둘이다"
+  },
+  "gear.p_max": {
+   "value": 0.74,
+   "source": "fit kit",
+   "note": "장비 힘 증가 p = p_max × S^gamma. 세 묶음(P10 예산)에 맞춤(--calibrate 참고)"
+  },
+  "gear.gamma": {
+   "value": 0.56,
+   "source": "fit kit",
+   "note": ""
+  },
+  "gear.stay_a": {
+   "value": 0.3,
+   "source": "fit kit",
+   "note": "버팀 증가 s = stay_a × (p / 0.225)^stay_b"
+  },
+  "gear.stay_b": {
+   "value": 0.68,
+   "source": "fit kit",
+   "note": ""
+  },
+  "gear.keep_per_slot": {
+   "value": 6,
+   "source": "guess",
+   "note": "칸마다 보관하는 장비 수(나머지는 해체)"
+  },
+  "gear.share": {
+   "value": "shared",
+   "source": "data D6 0",
+   "note": "shared: 보관함·착용 묶음 하나를 세 마녀가 공유(지금 [확인]) / split: 마녀마다 따로(하한)"
+  },
+  "tree.p_full": {
+   "value": 0.35,
+   "source": "spec D12 P10",
+   "note": "영구 트리 Lv 20(장비 없음) 힘 증가"
+  },
+  "tree.s_full": {
+   "value": 0.175,
+   "source": "spec D12 P10",
+   "note": "버팀 증가(+10~25%의 가운데)"
+  },
+  "tree.tier_w": {
+   "value": [
+    1.0,
+    1.6,
+    2.6,
+    4.0
+   ],
+   "source": "guess",
+   "note": "트리 단별 한 랭크의 가치(권고 길을 가득 채운 값 = 1.0으로 규격화)"
+  },
+  "tree.levels_mode": {
+   "value": "spec",
+   "source": "preset",
+   "note": "data: skill_trees.json의 단 레벨(1·6·12·18) / spec: D12 C4(1·5·10·15)"
+  },
+  "tree.levels_spec": {
+   "value": [
+    1,
+    5,
+    10,
+    15
+   ],
+   "source": "spec D12 C4",
+   "note": ""
+  },
+  "tree.has.frost": {
+   "value": true,
+   "source": "data skill_trees.json",
+   "note": ""
+  },
+  "tree.has.ember": {
+   "value": true,
+   "source": "preset",
+   "note": "지금 데이터에는 트리가 없다(tree_id null). spec에서는 서리와 같은 모양을 가정"
+  },
+  "tree.has.arc": {
+   "value": true,
+   "source": "preset",
+   "note": ""
+  },
+  "essence.salvage": {
+   "value": {
+    "common": 1,
+    "magic": 3,
+    "rare": 8,
+    "legendary": 15,
+    "unique": 25
+   },
+   "source": "data chapter_profile.gd ESSENCE",
+   "note": "코드 상수. 실행 때 파일에서 다시 읽고 못 읽으면 이 값"
+  },
+  "essence.grade_per_step": {
+   "value": 20,
+   "source": "spec D11 D3",
+   "note": "판 끝 재: 단계 × 20(승리 판에서만 준다고 가정)"
+  },
+  "shop.open_by": {
+   "value": "quest",
+   "source": "spec D11 D4",
+   "note": "quest: 이야기 퀘스트 문지기를 보고하면 열림 / start: 처음부터 / never: 없음"
+  },
+  "shop.stock": {
+   "value": 5,
+   "source": "spec D11 E2",
+   "note": "진열 4~6개"
+  },
+  "shop.quality": {
+   "value": [
+    0,
+    0.55,
+    0.35,
+    0.08,
+    0.02
+   ],
+   "source": "guess",
+   "note": "진열 품질 확률(일반·마법·희귀·전설·고유)"
+  },
+  "shop.price.magic": {
+   "value": 45,
+   "source": "guess",
+   "note": "가격 빈칸. 아이템 레벨 12 기준, 아이템 레벨에 비례"
+  },
+  "shop.price.rare": {
+   "value": 160,
+   "source": "guess",
+   "note": ""
+  },
+  "shop.price.legendary": {
+   "value": 520,
+   "source": "guess",
+   "note": ""
+  },
+  "shop.price.unique": {
+   "value": 1100,
+   "source": "guess",
+   "note": ""
+  },
+  "shop.jewelry_mult": {
+   "value": 3.0,
+   "source": "guess",
+   "note": "반지·목걸이는 비싸다(D6 3.2 도박 값과 같은 결)"
+  },
+  "shop.potion_upgrades": {
+   "value": [
+    150,
+    300
+   ],
+   "source": "guess",
+   "note": "회수약 상한 올리기(1회성) 가격. 명세에 가격 없음"
+  },
+  "gamble.price": {
+   "value": {
+    "weapon": 30,
+    "head": 30,
+    "body": 30,
+    "hands": 30,
+    "feet": 30,
+    "charm": 140,
+    "ring": 120
+   },
+   "source": "spec D6 3.2/3.3",
+   "note": "아이템 레벨 12 기준. 반지 120, 목걸이 140으로 고친 값"
+  },
+  "gamble.quality": {
+   "value": [
+    0,
+    0.745,
+    0.22,
+    0.035,
+    0.0
+   ],
+   "source": "spec D6 3.2 G4",
+   "note": "일반·마법·희귀·전설·고유. 세트(0.01)와 고유(0.005)는 전설에 합쳤다(모델에 세트·고유 구분 없음)"
+  },
+  "gamble.enabled": {
+   "value": true,
+   "source": "spec D6",
+   "note": "도박 상점"
+  },
+  "forge.enabled": {
+   "value": false,
+   "source": "user hold",
+   "note": "강화: 사용자 보류(D12 D4.4). 자리만"
+  },
+  "forge.first": {
+   "value": false,
+   "source": "guess",
+   "note": "참이면 상점·도박보다 먼저 강화에 재를 쓴다(강화 +5까지의 판 수를 볼 때)"
+  },
+  "forge.costs": {
+   "value": [
+    20,
+    40,
+    70,
+    110,
+    160
+   ],
+   "source": "spec D12 D4.4",
+   "note": ""
+  },
+  "forge.success": {
+   "value": [
+    1.0,
+    0.85,
+    0.7,
+    0.55,
+    0.4
+   ],
+   "source": "spec D12 D4.4",
+   "note": ""
+  },
+  "forge.pity": {
+   "value": 3,
+   "source": "spec D12 D4.4",
+   "note": "연속 실패 3번이면 다음은 성공"
+  },
+  "forge.step_bonus": {
+   "value": 0.08,
+   "source": "spec D12 D4.4",
+   "note": "단계마다 숫자형 접사와 기본 능력치 +8%"
+  },
+  "forge.numeric_share": {
+   "value": 0.6,
+   "source": "guess",
+   "note": "장비 점수 가운데 숫자형이 차지하는 몫"
+  },
+  "reroll.enabled": {
+   "value": false,
+   "source": "user hold",
+   "note": "다시 굴리기: 사용자 보류. 자리만"
+  },
+  "reroll.cost": {
+   "value": 6,
+   "source": "spec D12 D4.4",
+   "note": "값만 다시: 재 6 × (1 + 0.5 × 횟수)"
+  },
+  "reroll.max": {
+   "value": 20,
+   "source": "spec D12 D4.4",
+   "note": ""
+  },
+  "spend.reserve": {
+   "value": 0,
+   "source": "guess",
+   "note": "남겨 두는 재"
+  },
+  "quests.enabled": {
+   "value": true,
+   "source": "preset",
+   "note": "now에서는 퀘스트가 없다"
+  },
+  "quests.story": {
+   "value": [
+    {
+     "id": "gatekeeper",
+     "obj": "champion0",
+     "reward": {
+      "essence": 50,
+      "xp": 200,
+      "unlock": "shop"
+     }
+    },
+    {
+     "id": "corridor_end",
+     "obj": "boss",
+     "reward": {
+      "sp": 1
+     },
+     "requires": "gatekeeper"
+    }
+   ],
+   "source": "spec D11 D4",
+   "note": "이야기 퀘스트(마녀별)"
+  },
+  "quests.side": {
+   "value": [
+    {
+     "id": "courier",
+     "obj": "carrier",
+     "reward": {
+      "item": [
+       "ring",
+       "rare"
+      ]
+     }
+    },
+    {
+     "id": "two_rituals",
+     "obj": "rituals2",
+     "reward": {
+      "item": [
+       "charm",
+       "rare"
+      ]
+     }
+    },
+    {
+     "id": "cold_hands",
+     "obj": "no_potion_win",
+     "reward": {
+      "essence": 150
+     }
+    }
+   ],
+   "source": "spec D11 D4",
+   "note": "곁일(한 번씩)"
+  },
+  "quests.bounty_pool": {
+   "value": [
+    {
+     "id": "elites6",
+     "obj": "elites6",
+     "reward": {
+      "essence": 60,
+      "xp": 100
+     }
+    },
+    {
+     "id": "chests5",
+     "obj": "chests5",
+     "reward": {
+      "essence": 50,
+      "xp": 80
+     }
+    },
+    {
+     "id": "shrines3",
+     "obj": "shrines3",
+     "reward": {
+      "essence": 40,
+      "xp": 60
+     }
+    },
+    {
+     "id": "grade3",
+     "obj": "grade3",
+     "reward": {
+      "essence": 80,
+      "xp": 150
+     }
+    }
+   ],
+   "source": "spec D11 D4 (값은 범위 안의 가정)",
+   "note": "현상금(되풀이). 보상 재 30~80, 경험치 50~150"
+  },
+  "quests.bounty_offers": {
+   "value": 3,
+   "source": "spec D11 D4",
+   "note": "판마다 3개 중"
+  },
+  "quests.bounty_take": {
+   "value": 2,
+   "source": "spec D11 E3",
+   "note": "동시에 2개(현상금 2)"
+  },
+  "prog.grade_xp_bps": {
+   "value": [
+    0,
+    1000,
+    2000,
+    3000
+   ],
+   "source": "spec D11 D3",
+   "note": "보상 단계별 영구 경험치 가산(1만분율). 지금 데이터에는 없음"
+  },
+  "prog.grade_xp_on": {
+   "value": true,
+   "source": "preset",
+   "note": ""
+  },
+  "xp.scale": {
+   "value": 1.0,
+   "source": "data",
+   "note": "처치·봉인 경험치 배율(민감도용)"
+  },
+  "players.skilled.cap": {
+   "value": 0.99,
+   "source": "balance_sim gear-check 고원",
+   "note": "승률이 힘을 올려도 닿지 못하는 위(정체·실수로 죽음)"
+  },
+  "players.skilled.base_win": {
+   "value": null,
+   "source": "table fit",
+   "note": "null이면 win.table.<유형>에서 맞춘 값. 수를 넣으면 기준 상태(깊이 1, 장비·트리 없음)의 승률을 직접 정한다"
+  },
+  "players.skilled.k": {
+   "value": null,
+   "source": "table fit",
+   "note": "승률 로짓이 ln(힘)에 대해 오르는 기울기. null이면 맞춘 값"
+  },
+  "players.skilled.k_scale": {
+   "value": 1.0,
+   "source": "sensitivity",
+   "note": "k 배율(민감도용). 1.0이 맞춘 값 그대로"
+  },
+  "players.skilled.p_ritual": {
+   "value": 0.75,
+   "source": "guess",
+   "note": "의식 하나를 해내는 확률(그 지점까지 산 판에서)"
+  },
+  "players.skilled.p_carrier": {
+   "value": 0.7,
+   "source": "guess",
+   "note": "운반자를 잡는 확률"
+  },
+  "players.skilled.p_greed": {
+   "value": 0.35,
+   "source": "guess",
+   "note": "위험 카드 pact.greed를 고를 확률"
+  },
+  "players.skilled.p_chest": {
+   "value": 0.95,
+   "source": "guess",
+   "note": "상자를 여는 비율"
+  },
+  "players.skilled.p_shrine": {
+   "value": 0.9,
+   "source": "guess",
+   "note": "사당을 쓰는 비율"
+  },
+  "players.skilled.p_elite": {
+   "value": 0.95,
+   "source": "guess",
+   "note": "정예를 잡는 비율(그 시점까지 산 경우)"
+  },
+  "players.skilled.p_no_potion": {
+   "value": 0.5,
+   "source": "guess",
+   "note": "이긴 판이 회수약 없이였을 확률"
+  },
+  "players.skilled.tree_policy": {
+   "value": "recommended",
+   "source": "guess",
+   "note": "focus | recommended | balanced"
+  },
+  "players.skilled.defeat_f_lo": {
+   "value": 0.6,
+   "source": "guess",
+   "note": "졌을 때 죽는 판 진행의 범위(균등)"
+  },
+  "players.skilled.defeat_f_hi": {
+   "value": 0.98,
+   "source": "guess",
+   "note": ""
+  },
+  "players.average.cap": {
+   "value": 0.7,
+   "source": "balance_sim gear-check 고원",
+   "note": "승률이 힘을 올려도 닿지 못하는 위(정체·실수로 죽음)"
+  },
+  "players.average.base_win": {
+   "value": null,
+   "source": "table fit",
+   "note": "null이면 win.table.<유형>에서 맞춘 값. 수를 넣으면 기준 상태(깊이 1, 장비·트리 없음)의 승률을 직접 정한다"
+  },
+  "players.average.k": {
+   "value": null,
+   "source": "table fit",
+   "note": "승률 로짓이 ln(힘)에 대해 오르는 기울기. null이면 맞춘 값"
+  },
+  "players.average.k_scale": {
+   "value": 1.0,
+   "source": "sensitivity",
+   "note": "k 배율(민감도용). 1.0이 맞춘 값 그대로"
+  },
+  "players.average.p_ritual": {
+   "value": 0.35,
+   "source": "guess",
+   "note": "의식 하나를 해내는 확률(그 지점까지 산 판에서)"
+  },
+  "players.average.p_carrier": {
+   "value": 0.35,
+   "source": "guess",
+   "note": "운반자를 잡는 확률"
+  },
+  "players.average.p_greed": {
+   "value": 0.12,
+   "source": "guess",
+   "note": "위험 카드 pact.greed를 고를 확률"
+  },
+  "players.average.p_chest": {
+   "value": 0.9,
+   "source": "guess",
+   "note": "상자를 여는 비율"
+  },
+  "players.average.p_shrine": {
+   "value": 0.6,
+   "source": "guess",
+   "note": "사당을 쓰는 비율"
+  },
+  "players.average.p_elite": {
+   "value": 0.9,
+   "source": "guess",
+   "note": "정예를 잡는 비율(그 시점까지 산 경우)"
+  },
+  "players.average.p_no_potion": {
+   "value": 0.15,
+   "source": "guess",
+   "note": "이긴 판이 회수약 없이였을 확률"
+  },
+  "players.average.tree_policy": {
+   "value": "balanced",
+   "source": "guess",
+   "note": "focus | recommended | balanced"
+  },
+  "players.average.defeat_f_lo": {
+   "value": 0.35,
+   "source": "guess",
+   "note": "졌을 때 죽는 판 진행의 범위(균등)"
+  },
+  "players.average.defeat_f_hi": {
+   "value": 0.95,
+   "source": "guess",
+   "note": ""
+  },
+  "players.poor.cap": {
+   "value": 0.7,
+   "source": "balance_sim gear-check 고원",
+   "note": "승률이 힘을 올려도 닿지 못하는 위(정체·실수로 죽음)"
+  },
+  "players.poor.base_win": {
+   "value": null,
+   "source": "table fit",
+   "note": "null이면 win.table.<유형>에서 맞춘 값. 수를 넣으면 기준 상태(깊이 1, 장비·트리 없음)의 승률을 직접 정한다"
+  },
+  "players.poor.k": {
+   "value": null,
+   "source": "table fit",
+   "note": "승률 로짓이 ln(힘)에 대해 오르는 기울기. null이면 맞춘 값"
+  },
+  "players.poor.k_scale": {
+   "value": 1.0,
+   "source": "sensitivity",
+   "note": "k 배율(민감도용). 1.0이 맞춘 값 그대로"
+  },
+  "players.poor.p_ritual": {
+   "value": 0.1,
+   "source": "guess",
+   "note": "의식 하나를 해내는 확률(그 지점까지 산 판에서)"
+  },
+  "players.poor.p_carrier": {
+   "value": 0.1,
+   "source": "guess",
+   "note": "운반자를 잡는 확률"
+  },
+  "players.poor.p_greed": {
+   "value": 0.02,
+   "source": "guess",
+   "note": "위험 카드 pact.greed를 고를 확률"
+  },
+  "players.poor.p_chest": {
+   "value": 0.7,
+   "source": "guess",
+   "note": "상자를 여는 비율"
+  },
+  "players.poor.p_shrine": {
+   "value": 0.3,
+   "source": "guess",
+   "note": "사당을 쓰는 비율"
+  },
+  "players.poor.p_elite": {
+   "value": 0.8,
+   "source": "guess",
+   "note": "정예를 잡는 비율(그 시점까지 산 경우)"
+  },
+  "players.poor.p_no_potion": {
+   "value": 0.02,
+   "source": "guess",
+   "note": "이긴 판이 회수약 없이였을 확률"
+  },
+  "players.poor.tree_policy": {
+   "value": "balanced",
+   "source": "guess",
+   "note": "focus | recommended | balanced"
+  },
+  "players.poor.defeat_f_lo": {
+   "value": 0.2,
+   "source": "guess",
+   "note": "졌을 때 죽는 판 진행의 범위(균등)"
+  },
+  "players.poor.defeat_f_hi": {
+   "value": 0.85,
+   "source": "guess",
+   "note": ""
+  },
+  "win.table.skilled": {
+   "value": [
+    [
+     1.0,
+     0.63
+    ],
+    [
+     1.397,
+     0.8
+    ],
+    [
+     1.93,
+     0.9
+    ],
+    [
+     2.406,
+     0.96
+    ],
+    [
+     2.75,
+     0.97
+    ],
+    [
+     2.82,
+     0.96
+    ]
+   ],
+   "source": "balance_sim gear-check.txt",
+   "note": "synergy: 힘 M = P×sqrt(S)와 승률. kit.none / d1_start / d1_end / now / d2_mid / d1_end+tree.lv20 (balsim2/gear-check.txt, 2026-11-19). now 값은 balance_sim 출력 한 줄(96%)"
+  },
+  "win.table.average": {
+   "value": [
+    [
+     1.0,
+     0.2
+    ],
+    [
+     1.397,
+     0.31
+    ],
+    [
+     1.93,
+     0.52
+    ],
+    [
+     2.406,
+     0.58
+    ],
+    [
+     2.75,
+     0.58
+    ],
+    [
+     2.82,
+     0.62
+    ]
+   ],
+   "source": "balance_sim gear-check.txt",
+   "note": "random"
+  },
+  "win.table.poor": {
+   "value": [
+    [
+     1.0,
+     0.02
+    ],
+    [
+     1.397,
+     0.12
+    ],
+    [
+     1.93,
+     0.26
+    ],
+    [
+     2.406,
+     0.4
+    ],
+    [
+     2.75,
+     0.5
+    ],
+    [
+     2.82,
+     0.5
+    ]
+   ],
+   "source": "balance_sim gear-check.txt",
+   "note": "narrow"
+  },
+  "win.floor": {
+   "value": 0.005,
+   "source": "guess",
+   "note": ""
+  },
+  "win.ceil": {
+   "value": 0.995,
+   "source": "guess",
+   "note": ""
+  },
+  "kit.d1_start": {
+   "value": [
+    0.225,
+    0.3
+   ],
+   "source": "balance_sim GEAR_KITS",
+   "note": "(힘 p, 버팀 s)"
+  },
+  "kit.d1_end": {
+   "value": [
+    0.55,
+    0.55
+   ],
+   "source": "balance_sim GEAR_KITS",
+   "note": ""
+  },
+  "kit.d2_mid": {
+   "value": [
+    1.05,
+    0.8
+   ],
+   "source": "balance_sim GEAR_KITS",
+   "note": ""
+  },
+  "kit.tree_lv20": {
+   "value": [
+    0.35,
+    0.175
+   ],
+   "source": "balance_sim GEAR_KITS",
+   "note": ""
+  },
+  "kit.now": {
+   "value": [
+    0.75225,
+    0.885
+   ],
+   "source": "balance_sim_calib gear_now",
+   "note": "지금 게임이 판 안에서 끼는 장비"
+  },
+  "kits.d1_start": {
+   "value": [
+    [
+     "weapon",
+     "rare",
+     8
+    ],
+    [
+     "body",
+     "rare",
+     8
+    ],
+    [
+     "head",
+     "magic",
+     6
+    ],
+    [
+     "hands",
+     "magic",
+     6
+    ],
+    [
+     "feet",
+     "magic",
+     6
+    ]
+   ],
+   "source": "guess from D12 P10",
+   "note": "고정 묶음의 구성(칸, 등급, 아이템 레벨). 장비 가치 식을 세 묶음에 맞출 때 쓴다"
+  },
+  "kits.d1_end": {
+   "value": [
+    [
+     "weapon",
+     "unique",
+     12
+    ],
+    [
+     "charm",
+     "legendary",
+     12
+    ],
+    [
+     "head",
+     "rare",
+     12
+    ],
+    [
+     "body",
+     "rare",
+     12
+    ],
+    [
+     "hands",
+     "rare",
+     12
+    ],
+    [
+     "feet",
+     "rare",
+     12
+    ],
+    [
+     "ring",
+     "rare",
+     12
+    ],
+    [
+     "ring",
+     "rare",
+     12
+    ]
+   ],
+   "source": "guess from D12 P10",
+   "note": ""
+  },
+  "kits.d2_mid": {
+   "value": [
+    [
+     "weapon",
+     "legendary",
+     16
+    ],
+    [
+     "charm",
+     "legendary",
+     16
+    ],
+    [
+     "body",
+     "legendary",
+     16
+    ],
+    [
+     "head",
+     "rare",
+     16
+    ],
+    [
+     "hands",
+     "rare",
+     16
+    ],
+    [
+     "feet",
+     "rare",
+     16
+    ],
+    [
+     "ring",
+     "unique",
+     16
+    ],
+    [
+     "ring",
+     "rare",
+     16
+    ]
+   ],
+   "source": "guess from D12 P10",
+   "note": ""
+  },
+  "unique.slot.ember": {
+   "value": "weapon",
+   "source": "data loot.json uniques",
+   "note": "마녀별 고유의 칸(실행 때 loot.json에서 다시 읽음)"
+  },
+  "unique.slot.frost": {
+   "value": "charm",
+   "source": "data loot.json uniques",
+   "note": ""
+  },
+  "unique.slot.arc": {
+   "value": "ring",
+   "source": "data loot.json uniques",
+   "note": ""
+  },
+  "witch.logit_offset.ember": {
+   "value": 0.0,
+   "source": "guess",
+   "note": "마녀 사이 기준 승률 차(로짓). --from-balsim이 채울 수 있다"
+  },
+  "witch.logit_offset.frost": {
+   "value": 0.0,
+   "source": "guess",
+   "note": ""
+  },
+  "witch.logit_offset.arc": {
+   "value": 0.0,
+   "source": "guess",
+   "note": ""
+  }
+ }
+}

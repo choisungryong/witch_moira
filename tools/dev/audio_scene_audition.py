@@ -10,11 +10,16 @@ Inputs
                 The footage's events.json carries event types, not the game's cue names, so the cue list comes from here; the
                 tool checks that the event counts in the window match the request counts and says so when they do not.
   --candidates  JSON: {"title": "...", "level_match": "game" | "none", "questions": ["..."], "baseline": true,
-                       "candidates": [{"id": "A", "label": "Candidate A", "files": {"fire": ["a1.wav", "a2.wav", "a3.wav"], "impact": [...]}}]}
+                       "candidates": [{"id": "A", "label": "Candidate A", "files": {"fire": ["a1.wav", "a2.wav", "a3.wav"], "impact": [...]},
+                                       "unsilence": ["lightning"], "level_ref": {"lightning": "fire"}, "level_offset_db": {"lightning": -6}}]}
                 "files" maps a GAME sound name (the cue names of combat_audio.gd COUNTS) to candidate files; paths are relative to the
                 JSON file or the repository. A cue not listed keeps the game's own file. Variant v of a cue plays files[v % len(files)].
                 "level_match": "game" brings each candidate file to the level (RMS of the part within 30 dB of the peak) of the
                 game file it replaces, so GAINS keep their meaning; "none" uses the files as they are.
+                Per candidate, optional: "unsilence" lets those SILENT cues sound in THIS candidate's video only (the baseline and the
+                other candidates keep the game's SILENT); "level_ref" {cue: other cue} matches that cue's files to the level of the
+                other cue's game files instead of its own (for a cue whose own file is the problem); "level_offset_db" {cue: dB}
+                is added after the level match.
                 The game's own sounds are added as candidate "0" unless "baseline": false.
 
 Playback rules: ONLY audio_mix_offline.py, which reads them from chapter1/presentation/combat_audio.gd (COUNTS, COOLDOWNS, GAINS,
@@ -127,7 +132,7 @@ def build_sources(base, rules, cand, level_match, cand_dir):
             die('candidate %s: "%s" is not a game sound name (%s)' % (cand['id'], cue, ', '.join(rules['counts'])))
         if not files:
             die('candidate %s: no files for %s' % (cand['id'], cue))
-        if cue in rules['silent']:
+        if cue in rules['silent'] and cue not in (cand.get('unsilence') or []):
             notes['warnings'].append('%s is SILENT in the game: its files are not played' % cue)
         count = 1 if cue == 'ambience' else rules['counts'][cue]
         if len(files) < count:
@@ -140,10 +145,16 @@ def build_sources(base, rules, cand, level_match, cand_dir):
             x = load_mono48(p)
             gain = 1.0
             if level_match == 'game':
-                gain = level(base[cue][v]) / level(x)
+                ref = (cand.get('level_ref') or {}).get(cue, cue)
+                if ref not in base:
+                    die('candidate %s: level_ref %s is not a game sound' % (cand['id'], ref))
+                gain = level(base[ref][v % len(base[ref])]) / level(x)
+                gain *= 10 ** (float((cand.get('level_offset_db') or {}).get(cue, 0.0)) / 20)
                 x = x * gain
             out.append(x)
             info.append({'variant': v, 'file': p.name, 'gain_db': round(20 * math.log10(gain), 1)})
+            if (cand.get('level_ref') or {}).get(cue):
+                info[-1]['level_ref'] = cand['level_ref'][cue]
         src[cue] = out
         notes['cues'][cue] = info
     return src, notes
@@ -220,7 +231,9 @@ def main():
     mixes = []
     for c in cands:
         src, notes = build_sources(base, rules, c, level_match, cpath.parent)
-        played, stats = mo.simulate(log['requests'], rules, src)
+        # a cue the candidate unsilences sounds in this video only; the rules read from the game file stay as they are
+        crules = dict(rules, silent=[s for s in rules['silent'] if s not in (c.get('unsilence') or [])])
+        played, stats = mo.simulate(log['requests'], crules, src)
         x = mo.render(played, rules, src, t0, seconds, ambience=True)
         y = np.stack([x, x], axis=1)
         lufs, mmax = am.loudness(y, SR)
@@ -271,6 +284,9 @@ def main():
     for r in report:
         key.append('%s: %s' % (r['file'], json.dumps(r['candidate_files'], ensure_ascii=False)))
     key += ['', '규칙: chapter1/presentation/combat_audio.gd의 값을 audio_mix_offline.parse_rules로 읽음. SILENT=%s' % rules['silent']]
+    for c in cands:
+        if c.get('unsilence'):
+            key.append('후보 %s만 SILENT를 풂: %s' % (c['id'], ', '.join(c['unsilence'])))
     if not ok:
         key += ['', '주의: 영상의 이벤트와 요청 기록이 어긋남: ' + '; '.join(align_notes)]
     (out / 'answers.ko.txt').write_text('\n'.join(key) + '\n', encoding='utf-8')

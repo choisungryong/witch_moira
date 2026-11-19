@@ -77,6 +77,19 @@ def main():
         check('blind: send/ has numbers only, answers name both candidates', sorted(p.name for p in (tmp / 'o1/send').glob('*.wav')) == ['01.wav', '02.wav'] and '= 0 (' in ans and '= A (' in ans)
         check('answer key not inside send/', not any(' = A (' in p.read_text(encoding='utf-8') for p in (tmp / 'o1/send').glob('*.txt')))
 
+        # per-candidate unsilence + level_ref: only that candidate's video lets the SILENT cue sound, at the referenced cue's level
+        (tmp / 'cands_u.json').write_text(json.dumps({'title': 'selftest', 'level_match': 'game', 'candidates': [
+            {'id': 'U', 'label': 'U', 'unsilence': ['lightning'], 'level_ref': {'lightning': 'fire'}, 'level_offset_db': {'lightning': -6}, 'files': {'lightning': ['light.wav']}},
+            {'id': 'V', 'label': 'V', 'files': {'lightning': ['light.wav']}}]}), encoding='utf-8')
+        code, text = run([HERE / 'audio_scene_audition.py', cap, '--requests', tmp / 'req.json', '--candidates', tmp / 'cands_u.json', '--out', tmp / 'o1u', '--no-video'])
+        mu = json.loads((tmp / 'o1u/measure.json').read_text(encoding='utf-8'))
+        vu = {v['id']: v for v in mu['videos']}
+        check('unsilence: lightning sounds in U only (baseline and V stay SILENT)', code == 0 and vu['U']['played_in_window'].get('lightning') == 1
+              and 'lightning' not in vu['0']['played_in_window'] and 'lightning' not in vu['V']['played_in_window'], str({k: v['played_in_window'] for k, v in vu.items()}))
+        gu, gv = vu['U']['candidate_files']['cues']['lightning'][0], vu['V']['candidate_files']['cues']['lightning'][0]
+        check('level_ref + offset: U lightning level = fire level - 6 dB, differs from own-cue match', gu.get('level_ref') == 'fire' and abs(gu['gain_db'] - gv['gain_db']) > 0.5, '%s %s' % (gu, gv))
+        check('unsilenced candidate has no SILENT warning, the other does', vu['U']['candidate_files']['warnings'] == [] and len(vu['V']['candidate_files']['warnings']) == 1)
+
         # a different player file must change the result: proves the rules are read, not copied
         player = tmp / 'combat_audio.gd'
         text_gd = (REPO / 'chapter1/presentation/combat_audio.gd').read_text(encoding='utf-8')
