@@ -155,7 +155,8 @@ func consume__cloister(events: Array) -> void:
 		if event.has("seq"):
 			if int(event.seq)<=_last_event:continue
 			_last_event=int(event.seq)
-		if event.type=="cast":
+		# A6-RS RS1: a ring spell fires every .5-.9 s around the hero; it must not restart the cast pose each time.
+		if event.type=="cast" and event.get("shape","")!="ring":
 			_cast_tick=int(event.tick);_cast_until=int(event.tick)+12;_cast_moving_until=int(event.tick)+5
 			_cast_direction=event.get("direction",Vector2.DOWN)
 		elif event.type=="hero_hit":_hit_until=int(event.tick)+6

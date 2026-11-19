@@ -4,6 +4,7 @@ extends RefCounted
 ## Presentation only. It reads core events and never writes game state, so the
 ## golden replay is unaffected. Everything is pooled and bounded.
 const Loc = preload("res://chapter1/view/loc.gd")
+const Palette = preload("res://chapter1/view/hud/palette.gd")
 const COLORS := {"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Color("9ce7ef"),"chapter1.skill.arc":Color("b9caff")}
 const ARC_LIGHT_COLOR := Color("6f88ff")
 const ARC_PULSE_COLOR := Color("86a0ff")
@@ -93,6 +94,9 @@ var view: Node3D
 var holder: Node3D
 var show_numbers := true
 var reduced_flash := false
+## A6-RS RS1: the run's spell document and the run itself, read-only (set in sync).
+var _spells_doc: Dictionary = {}
+var _run: RefCounted
 var _last_seq := -1
 var _rng := RandomNumberGenerator.new()
 var _soft: GradientTexture2D
@@ -302,14 +306,18 @@ func _find_environment(node: Node) -> WorldEnvironment:
 		if found != null: return found
 	return null
 
+## A6-RS RS1: a ring spell has its element's colour; gold (the fallback) stays for ids that are no spell.
 func _color(skill_id: String) -> Color:
-	return COLORS.get(skill_id,Color("e0c69d"))
+	return Palette.spell_color(skill_id,_spells_doc,Color("e0c69d"))
 
 func consume(events: Array) -> void:
 	var numbers := NUMBERS_PER_FRAME
 	var sparks := SPARKS_PER_FRAME
 	var bursts := BURSTS_PER_FRAME
 	var lights := LIGHTS_PER_FRAME
+	# Ring-spell hits of normal enemies in one pulse (cast_uid) share one number: {uid: {sum, at (sum of positions), n, color}}.
+	var ring_sums := {}
+	var ring_cast := {}
 	for event in events:
 		if int(event.seq) <= _last_seq: continue
 		_last_seq = int(event.seq)
@@ -321,7 +329,12 @@ func consume(events: Array) -> void:
 					sparks -= 1
 					_spark(at,color,.42 if not event.get("shatter",false) else .8,.10)
 				if show_numbers and numbers > 0 and event.has("damage_raw"):
-					if _number(at,int(round(float(event.damage_raw)/256.0)),color,event.get("shatter",false),int(event.get("target_id",-1))):
+					var amount := int(round(float(event.damage_raw)/256.0))
+					if Palette.is_ring_spell(String(event.get("skill_id",""))) and not _is_elite(int(event.get("target_id",-1))):
+						var uid := int(event.get("cast_uid",-1))
+						if not ring_sums.has(uid): ring_sums[uid] = {"sum":0,"at":Vector2.ZERO,"n":0,"color":color,"cast":ring_cast}
+						ring_sums[uid].sum += amount; ring_sums[uid].at += at; ring_sums[uid].n += 1
+					elif _number(at,amount,color,event.get("shatter",false),int(event.get("target_id",-1))):
 						numbers -= 1
 				if lights > 0 and event.get("shatter",false) and _light_active.size() < MINOR_LIGHT_LIMIT:
 					lights -= 1; _light(at,color,2.6,4.5,.16)
@@ -360,10 +373,14 @@ func consume(events: Array) -> void:
 				_kick(.22)
 			"cast":
 				# A6-2: the cast light is gone (A6 4.5: the "ready" mark has no light). The ground ring in chapter_effects replaces it.
-				pass
+				# A6-RS RS1: remember where a ring pulse was cast and how far it reaches (the merged number sits outside it).
+				if String(event.get("shape","")) == "ring":
+					ring_cast = {"at":at,"radius":float(event.get("radius_cm",0))/100.0}
 			"stun":
 				if sparks > 0:
-					sparks -= 1; _spark(at,Color("ffe08a"),.8,.14)
+					sparks -= 1
+					# The ring's own stun is drawn in its element colour; the old yellow stays for the other stuns.
+					_spark(at,color if Palette.is_ring_spell(String(event.get("skill_id",""))) else Color("ffe08a"),.8,.14)
 			"hero_hit":
 				if event.get("graze",false):
 					# Softened big hit (core rule): small grey-red flash, no light.
@@ -389,6 +406,23 @@ func consume(events: Array) -> void:
 				if item.get("quality","") in ["legendary","unique"] or item.get("slot","") in ["ring","charm"]:
 					_spark(at,Color("ffd27a"),2.2,.35)
 					_light(at,Color("ffca6b"),3.6,6.0,.45)
+	# A6-RS RS1: one number per ring pulse, outside the ring on the side the hits were on (U-1 not decided: "merge" is the default).
+	for uid in ring_sums:
+		var entry: Dictionary = ring_sums[uid]
+		if numbers <= 0: break
+		var centre: Vector2 = entry.at/float(maxi(1,int(entry.n)))
+		var cast_info: Dictionary = entry.cast
+		var number_at := centre
+		if not cast_info.is_empty():
+			var out: Vector2 = centre-cast_info.at
+			number_at = cast_info.at+(out.normalized() if out.length() > .01 else Vector2.DOWN)*(float(cast_info.radius)+.35)
+		if _number(number_at,int(entry.sum),entry.color,false,-1): numbers -= 1
+
+## True when the enemy is an elite-class body (read-only look at the run's enemy table).
+func _is_elite(target: int) -> bool:
+	if _run == null or target < 0: return false
+	var enemy: Variant = _run.enemies.get(target,null)
+	return enemy != null and bool(enemy.get("elite",false))
 
 func _kick(strength: float) -> void:
 	var world: Variant = view.get("world")
@@ -508,6 +542,8 @@ func _light(at: Vector2, color: Color, energy: float, range_: float, seconds: fl
 ## Only live entries are visited. Nothing is rewritten for a paused frame, and the pool
 ## state lives in packed arrays instead of per-entry dictionaries.
 func sync(run: RefCounted, delta: float) -> void:
+	_spells_doc = run.spells
+	_run = run
 	var playing: bool = run.mode == "playing"
 	if playing != _was_playing:
 		_was_playing = playing

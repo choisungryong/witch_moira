@@ -52,6 +52,10 @@ var _routed_c := 0
 ## A6-5: the telegraph quads (one MultiMesh, drawn by `telegraph_fill` and `telegraph`).
 const TELE_MAX := 96
 var _tele_mm: MultiMesh
+## A6-RS RS1: the ring spell's own presenter (composition) and the run's spell document (read-only, set every sync).
+const RingSpellFx := preload("res://chapter1/view/fx/ring_spell_fx.gd")
+var _ring_fx := RingSpellFx.new()
+var _spells_doc: Dictionary={}
 var _flash_blank := false
 var _flash_blank_color: Variant=null
 var _arc_blank := false
@@ -210,7 +214,8 @@ func consume__cloister(events: Array) -> void:
 	for event in events:
 		if int(event.seq)<=_last_event: continue
 		_last_event=int(event.seq)
-		var color: Color=COLORS.get(event.get("skill_id",""),Color("e0c69d"))
+		# A6-RS RS1: a ring spell takes its element's colour (never the gold fallback, which means growth and reward).
+		var color: Color=Palette.spell_color(String(event.get("skill_id","")),_spells_doc,Color("e0c69d"))
 		match String(event.type):
 			"hit":
 				burst(event.position,color,3 if not event.get("shatter",false) else 14)
@@ -241,10 +246,14 @@ func consume__cloister(events: Array) -> void:
 							var at: Vector2=from.lerp(target,float(i)/7.0)
 							if _d_life.size()<MAX_PARTICLES:_debris_add(Vector3(at.x,.8,at.y),Vector3.ZERO,.13,color,1.5)
 						from=target
-				else: burst(event.position,color,5,.6)
+				elif event.get("shape","")!="ring": burst(event.position,color,5,.6)
 
+## Shader element number: 0 fire, .5 frost, 1 arc. A ring spell takes its own element (A6-RS RS1), not fire.
 func _element(id_: String) -> float:
-	return .5 if id_=="chapter1.skill.frost" else (1.0 if id_=="chapter1.skill.arc" else 0.0)
+	match Palette.spell_element(id_,_spells_doc):
+		"frost": return .5
+		"arc": return 1.0
+	return 0.0
 
 const TELE_Y := .12
 ## Write one telegraph quad. custom = (kind, progress, half segment length, radius or half width); tint = (style, line weight, flash).
@@ -420,6 +429,30 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 				var angle := PI*float(i)/float(accents)+.45
 				var axis := cam_basis.x*cos(angle)+cam_basis.y*sin(angle)
 				stroke_vertices+=_ribbon(flash,center-axis*extent,center+axis*extent,.016*fade)
+		elif stroke.type=="ring_arc":
+			# A6-RS RS1: short arcs over a staggered head (camera-facing, .3 s). Ribbons in the shared beam mesh.
+			var arc_center := Vector3(stroke.at.x,1.55,stroke.at.y)
+			var arc_fade := clampf(float(stroke.life)/float(stroke.duration),0,1)
+			var arc_color: Color=stroke.color;arc_color.a=arc_fade*.80
+			flash.surface_set_color(arc_color)
+			for k in int(stroke.count):
+				var start_angle := PI*.12+PI*float(k)
+				var previous := arc_center+(cam_basis.x*cos(start_angle)+cam_basis.y*sin(start_angle))*.30
+				for j in range(1,6):
+					var angle := start_angle+PI*.62*float(j)/5.0
+					var point := arc_center+(cam_basis.x*cos(angle)+cam_basis.y*sin(angle))*.30
+					stroke_vertices+=_ribbon(flash,previous,point,.026*arc_fade)
+					previous=point
+		elif stroke.type=="ring_shard":
+			# Three pieces of a cut wind-up, drifting out and fading to linen in .15 s.
+			var shard_age := 1.0-clampf(float(stroke.life)/float(stroke.duration),0,1)
+			var shard_color: Color=stroke.color;shard_color.a=(1.0-shard_age)*.85
+			flash.surface_set_color(shard_color)
+			for k in 3:
+				var shard_angle := float(int(stroke.seed)%7)*.9+TAU*float(k)/3.0
+				var direction_ := cam_basis.x*cos(shard_angle)+cam_basis.y*sin(shard_angle)
+				var shard_from := Vector3(stroke.at.x,.9,stroke.at.y)+direction_*(.10+shard_age*.45)
+				stroke_vertices+=_ribbon(flash,shard_from,shard_from+direction_*.20,.022)
 		elif stroke.type=="impact":
 			if impact_count<MAX_IMPACTS:
 				var ixf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y))
@@ -1159,6 +1192,7 @@ func consume(events: Array) -> void:
 		var direction: Vector2=event.get("direction",Vector2.RIGHT)
 		strokes.append({"type":"frost39_cast","at":event.position+direction*.42,"life":.10,"duration":.10,"color":COLORS["chapter1.skill.frost"]})
 	consume__q36(events)
+	_ring_fx.consume(events,self)
 
 func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	if color.is_equal_approx(COLORS["chapter1.skill.frost"]):
@@ -1169,6 +1203,7 @@ func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	burst__cloister(at,color,count,force)
 
 func sync(run: RefCounted,delta: float) -> void:
+	_spells_doc=run.spells
 	# Camera looked up once per frame; the ribbon/arc/contact builders read it from here.
 	var cam := view.get_viewport().get_camera_3d()
 	if cam!=null:
@@ -1206,6 +1241,10 @@ func sync(run: RefCounted,delta: float) -> void:
 		frost39_cast_count+=1
 	_mmflush(mk,kbuf,frost39_cast_count)
 	_mm_show(_frost39_casts,frost39_cast_count)
+	var ring_hero := Vector3(run.hero.position.x,0,run.hero.position.y)
+	var ring_actors: Variant=view.get("actors")
+	if ring_actors!=null:ring_hero=ring_actors.hero.position
+	_ring_fx.sync(run,delta,ring_hero)
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
@@ -1215,6 +1254,7 @@ func _sync_fragments(run: RefCounted,delta: float) -> void:
 
 func reset() -> void:
 	reset__q36()
+	_ring_fx.reset()
 	_flash_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
@@ -1252,3 +1292,4 @@ func setup(owner_view: Node3D) -> void:
 	contact.shader=preload("res://chapter1/view/arc_contact_quality44.gdshader")
 	contact_batch.material_override=contact
 	_read_fx_switches()
+	_ring_fx.setup(view)

@@ -55,3 +55,20 @@ static func element_color(element: String, fallback: Color = BRASS) -> Color:
 
 static func element_text_color(element: String, fallback: Color = BRASS) -> Color:
 	return {"ember":FIRE_TEXT,"frost":FROST_TEXT,"arc":ARC_TEXT}.get(element,fallback)
+
+## A6-RS RS1: a spell id (basic or ring) to its element short id. The run's own spell document wins (run.spells.spells[id].element);
+## without it the three basic spells and the ring ids the core names (RunSpells.RING_IDS) answer. "" when the id is not a spell.
+const _BASIC_SPELL_ELEMENTS := {"chapter1.skill.ember":"ember","chapter1.skill.frost":"frost","chapter1.skill.arc":"arc"}
+const _RunSpells = preload("res://chapter1/core/run_spells.gd")
+
+static func spell_element(skill_id: String, spells_doc: Dictionary = {}) -> String:
+	var spells: Variant = spells_doc.get("spells",null)
+	if spells is Dictionary and spells.has(skill_id): return String(spells[skill_id].get("element",""))
+	return String(_BASIC_SPELL_ELEMENTS.get(skill_id,_RunSpells.RING_IDS.get(skill_id,"")))
+
+static func is_ring_spell(skill_id: String) -> bool:
+	return _RunSpells.RING_IDS.has(skill_id)
+
+## The element colour of a spell id; `fallback` when the id is not a spell (an enemy skill, a seal, an empty id).
+static func spell_color(skill_id: String, spells_doc: Dictionary = {}, fallback: Color = BRASS) -> Color:
+	return element_color(spell_element(skill_id,spells_doc),fallback)
