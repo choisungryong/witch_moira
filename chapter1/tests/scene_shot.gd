@@ -44,7 +44,7 @@ const ContractSchema := preload("res://chapter1/tests/support/contract_schema.gd
 const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
-const SCENES := ["title","skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record"]
+const SCENES := ["title","skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record","quit_confirm","unsaved_confirm","notice_band","boss_band","notice_card","upgrade_card"]
 const VARIANTS := ["normal","long","defeat","scrolled","arc","ember"]
 const START_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 
@@ -409,10 +409,15 @@ func _scene_result(fx: Dictionary) -> bool:
 		return false
 	return true
 
+## Pause on, not toggled: a window without focus has already been paused by the app's focus-lost rule, and a toggle would un-pause it.
+func _pause_on() -> void:
+	run.set_paused(true)
+	hud.invalidate()
+
 func _scene_pause(_fx: Dictionary) -> bool:
 	_start_run()
 	await _frames(40)
-	view.toggle_pause()
+	_pause_on()
 	await _frames(10)
 	if run.mode != "paused":
 		_fail("pause","mode is %s, not paused" % run.mode)
@@ -422,7 +427,7 @@ func _scene_pause(_fx: Dictionary) -> bool:
 func _scene_abandon_confirm(fx: Dictionary) -> bool:
 	_start_run()
 	await _frames(40)
-	view.toggle_pause()
+	_pause_on()
 	await _frames(6)
 	if bool(fx.get("real",true)):
 		hud._ask_abandon()
@@ -434,6 +439,75 @@ func _scene_abandon_confirm(fx: Dictionary) -> bool:
 	if not hud.flow_dialog_open():
 		_fail("abandon_confirm","the confirm window did not open")
 		return false
+	return true
+
+## A10 W2/W1 screens: the confirm windows and the notices, on the HUD's own entry points. (The refused-save windows come from
+## hud_dump.gd --profile-fixture=rejected, which already walks that flow.)
+func _scene_quit_confirm(_fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(40)
+	_pause_on()
+	await _frames(6)
+	hud._ask_quit()
+	await _frames(14)
+	if not hud.flow_dialog_open():
+		_fail("quit_confirm","the confirm window did not open")
+		return false
+	return true
+
+func _scene_unsaved_confirm(_fx: Dictionary) -> bool:
+	if not await _scene_result(_load_fixture("result","normal")): return false
+	hud.ask_unsaved("quit")
+	await _frames(14)
+	if not hud.flow_dialog_open():
+		_fail("unsaved_confirm","the confirm window did not open")
+		return false
+	return true
+
+func _scene_notice_band(_fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(40)
+	hud.notify("회복약 사용 · 2개 남음")
+	await _frames(24)
+	return true
+
+## The champion's entrance. A HUD with an announce() (A10 W1) gets the big band; before it, the toast is the whole announcement.
+func _scene_boss_band(_fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(40)
+	var title := "모드구드"
+	if hud.has_method("announce"): hud.announce("boss",title,"출현")
+	else: hud.notify(title+" 출현")
+	await _frames(24)
+	return true
+
+func _scene_notice_card(fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(40)
+	hud._queue_discovery20(fx.item.duplicate(true))
+	await _frames(26)
+	return true
+
+func _scene_upgrade_card(fx: Dictionary) -> bool:
+	_start_run()
+	await _frames(40)
+	# The two items are put into the run, so the core can judge them (pickup_verdict); a HUD whose offer_upgrade takes no verdict gets the three arguments it knows.
+	run.inventory.clear()
+	run.inventory.append(fx.current.duplicate(true))
+	run.inventory.append(fx.candidate.duplicate(true))
+	run.equipped = {String(fx.slot): int(fx.current.uid)}
+	# These two are not "found" in this scene: the first-gear card must not take the notice slot first.
+	for uid in [fx.current.uid, fx.candidate.uid]:   # the keys are the items' own (JSON number) uids, as the HUD reads them
+		hud._seen_gear[uid] = true
+		hud._discovery20_uids[uid] = true
+	var verdict: Dictionary = run.pickup_verdict(int(fx.candidate.uid)) if run.has_method("pickup_verdict") else {}
+	var takes_verdict := false
+	for m in hud.get_method_list():
+		if m.name == "offer_upgrade": takes_verdict = m.args.size() >= 4
+	if takes_verdict: hud.offer_upgrade(fx.candidate.duplicate(true),fx.current.duplicate(true),String(fx.slot),verdict)
+	else: hud.offer_upgrade(fx.candidate.duplicate(true),fx.current.duplicate(true),String(fx.slot))
+	print("SCENE_SHOT_VERDICT ",JSON.stringify({"react":verdict.get("react",""),"better":verdict.get("better",""),"top_rows":verdict.get("top_rows",[]).size()}))
+	await _frames(26)
 	return true
 
 func _scene_combat_record(fx: Dictionary) -> bool:

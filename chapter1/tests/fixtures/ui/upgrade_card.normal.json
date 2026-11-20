@@ -1,0 +1,10 @@
+{
+ "scene": "upgrade_card",
+ "slot": "head",
+ "candidate": {"uid": 32, "name": "서리 순례의 눈물", "slot": "head", "quality": "rare",
+  "stats": {"max_hp_raw": 1536, "damage_reduction_bps": 300, "pickup_radius_cm": 60},
+  "description": "", "required_level": 1, "item_level": 6, "base_id": "chapter1.full.cinder_staff", "affixes": [], "grammar": 2},
+ "current": {"uid": 33, "name": "낡은 두건", "slot": "head", "quality": "magic",
+  "stats": {"max_hp_raw": 2048, "pickup_radius_cm": 20},
+  "description": "", "required_level": 1, "item_level": 3, "base_id": "chapter1.full.cinder_staff", "affixes": [], "grammar": 2}
+}

@@ -1,0 +1,6 @@
+{
+ "scene": "notice_card",
+ "item": {"uid": 31, "name": "서리 순례의 눈물", "slot": "head", "quality": "rare",
+  "stats": {"max_hp_raw": 1536, "damage_reduction_bps": 300, "pickup_radius_cm": 60},
+  "description": "", "required_level": 1, "item_level": 6, "base_id": "chapter1.full.cinder_staff", "affixes": [], "grammar": 2}
+}

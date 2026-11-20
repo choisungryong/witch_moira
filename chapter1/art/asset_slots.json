@@ -1101,10 +1101,11 @@
     },
     "ui.kit.board": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K1: the contract board of a window (leather, two gold stitch lines, brass corner caps and rivets; nine-sliced). Until it exists UiStyle.window('board') returns the flat window",
+      "file": "ui/kit/a10/board.png",
+      "used": "yes",
+      "source": "A10 W2 K1 (k1-a): the contract board of a window (leather, two gold stitch lines, brass corner caps and rivets; nine-sliced, slice table UiStyle.KIT_SLICES). Without the file UiStyle.window('board') returns the flat window",
       "contract": {
+        "alpha": true,
         "size": [
           1536,
           1024
@@ -1113,34 +1114,50 @@
     },
     "ui.kit.button.primary": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K2: primary button face (leather plate, brass rim, small buckle under; nine-sliced). States are code tints",
+      "file": "ui/kit/a10/button-primary.png",
+      "used": "yes",
+      "source": "A10 W2 K2 (k2p-b): primary button face (leather plate, brass rim, four rivets, small buckle under; nine-sliced). States are code tints",
       "contract": {
+        "alpha": true,
         "size": [
           768,
-          192
+          150
+        ]
+      }
+    },
+    "ui.kit.button.primary_wide": {
+      "kind": "texture",
+      "file": "ui/kit/a10/button-primary-wide.png",
+      "used": "yes",
+      "source": "A10 W2 K2 (k2p-c): primary button face without the buckle, for buttons wider than the buckle one can stretch to (UiStyle.button_kind wide=true)",
+      "contract": {
+        "alpha": true,
+        "size": [
+          768,
+          138
         ]
       }
     },
     "ui.kit.button.secondary": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K2: secondary button face (leather plate, dark iron rim; nine-sliced); the danger button uses it with the danger mark",
+      "file": "ui/kit/a10/button-secondary.png",
+      "used": "yes",
+      "source": "A10 W2 K2 (k2s-b2): secondary button face (leather plate, gunmetal rim, dark rivets; nine-sliced); the danger button uses it with the danger mark",
       "contract": {
+        "alpha": true,
         "size": [
           768,
-          192
+          117
         ]
       }
     },
     "ui.kit.mark.danger": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K3: broken wax seal mark of a danger button (no words)",
+      "file": "ui/kit/a10/mark-danger.png",
+      "used": "yes",
+      "source": "A10 W2 K3 (k3-a): broken wax seal mark of a danger button (no words); the code darkens and desaturates it (UiStyle.danger_mark)",
       "contract": {
+        "alpha": true,
         "size": [
           256,
           256
@@ -1149,10 +1166,11 @@
     },
     "ui.kit.toggle": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K4: brass toggle, on and off",
+      "file": "ui/kit/a10/toggle.png",
+      "used": "yes",
+      "source": "A10 W2 K4 (k4-a): brass toggle, on (upper slot) and off (lower slot); UiStyle.TOGGLE_REGIONS cuts the two",
       "contract": {
+        "alpha": true,
         "size": [
           512,
           256
@@ -1161,13 +1179,27 @@
     },
     "ui.kit.band.notice": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "A10 2.4 K6: leather band for a band notice (buckles at both ends, middle empty)",
+      "file": "ui/kit/a10/band-notice.png",
+      "used": "yes",
+      "source": "A10 W1 K6 (k6-a): leather band of a one-line notice (buckles at both ends, middle plain; three-sliced, UiStyle.KIT_SLICES)",
       "contract": {
+        "alpha": true,
         "size": [
           1536,
-          256
+          103
+        ]
+      }
+    },
+    "ui.kit.band.notice_big": {
+      "kind": "texture",
+      "file": "ui/kit/a10/band-notice-big.png",
+      "used": "yes",
+      "source": "A10 W1 K6 (k6-b): the taller band of a big notice (brass end caps with rings); the champion's entrance sits in a title plaque, this band carries the line under it",
+      "contract": {
+        "alpha": true,
+        "size": [
+          1536,
+          208
         ]
       }
     },

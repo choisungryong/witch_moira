@@ -4,6 +4,7 @@ extends RefCounted
 ## Colours come from palette.gd tokens only. Decorative pieces for custom-drawn controls come from one atlas
 ## (hud_atlas.png, drawn with `blit`), nine-slice frames from the 1x textures next to it.
 const Palette = preload("res://chapter1/view/hud/palette.gd")
+const Motion = preload("res://chapter1/view/hud/ui_motion.gd")
 
 const LEGACY := 0
 const BOUND_CODEX := 1
@@ -178,21 +179,47 @@ static func _nine(file: String, margin: int, content: Array) -> StyleBoxTexture:
 ## is the flat window, so asking for it never fails. Screens opt in to "board" one by one (A10 W2...), nothing flips by itself when the picture arrives.
 static func window(kind := "flat") -> StyleBox:
 	if kind == "board":
-		var t: Texture2D = _parts().tex("board")
-		if t != null:
-			var m := int(minf(t.get_width(), t.get_height()) * BOARD_MARGIN_FRAC)
-			var s := StyleBoxTexture.new()
-			s.texture = t
-			s.texture_margin_left = m; s.texture_margin_right = m; s.texture_margin_top = m; s.texture_margin_bottom = m
-			s.content_margin_left = 44; s.content_margin_top = 44; s.content_margin_right = 44; s.content_margin_bottom = 44
-			s.draw_center = true
-			return s
+		var board := kit_box("board")
+		if board != null:
+			board.content_margin_left = 54; board.content_margin_right = 54; board.content_margin_top = 52; board.content_margin_bottom = 52
+			return board
 	if bound(): return _nine("window_96.png", 40, [44, 44, 44, 44])
 	return flat(Palette.SURFACE, Palette.BRASS)
 
-## The slice margin of the board picture as a fraction of its short side (a placeholder until the real picture fixes it).
-const BOARD_MARGIN_FRAC := 0.10
 const PARTS_FILE := "res://chapter1/view/hud/ui_parts.gd"
+
+## Slice data of the A10 kit pictures (ui.kit.*, made by Codex, a few times larger than they are drawn): "m" = nine-slice margins [left, top, right, bottom] in
+## picture pixels, "s" = code units per picture pixel (the picture is resampled to it, so the margins stay the corner size the art was drawn for).
+## 1080p draws a code unit 1.2 px wide, so board 0.42 is about half the picture size on a 1920x1080 screen.
+const KIT_SLICES := {
+	"board": {"m": [150, 140, 150, 140], "s": 0.42},
+	"button_primary": {"m": [48, 66, 48, 66], "s": 0.32},
+	"button_primary_wide": {"m": [44, 54, 44, 54], "s": 0.35},
+	"button_secondary": {"m": [36, 50, 36, 50], "s": 0.41},
+	"band_notice": {"m": [150, 46, 150, 46], "s": 0.5},
+	"band_notice_big": {"m": [205, 93, 205, 93], "s": 0.42}}
+## The two toggle states inside ui.kit.toggle (picture pixels) and the scale they are drawn at.
+const TOGGLE_REGIONS := {"on": Rect2i(89, 7, 333, 115), "off": Rect2i(89, 135, 333, 114)}
+const TOGGLE_SCALE := 0.34
+
+## ui.kit.* picture as a nine-slice box (code size), or null when the picture is not there (the caller falls back).
+static func kit_box(name_: String) -> StyleBoxTexture:
+	var d: Dictionary = KIT_SLICES.get(name_, {})
+	if d.is_empty(): return null
+	var t: Texture2D = _parts().tex_scaled(name_, float(d.s))
+	if t == null: return null
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	var m: Array = d.m
+	s.texture_margin_left = ceili(float(m[0]) * float(d.s)); s.texture_margin_top = ceili(float(m[1]) * float(d.s))
+	s.texture_margin_right = ceili(float(m[2]) * float(d.s)); s.texture_margin_bottom = ceili(float(m[3]) * float(d.s))
+	s.draw_center = true
+	return s
+
+## The picture name a button kind is drawn with.
+static func _face_name(kind: String, wide: bool) -> String:
+	if kind == "primary": return "button_primary_wide" if wide else "button_primary"
+	return "button_secondary"
 
 ## ui_parts.gd reads this file, so this file loads it at call time (a preload would be a cycle).
 static func _parts() -> GDScript:
@@ -270,26 +297,26 @@ static func button_face(state: String) -> StyleBox:
 
 ## The A10 button: kind "primary" / "secondary" / "danger" (danger = the secondary face; its seal mark is drawn by the screen), state as button_face().
 ## Leather faces from ui.kit.button.*; until they exist it is the button face every screen has today. States are code tints on the one picture.
-static func button_kind(kind: String, state: String) -> StyleBox:
-	var t: Texture2D = _parts().tex("button_primary" if kind == "primary" else "button_secondary")
-	if t == null: return button_face(state)
-	var s := StyleBoxTexture.new()
-	s.texture = t
-	var m := int(t.get_height() * 0.3)
-	s.texture_margin_left = m; s.texture_margin_right = m; s.texture_margin_top = m; s.texture_margin_bottom = m
-	s.content_margin_left = 14; s.content_margin_right = 14; s.content_margin_top = 10; s.content_margin_bottom = 10
-	s.draw_center = true
+static func button_kind(kind: String, state: String, wide := false) -> StyleBox:
+	var s := kit_box(_face_name(kind, wide))
+	if s == null: return button_face(state)
+	s.content_margin_left = 18; s.content_margin_right = 18; s.content_margin_top = 8; s.content_margin_bottom = 8
 	match state:
-		"hover": s.modulate_color = Color(1.18, 1.12, 0.92)
-		"pressed": s.modulate_color = Color(0.72, 0.72, 0.72)
-		"disabled": s.modulate_color = Color(0.55, 0.55, 0.55, 0.8)
+		"hover": s.modulate_color = Color(1.22, 1.14, 0.92)
+		"pressed": s.modulate_color = Color(0.7, 0.7, 0.7)
+		"disabled": s.modulate_color = Color(0.5, 0.5, 0.5, 0.75)
 	return s
 
 ## Selection mark: bright brass edge only (K16). Never a plain frame.
-## kind "box" (default): the 3 px square edge every screen has today (the fall-back path). "button": with the A10 button faces the face itself brightens
-## (button_kind hover), so no edge is drawn; without them it is the box. "row": a list row's mark, a brass bar on its left edge.
-static func focus_mark(kind := "box") -> StyleBox:
-	if kind == "button" and _parts().tex("button_primary") != null: return StyleBoxEmpty.new()
+## kind "box" (default): the 3 px square edge every screen has today (the fall-back path). "button": the face's own rim goes bright (the same picture drawn
+## again without its middle, brass lit); without the A10 faces it is the box. "row": a list row's mark, a brass bar on its left edge.
+static func focus_mark(kind := "box", face := "secondary", wide := false) -> StyleBox:
+	if kind == "button":
+		var rim := kit_box(_face_name(face, wide))
+		if rim != null:
+			rim.draw_center = false
+			rim.modulate_color = Color(2.1, 1.7, 1.0)
+			return rim
 	var focus := StyleBoxFlat.new(); focus.bg_color = Color(0, 0, 0, 0); focus.border_color = Palette.BRASS_HI
 	if kind == "row":
 		focus.border_width_left = 4
@@ -297,6 +324,55 @@ static func focus_mark(kind := "box") -> StyleBox:
 	else:
 		focus.set_border_width_all(3)
 	return focus
+
+static var _danger_mark: Texture2D
+## The broken wax seal of a danger button: the picture dimmed and desaturated in code (the art is a bright brick red), small enough for a 17 pt line.
+static func danger_mark() -> Texture2D:
+	if _danger_mark != null: return _danger_mark
+	var image: Image = _parts().image_of("mark_danger")
+	if image == null: return null
+	image.resize(56, 56, Image.INTERPOLATE_LANCZOS)
+	for y in image.get_height():
+		for x in image.get_width():
+			var c := image.get_pixel(x, y)
+			var l := c.r * 0.3 + c.g * 0.59 + c.b * 0.11
+			image.set_pixel(x, y, Color(lerpf(l, c.r, 0.6) * 0.78, lerpf(l, c.g, 0.6) * 0.72, lerpf(l, c.b, 0.6) * 0.72, c.a))
+	image.generate_mipmaps()
+	_danger_mark = ImageTexture.create_from_image(image)
+	return _danger_mark
+
+## A button of an A10 kind (1.6). primary = 20 heading and the buckle face, secondary and danger = 17 body; danger carries the seal mark and is never given
+## the default focus by its window. `key` ("Esc", "R") hangs a key plate under it (draw_key_tag); callers leave 24 units under the button for it.
+## Focus and hover ease over 0.08 s: the button grows to 1.03 and its rim brightens.
+static func kit_button(label: String, action: Callable, kind := "secondary", wide := false, key := "") -> Button:
+	var b := Button.new()
+	b.text = label
+	var role := text("t4", "heading") if kind == "primary" else text("t5", "body")
+	b.add_theme_font_override("font", Loc.font(String(role.font)))
+	b.add_theme_font_size_override("font_size", int(role.size))
+	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(color_name, Palette.INK)
+	b.add_theme_color_override("font_disabled_color", Palette.TEXT_DISABLED)
+	b.custom_minimum_size = Vector2(210 if wide else 170, 52 if kind == "primary" else 46)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(state, button_kind(kind, state, wide))
+	b.add_theme_stylebox_override("focus", focus_mark("button", "primary" if kind == "primary" else "secondary", wide))
+	if kind == "danger" and danger_mark() != null:
+		b.icon = danger_mark()
+		b.expand_icon = false
+		b.add_theme_constant_override("h_separation", 10)
+		b.add_theme_constant_override("icon_max_width", 26)
+	b.pressed.connect(action)
+	b.resized.connect(func(): b.pivot_offset = b.size * 0.5)
+	var ease_to := func(target: float):
+		var tween := b.create_tween()
+		tween.tween_property(b, "scale", Vector2(target, target), Motion.FOCUS)
+	b.focus_entered.connect(ease_to.bind(1.03))
+	b.focus_exited.connect(ease_to.bind(1.0))
+	b.mouse_entered.connect(ease_to.bind(1.03))
+	b.mouse_exited.connect(func(): if not b.has_focus(): ease_to.call(1.0))
+	if key != "": b.draw.connect(draw_key_tag.bind(b, key))
+	return b
 
 ## The seven text sizes of A10 1.9 (1600 x 900 code units). role "t1".."t7" -> {size, font, color}; `font` overrides the face ("heading" "body" "bold" "number").
 const TEXT_ROLES := {

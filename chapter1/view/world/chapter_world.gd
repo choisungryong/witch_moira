@@ -724,7 +724,7 @@ const EDGE_STYLES := {
 		"height_near":Vector2(.72,.95),"height_far":Vector2(.9,1.2),"gap_len":Vector2(2.2,3.4),"rail_len":Vector2(2.4,3.6)},
 }
 ## sunk = brightness left outside the walk area; reach = metres over which it falls; fog = amount of the cool fog mixed in.
-const EDGE_LOOK := {"sunk":.34,"reach":1.8,"fog":.20,"fog_color":Color("1b2124")}
+const EDGE_LOOK := {"sunk":.56,"reach":2.4,"fog":.12,"fog_color":Color("1b2124")}
 ## out = away from the walk area, along = direction of the line, near = faces the camera (lower pieces so the hero's legs stay seen),
 ## mirror_wall = the wall sprite's diagonal must be flipped to run along this line on screen.
 const EDGE_SIDES := {

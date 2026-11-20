@@ -44,9 +44,9 @@ static func slot_ids(name_: String) -> Array:
 	if name_ in ["title_plaque", "candle", "knobs", "parchment"]: return ["ui.kit." + name_, "ui.grace." + name_]
 	if name_ in ["sigil", "jackpot_plaque"]: return ["ui.grace." + name_]
 	if name_ in ["board", "toggle"]: return ["ui.kit." + name_]
-	if name_ in ["button_primary", "button_secondary"]: return ["ui.kit.button." + name_.trim_prefix("button_")]
+	if name_ in ["button_primary", "button_primary_wide", "button_secondary"]: return ["ui.kit.button." + name_.trim_prefix("button_")]
 	if name_ == "mark_danger": return ["ui.kit.mark.danger"]
-	if name_ == "band_notice": return ["ui.kit.band.notice"]
+	if name_ in ["band_notice", "band_notice_big"]: return ["ui.kit.band." + name_.trim_prefix("band_")]
 	return []
 
 ## The first meaning id of a part name ("" for a name that has no slot).
@@ -58,16 +58,52 @@ static func slot_of(name_: String) -> String:
 static func tex(name_: String) -> Texture2D:
 	if _tex.has(name_): return _tex[name_]
 	var t: Texture2D = null
+	var image := image_of(name_)
+	if image != null:
+		image.generate_mipmaps()
+		t = ImageTexture.create_from_image(image)
+	_tex[name_] = t
+	return t
+
+## The picture of a part as a fresh RGBA8 image without mipmaps, or null (no slot of it has a file).
+static func image_of(name_: String) -> Image:
 	for id in slot_ids(name_):
 		if AssetSlots.has_slot(id) and not AssetSlots.is_planned(id) and AssetSlots.path(id) != "":
 			var src: Texture2D = AssetSlots.texture(id)
 			var image: Image = src.get_image() if src != null else null
 			if image != null and not image.is_empty():
+				if image.is_compressed(): image.decompress()
 				if image.get_format() != Image.FORMAT_RGBA8: image.convert(Image.FORMAT_RGBA8)
-				image.generate_mipmaps()
-				t = ImageTexture.create_from_image(image)
-				break
-	_tex[name_] = t
+				return image
+	return null
+
+static var _scaled := {}
+## The picture of a part resampled to `factor` of its size (a nine-sliced kit picture is drawn at code size; the source is several times bigger, so the
+## corners would be huge). Lanczos, mipmapped, cached by name and factor. Null when the part has no picture.
+static func tex_scaled(name_: String, factor: float) -> Texture2D:
+	var key := "%s@%.3f" % [name_, factor]
+	if _scaled.has(key): return _scaled[key]
+	var t: Texture2D = null
+	var image := image_of(name_)
+	if image != null:
+		image.resize(maxi(2, roundi(image.get_width() * factor)), maxi(2, roundi(image.get_height() * factor)), Image.INTERPOLATE_LANCZOS)
+		image.generate_mipmaps()
+		t = ImageTexture.create_from_image(image)
+	_scaled[key] = t
+	return t
+
+## A part picture cut to `region` (source pixels) and resampled by `factor` (the two toggle states are two slots of one picture).
+static func tex_region(name_: String, region: Rect2i, factor: float) -> Texture2D:
+	var key := "%s@%s@%.3f" % [name_, str(region), factor]
+	if _scaled.has(key): return _scaled[key]
+	var t: Texture2D = null
+	var image := image_of(name_)
+	if image != null:
+		var part := image.get_region(region)
+		part.resize(maxi(2, roundi(part.get_width() * factor)), maxi(2, roundi(part.get_height() * factor)), Image.INTERPOLATE_LANCZOS)
+		part.generate_mipmaps()
+		t = ImageTexture.create_from_image(part)
+	_scaled[key] = t
 	return t
 
 static func source_of(_name: String) -> String:
@@ -89,7 +125,16 @@ static func art_material(sat := 1.0, bright := 1.0, add := false, tint := Color.
 	m.set_shader_parameter("sat", sat)
 	m.set_shader_parameter("bright", bright)
 	m.set_shader_parameter("tint", tint)
+	m.set_meta("tint_base", tint)
 	return m
+
+## Fades the pictures drawn with art_material() under `node` to `alpha` of their own tint. The material's shader writes COLOR itself, so the node's modulate does
+## not reach these pictures: a screen that fades in or out calls this next to its own modulate.
+static func set_art_alpha(node: Node, alpha: float) -> void:
+	if node is CanvasItem and node.material is ShaderMaterial and node.material.has_meta("tint_base"):
+		var base: Color = node.material.get_meta("tint_base")
+		node.material.set_shader_parameter("tint", Color(base.r, base.g, base.b, base.a * alpha))
+	for child in node.get_children(): set_art_alpha(child, alpha)
 
 ## A picture child filling `rect` (null when the picture does not exist: the caller falls back). The picture is painted in the child's own
 ## _draw (not a TextureRect node), so layered art over text is not an "overlap" for tools/dev/hud_layout_check.py (it only sees content nodes).
@@ -150,6 +195,10 @@ static func fit_size(text: String, size: int, width: float, role: String, min_si
 	var s := size
 	while s > min_size and Kit.measure(text, s, 99999.0, role).x > width: s -= 1
 	return s
+
+## The width of `text` on one line at `size`.
+static func text_width(text: String, size: int, role: String) -> float:
+	return Kit.measure(text, size, 99999.0, role).x
 
 ## Text that has to fit one line: shrink first; if it still does not fit, cut at the first " · " (a whole word group, never mid-word).
 static func fit_text(text: String, size: int, width: float, role: String, min_size: int) -> Dictionary:
@@ -442,7 +491,7 @@ static func note(parent: Control, rect: Rect2, contract: Dictionary) -> SideNote
 ## Brass name plate on leather. The art (N2) is used when it is in the kit; otherwise the HUD's name plate (boss_name) nine-sliced.
 class TitlePlaque extends Control:
 	var P = load(PARTS_PATH)
-	func build(text: String, w: float, sub: String) -> void:
+	func build(text: String, w: float, sub: String, text_size := 36, fit := 0.76) -> void:
 		var art: Texture2D = P.tex("title_plaque")
 		var h := w / 3.0 if art != null else maxf(96.0, w * 0.19)
 		size = Vector2(w, h)
@@ -463,7 +512,7 @@ class TitlePlaque extends Control:
 			P.layer(self, Callable(self, "_paint_rim"))
 			P.note_source("title plaque", "atlas")
 		var ty := h * (0.20 if sub == "" else 0.14)
-		var tl: Label = Kit.lbl(self, text, Vector2(w * 0.12, ty), w * 0.76, P.fit_size(text, 36, w * 0.76, "heading", 20), Palette.INK, "heading", HORIZONTAL_ALIGNMENT_CENTER, false, true)
+		var tl: Label = Kit.lbl(self, text, Vector2(w * 0.12, ty), w * 0.76, P.fit_size(text, text_size, w * fit, "heading", 20), Palette.INK, "heading", HORIZONTAL_ALIGNMENT_CENTER, false, true)
 		tl.name = "Title"
 		if sub != "":
 			var sl: Label = Kit.lbl(self, sub, Vector2(w * 0.12, ty + tl.size.y), w * 0.76, 15, Palette.INK_DIM, "body", HORIZONTAL_ALIGNMENT_CENTER, false, true)
@@ -472,9 +521,9 @@ class TitlePlaque extends Control:
 	func _paint_rim(c: Control) -> void:
 		c.draw_rect(Rect2(Vector2(7, 7), size - Vector2(14, 14)), Kit.with_alpha(Palette.BRASS, 0.55), false, 1.5)
 
-static func title(parent: Control, text: String, width: float, sub := "") -> TitlePlaque:
+static func title(parent: Control, text: String, width: float, sub := "", text_size := 36, fit := 0.76) -> TitlePlaque:
 	var p := TitlePlaque.new()
-	p.build(text, width, sub)
+	p.build(text, width, sub, text_size, fit)
 	parent.add_child(p)
 	return p
 
@@ -647,7 +696,7 @@ class Band extends Control:
 
 # ============================================================ Board (the window board)
 ## The contract board of a window (A8 6.2 N1, nine-sliced). Without the picture `ui.kit.board` it is the flat window of UiStyle (the fall-back path).
-## The slice margin is UiStyle.BOARD_MARGIN_FRAC (a placeholder until the real picture fixes it).
+## The slice margins and the draw scale are UiStyle.KIT_SLICES.
 class Board extends Control:
 	var P = load(PARTS_PATH)
 
@@ -659,3 +708,47 @@ class Board extends Control:
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_theme_stylebox_override("panel", UiStyle.window("board"))
 		add_child(panel)
+
+# ============================================================ BrassToggle (the brass switch of a setting row)
+## A setting row: its words on the left, the brass switch of ui.kit.toggle on the right (on = the knob at the right end, the slot a little warmer). A Button in toggle
+## mode, so Space or Enter flips it when it has the focus and a click flips it too; `changed(on)` is the only thing it says. Without the picture it draws a plain
+## pill (the shape differs on and off, so it parts without colour). The focus is the list-row mark (a brass bar on the left edge).
+class BrassToggle extends Button:
+	signal changed(on: bool)
+	var P = load(PARTS_PATH)
+
+	func build(label: String, on: bool, width: float) -> void:
+		toggle_mode = true
+		button_pressed = on
+		text = label
+		alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var role := UiStyle.text("t5", "body")
+		add_theme_font_override("font", Loc.font(String(role.font)))
+		add_theme_font_size_override("font_size", int(role.size))
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			add_theme_color_override(color_name, Palette.INK)
+		var none := StyleBoxEmpty.new()
+		none.content_margin_left = 16
+		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			add_theme_stylebox_override(state, none)
+		add_theme_stylebox_override("focus", UiStyle.focus_mark("row"))
+		custom_minimum_size = Vector2(width, 48)
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		toggled.connect(func(v: bool): queue_redraw(); changed.emit(v))
+
+	func _draw() -> void:
+		var slot: Texture2D = P.tex_region("toggle", UiStyle.TOGGLE_REGIONS["on" if button_pressed else "off"], UiStyle.TOGGLE_SCALE)
+		if slot != null:
+			draw_texture(slot, Vector2(size.x - slot.get_width() - 14.0, (size.y - slot.get_height()) * 0.5))
+			return
+		var r := Rect2(Vector2(size.x - 70.0, size.y * 0.5 - 14.0), Vector2(56.0, 28.0))
+		draw_rect(r, Palette.SLOT)
+		draw_rect(r, Palette.BRASS, false, 2.0)
+		var knob_x := r.end.x - 14.0 if button_pressed else r.position.x + 14.0
+		draw_circle(Vector2(knob_x, r.get_center().y), 9.0, Palette.BRASS_HI if button_pressed else Palette.BRASS_DIM)
+
+static func toggle(parent: Control, label: String, on: bool, width := 360.0) -> BrassToggle:
+	var t := BrassToggle.new()
+	t.build(label, on, width)
+	parent.add_child(t)
+	return t

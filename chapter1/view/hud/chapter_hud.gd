@@ -166,8 +166,48 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	_set_text(skills,"   /   ".join(texts))
 	if debug.visible:_set_text(debug,"tick %d · alive %d · projectiles %d · XP %d\nF1 진단 화면" % [run.tick,run.alive_count(),run.projectiles.size(),g.xp])
 
+## N1, the one-line band at the top (A10 1.7). A newer line replaces the one on screen; while a big band (N1+) is up the line waits for it.
+const TOAST_TOTAL := Motion.NOTICE_IN+Motion.NOTICE_HOLD_BAND+Motion.NOTICE_OUT
+var _pending_toast := ""
 func notify(text: String) -> void:
-	toast.text=text;_toast_left=2.5
+	if is_instance_valid(_big_band) and not _big_band.finished:
+		_pending_toast=text;return
+	_show_toast(text)
+
+func _show_toast(text: String) -> void:
+	toast.text=text;_toast_left=TOAST_TOTAL
+	var width := NoticeParts.band_width(text)
+	toast.offset_left=-width*.5;toast.offset_right=width*.5
+
+## N1+, the big band (A10 1.7): the title plaque with `title` and the taller band under it with `sub` (may be ""). kind "boss" lights the plaque once in the threat
+## colour. One at a time: a newer one takes the older away at once; the one-line band is gone while it is up and the last line asked for comes back after it.
+var _big_band: Control
+func announce(kind: String,title: String,sub: String="") -> void:
+	if not is_instance_valid(root):return
+	_clear_big_band()
+	_toast_left=0.0
+	var band: Control=NoticeParts.BigBand.new()
+	band.name="BigBand"
+	band.build(title,sub,kind=="boss")
+	var top := 96.0
+	if is_instance_valid(boss_bar) and boss_bar.visible and is_instance_valid(boss_name):top=maxf(top,boss_name.get_rect().end.y+10.0)
+	band.anchor_left=.5;band.anchor_right=.5
+	band.offset_left=-band.size.x*.5;band.offset_right=band.size.x*.5
+	band.offset_top=top;band.offset_bottom=top+band.size.y
+	root.add_child(band)
+	root.move_child(band,maxi(0,overlay.get_index()))
+	band.play(not motion_enabled)
+	band.done.connect(_on_big_band_done)
+	_big_band=band
+
+func _on_big_band_done() -> void:
+	_big_band=null
+	if _pending_toast!="":
+		var text := _pending_toast;_pending_toast="";_show_toast(text)
+
+func _clear_big_band() -> void:
+	if is_instance_valid(_big_band):_big_band.dismiss()
+	_big_band=null;_pending_toast=""
 
 func _build_modal__cloister(run: RefCounted) -> void:
 	for child in modal.get_children():modal.remove_child(child);child.queue_free()
@@ -194,11 +234,6 @@ func _build_modal__cloister(run: RefCounted) -> void:
 			box.add_child(_label(menu_scope,15,Color("a69a86")))
 			if temporary_art:box.add_child(_label("캐릭터와 음향 일부는 제작 중입니다.",14,Color("a6a692")))
 		"inventory": _inventory(box,run)
-		"paused":
-			box.add_child(_label("잠시 멈춤",34))
-			box.add_child(_label("전투·발사체·경험치 회수가 정지됐습니다.",18))
-			box.add_child(_button("계속하기 [Esc]",func():pause_toggle.emit()))
-			box.add_child(_motion_control())
 		"victory","defeat":
 			box.add_child(_label(victory_title if run.mode=="victory" else "카테나에 쓰러졌습니다",32,Color("e5ca94")))
 			box.add_child(_label("%d 처치 · 레벨 %d · 획득 장비 %d개" % [run.kills,run.growth.snapshot().level,run.inventory.size()],20))
@@ -398,8 +433,8 @@ var _discovery_left := 0.0
 func setup__q17(view: Node3D) -> void:
 	setup__chapter(view)
 	_discovery=PanelContainer.new();_discovery.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_place_notice(_discovery,104.0)
-	_discovery.add_theme_stylebox_override("panel",_style(Color(.07,.08,.08,.95),Color("c88b46")))
+	_place_notice(_discovery,NOTICE_HEIGHT_FIRST)
+	_discovery.add_theme_stylebox_override("panel",_notice_style(Palette.QUALITY_UNIQUE))
 	_discovery.mouse_filter=Control.MOUSE_FILTER_IGNORE;_discovery.visible=false;root.add_child(_discovery)
 func sync__q17(run: RefCounted,delta: float) -> void:
 	if run.mode=="victory":
@@ -506,8 +541,10 @@ func sync__q20(run: RefCounted,delta: float) -> void:
 		_present_discovery20(_discovery20_queue.pop_front())
 	_discovery.visible=_discovery_left>0
 	if _discovery.visible:
-		_discovery.modulate.a=minf(clampf((3.2-_discovery_left)/.18,0,1),clampf(_discovery_left/.4,0,1))
-		# (the toast that repeats the discovery card is hidden in _sync_chrome, once per frame)
+		_discovery.modulate.a=minf(clampf((DISCOVERY_TOTAL-_discovery_left)/Motion.NOTICE_IN,0,1),clampf(_discovery_left/Motion.NOTICE_OUT,0,1))
+		_notice_slide(_discovery,DISCOVERY_TOTAL-_discovery_left)
+## N2 timing (A10 1.7): in 0.18 (sliding in 24 px from the right), the card holds 3.2, out 0.4.
+const DISCOVERY_TOTAL := Motion.NOTICE_IN+Motion.NOTICE_HOLD_CARD+Motion.NOTICE_OUT
 func _show_discovery(item: Dictionary) -> void:
 	_queue_discovery20(item)
 func _queue_discovery20(item: Dictionary) -> void:
@@ -529,23 +566,30 @@ func _queue_discovery20(item: Dictionary) -> void:
 func _present_discovery20(item: Dictionary) -> void:
 	for child in _discovery.get_children():_discovery.remove_child(child);child.queue_free()
 	var color: Color=QUALITY_COLORS.get(item.quality,Color.WHITE)
-	_place_notice(_discovery,104.0)
+	_place_notice(_discovery,NOTICE_HEIGHT_FIRST)
 	_discovery.add_theme_stylebox_override("panel",_notice_style(color.darkened(.2)))
 	var row := HBoxContainer.new();row.add_theme_constant_override("separation",12);_discovery.add_child(row)
-	row.add_child(_sigil(item));var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
+	row.add_child(NoticeParts.icon(item))
+	var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;column.add_theme_constant_override("separation",2);row.add_child(column)
 	var header := "고유 장비 획득" if item.quality=="unique" else ("전설 장비 획득" if item.quality=="legendary" else ("첫 희귀 장비" if item.quality=="rare" else "첫 마법 장비"))
-	var header_label := _label(header+" · "+SLOT_NAMES[item.slot],14,color);header_label.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header_label)
-	var name_label := _label(item.name,20,Palette.INK);name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.autowrap_mode=TextServer.AUTOWRAP_OFF;name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.tooltip_text=item.name;column.add_child(name_label)
-	var hint := _label("[I] 장비 능력 비교 · 장착",14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
+	var header_label := UiStyle.text_label(header+" · "+SLOT_NAMES[item.slot],"t7","bold");header_label.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header_label)
+	var name_label := UiStyle.text_label(item.name,"t4","body",NoticeParts.name_color(item));name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.autowrap_mode=TextServer.AUTOWRAP_OFF;name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.tooltip_text=item.name;column.add_child(name_label)
+	column.add_child(NoticeParts.key_hint("I",Loc.t("hud.notice.card_hint")))
 	_settle_discovery20(row)
-	_discovery_left=3.2;_discovery20_gap=4.4
+	_discovery_left=DISCOVERY_TOTAL;_discovery20_gap=DISCOVERY_TOTAL+1.2
 	_discovery20_name=item.name
 	discovery20_history.append({"uid":item.uid,"quality":item.quality,"slot":item.slot,"name":item.name})
+## The 24 px slide of a card coming in: `elapsed` since it appeared. Offsets are only touched while it moves.
+func _notice_slide(panel: Control,elapsed: float) -> void:
+	if elapsed>Motion.NOTICE_IN+0.05:return
+	var dx := (1.0-clampf(elapsed/Motion.NOTICE_IN,0.0,1.0))*24.0 if motion_enabled else 0.0
+	panel.offset_right=-NOTICE_MARGIN+dx;panel.offset_left=-NOTICE_MARGIN-NOTICE_WIDTH+dx
+
 func _settle_discovery20(row: Control) -> void:
 	# A temporary wrapped-label minimum can enlarge a PanelContainer; smaller
 	# children do not automatically shrink its previous rect after replacement.
 	for i in 2:await root.get_tree().process_frame
-	if is_instance_valid(row) and row.get_parent()==_discovery:_place_notice(_discovery,104.0)
+	if is_instance_valid(row) and row.get_parent()==_discovery:_place_notice(_discovery,NOTICE_HEIGHT_FIRST)
 func reset() -> void:
 	clear_upgrade()
 	if _playlog!=null and _view46!=null and _view46.get_ref()!=null:_playlog.begin_run(_view46.get_ref().run)
@@ -655,9 +699,12 @@ func setup__q38(view: Node3D) -> void:
 	var dash_plate := _backplate38();dash_plate.size_flags_vertical=Control.SIZE_SHRINK_CENTER;dock.add_child(dash_plate)
 	dash.reparent(dash_plate);dash.custom_minimum_size.x=195;dash.add_theme_font_size_override("font_size",18)
 	dash.add_theme_color_override("font_color",Palette.INK)
-	toast.add_theme_color_override("font_color",Color("f3dfac"))
-	var toast_back := _plate_style38();toast_back.content_margin_left=16;toast_back.content_margin_right=16
-	toast.add_theme_stylebox_override("normal",toast_back)
+	toast.add_theme_color_override("font_color",Palette.INK)
+	toast.add_theme_font_size_override("font_size",20)
+	toast.autowrap_mode=TextServer.AUTOWRAP_OFF
+	toast.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	toast.custom_minimum_size.y=52
+	toast.add_theme_stylebox_override("normal",NoticeParts.band_box())
 	old_bottom.queue_free()
 	# Keep overlays above the replacement dock, and retain boss/toast layering.
 	root.move_child(overlay,root.get_child_count()-1)
@@ -1124,22 +1171,6 @@ func _build_modal__q45(run: RefCounted) -> void:
 		var buttons: Array[Control]=[];_collect_focus38(modal,buttons)
 		for control in buttons:
 			if control is Button:pass
-	elif run.mode=="paused":
-		var box := modal.get_child(0) as VBoxContainer
-		if box==null or box.get_child_count()!=4:return
-		var resume := box.get_child(2) as Button
-		modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		modal.offset_left=-420;modal.offset_right=420
-		modal.offset_top=-220;modal.offset_bottom=220
-		# Same frame as every other window: brass 1px, top 2px (it was 4px here only).
-		modal.add_theme_stylebox_override("panel",UiStyle.window())
-		box.add_theme_constant_override("separation",18)
-		var controls := _label("WASD / 좌클릭 이동 · Space 회피\nQ 회복약 · E 의식 · I 장비",18,Color("b9c3bb"))
-		box.add_child(controls);box.move_child(controls,2)
-		var hint := _label("회피 후에도 클릭한 목적지로 이동합니다.",16,Color("9ca9a1"))
-		hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(hint);box.move_child(hint,3)
-		resume.custom_minimum_size.x=260;resume.size_flags_horizontal=Control.SIZE_SHRINK_END
 
 # ---- chapter1/view/ui46/chapter_hud_quality46.gd ----
 ## Presentation only; no gameplay, saving, timing, or input policy changes.
@@ -1222,6 +1253,10 @@ func sync__q47(run: RefCounted,delta: float) -> void:
 func _build_modal(run: RefCounted) -> void:
 	if run.mode=="choice" and not stash_open:
 		_build_grace_screen(run);return
+	if run.mode=="paused" and not stash_open:
+		# the pause window is up and nothing about it changed: keep it (a rebuild would replay its opening)
+		if not (is_instance_valid(_pause_screen) and not _pause_screen.closing):_build_pause_screen()
+		return
 	_free_grace_screen()
 	if run.mode!="paused":_grace_token_shown=""   # a pause keeps it: the same offer shown again after Esc has no second intro
 	_build_modal__q45(run)
@@ -1242,6 +1277,7 @@ func _choice_signature(offer: Dictionary) -> String:
 func _free_grace_screen() -> void:
 	if is_instance_valid(_grace_screen):_grace_screen.queue_free()
 	_grace_screen=null
+	_close_pause_screen()
 	if _overlay_base.a>=0.0:
 		overlay.color=_overlay_base;modal.visible=true;_overlay_base=Color(0,0,0,-1)
 
@@ -1271,6 +1307,34 @@ func _build_grace_screen(run: RefCounted) -> void:
 	if token==_grace_token_shown:screen.show_settled()
 	else:screen.play_intro()
 	_grace_token_shown=token
+
+# ---- the pause window (A10 W2): chapter1/view/hud/pause_window.gd ----
+## The host's part only, like the grace screen: build it, hand its signals on. The overlay stays (it stops clicks reaching the world and other layers read it as
+## "a window is open"); the window draws its own dim.
+var _pause_screen: Control
+
+func _build_pause_screen() -> void:
+	_close_pause_screen()
+	if _overlay_base.a<0.0:_overlay_base=overlay.color
+	overlay.visible=true;overlay.color=Color(0,0,0,0);modal.visible=false
+	for child in modal.get_children():modal.remove_child(child);child.queue_free()
+	var screen := PauseWindow.new()
+	screen.apply(motion_enabled,not motion_enabled)
+	screen.resume.connect(func():pause_toggle.emit())
+	screen.equipment.connect(func():equipment.emit())
+	screen.abandon.connect(func():_ask_abandon())
+	screen.quit_game.connect(func():_ask_quit())
+	screen.motion_changed.connect(func(on: bool):motion_enabled=on;motion_toggle.emit(on))
+	root.add_child(screen)
+	root.move_child(screen,root.get_child_count()-1)
+	_pause_screen=screen
+	screen.open()
+	screen.focus_default.call_deferred()
+
+## The window goes at once as far as clicks and keys go and fades over Motion.WINDOW_OUT.
+func _close_pause_screen() -> void:
+	if is_instance_valid(_pause_screen):_pause_screen.close()
+	_pause_screen=null
 
 # ---- chapter1/view/ui50/chapter_hud_quality50.gd ----
 ## Share the unchanged heading font within this HUD. No gameplay or callback changes.
@@ -1380,8 +1444,8 @@ func _sync_chrome(run: RefCounted) -> void:
 	if is_instance_valid(toast):
 		# The toast: shown while its time runs, except when it only repeats the discovery card; kept below the champion bar.
 		var toast_shown: bool=_toast_left>0
-		if toast_shown and run.mode=="playing" and is_instance_valid(_discovery) and _discovery.visible and toast.text.begins_with("획득:") and toast.text.contains(_discovery20_name):toast_shown=false
 		if toast.visible!=toast_shown:toast.visible=toast_shown
+		if toast_shown:toast.modulate.a=minf(clampf((TOAST_TOTAL-_toast_left)/Motion.NOTICE_IN,0.0,1.0),clampf(_toast_left/Motion.NOTICE_OUT,0.0,1.0))
 		if is_instance_valid(boss_bar):
 			var toast_y: float=maxf(80.0,(boss_name.get_rect().end.y+12.0 if UiStyle.bound() else boss_bar.get_rect().end.y+10.0)) if boss_bar.visible else 80.0
 			if toast_y!=_toast_y_last:
@@ -1397,15 +1461,16 @@ func _stash_worn(storage_id: int) -> bool:
 		if int(profile_state.equipped[slot])==storage_id:return true
 	return false
 
-const UPGRADE_SECONDS := 9.0
+const UPGRADE_SECONDS := Motion.NOTICE_HOLD_CARD_BEST
 ## Notice slot (A2 3.5): bottom right, right of the combat bar (its right edge is x 1230 of 1600) and below y 720, so no
 ## notice ever covers the central 60 percent of the field. The first-gear notice and the better-gear prompt share it.
-const NOTICE_WIDTH := 336.0
-const NOTICE_HEIGHT := 152.0
+const NOTICE_WIDTH := 380.0
+const NOTICE_HEIGHT := 168.0
+const NOTICE_HEIGHT_FIRST := 116.0
 const NOTICE_MARGIN := 24.0
 var NOTICE_BOTTOM := 130.0 if UiStyle.bound() else 20.0
 ## Text column inside a notice: slot width - margins (14+14) - sigil (56) - gap (12).
-const NOTICE_TEXT_WIDTH := 240.0
+const NOTICE_TEXT_WIDTH := 248.0
 var upgrade_uid := -1
 var _top_row: Control
 var _upgrade_panel: PanelContainer
@@ -1428,25 +1493,33 @@ func _build_upgrade_panel() -> void:
 	_upgrade_panel.visible=false
 	root.add_child(_upgrade_panel);root.move_child(overlay,root.get_child_count()-1)
 
-## Announce a pickup that is better than what is worn. Ordinary pickups stay silent.
-func offer_upgrade(candidate: Dictionary,current: Dictionary,slot: String) -> void:
+## Announce a pickup the core's pickup_verdict() says to show (react card, open or auto_equip). Ordinary pickups stay silent. `verdict` is that answer: its top_rows
+## are the changed numbers, each line with its arrow (gains and losses side by side); an empty verdict falls back to the text of the difference.
+func offer_upgrade(candidate: Dictionary,current: Dictionary,slot: String,verdict: Dictionary={}) -> void:
 	if not is_instance_valid(_upgrade_panel):return
 	for child in _upgrade_panel.get_children():_upgrade_panel.remove_child(child);child.queue_free()
 	var color: Color=QUALITY_COLORS.get(candidate.get("quality","common"),Color.WHITE)
 	_upgrade_panel.add_theme_stylebox_override("panel",_notice_style(color.darkened(.15)))
 	var row := HBoxContainer.new();row.add_theme_constant_override("separation",12);_upgrade_panel.add_child(row)
-	row.add_child(_sigil(candidate))
-	var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
-	var header := _label(Loc.t("hud.notice.better_gear",{"slot":String(SLOT_NAMES.get(slot,slot)),"quality":String(QUALITY_NAMES.get(candidate.quality,""))}),14,color)
+	row.add_child(NoticeParts.icon(candidate))
+	var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;column.add_theme_constant_override("separation",2);row.add_child(column)
+	var header := UiStyle.text_label(Loc.t("hud.notice.better_gear",{"slot":String(SLOT_NAMES.get(slot,slot)),"quality":String(QUALITY_NAMES.get(candidate.quality,""))}),"t7","bold")
 	header.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(header)
-	var name_label := _label(String(candidate.name),20,Palette.INK);name_label.autowrap_mode=TextServer.AUTOWRAP_OFF
+	var name_label := UiStyle.text_label(String(candidate.name),"t4","body",NoticeParts.name_color(candidate));name_label.autowrap_mode=TextServer.AUTOWRAP_OFF
 	name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;name_label.custom_minimum_size.x=NOTICE_TEXT_WIDTH;name_label.tooltip_text=String(candidate.name);column.add_child(name_label)
-	var summary := Loc.t("hud.notice.empty_slot") if current.is_empty() else _upgrade_delta(candidate,current)
-	# Gains and losses both stay on screen: the line wraps instead of cutting the loss off (the slot grows upward, still below y 720 up to three lines).
-	var change := _label(summary,14,Color("b9d4b0"));change.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-	change.custom_minimum_size.x=NOTICE_TEXT_WIDTH;change.tooltip_text=summary;column.add_child(change)
-	var hint := _label(Loc.t("hud.notice.keys"),14,Color("bcb5a5"));hint.autowrap_mode=TextServer.AUTOWRAP_OFF;column.add_child(hint)
+	var rows_box: Control=NoticeParts.change_rows(verdict.get("top_rows",[]),NOTICE_TEXT_WIDTH) if not verdict.is_empty() else null
+	if rows_box!=null:column.add_child(rows_box)
+	elif current.is_empty():column.add_child(UiStyle.text_label(Loc.t("hud.notice.empty_slot"),"t7","body",Palette.INK_DIM))
+	elif verdict.is_empty():
+		# no verdict (the pickup flow is off): the text of the difference, one wrapped line (gain and loss both stay on screen)
+		var summary := _upgrade_delta(candidate,current)
+		var change := UiStyle.text_label(summary,"t7","body",Palette.INK_DIM);change.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		change.custom_minimum_size.x=NOTICE_TEXT_WIDTH;change.tooltip_text=summary;column.add_child(change)
+	var keys := HBoxContainer.new();keys.add_theme_constant_override("separation",14);keys.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	keys.add_child(NoticeParts.key_hint("F",Loc.t("hud.notice.key_wear")));keys.add_child(NoticeParts.key_hint("I",Loc.t("hud.notice.key_compare")))
+	column.add_child(keys)
 	upgrade_uid=int(candidate.uid);_upgrade_left=UPGRADE_SECONDS;_upgrade_panel.visible=true
+	_place_notice(_upgrade_panel,NOTICE_HEIGHT)
 
 func _upgrade_delta(candidate: Dictionary,current: Dictionary) -> String:
 	var difference: Dictionary={}
@@ -1472,7 +1545,8 @@ func _sync_upgrade(run: RefCounted,delta: float) -> void:
 	if _upgrade_left<=0 or not run.equip_slot_of(upgrade_uid).is_empty() or run.mode in ["menu","victory","defeat"]:
 		clear_upgrade();return
 	_upgrade_panel.visible=run.mode=="playing" and not slot_busy
-	_upgrade_panel.modulate.a=clampf(_upgrade_left/.5,0,1)
+	_upgrade_panel.modulate.a=minf(clampf((UPGRADE_SECONDS-_upgrade_left)/Motion.NOTICE_IN,0,1),clampf(_upgrade_left/Motion.NOTICE_OUT,0,1))
+	_notice_slide(_upgrade_panel,UPGRADE_SECONDS-_upgrade_left)
 
 # ---- layout A: bottom-centre combat bar ----
 const CombatBar=preload("res://chapter1/view/hud/combat_bar.gd")
@@ -1497,9 +1571,6 @@ func _build_combat_bar() -> void:
 	if UiStyle.bound():
 		# The route has no plate: a rope with beads drawn on its own space, labels outlined to read on the field.
 		_route40.add_theme_stylebox_override("panel",UiStyle.route_back())
-		var toast_box: StyleBox=toast.get_theme_stylebox("normal").duplicate()
-		toast_box.content_margin_top=4.0;toast_box.content_margin_bottom=4.0
-		toast.add_theme_stylebox_override("normal",toast_box)
 		var route_texts: Array[Label]=_route_labels40.duplicate();route_texts.append(_route_hint40)
 		for label in route_texts:
 			label.add_theme_constant_override("outline_size",4);label.add_theme_color_override("font_outline_color",Color(0,0,0,.85))
@@ -1799,6 +1870,9 @@ const Loc=preload("res://chapter1/view/loc.gd")
 const GraceScreen=preload("res://chapter1/view/hud/screens/growth_choice.gd")
 const GraceContract=preload("res://chapter1/view/contracts/growth_choice_contract.gd")
 const FlowDialog=preload("res://chapter1/view/hud/flow_dialog.gd")
+const PauseWindow=preload("res://chapter1/view/hud/pause_window.gd")
+const NoticeParts=preload("res://chapter1/view/hud/notice_parts.gd")
+const Motion=preload("res://chapter1/view/hud/ui_motion.gd")
 const CombatRecordView=preload("res://chapter1/view/hud/combat_record_view.gd")
 ## The defeat window comes up this long after the fall (the scene stays on screen). An abandoned run shows it at once.
 const DEFEAT_REVEAL := 1.2
@@ -1815,6 +1889,8 @@ var _notice_closed := false
 func _reset_flow() -> void:
 	_result_reason="";result_unsaved=false;_defeat_age=0.0;_flow_prev_mode="";_notice_closed=false;_flow_focus=null
 	_close_dialog(false)
+	_close_pause_screen()
+	_clear_big_band()
 
 ## "abandoned" after the player gave up the run; "" otherwise. Call before the core ends the run.
 func set_result_reason(reason: String) -> void:
@@ -1862,26 +1938,34 @@ func _dialog_alive(kind: String,mode: String) -> bool:
 	if kind.begins_with("unsaved:") or kind=="record":return mode in ["victory","defeat"]
 	return true
 
-func _dialog_text(text: String,size: int=19) -> Label:
-	return _label(text,size,Palette.INK_DIM)
+func _dialog_text(text: String,size: int=17) -> Label:
+	var label := UiStyle.text_label(text,"t5","body",Palette.INK_DIM)
+	label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	if size!=17:label.add_theme_font_size_override("font_size",size)
+	return label
 
 func _open_dialog(kind: String,spec: Dictionary) -> void:
 	if not is_instance_valid(_flow_dialog):
 		var owner := root.get_viewport().gui_get_focus_owner()
 		_flow_focus=weakref(owner) if owner!=null else null
-	_close_dialog(false)
+	_close_dialog(false,true)
 	var dialog: Control=FlowDialog.new();dialog.name="FlowDialog"
 	dialog.setup(self,spec)
 	dialog.chosen.connect(_on_flow_chosen.bind(kind))
+	dialog.reduce_motion=not motion_enabled
 	root.add_child(dialog)
 	_flow_dialog=dialog;_flow_kind=kind
+	# a confirm window asked from the pause window takes its place (one window on the screen, not a window on a window)
+	if is_instance_valid(_pause_screen) and kind in ["abandon","quit"]:_pause_screen.visible=false
+	dialog.open()
 	dialog.focus_default.call_deferred()
 
-func _close_dialog(return_focus: bool) -> void:
+func _close_dialog(return_focus: bool,instant: bool=false) -> void:
 	if is_instance_valid(_flow_dialog):
+		# the window leaves over Motion.WINDOW_OUT (at once when another window takes its place); from this line on it takes no click and no key
 		var old: Control=_flow_dialog
-		if old.get_parent()!=null:old.get_parent().remove_child(old)
-		old.queue_free()
+		old.close(instant)
+		if is_instance_valid(_pause_screen):_pause_screen.visible=true
 	_flow_dialog=null;_flow_kind=""
 	if not return_focus:return
 	var back: Object=_flow_focus.get_ref() if _flow_focus!=null else null
@@ -1932,19 +2016,19 @@ func _save_mode() -> String:
 
 func _ask_abandon() -> void:
 	var body_key: String={"on":"flow.abandon.body","verify":"flow.abandon.body_verify"}.get(_save_mode(),"flow.abandon.body_nosave")
-	_open_dialog("abandon",{"width":720,"title":Loc.t("flow.abandon.title"),"content":_dialog_text(Loc.t(body_key)),
-		"buttons":[{"id":"go","text":Loc.t("flow.abandon.confirm")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
+	_open_dialog("abandon",{"width":600,"title":Loc.t("flow.abandon.title"),"content":_dialog_text(Loc.t(body_key)),
+		"buttons":[{"id":"go","text":Loc.t("flow.abandon.confirm"),"kind":"danger"},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
 
 func _ask_quit() -> void:
 	var saving := _save_mode()=="on"
-	_open_dialog("quit",{"width":720,"title":Loc.t("flow.quit.title"),"content":_dialog_text(Loc.t("flow.quit.body" if saving else "flow.quit.body_nosave")),
-		"buttons":[{"id":"go","text":Loc.t("flow.quit.confirm" if saving else "flow.quit.confirm_nosave")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
+	_open_dialog("quit",{"width":600,"title":Loc.t("flow.quit.title"),"content":_dialog_text(Loc.t("flow.quit.body" if saving else "flow.quit.body_nosave")),
+		"buttons":[{"id":"go","text":Loc.t("flow.quit.confirm" if saving else "flow.quit.confirm_nosave"),"kind":"danger"},{"id":"cancel","text":Loc.t("flow.button.cancel")}],"default_id":"cancel","esc_id":"cancel"})
 
 ## The rewards of the finished run are not saved. `next` is what the player wanted: "retry", "menu" or "quit".
 ## The app calls this too when the save fails during a quit.
 func ask_unsaved(next: String="quit") -> void:
-	_open_dialog("unsaved:"+next,{"width":760,"title":Loc.t("flow.unsaved.title"),"content":_dialog_text(Loc.t("flow.unsaved.body")),
-		"buttons":[{"id":"save","text":Loc.t("flow.unsaved.retry")},{"id":"go","text":Loc.t("flow.unsaved.quit" if next=="quit" else "flow.unsaved.continue")},{"id":"cancel","text":Loc.t("flow.button.cancel")}],
+	_open_dialog("unsaved:"+next,{"width":680,"title":Loc.t("flow.unsaved.title"),"content":_dialog_text(Loc.t("flow.unsaved.body")),
+		"buttons":[{"id":"save","text":Loc.t("flow.unsaved.retry"),"kind":"primary"},{"id":"go","text":Loc.t("flow.unsaved.quit" if next=="quit" else "flow.unsaved.continue"),"kind":"danger"},{"id":"cancel","text":Loc.t("flow.button.cancel")}],
 		"default_id":"cancel","esc_id":"cancel"})
 
 func _emit_leave(next: String) -> void:
@@ -1984,14 +2068,14 @@ func open_combat_record() -> void:
 	var size := root.get_viewport_rect().size
 	var width := minf(size.x-140.0,1420.0)
 	var body: VBoxContainer=CombatRecordView.new()
-	body.setup(run_record,_record_level,width-100.0)
+	body.setup(run_record,_record_level,width-130.0)
 	# A record taller than the screen scrolls (mouse wheel); the usual record fits without.
 	var scroll := ScrollContainer.new();scroll.name="RecordScroll";scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus=true;scroll.add_child(body)
-	scroll.custom_minimum_size=Vector2(width-80.0,minf(body.get_combined_minimum_size().y,size.y-250.0))
-	_fit_record_scroll.call_deferred(scroll,body,size.y-250.0)
+	scroll.custom_minimum_size=Vector2(width-120.0,minf(body.get_combined_minimum_size().y,size.y-360.0))
+	_fit_record_scroll.call_deferred(scroll,body,size.y-360.0)
 	_open_dialog("record",{"width":width,"title":Loc.t("record.title"),"content":scroll,
-		"buttons":[{"id":"close","text":Loc.t("record.close")}],"default_id":"close","esc_id":"close"})
+		"buttons":[{"id":"close","text":Loc.t("record.close"),"kind":"primary"}],"default_id":"close","esc_id":"close"})
 	# The close button keeps the focus; the arrow keys, page keys and the d-pad scroll a tall record (the mouse wheel works too).
 	if is_instance_valid(_flow_dialog) and not _flow_dialog.buttons.is_empty():
 		_flow_dialog.buttons[0].gui_input.connect(_scroll_record.bind(scroll))
@@ -2040,22 +2124,7 @@ func _add_flow_actions(run: RefCounted) -> void:
 
 func _add_flow_buttons(run: RefCounted) -> void:
 	if not overlay.visible or stash_open:return
-	if run.mode=="paused":
-		var box := modal.get_child(0) as VBoxContainer
-		if box==null:return
-		var after := -1
-		for i in box.get_child_count():
-			var child := box.get_child(i)
-			if child is Button and not child is CheckButton:after=i;break # the first plain button of the pause window is "resume"
-		if after<0:
-			push_error("pause window layout changed: flow buttons not added");return
-		var row := HBoxContainer.new();row.name="PauseFlowActions";row.add_theme_constant_override("separation",14)
-		row.size_flags_horizontal=Control.SIZE_SHRINK_END
-		var abandon_button := _button(Loc.t("hud.pause.abandon"),func():_ask_abandon());abandon_button.name="AbandonRun";row.add_child(abandon_button)
-		var quit_button := _button(Loc.t("hud.pause.quit"),func():_ask_quit());quit_button.name="QuitGame";row.add_child(quit_button)
-		box.add_child(row);box.move_child(row,after+1)
-		modal.offset_top=-280;modal.offset_bottom=280
-	elif run.mode=="menu":
+	if run.mode=="menu":
 		var body := modal.find_child("StartChoices41",true,false) as VBoxContainer
 		if body==null:return
 		for child in body.get_children():
@@ -2102,8 +2171,8 @@ func _open_notice() -> void:
 		if not resume.is_empty():copies=Loc.t("profile.reject.resume_found",{"n":Loc.num(int(resume.revision)),"date":_local_stamp(int(resume.unix))})
 		_fact_row(grid,Loc.t("profile.reject.row.copies"),copies,false)
 	_open_dialog("notice",{"width":900,"title":Loc.t("profile.reject.title"),"content":content,
-		"buttons":[{"id":"open","text":Loc.t("profile.reject.open_folder")},{"id":"play","text":Loc.t("profile.reject.play_without")},
-			{"id":"fresh","text":Loc.t("profile.reject.start_fresh")},{"id":"quit","text":Loc.t("profile.reject.quit")}],
+		"buttons":[{"id":"open","text":Loc.t("profile.reject.open_folder")},{"id":"play","text":Loc.t("profile.reject.play_without"),"kind":"primary"},
+			{"id":"fresh","text":Loc.t("profile.reject.start_fresh"),"kind":"danger"},{"id":"quit","text":Loc.t("profile.reject.quit"),"kind":"danger"}],
 		"default_id":"play","esc_id":"cancel"})
 
 ## Second window of "start a new save": says what is and is not carried over, then asks once more.
@@ -2119,8 +2188,8 @@ func _open_fresh() -> void:
 	if has_resume:args={"n":Loc.num(int(resume.revision)),"date":_local_stamp(int(resume.unix))}
 	var buttons: Array=[]
 	if has_resume:
-		buttons.append({"id":"resume","text":Loc.t("profile.fresh.continue")});buttons.append({"id":"empty","text":Loc.t("profile.fresh.empty")})
-	else:buttons.append({"id":"go","text":Loc.t("profile.fresh.go")})
+		buttons.append({"id":"resume","text":Loc.t("profile.fresh.continue"),"kind":"primary"});buttons.append({"id":"empty","text":Loc.t("profile.fresh.empty"),"kind":"danger"})
+	else:buttons.append({"id":"go","text":Loc.t("profile.fresh.go"),"kind":"danger"})
 	buttons.append({"id":"back","text":Loc.t("profile.fresh.back")})
 	_open_dialog("fresh",{"width":820,"title":Loc.t("profile.fresh.title"),"content":_dialog_text(Loc.t(body_key,args)),
 		"buttons":buttons,"default_id":"back","esc_id":"back"})

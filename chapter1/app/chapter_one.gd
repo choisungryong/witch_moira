@@ -23,6 +23,8 @@ const DESCENT_HOLD_LIMIT := 2.5
 var _descent_wait := 0.0
 ## Gamepad: no pad input exists in this app yet (D15 A2.3, recommended Y); the button is named here for when it does.
 const DESCENT_PAD_BUTTON := JOY_BUTTON_Y
+## The pad's view button opens and closes the gear window (D21 3.1), also from the pause window.
+const EQUIPMENT_PAD_BUTTON := JOY_BUTTON_BACK
 var hud
 var audio=Audio.new()
 ## Core event -> sound request (the same mapping the request recorder uses). Its only state is the ring pulse habituation.
@@ -179,7 +181,10 @@ func grace_hold(token: String, card_id: String) -> void:
 	_consume_events()
 
 func open_equipment() -> void:
-	if run.open_inventory():hud.invalidate()
+	if run.open_inventory():
+		# From the pause window (A10 W2, D21 3.1): the pause lifts and the gear window takes its place; closing the window goes back to the run.
+		if run.mode=="paused":run.set_paused(false)
+		hud.invalidate()
 
 func close_equipment() -> void:
 	run.close_inventory();hud.invalidate()
@@ -472,7 +477,7 @@ func start_run(id_: String) -> void:
 	if profile.available:
 		gear_failed=not _import_profile_kit()
 		hud.invalidate()
-	hud.notify("출발 장비를 불러오지 못했습니다 · 장비 없이 출발합니다" if gear_failed else "앞뜰의 봉인을 돌파하세요 · Q 회복약 · E 선택 의식")
+	hud.notify("출발 장비를 불러오지 못했습니다 · 장비 없이 출발합니다" if gear_failed else Loc.t("hud.notice.start",{"zone":Loc.t("zone.%d.name"%run.zone)}))
 
 ## The witch's saved kit goes into the fresh run. A kit that cannot be imported never ends the game: the run starts bare,
 ## the saved selection is untouched and the run's worn set is not carried back (`_run_carry_ok` stays false).
@@ -679,13 +684,18 @@ func _pilot_input() -> Vector2:
 	# The pilot picks cards and drinks potions inside decide(); step() clears those events before the app reads them.
 	recorder.consume(run.events)
 	return move
-## A pickup is announced only when it beats what is worn in its slot. Anything
-## else goes into the bag quietly and can be compared from the inventory.
+## A pickup is announced only when the core says so: pickup_verdict(uid).react is card, open or auto_equip (D21 W1). Anything else goes into the bag quietly and
+## can be compared from the inventory. The card shows the verdict's own changed rows, gains and losses together. Without a verdict (the pickup flow data is off)
+## the older rule stays: announce a pickup that beats what is worn.
 func _offer_if_better(item: Dictionary) -> void:
 	if run.mode!="playing" or run.loot==null:return
 	var data: Dictionary=run.compare_item(int(item.uid))
 	if data.is_empty() or not data.can_equip or not run.equip_slot_of(int(item.uid)).is_empty():return
-	if run.loot.is_upgrade(data.candidate,data.equipped,primary):hud.offer_upgrade(data.candidate,data.equipped,data.slot)
+	var verdict: Dictionary=run.pickup_verdict(int(item.uid))
+	if verdict.is_empty():
+		if run.loot.is_upgrade(data.candidate,data.equipped,primary):hud.offer_upgrade(data.candidate,data.equipped,data.slot)
+		return
+	if String(verdict.react) in ["card","open","auto_equip"]:hud.offer_upgrade(data.candidate,data.equipped,data.slot,verdict)
 func _consume_events() -> void:
 	_consume_events__chapter()
 	recorder.consume(run.events);recorder.observe(run)
@@ -700,10 +710,10 @@ func _consume_events() -> void:
 			"item_drop":
 				# A ring or amulet has its own bright cue; a legendary or unique adds a chime (audio_routes.late).
 				_play_routes(audio_routes.late(event))
-			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+Loc.t("zone.%d.name"%int(event.zone)));_play_routes(audio_routes.late(event))
+			"gate_opened":hud.announce("gate",Loc.t("hud.band.gate_title"),Loc.t("hud.band.gate_line",{"zone":Loc.t("zone.%d.name"%int(event.zone))}));_play_routes(audio_routes.late(event))
 			"zone_entered":hud.notify(Loc.t("zone.%d.name"%run.zone)+" · 새로운 봉인을 돌파하세요")
-			"chapter_champion":hud.notify(Loc.t("enemy.champion.%d.name"%int(event.zone))+" 출현");world.kick_camera(.45)
-			"boss_phase":hud.notify(Loc.t("enemy.champion.2.name")+"의 격노 · 낙인을 피하세요");world.kick_camera(.6)
+			"chapter_champion":hud.announce("boss",Loc.t("enemy.champion.%d.name"%int(event.zone)),Loc.t("hud.band.appears"));world.kick_camera(.45)
+			"boss_phase":hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
 			"chapter_burst":_play_routes(audio_routes.late(event))
 			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);_play_routes(audio_routes.late(event))
 			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");_play_routes(audio_routes.late(event))
@@ -783,6 +793,9 @@ func _input(event: InputEvent) -> void:
 	_input__chapter(event)
 	if event is InputEventJoypadButton and event.pressed and event.button_index==DESCENT_PAD_BUTTON and run.mode=="playing":
 		call_descent()
+	if event is InputEventJoypadButton and event.pressed and event.button_index==EQUIPMENT_PAD_BUTTON and not hud.flow_dialog_open() and run.mode in ["playing","paused","inventory"]:
+		if run.mode=="inventory":close_equipment()
+		else:open_equipment()
 	if not event is InputEventKey:return
 	var shortcut: int=event.keycode if event.keycode!=0 else event.physical_keycode
 	if shortcut==KEY_SPACE and run.mode in ["choice","victory","defeat"]:

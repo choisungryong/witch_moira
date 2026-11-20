@@ -27,6 +27,46 @@ msgstr[1] "{n} kills"
 
 #. Flow screens (D4-U, D5-U): pause window, result buttons, confirm windows, refused-save notice.
 
+#. Pause window title
+msgid "hud.pause.title"
+msgstr "Paused"
+
+#. Pause window button: go back to the run (the Esc key plate hangs under it)
+msgid "hud.pause.resume"
+msgstr "Resume"
+
+#. Pause window button: open the gear window (the I key plate hangs under it)
+msgid "hud.pause.equipment"
+msgstr "Gear"
+
+#. Pause window setting: screen shake on or off
+msgid "hud.pause.shake"
+msgstr "Screen shake"
+
+#. Pause window controls, two lines
+msgid "hud.pause.keys"
+msgstr "WASD / click to move · Space dash · Q potion · E ritual · I gear\nAfter a dash you still walk to the spot you clicked."
+
+#. Run start notice. {zone}: the first zone name
+msgid "hud.notice.start"
+msgstr "Break the seal of {zone} · Q potion · E choose a ritual"
+
+#. Big band under the champion's name when it appears
+msgid "hud.band.appears"
+msgstr "Appears"
+
+#. Big band under the champion's name when it turns furious
+msgid "hud.band.enraged"
+msgstr "Enraged · avoid the brands"
+
+#. Big band title: the seal opened
+msgid "hud.band.gate_title"
+msgstr "Seal broken"
+
+#. Big band line: where the opened seal leads. {zone}: zone name
+msgid "hud.band.gate_line"
+msgstr "East corridor to {zone}"
+
 #. Pause window button: give up the current run
 msgid "hud.pause.abandon"
 msgstr "Abandon run"
@@ -681,9 +721,17 @@ msgstr "Better gear · {slot} · {quality}"
 msgid "hud.notice.empty_slot"
 msgstr "Wear it in the empty slot"
 
-#. Better-gear notice: key hints (keys stay in the text)
-msgid "hud.notice.keys"
-msgstr "[F] Wear now  ·  [I] Compare"
+#. First-gear card: what the I key plate beside it does
+msgid "hud.notice.card_hint"
+msgstr "Compare · wear"
+
+#. Better-gear card: what the F key plate beside it does
+msgid "hud.notice.key_wear"
+msgstr "Wear now"
+
+#. Better-gear card: what the I key plate beside it does
+msgid "hud.notice.key_compare"
+msgstr "Compare"
 
 #. Result window button that opens the battle record
 msgid "record.open"

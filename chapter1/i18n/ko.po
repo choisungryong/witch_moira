@@ -32,6 +32,46 @@ msgstr[0] "{n}마리 처치"
 
 #. Flow screens (D4-U, D5-U): pause window, result buttons, confirm windows, refused-save notice.
 
+#. Pause window title
+msgid "hud.pause.title"
+msgstr "잠시 멈춤"
+
+#. Pause window button: go back to the run (the Esc key plate hangs under it)
+msgid "hud.pause.resume"
+msgstr "계속하기"
+
+#. Pause window button: open the gear window (the I key plate hangs under it)
+msgid "hud.pause.equipment"
+msgstr "장비"
+
+#. Pause window setting: screen shake on or off
+msgid "hud.pause.shake"
+msgstr "화면 흔들림"
+
+#. Pause window controls, two lines
+msgid "hud.pause.keys"
+msgstr "WASD / 좌클릭 이동 · Space 회피 · Q 회복약 · E 의식 · I 장비\n회피 후에도 클릭한 목적지로 이동합니다."
+
+#. Run start notice. {zone}: the first zone name
+msgid "hud.notice.start"
+msgstr "{zone}의 봉인을 돌파하세요 · Q 회복약 · E 선택 의식"
+
+#. Big band under the champion's name when it appears
+msgid "hud.band.appears"
+msgstr "출현"
+
+#. Big band under the champion's name when it turns furious
+msgid "hud.band.enraged"
+msgstr "격노 · 낙인을 피하세요"
+
+#. Big band title: the seal opened
+msgid "hud.band.gate_title"
+msgstr "봉인 해제"
+
+#. Big band line: where the opened seal leads. {zone}: zone name
+msgid "hud.band.gate_line"
+msgstr "동쪽 회랑으로 {zone}"
+
 #. Pause window button: give up the current run
 msgid "hud.pause.abandon"
 msgstr "이번 판 포기"
@@ -686,9 +726,17 @@ msgstr "더 좋은 장비 · {slot} · {quality}"
 msgid "hud.notice.empty_slot"
 msgstr "빈 슬롯에 착용"
 
-#. Better-gear notice: key hints (keys stay in the text)
-msgid "hud.notice.keys"
-msgstr "[F] 바로 착용  ·  [I] 비교"
+#. First-gear card: what the I key plate beside it does
+msgid "hud.notice.card_hint"
+msgstr "능력 비교 · 장착"
+
+#. Better-gear card: what the F key plate beside it does
+msgid "hud.notice.key_wear"
+msgstr "바로 착용"
+
+#. Better-gear card: what the I key plate beside it does
+msgid "hud.notice.key_compare"
+msgstr "비교"
 
 #. Result window button that opens the battle record
 msgid "record.open"

@@ -3662,6 +3662,198 @@
       "status": "A8 G6 제품 화면에 쓴다"
     },
     {
+      "path": "ui/kit/a10/band-notice-big.png",
+      "sha256": "97180564661730bf7eaf9beb7d30d7916539261c41a333644bb7a38c2ae8225d",
+      "size": 558065,
+      "kind": "image",
+      "width": 1536,
+      "height": 208,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K6 (k6-b, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x256 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: A long horizontal leather strap used as a notice band, front view, 6:1, filling the canvas width edge to edge. Black pebbled leather with a double row of thin gold stitching, and at each end a tarnished brass end cap clasp with a round brass ring and two domed rivets (about 8 percent of the width each). The whole middle two thirds is perfectly plain evenly worn leather, same height along its whole length. Nothing on the strap.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/band-notice-big.prompt.txt",
+          "sha256": "00a9191b74e0087815ba1c31018f3e4c7da41c3c366e2d43dd0c4022d03f0cc2"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/band-notice.png",
+      "sha256": "8abb5bf2d2fa1be4d3127712fad2436bc50f7b4c5047e2fa92e52c3b276a0aa3",
+      "size": 270805,
+      "kind": "image",
+      "width": 1536,
+      "height": 103,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K6 (k6-a, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x256 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: A long horizontal leather strap used as a notice band, front view, 6:1, filling the canvas width edge to edge. Black pebbled leather with a double row of thin gold stitching along the top and bottom inside the edge. At each end a small brass buckle (a square buckle with a pin, about 7 percent of the width) with the strap end folded through it. The whole middle two thirds is perfectly plain evenly worn leather with the same height along its whole length. Nothing on the strap.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/band-notice.prompt.txt",
+          "sha256": "9074ffd1e380bb84d129d73b072738eca6b82fd2c2e549bb87d3e84c0d09a47c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/board.png",
+      "sha256": "b1ca553577f3d8196ae9aebf42295b6c8322a94370ad219e4a746f19e7a7722f",
+      "size": 2798789,
+      "kind": "image",
+      "width": 1536,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K1 (k1-a, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x1024 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: an empty flat rectangular board, front view, 3:2 landscape, filling the canvas edge to edge with a thin even margin. Black pebbled leather surface, a double row of fine gold stitching running around inside the edge, four brass corner caps with two domed rivets each, and one small brass buckle set in the middle of the top edge. All decoration stays inside the outer 15 percent of the width and height at the corners and edges; the whole middle area is plain, evenly worn leather so it can be stretched. Nothing on the board: no figure, no symbol.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음; 은총 큐의 계약 판 그대로",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/board.prompt.txt",
+          "sha256": "ac0130c005483172867ecb6a5b3bf2bec5b25bfcae54c163d076a7005ccc95fc"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/button-primary-wide.png",
+      "sha256": "14511af62f224768f55c4bbf674de68bad3444917f0091d467870645d6a2be79",
+      "size": 209067,
+      "kind": "image",
+      "width": 768,
+      "height": 138,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K2 (k2p-c, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x384 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: Primary button C. a wide horizontal button plate, front view, 4:1 (four times wider than tall), filling the canvas edge to edge with a thin even margin, flat and straight-edged with small rounded corners. All decoration stays inside the outer 14 percent of the width at the left and right ends, and the long top and bottom edges are perfectly uniform along their whole length, and the whole middle is plain evenly worn leather, so the plate can be stretched wider without breaking. The centre is completely blank: no symbol, no engraving, no text field. Black pebbled leather plate with a double row of thin gold stitching, a thin brass rim around the outside edge, and four tiny pointed brass corner studs. No buckle at all (a buckle will be added separately).\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음; 위쪽 빈 27px를 잘라 냄",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/button-primary-wide.prompt.txt",
+          "sha256": "7362b38432be6451e286bc3a45ee7b5d8211540fdff681b3fd8129c18dca8d8a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/button-primary.png",
+      "sha256": "208a0d9ff513782c5957ec4eca9a7e496b88157df2c5eb34517e66386befe56e",
+      "size": 215224,
+      "kind": "image",
+      "width": 768,
+      "height": 150,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K2 (k2p-b, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x384 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: Primary button B. a wide horizontal button plate, front view, 4:1 (four times wider than tall), filling the canvas edge to edge with a thin even margin, flat and straight-edged with small rounded corners. All decoration stays inside the outer 14 percent of the width at the left and right ends, and the long top and bottom edges are perfectly uniform along their whole length, and the whole middle is plain evenly worn leather, so the plate can be stretched wider without breaking. The centre is completely blank: no symbol, no engraving, no text field. Black pebbled leather plate with one row of thin gold stitching and a tarnished brass rim running around the outside edge (about 4 percent of the height); a small domed brass rivet in each of the four corners; one small brass buckle at the middle of the bottom edge, about 9 percent of the width.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/button-primary.prompt.txt",
+          "sha256": "b14314fc1cc2c6b123d24715e70314761afa63d9b48307a72d1fcc46d417dc6c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/button-secondary.png",
+      "sha256": "37954663978e1e0ab0392cfff2cd28b42da3b2c2bf27f4977cd879c724da7b79",
+      "size": 163760,
+      "kind": "image",
+      "width": 768,
+      "height": 117,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K2 (k2s-b2, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x384 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: Secondary button B, second attempt (the first came back on a black background, which cannot be keyed: the background MUST be solid magenta #FF00FF, never black). a wide horizontal button plate, front view, 4:1 (four times wider than tall), filling the canvas edge to edge with a thin even margin, flat and straight-edged with small rounded corners. All decoration stays inside the outer 14 percent of the width at the left and right ends, and the long top and bottom edges are perfectly uniform along their whole length, and the whole middle is plain evenly worn leather, so the plate can be stretched wider without breaking. The centre is completely blank: no symbol, no engraving, no text field. Black pebbled leather plate with a double row of thin dull-gold stitching and a thin gunmetal-dark steel rim with a worn highlight on the upper edge, four tiny dark rivets in the corners, no buckle. Quiet and low-contrast.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/button-secondary.prompt.txt",
+          "sha256": "1a273a2abaf30689a960ff9a1ed741e516324a7937e34dcfa883ec33b3c6c5a0"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/mark-danger.png",
+      "sha256": "7984608520d24f4c071ddc2a404720a44dd2520be3d66918986c8f9152d12c89",
+      "size": 83461,
+      "kind": "image",
+      "width": 256,
+      "height": 256,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K3 (k3-a, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: Danger mark A: a small round wax seal, front view, centred, filling about 80 percent of the canvas, in dull muted brick-red sealing wax with a worn matte surface, an irregular melted edge, and a blank smooth impressed rim (no emblem, no letters). A single jagged crack splits it in two halves that are slightly pushed apart with a thin dark gap between them, one fragment chipped. Dark and desaturated, a small readable icon.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음; 코드에서 어둡게·채도 낮춰 씀",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/mark-danger.prompt.txt",
+          "sha256": "012fdce8e8daaf44c0ce3c00c724594153ec4d11bbb00f6054c64db21e7a5518"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/kit/a10/toggle.png",
+      "sha256": "3dba67c92abbe7de84eedef9a643c98f1fdf86412db434583024bfa5865b8753",
+      "size": 156848,
+      "kind": "image",
+      "width": 512,
+      "height": 256,
+      "source_type": "ai_generated",
+      "origin": "Codex 생성, A10 화면 공용 부품 그림 K4 (k4-a, kit-art/REPORT.txt)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. The attached image(s) are STYLE REFERENCE ONLY: match the black pebbled leather grain, the thin gold stitching, the tarnished brass colour and the painterly lighting so the new piece looks painted by the same artist as part of the same interface kit. Do NOT copy any layout or object from them. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x768 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: Two sliding toggle switches stacked vertically with an even gap, each about 2:1 (a rounded pill-shaped slot with a thin tarnished brass rim and a recessed dark leather track inside, stitched with thin gold thread along the inside) and a round domed brass knob. TOP switch: ON, the knob at the right end of the track and the track a little brighter and warmer. BOTTOM switch: OFF, the knob at the left end and the track plain dark. Both switches identical in size, no symbols or marks of any kind.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "바탕(마젠타 #FF00FF)을 알파로 뺌(은총과 같은 규칙, 9px 번짐 제거), 다시 그리지 않음; 위 칸 켬, 아래 칸 끔을 코드에서 둘로 가름",
+      "record_files": [
+        {
+          "path": "ui/kit/a10/prompts/toggle.prompt.txt",
+          "sha256": "4954df73e6dfe2849a6b07c1395636cbcff7ed399835013a1900985d90d88019"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A10 W2/W1 제품 화면에 쓴다"
+    },
+    {
       "path": "ui/kit/button_disabled_64x40.png",
       "sha256": "50810df154d1f726f9f6579aa3dfca03dbb2a9ca0c849254ff8479414394032c",
       "size": 2472,
