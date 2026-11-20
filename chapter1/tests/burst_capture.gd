@@ -65,6 +65,30 @@ func poll(run: RefCounted, frame: int) -> void:
 		if _prev_mode == "choice" and String(run.mode) != "choice" and "growth" in names and not started.has("growth"):
 			_start("growth",{"type":"growth","tick":int(run.tick),"synthetic":"mode choice->playing; the pick's own event was cleared before any poll"},int(run.tick),run,frame)
 	_prev_mode = String(run.mode)
+	_poll_telegraphs(run,frame)
+
+## Synthetic event for the telegraph look (U-56): the core emits nothing when an enemy starts its windup (enemy_attack comes at
+## the END of it), so this reads the enemies' `telegraph` records. Each newly started telegraph produces
+## {type:"telegraph_start", shape:<fan|line|circle>, kind:<enemy kind>, count:<telegraphs up now>}; name it as
+## `telegraph_start:shape=line` or `telegraph_start:count=8` (the first moment exactly 8 are up). Read-only.
+var _tele_seen: Dictionary = {}
+func _poll_telegraphs(run: RefCounted, frame: int) -> void:
+	var enemies = run.get("enemies")
+	if not (enemies is Dictionary): return
+	var up := 0
+	var fresh: Array = []
+	var live: Dictionary = {}
+	for id in enemies:
+		var e: Dictionary = enemies[id]
+		if e.get("telegraph",{}).is_empty() or int(e.get("hp_raw",1)) <= 0: continue
+		up += 1; live[id] = true
+		if not _tele_seen.has(id): fresh.append(e)
+	_tele_seen = live
+	for e in fresh:
+		var event := {"type":"telegraph_start","tick":int(run.tick),"shape":String(e.telegraph.get("shape","")),"kind":String(e.get("kind","")),"count":up,"elite":bool(e.get("elite",false))}
+		for name in names:
+			if started.has(name) or not _matches(event,name): continue
+			_start(name,event,int(run.tick),run,frame)
 
 func _start(name: String, event: Dictionary, tick: int, run: RefCounted, frame: int) -> void:
 	started[name] = true

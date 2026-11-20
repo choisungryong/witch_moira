@@ -52,6 +52,8 @@ METRIC_ORDER = [
     ("dark_pct", "어두운 %", "{:.1f}"),
     ("sat_mean", "채도", "{:.3f}"),
     ("threat_pct", "진홍 면적 %", "{:.2f}"),
+    ("threat_dark_pct", "어두운 붉은 면적 % (U-56: 채움 쪽)", "{:.2f}"),
+    ("red_excess", "붉기 평균 (R - max(G,B), 0..100)", "{:.2f}"),
     ("hero_white_pct", "주인공 자리 흰 포화 %", "{:.2f}"),
     ("center_corner_ratio", "가운데/모서리 밝기 비", "{:.2f}"),
 ]
@@ -206,6 +208,11 @@ def measure(rgb, cfg):
     out["sat_mean"] = float(np.where(vv > 0.05, ss, 0.0)[pm].mean())
     threat = ((hh >= 330) | (hh < 12)) & (ss > 0.45) & (vv > 0.45)
     out["threat_pct"] = float(threat[pm].mean() * 100)
+    # U-56: 어두운 붉은 채움(명도 .18~.45)과 화면 전체 붉기. 전조의 채움은 밝지 않아 threat_pct에 잡히지 않는다.
+    threat_dark = ((hh >= 330) | (hh < 15)) & (ss > 0.45) & (vv > 0.18) & (vv <= 0.45)
+    out["threat_dark_pct"] = float(threat_dark[pm].mean() * 100)
+    af = rgb.astype(np.float32) / 255.0
+    out["red_excess"] = float(np.clip(af[..., 0] - np.maximum(af[..., 1], af[..., 2]), 0, None)[pm].mean() * 100)
     # 순백 덩어리(플레이 영역 안)
     pure = (rgb >= 245).all(axis=2) & pm
     blob = largest_white_blob(pure)
