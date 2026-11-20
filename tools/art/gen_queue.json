@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "updated": "2026-11-20 03:56",
+ "updated": "2026-11-20 09:26",
  "about": "tools/art/gen_queue.py 가 읽고 쓰는 대기열. 사용법은 docs/ART-QUEUE.ko.md",
  "items": [
   {
@@ -116,9 +116,11 @@
    "depends_on": [],
    "blocked": "",
    "notes": "시안(기획자 결정 N84~N89 대기). 본래 악마 시안(옥좌 화염·종 위 번개)과 사람이었던 어머니(sheet-mothers-v02)와 얼굴·머리색이 겹치면 반려. 사람의 흔적 하나만(화염 약초 주머니 / 번개 목의 흉터).",
-   "attempts": 1,
+   "attempts": 2,
    "results": [
-    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png"
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png",
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png",
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a2.png"
    ],
    "last_error": "",
    "history": [
@@ -135,6 +137,31 @@
      "at": "2026-11-20 03:55",
      "status": "review_pending",
      "note": "sheet+gallery 서약의악마-겉-20261120"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "prompt_ready",
+     "note": "reset: scar rewrite, no stitches"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "generated",
+     "note": "pledge-arc-full-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "prompt_ready",
+     "note": "redo scar"
+    },
+    {
+     "at": "2026-11-20 08:49",
+     "status": "generated",
+     "note": "pledge-arc-full-a2"
+    },
+    {
+     "at": "2026-11-20 08:49",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
    ],
    "checks": {
@@ -147,37 +174,37 @@
     "magenta_share": 0.0,
     "corner_rgb": [
      [
-      14,
-      13,
-      18
-     ],
-     [
-      12,
-      13,
-      18
-     ],
-     [
-      14,
-      14,
-      19
+      18,
+      18,
+      23
      ],
      [
       15,
-      14,
-      20
+      16,
+      21
+     ],
+     [
+      18,
+      19,
+      24
+     ],
+     [
+      18,
+      19,
+      25
      ]
     ],
-    "dark_share": 0.796,
-    "stddev": 20.8
+    "dark_share": 0.755,
+    "stddev": 24.5
    },
    "provenance": {
-    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a1.png",
-    "sha256": "e20a1ddbdd09db198d1a96bb2e4fad1f71b8e268c993f9b6ca4db3ed1d80a98a",
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\pledge-arc-full\\pledge-arc-full-a2.png",
+    "sha256": "0c84dcb59292f19b9bc964bba82d8ff7ad9695096ece3107fa50c325f4594b63",
     "tool": "Codex CLI (built-in image generation, ChatGPT login)",
     "model": "gpt-5.6-sol",
     "date": "2026-11-20",
     "prompt_file": "tools/art/gen_queue_prompts/pledge-arc-full.prompt.txt",
-    "prompt_sha256": "b4352f51ecaa7b6dc892432ca5928b0dcaf46f02d4d21de4e0178fe0bc4915d0",
+    "prompt_sha256": "c4cea35545126def9a97195e4608d196efc6892eea45ed1b7a8faa3e04c07dc3",
     "postprocess": "none yet (original, background not removed)",
     "ledger_status": "시안",
     "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
@@ -1732,7 +1759,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/spell-arc-ring.prompt.txt",
@@ -1744,9 +1771,11 @@
    "depends_on": [],
    "blocked": "",
    "notes": "울타리 6종 = 기본기 셋 + 원형(울타리) 셋. 화염 울타리는 화형 그림 금지(RUN-SPELLS-NAMING S4).",
-   "attempts": 1,
-   "results": [],
-   "last_error": "no image (limit hit)",
+   "attempts": 2,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-arc-ring\\spell-arc-ring-a2.png"
+   ],
+   "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
@@ -1756,8 +1785,63 @@
      "at": "2026-11-20 03:55",
      "status": "prompt_ready",
      "note": "spell-arc-ring-a1: no image (limit hit)"
+    },
+    {
+     "at": "2026-11-20 08:41",
+     "status": "generated",
+     "note": "spell-arc-ring-a2"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.452,
+    "corner_rgb": [
+     [
+      245,
+      12,
+      244
+     ],
+     [
+      248,
+      14,
+      244
+     ],
+     [
+      239,
+      25,
+      237
+     ],
+     [
+      245,
+      24,
+      242
+     ]
+    ],
+    "dark_share": 0.346,
+    "stddev": 105.5
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\spell-arc-ring\\spell-arc-ring-a2.png",
+    "sha256": "0feccb816fd0776aff6f5f440256e825881f793330ae4e7cdcd90814510450ac",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/spell-arc-ring.prompt.txt",
+    "prompt_sha256": "b981656a1ea569f16e92deabcd9837f220d57b5b224a6fa6ae812346e07815e4",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-frame-common",
@@ -1769,7 +1853,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-common.prompt.txt",
@@ -1781,15 +1865,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-common\\grade-frame-common-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 08:42",
+     "status": "generated",
+     "note": "grade-frame-common-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.774,
+    "corner_rgb": [
+     [
+      242,
+      18,
+      242
+     ],
+     [
+      247,
+      19,
+      242
+     ],
+     [
+      237,
+      34,
+      237
+     ],
+     [
+      242,
+      33,
+      241
+     ]
+    ],
+    "dark_share": 0.054,
+    "stddev": 114.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-common\\grade-frame-common-a1.png",
+    "sha256": "d493f9b7ca0d2acd98374b4bc8d0411abb8f50d19e435ccfe37e19252174ec10",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-common.prompt.txt",
+    "prompt_sha256": "8bce1c177f3635be2e3484da1c28495943c512042c9b552fffbf29c87feb01c3",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-frame-rare",
@@ -1801,7 +1942,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-rare.prompt.txt",
@@ -1813,15 +1954,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-rare\\grade-frame-rare-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 08:43",
+     "status": "generated",
+     "note": "grade-frame-rare-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGBA",
+    "has_alpha_channel": true,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      75,
+      66,
+      45
+     ],
+     [
+      178,
+      156,
+      113
+     ],
+     [
+      50,
+      37,
+      20
+     ],
+     [
+      61,
+      43,
+      21
+     ]
+    ],
+    "dark_share": 0.598,
+    "stddev": 45.1
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-rare\\grade-frame-rare-a1.png",
+    "sha256": "95613b1e630a796f8ae3761238d46c52b03949a694ec81ddebd978e0b5977b74",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-rare.prompt.txt",
+    "prompt_sha256": "1699fc3014535c706cf473b4706ef428ac76519564840a15c0d2f72b97683df4",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-frame-jackpot",
@@ -1833,7 +2031,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-jackpot.prompt.txt",
@@ -1845,15 +2043,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "등급 색은 palette.gd: 보통 #91bbd4, 드묾 #e0c47e, 기연 #efac59(고유 등급 색). 기연 색이 화염 주황과 가깝다 - 화면에서 구분을 봐야 함.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-jackpot\\grade-frame-jackpot-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 08:44",
+     "status": "generated",
+     "note": "grade-frame-jackpot-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGBA",
+    "has_alpha_channel": true,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      160,
+      125,
+      74
+     ],
+     [
+      163,
+      130,
+      80
+     ],
+     [
+      127,
+      97,
+      58
+     ],
+     [
+      128,
+      97,
+      57
+     ]
+    ],
+    "dark_share": 0.351,
+    "stddev": 57.3
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-frame-jackpot\\grade-frame-jackpot-a1.png",
+    "sha256": "806fb4f73f437f5474ff528a588ad091970e0ce04c4368f697d32bc379446198",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-frame-jackpot.prompt.txt",
+    "prompt_sha256": "adbfda0217e5b79557ef7fcef5c73dc1831dbd4805aa8c864ea29f7a5c10b5fb",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "jackpot-light-sigil",
@@ -1865,7 +2120,7 @@
    "background": "black",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/jackpot-light-sigil.prompt.txt",
@@ -1877,15 +2132,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\jackpot-light-sigil\\jackpot-light-sigil-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 08:45",
+     "status": "generated",
+     "note": "jackpot-light-sigil-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGBA",
+    "has_alpha_channel": true,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0
+     ]
+    ],
+    "dark_share": 0.719,
+    "stddev": 52.7
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\jackpot-light-sigil\\jackpot-light-sigil-a1.png",
+    "sha256": "e2c68316fa2db07c876e8edb99bc48d01a09a8c44b3642b4d1281f474e40177e",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/jackpot-light-sigil.prompt.txt",
+    "prompt_sha256": "15fce81f9a60a6eac0a2a9824f11ce69e79fac82b47cb1fb46ac88759f1c5bc0",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "slot-reel-band",
@@ -1897,7 +2209,7 @@
    "background": "opaque",
    "count": 1,
    "priority": 1,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/slot-reel-band.prompt.txt",
@@ -1909,15 +2221,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\slot-reel-band\\slot-reel-band-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 08:46",
+     "status": "generated",
+     "note": "slot-reel-band-a1"
+    },
+    {
+     "at": "2026-11-20 08:47",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1536,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      24,
+      24,
+      20
+     ],
+     [
+      17,
+      17,
+      13
+     ],
+     [
+      30,
+      26,
+      24
+     ],
+     [
+      27,
+      25,
+      22
+     ]
+    ],
+    "dark_share": 0.857,
+    "stddev": 18.5
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\slot-reel-band\\slot-reel-band-a1.png",
+    "sha256": "c0cc86d8130c40e2f1f89214ba7a33034a304c7ab14d16264686dcb479fe3dad",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/slot-reel-band.prompt.txt",
+    "prompt_sha256": "7e9a8a9ba0a9be9cfde62f62c486b6a02df8d29f7be179a8572aa6f4c1b5e2ec",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-bg-common",
@@ -1929,7 +2298,7 @@
    "background": "opaque",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-common.prompt.txt",
@@ -1941,15 +2310,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-common\\grade-bg-common-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:15",
+     "status": "generated",
+     "note": "grade-bg-common-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      13,
+      11,
+      8
+     ],
+     [
+      9,
+      8,
+      7
+     ],
+     [
+      9,
+      8,
+      7
+     ],
+     [
+      5,
+      7,
+      4
+     ]
+    ],
+    "dark_share": 0.692,
+    "stddev": 15.0
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-common\\grade-bg-common-a1.png",
+    "sha256": "593bfef8dbbc2b375b4c0f6f3c6944c845a0279bf1e44a1a7584575fb9dfcc6d",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-common.prompt.txt",
+    "prompt_sha256": "03d824500c7edd3331bac823e9b395881ab8cff473869b3e8a1eb10c0048fdb8",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-bg-rare",
@@ -1961,7 +2387,7 @@
    "background": "opaque",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-rare.prompt.txt",
@@ -1973,15 +2399,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-rare\\grade-bg-rare-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:15",
+     "status": "generated",
+     "note": "grade-bg-rare-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      13,
+      12,
+      8
+     ],
+     [
+      16,
+      12,
+      7
+     ],
+     [
+      14,
+      11,
+      9
+     ],
+     [
+      5,
+      6,
+      2
+     ]
+    ],
+    "dark_share": 0.386,
+    "stddev": 24.2
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-rare\\grade-bg-rare-a1.png",
+    "sha256": "41e95a039052155ec3f19e05572feb625428579cea615a1dbe145ecb02cfb393",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-rare.prompt.txt",
+    "prompt_sha256": "ea3ef689b96ba47bf7da8ed7239447ddebe3d5391c2af09f4d881fde614a3e7d",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "grade-bg-jackpot",
@@ -1993,7 +2476,7 @@
    "background": "opaque",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-jackpot.prompt.txt",
@@ -2005,15 +2488,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-jackpot\\grade-bg-jackpot-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:16",
+     "status": "generated",
+     "note": "grade-bg-jackpot-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1536
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.0,
+    "corner_rgb": [
+     [
+      18,
+      13,
+      7
+     ],
+     [
+      10,
+      5,
+      3
+     ],
+     [
+      13,
+      9,
+      5
+     ],
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    "dark_share": 0.388,
+    "stddev": 33.6
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\grade-bg-jackpot\\grade-bg-jackpot-a1.png",
+    "sha256": "557d32edd87745905c63672d50edcb0c2ce5089e6401b0482a5676e1481964c8",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/grade-bg-jackpot.prompt.txt",
+    "prompt_sha256": "657976d24e2d413d3fe9c278c4a4dd5da76c1af1faf2994d95c112114ac1e9a3",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-ember-new",
@@ -2025,7 +2565,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-new.prompt.txt",
@@ -2037,15 +2577,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-new\\emblem-ember-new-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:18",
+     "status": "generated",
+     "note": "emblem-ember-new-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.394,
+    "corner_rgb": [
+     [
+      183,
+      8,
+      186
+     ],
+     [
+      213,
+      12,
+      209
+     ],
+     [
+      207,
+      21,
+      206
+     ],
+     [
+      236,
+      18,
+      235
+     ]
+    ],
+    "dark_share": 0.339,
+    "stddev": 102.1
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-new\\emblem-ember-new-a1.png",
+    "sha256": "de47b948467c5bca219d50bc6d5b0d7e2ecac8fe02b3718c7f458545d175a4d3",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-new.prompt.txt",
+    "prompt_sha256": "ec0c79ee48cf4bb33a0780a6c875db599ccccdf09b39801788161218a4c7295e",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-ember-upgrade",
@@ -2057,7 +2654,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-upgrade.prompt.txt",
@@ -2069,15 +2666,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-upgrade\\emblem-ember-upgrade-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:19",
+     "status": "generated",
+     "note": "emblem-ember-upgrade-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.36,
+    "corner_rgb": [
+     [
+      215,
+      8,
+      216
+     ],
+     [
+      230,
+      14,
+      227
+     ],
+     [
+      222,
+      20,
+      223
+     ],
+     [
+      240,
+      19,
+      237
+     ]
+    ],
+    "dark_share": 0.311,
+    "stddev": 97.4
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-upgrade\\emblem-ember-upgrade-a1.png",
+    "sha256": "48f7a92d78b4eaa31e317e09605f42613644e2702e6cf49eecfe3062161dbfb3",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-upgrade.prompt.txt",
+    "prompt_sha256": "ed29b5e4909ee6b9a4a4965447ec4ca7a99a92c8dbd841b08d7dd5169f0705bb",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-ember-evolve",
@@ -2089,7 +2743,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-evolve.prompt.txt",
@@ -2101,15 +2755,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-evolve\\emblem-ember-evolve-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:21",
+     "status": "generated",
+     "note": "emblem-ember-evolve-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.426,
+    "corner_rgb": [
+     [
+      182,
+      8,
+      186
+     ],
+     [
+      211,
+      11,
+      209
+     ],
+     [
+      205,
+      21,
+      205
+     ],
+     [
+      234,
+      18,
+      234
+     ]
+    ],
+    "dark_share": 0.228,
+    "stddev": 102.5
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-evolve\\emblem-ember-evolve-a1.png",
+    "sha256": "aea3a0962b42aea90635c4a04663f7b4dd7c09c5fc0d8ccdceb32bae8d7b7f82",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-evolve.prompt.txt",
+    "prompt_sha256": "6be5614f226c31a7f1a88e8b1dfcc19379d9055c367b66c7689a756d5faf4beb",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-ember-deal",
@@ -2121,7 +2832,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-deal.prompt.txt",
@@ -2133,15 +2844,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-deal\\emblem-ember-deal-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:22",
+     "status": "generated",
+     "note": "emblem-ember-deal-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.356,
+    "corner_rgb": [
+     [
+      184,
+      9,
+      185
+     ],
+     [
+      211,
+      12,
+      209
+     ],
+     [
+      204,
+      19,
+      203
+     ],
+     [
+      234,
+      19,
+      234
+     ]
+    ],
+    "dark_share": 0.282,
+    "stddev": 95.4
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-ember-deal\\emblem-ember-deal-a1.png",
+    "sha256": "b1a3c4d335fda4cbd0e3fde3114443f0eb44fc50eef21cb0c984628b97a36311",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-ember-deal.prompt.txt",
+    "prompt_sha256": "44113aab72917a1c2cc6e4fe1e396e9ae61d9a783ef6ef3adefc44eabad08197",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-frost-new",
@@ -2153,7 +2921,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-new.prompt.txt",
@@ -2165,15 +2933,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-new\\emblem-frost-new-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:23",
+     "status": "generated",
+     "note": "emblem-frost-new-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.394,
+    "corner_rgb": [
+     [
+      184,
+      9,
+      185
+     ],
+     [
+      213,
+      14,
+      209
+     ],
+     [
+      207,
+      22,
+      206
+     ],
+     [
+      235,
+      18,
+      232
+     ]
+    ],
+    "dark_share": 0.392,
+    "stddev": 101.7
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-new\\emblem-frost-new-a1.png",
+    "sha256": "16c169b342777f7f4df763d8d0444855694aa77a34858c7f96200578cb36b047",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-new.prompt.txt",
+    "prompt_sha256": "e263905f6d468cd89c7642ded9e8302ce22d9bf2f1d1aee9f08305a3cd770812",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-frost-upgrade",
@@ -2185,7 +3010,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-upgrade.prompt.txt",
@@ -2197,15 +3022,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-upgrade\\emblem-frost-upgrade-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:25",
+     "status": "generated",
+     "note": "emblem-frost-upgrade-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.392,
+    "corner_rgb": [
+     [
+      185,
+      10,
+      185
+     ],
+     [
+      212,
+      15,
+      209
+     ],
+     [
+      204,
+      21,
+      205
+     ],
+     [
+      235,
+      21,
+      234
+     ]
+    ],
+    "dark_share": 0.276,
+    "stddev": 100.4
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-upgrade\\emblem-frost-upgrade-a1.png",
+    "sha256": "814561b772b1d1e55a0d900b9df61dee65142d057ef0c1dd42fad3186bcb0b8c",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-upgrade.prompt.txt",
+    "prompt_sha256": "aa57531552175302c11b8131ee130746218f257a585f94551b3046b2b0829cdd",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-frost-evolve",
@@ -2217,7 +3099,7 @@
    "background": "magenta",
    "count": 1,
    "priority": 2,
-   "status": "prompt_ready",
+   "status": "review_pending",
    "route": "codex-free",
    "est_cost_usd": null,
    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-evolve.prompt.txt",
@@ -2229,15 +3111,72 @@
    "depends_on": [],
    "blocked": "",
    "notes": "'trade' 문양의 봉랍은 거래 악마만의 표지(BOON-SCREEN-FIGURE-RULES R14) - 거래 카드에만 쓴다.",
-   "attempts": 0,
-   "results": [],
+   "attempts": 1,
+   "results": [
+    "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-evolve\\emblem-frost-evolve-a1.png"
+   ],
    "last_error": "",
    "history": [
     {
      "at": "2026-11-20 00:51",
      "status": "candidate"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "generated",
+     "note": "emblem-frost-evolve-a1"
+    },
+    {
+     "at": "2026-11-20 09:26",
+     "status": "review_pending",
+     "note": "sheet+gallery 그림 대기열 6건 (한도 뒤)"
     }
-   ]
+   ],
+   "checks": {
+    "size": [
+     1024,
+     1024
+    ],
+    "mode": "RGB",
+    "has_alpha_channel": false,
+    "magenta_share": 0.374,
+    "corner_rgb": [
+     [
+      213,
+      10,
+      217
+     ],
+     [
+      232,
+      14,
+      228
+     ],
+     [
+      224,
+      22,
+      223
+     ],
+     [
+      239,
+      18,
+      239
+     ]
+    ],
+    "dark_share": 0.292,
+    "stddev": 100.0
+   },
+   "provenance": {
+    "file": "C:\\Project\\witch-moira\\_local\\art\\queue\\emblem-frost-evolve\\emblem-frost-evolve-a1.png",
+    "sha256": "6d8a7ddbe9ab05d102d71e24c8ace03d5224b0b345989a305d8544310593eaeb",
+    "tool": "Codex CLI (built-in image generation, ChatGPT login)",
+    "model": "gpt-5.6-sol",
+    "date": "2026-11-20",
+    "prompt_file": "tools/art/gen_queue_prompts/emblem-frost-evolve.prompt.txt",
+    "prompt_sha256": "209a5dc2bfc76efd1f00208a975eadebb98b12aaf61bc59df04bfba6a0bcb180",
+    "postprocess": "none yet (original, background not removed)",
+    "ledger_status": "시안",
+    "license_note": "terms not checked; not marked deployable (release_cleared stays false)"
+   }
   },
   {
    "id": "emblem-frost-deal",
