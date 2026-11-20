@@ -195,6 +195,28 @@ def rasterize_uv(verts, normals, tris, uv, groups_v, TS, group_index):
     return dict(ix=ix.astype(np.int32), iy=iy.astype(np.int32), P=P, N=N, part=part)
 
 
+def ice_arm(atlas, tex, names, spec, out):
+    """왼팔(원소 팔)을 반투명 하늘색 대신 불투명한 얼음빛 피부로 바꾸고, 그림의 푸른 선(채도 높은 텍셀)은 살려 발광 가면(emission.png)으로 낸다.
+    spec: {"color": [r,g,b], "vein_hue_sat": 0.22, "vein_color": [r,g,b]}."""
+    from PIL import Image
+    ix, iy, P, part = tex["ix"], tex["iy"], tex["P"], tex["part"]
+    side = np.isin(part, [names.index("arm"), names.index("hand")]) & (P[:, 0] > 0.05)
+    col = atlas[iy[side], ix[side]]
+    mx, mn = col.max(1), col.min(1)
+    sat = (mx - mn) / np.maximum(mx, 1e-4)
+    w = np.clip((sat - spec.get("vein_hue_sat", 0.22)) / 0.25, 0, 1)
+    lum = col.mean(1)
+    shade = np.clip(lum / max(float(lum.mean()), 1e-4), 0.75, 1.15)
+    base = np.array(spec.get("color", [0.62, 0.78, 0.92]), np.float32)[None, :] * shade[:, None]
+    new = base * (1 - w[:, None]) + np.clip(col * 1.05, 0, 1) * w[:, None]
+    atlas = atlas.copy()
+    atlas[iy[side], ix[side]] = new
+    em = np.zeros(atlas.shape, np.float32)
+    em[iy[side], ix[side]] = np.array(spec.get("vein_color", [0.35, 0.75, 1.0]), np.float32)[None, :] * w[:, None]
+    Image.fromarray((np.clip(em, 0, 1) * 255 + 0.5).astype(np.uint8)).save(out / "emission.png")
+    return atlas
+
+
 # ------------------------------------------------------------------ 한 번에
 
 def run(cfg_path, dump_path, out_dir, log=print):
@@ -258,7 +280,10 @@ def run(cfg_path, dump_path, out_dir, log=print):
     views, meta = C.build_views(cfg, g, cfg.get("flatten"), log)
     b = cfg.get("bake", {})
     atlas, st = C.bake_texture(parts, tex, views, TS, b.get("power", 4.0), b.get("arm_occlusion_px", 9), b.get("depth_tol", 0.012), log,
-                               clamp_z=None, margin=b.get("margin", 0.12), resample=b.get("resample", "bilinear"), tol_head=b.get("depth_tol_head"))
+                               clamp_z=None, margin=b.get("margin", 0.12), resample=b.get("resample", "bilinear"), tol_head=b.get("depth_tol_head"),
+                               outside_w=float(cfgb.get("outside_w", 0.15)))
+    if cfgb.get("ice_arm"):
+        atlas = ice_arm(atlas, tex, names, cfgb["ice_arm"], out)
     if b.get("sharpen", 0) > 0:
         from scipy import ndimage as ndi
         sig = float(b.get("sharpen_sigma", 1.2)) * TS / 2048.0

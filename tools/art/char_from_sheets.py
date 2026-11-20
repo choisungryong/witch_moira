@@ -379,7 +379,7 @@ def bicubic(im, px, py):
     return np.stack([ndi.map_coordinates(im[..., k], c, order=3, mode="nearest") for k in range(3)], axis=1)
 
 
-def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=print, clamp_z=None, margin=0.12, resample="bilinear", tol_head=None):
+def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=print, clamp_z=None, margin=0.12, resample="bilinear", tol_head=None, outside_w=0.15):
     """views: [{name, cam, img(float 0..1, 배경을 채운 그림), mask, groups(None 또는 허용 부위군), qual}].
     깊이로 가려짐 판정: 텍셀 점들을 그 시점에 찍어 가장 가까운 깊이 지도를 만들고(3x3 키움), 팔 점은 따로(arm_px 키움) 지도를 만들어
     팔이 가리는 몸통 텍셀은 그 시점 색을 안 쓴다. 가중 = (법선·카메라)^power x 보임 x 마스크 안."""
@@ -411,7 +411,7 @@ def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=prin
         vis &= ~occ_arm
         cosv = np.clip(N @ cam.d, 0, 1)
         inm = mk[iy, ix]
-        c = cosv * vis * np.where(inm, 1.0, 0.15) * v.get("qual", 1.0)
+        c = cosv * vis * np.where(inm, 1.0, outside_w) * v.get("qual", 1.0)
         if v.get("groups"):
             c = c * np.isin(tg, v["groups"])
         if clamp_z:   # 치마 밑단 그림자가 허벅지 위쪽에 묻지 않게: 이 높이 위의 텍셀은 그 높이의 색을 쓴다

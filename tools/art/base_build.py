@@ -133,27 +133,32 @@ def main(argv):
     kd.balance()
     gname = {vg.index: vg.name for vg in body.vertex_groups}
     wsrc = [[(gname[g.group], g.weight) for g in v.groups] for v in body.data.vertices]
+    neck_z = None
     if cfg.get("skirt_mesh_npz"):
         d = np.load(cfg["skirt_mesh_npz"], allow_pickle=False)
         names = [str(x) for x in d["names"]]
         V, T, UV, rng, pt = d["verts"], d["tris"], d["uv"], d["ranges"], d["part_tris"]
         starts = np.concatenate([[0], np.cumsum(pt)])
         sel_tris, sel_uv = [], []
+        neck_z = None
         for k, nm in enumerate(names):
-            if nm.startswith("skirt"):
+            if nm == "neck":
+                neck_z = float(V[rng[k][0]:rng[k][1]][:, 2].min())
+        for k, nm in enumerate(names):
+            if any(nm.startswith(q) for q in cfg.get("transplant", ["skirt"])):
                 sel_tris.append(T[starts[k]:starts[k + 1]])
                 sel_uv.append(UV[starts[k]:starts[k + 1]])
         Ts, UVs = np.concatenate(sel_tris), np.concatenate(sel_uv)
         used = np.unique(Ts)
         remap = -np.ones(len(V), np.int64)
         remap[used] = np.arange(len(used))
-        me = bpy.data.meshes.new(cfg["name"] + "_skirt")
+        me = bpy.data.meshes.new(cfg["name"] + "_outfit")
         me.from_pydata([tuple(map(float, V[u])) for u in used], [], [tuple(int(remap[x]) for x in t) for t in Ts])
         me.update()
         uvl = me.uv_layers.new(name="UVMap")
         uvl.data.foreach_set("uv", UVs.reshape(-1, 2).astype(np.float32).reshape(-1))
         me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
-        sk = bpy.data.objects.new(cfg["name"] + "_skirt", me)
+        sk = bpy.data.objects.new(cfg["name"] + "_outfit", me)
         bpy.context.scene.collection.objects.link(sk)
         m2 = bpy.data.materials.new(cfg["name"] + "_skirt_mat")
         m2.use_nodes = True
@@ -174,6 +179,20 @@ def main(argv):
             for vi, w in lst:
                 vg.add([vi], w, "REPLACE")
         objs_new.append(sk)
+    # 3b) 옛 모델에서 가져온 부위가 대신하는 몸 쪽을 지운다: 머리, 발, 목 윗부분(neck_z 위)
+    drop = set(cfg.get("drop_groups", []))
+    if drop:
+        import bmesh
+        dom = [max(wsrc[i], key=lambda t: t[1])[0] if wsrc[i] else "" for i in range(len(body.data.vertices))]
+        bm = bmesh.new()
+        bm.from_mesh(body.data)
+        bm.verts.ensure_lookup_table()
+        kill = [bm.verts[i] for i in range(len(dom)) if dom[i] in drop or (neck_z is not None and dom[i] == "neck_01" and body.data.vertices[i].co.z > neck_z)]
+        bmesh.ops.delete(bm, geom=kill, context="VERTS")
+        bm.to_mesh(body.data)
+        bm.free()
+    body.name = "body"
+    body.data.name = "body"
     # 4) 머리카락
     if cfg.get("hair"):
         before = set(bpy.data.objects)

@@ -1,0 +1,36 @@
+{
+ "_about": "냉기 마녀 털 목도리(기본 몸 판): 어깨 폭 안쪽의 목에 감긴 꼴로 줄임(a 0.13, tube 0.05).",
+ "parts": [
+  {
+   "name": "frost_fur_collar",
+   "bone": "spine_cr_03",
+   "kind": "fur_collar",
+   "at": 0.0,
+   "offset": [
+    0,
+    0.007,
+    0.128
+   ],
+   "smooth": true,
+   "params": {
+    "a": 0.13,
+    "b": 0.1,
+    "z0": 0.0,
+    "dip_side": 0.03,
+    "dip_front": 0.03,
+    "tube": 0.05,
+    "lumps": 0.26,
+    "jitter": 0.14,
+    "n_major": 48,
+    "n_minor": 12
+   },
+   "texture": {
+    "kind": "fur",
+    "base": "#b0bfce",
+    "dark": "#74879c",
+    "light": "#f1f5f9"
+   },
+   "color": "#a9b8c8"
+  }
+ ]
+}

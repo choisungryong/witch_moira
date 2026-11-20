@@ -725,7 +725,7 @@ def main(argv):
         cfg["clips"]["fps"] = a.fps
     bpy.ops.wm.open_mainfile(filepath=a.blend)
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
-    mesh = next(o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm)
+    mesh = next((o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm and o.name == "body"), None) or next(o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm)
     for act in list(bpy.data.actions):
         bpy.data.actions.remove(act)
     rig = rc.Rig(arm)

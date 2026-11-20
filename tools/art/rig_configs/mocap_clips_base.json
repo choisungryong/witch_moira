@@ -1,0 +1,85 @@
+{
+ "_about": "Quaternius UAL Standard(CC0) 동작 -> 우리 클립. run = Jog_Fwd_Loop를 0.6초 주기(걸음 3.3회/초)로, 디딤 고정. run_sprint·run_jog_natural은 박자 판정용 후보. 원본 파일은 믿을 수 없는 데이터로 다룬다(경로만 인수로).",
+ "source": "D:/Project/witch-moira-work/downloads/quaternius-ual/x/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
+ "map": "tools/art/rig_configs/mocap_ual.json",
+ "ground_mps_game": 5.8,
+ "clips": {
+  "run": {
+   "action": "Jog_Fwd_Loop",
+   "seconds": 0.65,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7,
+   "stance_thresh": 0.06
+  },
+  "idle": {
+   "action": "Idle_Loop",
+   "seconds": 2.5,
+   "loop": true
+  },
+  "cast": {
+   "action": "Spell_Simple_Shoot",
+   "seconds": 0.6,
+   "hold_seconds": 0.1
+  },
+  "hit": {
+   "action": "Hit_Chest",
+   "seconds": 0.3333
+  },
+  "death": {
+   "action": "Death01",
+   "seconds": 2.4,
+   "ground": "lift"
+  },
+  "dodge": {
+   "action": "Roll",
+   "seconds": 0.5,
+   "ground": "lift"
+  },
+  "walk": {
+   "action": "Walk_Loop",
+   "seconds": 1.3333,
+   "loop": true,
+   "lock": true,
+   "ground_mps_game": 1.8,
+   "lean_scale": 0.8
+  },
+  "run_sprint": {
+   "action": "Sprint_Loop",
+   "seconds": 0.65,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7
+  },
+  "run_jog_natural": {
+   "action": "Jog_Fwd_Loop",
+   "seconds": 0.9333,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7,
+   "stance_thresh": 0.06
+  },
+  "cast_enter": {
+   "action": "Spell_Simple_Enter",
+   "seconds": 0.5333
+  },
+  "cast_loop": {
+   "action": "Spell_Simple_Idle_Loop",
+   "seconds": 2.1,
+   "loop": true
+  },
+  "cast_exit": {
+   "action": "Spell_Simple_Exit",
+   "seconds": 0.4333
+  },
+  "swing": {
+   "action": "Sword_Attack",
+   "seconds": 1.5333
+  },
+  "interact": {
+   "action": "Interact",
+   "seconds": 2.0
+  }
+ },
+ "composites": []
+}

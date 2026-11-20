@@ -2,7 +2,6 @@
  "_about": "냉기 마녀 기본 몸 판의 조립 설정(base_build.py). 경로는 내려받은 원본(읽기만)과 작업 폴더.",
  "name": "frost",
  "body": "D:/Project/witch-moira-work/downloads/quaternius-ubc/x/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
- "hair": "D:/Project/witch-moira-work/downloads/quaternius-ubc/x/Universal Base Characters[Standard]/Hairstyles/Origin at 0/glTF (Godot)/Hair_Long.gltf",
  "hair_tint": [
   0.8,
   0.8,
@@ -71,6 +70,22 @@
   }
  ],
  "hair_gain": 0.85,
- "hair_albedo": "D:/Project/witch-moira-work/char3d/a8/frost/hair_albedo.png",
- "drop_eyes": true
+ "drop_eyes": true,
+ "transplant": [
+  "skirt",
+  "neck",
+  "head",
+  "hair_lock",
+  "braid",
+  "foot_"
+ ],
+ "drop_groups": [
+  "Head",
+  "foot_l",
+  "foot_r",
+  "ball_l",
+  "ball_r",
+  "ball_leaf_l",
+  "ball_leaf_r"
+ ]
 }
