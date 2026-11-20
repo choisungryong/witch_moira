@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-20 04:05:33 · 도구 100개
+생성: 2026-11-20 10:33:11 · 도구 112개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -230,6 +230,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/asset_usage_probe.gd` | T7-0: which files under chapter1/art/ (and the living-portrait flake pictures) a play-through really loads and draws. |  |
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
+| `chapter1/tests/descent_policy.gd` | When a bot uses the descent (D15 A6.5). MEASUREMENT ONLY: chapter_pilot.gd is not touched (the golden replay plays it as it is), |  |
 | `chapter1/tests/elite_sites_shot.gd` | Look study for guarded elites and the shrine/chest they guard (docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/elite_sites_shot.gd -- \` |
 | `chapter1/tests/equiv_dump.gd` | Equivalence dump for tools/dev/equiv.py (QA tool, reads presentation state only, writes no game state). | `python tools/dev/godot.py --headless --fixed-fps 60 --path <root> --script res://chapter1/tests/equiv_dump.gd -- --chapter1-pilot` |
 | `chapter1/tests/layout_dump.gd` | Control-tree dump shared by hud_dump.gd (--dump-extra) and scene_shot.gd, read by tools/dev/hud_layout_check.py. |  |
@@ -237,8 +238,10 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/make_profile_v4_fixtures.gd` | One-shot generator (T6-S0). Run it ONCE with the schema-4 code, before schema 5 lands: | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/make_profile_v4_fixtures.gd` |
 | `chapter1/tests/modal_fit_probe.gd` | Real-run probe for the two in-run windows: the equipment compare ("장비와 전투 선택") and the growth choice ("성장 선택"). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/modal_fit_probe.gd -- \` |
 | `chapter1/tests/modal_input_check.gd` | Input check on the real core for the two in-run windows, with real GUI routing (events pushed into the window): | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/modal_input_check.gd -- \` |
+| `chapter1/tests/model_swap.gd` | Puts a trial glb in the hero model's place without touching a product file (Resource.take_over_path on the path the game |  |
 | `chapter1/tests/perf_probe.gd` | Frame and tick timing probe for exported builds and the editor (QA tool, never product code). |  |
 | `chapter1/tests/perf_probe_mark.gd` | QA-only timestamp node for perf_probe.gd. Records the time its _process ran. |  |
+| `chapter1/tests/play_with_model.gd` | The user plays the game with a trial glb in the hero's place (no pilot, no capture). Product files are untouched. | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/play_with_model.gd -- \` |
 | `chapter1/tests/profile_legacy_snapshot.gd` | Shared by make_profile_legacy_fixtures.gd (once) and test_profile_legacy_fixtures.gd (every run). |  |
 | `chapter1/tests/profile_v4_snapshot.gd` | Shared by make_profile_v4_fixtures.gd (once) and test_profile_v4_fixtures.gd (every run). |  |
 | `chapter1/tests/proposal_shot.gd` | Proposal renderer for the screen design harness (step 3): one proposal scene fed by contract fixtures | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/proposal_shot.gd -- \` |
@@ -247,6 +250,12 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/record_run_shot.gd` | The battle record on a REAL run: the app plays a whole run with the built-in pilot (the core is stepped by calling the | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_run_shot.gd -- \` |
 | `chapter1/tests/sim_power.gd` | Power bench ("short proving ground", D12 P3 / P9): measures what a FIXED in-run spell build really does on the real core. |  |
 | `chapter1/tests/spells_pick.gd` | Check tool, not product code. How a tool turns the in-run spell composition ON and how it picks growth cards for it |  |
+| `chapter1/tests/trial_state_probe.gd` | Prints what the app's `--chapter1-trial=` handling (chapter_one.gd `_apply_trial`) did to the core, for the arguments this process got. |  |
+| `tools/art/char_blender.py` | char_from_sheets의 Blender 쪽: mesh.npz + 텍스처 -> 메시 한 덩어리 glb(뼈 없음). rig_build가 이어 받는다. | `python tools/art/char_blender.py --npz mesh.npz --albedo albedo.png --out-glb mesh.glb [--name frost] [--blend out.blend]` |
+| `tools/art/char_from_sheets.py` | 그림 면별 시트(정면·측면·후면 + 3/4 + 머리 클로즈업) -> 게임용 리깅된 주인공 glb. Blender와 numpy/scipy/PIL만 쓴다(내려받기·외부 호출 0). | `python tools/art/char_from_sheets.py --config tools/art/char_configs/frost.json --work D:/Project/witch-moira-work/char3d-blender-only/v2/frost` |
+| `tools/art/char_geom.py` | char_from_sheets의 기하 부분(numpy만, Blender 없이 돈다). |  |
+| `tools/art/char_montage.py` | 그림 여러 장을 한 장에 격자로 붙인다(원본 그림과 렌더 나란히 보기용). Blender 필요 없음. | `python tools/art/char_montage.py --out sheet.png --height 640 --row front.png,r/front.png,... --row 3q.png,...` |
+| `tools/art/char_render.py` | char_from_sheets 결과를 같은 조건으로 렌더한다(Blender 작업대 엔진, 평면 조명 + 텍스처 색. 게임 화면이 아니다). | `python tools/art/char_render.py views --model final.glb --views views.json --out DIR [--tag v2]` |
 | `tools/art/gallery.py` | Draft gallery index tool (replaces organize.py / register_*.py / reg_*.py / setpick*.py). Works on | `python tools/art/gallery.py lint  [--check-manager] [--json OUT]`<br>`python tools/art/gallery.py add` |
 | `tools/art/gen.py` | Codex image-generation batch runner (replaces the per-batch batch_*.py / run_*.py / revise.py copies). | `python tools/art/gen.py CONFIG.json`<br>`python tools/art/gen.py CONFIG.json --only a-1 a-2` |
 | `tools/art/portrait_anchor_table.py` | Eye line / head top / feet of the three witches in one table, and how far they drift when placed side by side. | `python tools/art/portrait_anchor_table.py [--heights 400,800] [--out DIR] [--slots JSON]`<br>`python tools/art/portrait_anchor_table.py --selftest` |
@@ -263,11 +272,14 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/judge_targets.py` | 목표 판정표: tools/dev/targets.json 과 측정 JSON 여러 개를 맞대어 통과·미달·못 잼·미평가를 낸다. | `python tools/dev/judge_targets.py --out-md _local/tools/judge/table.md --out-json _local/tools/judge/table.json \`<br>`python tools/dev/judge_targets.py --check-constants --out-md _local/tools/judge/constants.md` |
 | `tools/dev/make_lightning_candidates.py` | Lightning (running current) cast sound candidates for the scene audition. Candidates only: nothing here goes into the game. | `python tools/dev/make_lightning_candidates.py --out _local/audio/lightning-cands-20261120`<br>`python tools/dev/make_lightning_candidates.py --out ... --sources D:/witch-moira-audio-sources` |
 | `tools/dev/perf_ab.py` | Performance before/after measurement: alternate variants, watch foreign Godot processes, print one fixed table set. | `python tools/dev/perf_ab.py run  PLAN.json --out _local/perf/<date>-<name>`<br>`python tools/dev/perf_ab.py run  PLAN.json --out ... --dry-run` |
+| `tools/dev/proposal_batch.py` | Morning capture of the screen proposals in one go (docs/SCREEN-DESIGN-HARNESS.ko.md 6 T-2/T-3/T-5; it replaces the | `python tools/dev/proposal_batch.py --dry-run`<br>`python tools/dev/proposal_batch.py` |
 | `tools/dev/refactor_map.py` | 참조 지도: 구조 리팩토링용 읽기 전용 정적 도구. | `python tools/dev/refactor_map.py [--out=_local/refactor-map/]`<br>`python tools/dev/refactor_map.py --rename-check <옛 경로> <새 경로>` |
 | `tools/dev/shot_review.py` | 캡처 전후 비교와 화면 측정 (이미 찍힌 그림만 본다. Godot를 돌리지 않는다). |  |
 | `tools/dev/sim_economy.py` | 경제·성장 시뮬레이터 — 판과 판 사이의 흐름(영구 경험치·레벨·스킬 포인트·트리·재·장비·상점·퀘스트·균열 깊이)을 계산하는 모델. | `python tools/dev/sim_economy.py`<br>`python tools/dev/sim_economy.py --preset now --runs 30` |
 | `tools/dev/sim_grid.py` | sim_grid.py - 시험장(chapter1/tests/sim_power.gd) 유입률 칸을 격자로 돌리고 "같은 점수 견줌" 표를 낸다. | `python tools/dev/sim_grid.py list`<br>`python tools/dev/sim_grid.py run  <exp> [--out DIR] [--jobs 2] [--seeds 11,12,13] [--witches frost,ember,arc] [--dry] [--force]` |
 | `tools/dev/snapshot_diff.py` | Compare two snapshot dumps field by field. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --case=11:chapter1.skill.frost --dump-at=1800 --dump-out=_local/diff/a.json`<br>`python tools/dev/snapshot_diff.py _local/diff/a.json _local/diff/b.json [--limit 200]` |
+| `tools/dev/video_motion.py` | 녹화 영상의 화면 흐름(카메라가 주인공을 따라가므로 = 주인공의 이동 속도)을 프레임마다 잰다. |  |
+| `tools/dev/video_strip.py` | 녹화 영상의 구간을 원래 프레임률로 뽑아 잘라 확대하고, 프레임 번호를 붙여 가로 띠(판)로 이어 붙인다. | `python tools/dev/video_strip.py _local/ref/sacrata/yt/sacrata-yt-0-21m.mp4 --start 342 --dur 2` |
 | `tools/manager/audit_view.py` | 점검 화면의 뒷면: 가장 최근 audit 결과를 읽고(읽기 전용), 다시 돌리기는 audit.py 를 하위 프로세스로 부른다. |  |
 
-chapter1/tests/test_*.gd 20개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
+chapter1/tests/test_*.gd 24개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
