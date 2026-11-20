@@ -177,7 +177,7 @@ class BakeTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def check_cfg(self, name):
-        cfg = json.loads((CFG_DIR / name).read_text(encoding="utf-8"))
+        cfg = C.load_config(CFG_DIR / name)   # extends 를 풀어서 본다
         for k in ("name", "height", "art_root", "views", "torso", "neck", "head", "arm", "leg"):
             self.assertIn(k, cfg, name)
         for v in ("front", "side", "back"):
@@ -200,6 +200,33 @@ class ConfigTests(unittest.TestCase):
         for f in sorted(CFG_DIR.glob("*.json")):
             self.check_cfg(f.name)
 
+    def test_extends_merges_deeply(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "a.json").write_text(json.dumps({"name": "a", "paint": {"bolts": [1], "tips": {"mix": 0.1}}, "x": 1}), encoding="utf-8")
+            (Path(d) / "b.json").write_text(json.dumps({"extends": "a.json", "paint": {"tips": {"color": "#fff"}}}), encoding="utf-8")
+            cfg = C.load_config(Path(d) / "b.json")
+        self.assertEqual(cfg["x"], 1)
+        self.assertEqual(cfg["paint"]["bolts"], [1])
+        self.assertEqual(cfg["paint"]["tips"], {"mix": 0.1, "color": "#fff"})
+        self.assertNotIn("extends", cfg)
+
+    def test_a7_configs_parts_paint_look(self):
+        """A7-1: 마녀 설정의 부품 파일·칠하기 규칙·겉모습 칸이 맞는지(실행 없이)."""
+        import part_shapes
+        for n in ("frost", "storm", "ember", "storm_tip"):
+            cfg = self.check_cfg(n + ".json")
+            self.assertTrue(set(cfg["look"]) <= set(C.LOOK_KEYS), n)
+            self.assertEqual(cfg["look"]["emission_mode"], "mask")
+            self.assertRegex(C.unique_texture_name(cfg), r"^%s_a7(tip)?_albedo$" % cfg["name"])   # `color` 같은 흔한 이름 금지(텍스처 이름 함정)
+            pj = json.loads((HERE.parents[1] / cfg["parts"]).read_text(encoding="utf-8"))
+            for part in pj["parts"]:
+                self.assertIn(part["kind"], part_shapes.SHAPES)
+                self.assertTrue(part["name"].startswith(cfg["name"] + "_"), part["name"])   # 부품 이미지 이름도 마녀별로 유일
+            for rule in cfg["paint"].get("detect", []):
+                self.assertEqual(len(rule["hue"]), 2)
+        self.assertEqual(C.load_config(CFG_DIR / "storm_tip.json")["paint"]["tips"]["parts"], ["hair_lock_*"])
+        self.assertNotIn("tips", C.load_config(CFG_DIR / "storm.json")["paint"])
+
     def test_resolve_art_missing_is_reported(self):
         with self.assertRaises(FileNotFoundError):
             C.resolve_art({"art_root": "no/such/"}, "x.png")
@@ -209,7 +236,7 @@ class EndToEnd(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("RIG_BLENDER_TESTS") == "1", "RIG_BLENDER_TESTS=1 이 아니면 건너뜀(Blender와 그림이 필요)")
     def test_storm_all_stages(self):
         try:
-            C.resolve_art({"art_root": "_local/art/3d-sheets/storm/"}, "hi3d-front.png")
+            C.resolve_art({"art_root": "_local/art/3d-sheets/storm/hires/"}, "front-r1.png")
         except FileNotFoundError:
             self.skipTest("그림(_local/art/3d-sheets/storm)이 없다")
         with tempfile.TemporaryDirectory() as d:

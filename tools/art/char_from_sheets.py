@@ -39,8 +39,25 @@ PY = sys.executable
 
 # ------------------------------------------------------------------ 설정과 그림
 
+def _merge(base, over):
+    out = dict(base)
+    for k, v in over.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
 def load_config(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    """설정 JSON. `extends`(같은 폴더의 다른 설정 파일 이름)가 있으면 그것을 바탕으로 깊게 덮는다(변형 판: 번개 머리 끝 보라 등)."""
+    p = Path(path)
+    cfg = json.loads(p.read_text(encoding="utf-8"))
+    if "extends" in cfg:
+        base = load_config(p.parent / cfg["extends"])
+        over = {k: v for k, v in cfg.items() if k != "extends"}
+        cfg = _merge(base, over)
+    return cfg
 
 
 def resolve_art(cfg, name):
@@ -582,6 +599,14 @@ def stage_bake(cfg, g, work, log=print):
     views, meta = build_views(cfg, g, cfg.get("flatten"), log)
     atlas, st = bake_texture(parts, tex, views, TS, b.get("power", 4.0), b.get("arm_occlusion_px", 9), b.get("depth_tol", 0.012), log,
                              clamp_z=b.get("clamp_z"), margin=b.get("margin", 0.12))
+    import char_paint as P
+    rects = P.part_rects(parts, place)
+    (work / "parts_uv.json").write_text(json.dumps({k: list(v) for k, v in rects.items()}, indent=1), encoding="utf-8")
+    if cfg.get("paint"):
+        atlas, emis, pst = P.apply(atlas, parts, place, cfg["paint"], log)
+        Image.fromarray(emis).save(work / "emission.png")
+        meta["paint"] = dict(pst, **{"mask": P.mask_stats(emis, rects)})
+        log("paint: mask texels on %d" % meta["paint"]["mask"]["on_texels"])
     Image.fromarray((np.clip(atlas, 0, 1) * 255 + 0.5).astype(np.uint8)).save(work / "albedo.png")
     Image.fromarray(tex["_dbg"]).save(work / "weights_debug.png")
     save_mesh(parts, place, TS, work / "mesh.npz")
@@ -594,8 +619,17 @@ def stage_bake(cfg, g, work, log=print):
     return meta
 
 
+def unique_texture_name(cfg):
+    """glb 안 이미지 이름. Godot는 <glb 이름>_<이미지 이름>.png로 풀고 이미 있으면 그 파일을 쓴다(docs/ART-3D-PIPELINE.ko.md 게임에 끼울 때 1항) ->
+    `color` 같은 흔한 이름을 피하고 마녀·판 이름을 넣는다."""
+    return "%s_%s_albedo" % (cfg["name"], cfg.get("texture_tag", "a7"))
+
+
 def stage_glb(cfg, work):
-    out, sec = run([PY, str(HERE / "char_blender.py"), "--npz", str(work / "mesh.npz"), "--albedo", str(work / "albedo.png"),
+    import shutil
+    tex_name = unique_texture_name(cfg)
+    shutil.copyfile(work / "albedo.png", work / (tex_name + ".png"))
+    out, sec = run([PY, str(HERE / "char_blender.py"), "--npz", str(work / "mesh.npz"), "--albedo", str(work / (tex_name + ".png")),
                     "--out-glb", str(work / "mesh.glb"), "--name", cfg["name"]], 300, "glb")
     return sec
 
@@ -626,7 +660,7 @@ def stage_poses(cfg, work):
     rows = []
     total = 0.0
     for clip, frames in POSE_SHEET:
-        _, sec = run([PY, str(HERE / "char_render.py"), "poses", "--model", str(work / "clips.blend"), "--out", str(work / "poses"),
+        _, sec = run([PY, str(HERE / "char_render.py"), "poses", "--model", str(work / "final.glb"), "--out", str(work / "poses"),
                       "--clip", clip, "--frames", frames], 300, "poses")
         total += sec
         rows.append([str(work / "poses" / ("pose_%s_%s.png" % (clip, f))) for f in frames.split(",")])
@@ -640,11 +674,19 @@ def stage_rig(cfg, work, out_dir, preview=True):
     secs = {}
     _, secs["rig_build"] = run([PY, str(HERE / "rig_build.py"), "--in", str(work / "mesh.glb"), "--out-blend", str(work / "rigged.blend"),
                                "--config", str(work / "rig_config.json"), "--report", str(work / "build.json")], 600, "rig_build")
-    cmd = [PY, str(HERE / "rig_clips.py"), "--blend", str(work / "rigged.blend"), "--out-glb", str(work / "final.glb"),
+    has_parts = bool(cfg.get("parts"))
+    cmd = [PY, str(HERE / "rig_clips.py"), "--blend", str(work / "rigged.blend"), "--out-glb", str(work / ("body.glb" if has_parts else "final.glb")),
            "--out-blend", str(work / "clips.blend"), "--config", str(work / "rig_config.json"), "--report", str(work / "clips.json")]
     if preview:
         cmd += ["--preview", str(work / "prev")]
     _, secs["rig_clips"] = run(cmd, 900, "rig_clips")
+    if has_parts:   # 뼈에 묶는 부품(털 목도리·어깨 갑옷·허리 자락)을 얹어 final.glb로. 동작은 그대로 같이 나간다
+        pj = Path(cfg["parts"])
+        if not pj.is_absolute():
+            pj = REPO / pj
+        _, secs["rig_parts"] = run([PY, str(HERE / "rig_parts.py"), "--blend", str(work / "clips.blend"), "--parts", str(pj),
+                                    "--out-glb", str(work / "final.glb"), "--out-blend", str(work / "parts.blend"), "--report", str(work / "parts.json"),
+                                    "--check-clips", cfg.get("parts_check_clips", "run,idle,cast,dodge")], 1800, "rig_parts")
     return secs
 
 
@@ -654,11 +696,62 @@ def stage_check(cfg, work):
     return r.returncode, r.stdout
 
 
+LOOK_KEYS = ("albedo_mul", "element_lean", "emission_mode", "emission_energy", "rim", "rim_tint", "rim_color", "light_key", "light_fill")
+
+
+def stage_look(cfg, work, out_dir):
+    """마녀별 겉모습 값(look.json, 지시서 A7 2.3 칸)과 발광 가면을 out_dir에 낸다. 값은 설정의 `look`에서 온다(첫 값, 캡처를 보고 고친다)."""
+    import shutil
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    look = dict(cfg.get("look", {}))
+    unknown = sorted(set(look) - set(LOOK_KEYS))
+    if unknown:
+        raise SystemExit("look에 모르는 칸: %s (허용: %s)" % (unknown, ", ".join(LOOK_KEYS)))
+    doc = {"_about": "A7 2.3 겉모습 값. 발광 가면은 몸 텍스처(albedo)와 같은 UV다. 부품(목도리·어깨 갑옷·자락) 재질에는 가면이 없다.",
+           "model": cfg["name"]}
+    doc.update(look)
+    em = work / "emission.png"
+    if em.is_file() and look.get("emission_mode") == "mask":
+        name = "%s_%s_emission.png" % (cfg["name"], cfg.get("texture_tag", "a7"))
+        shutil.copyfile(em, out_dir / name)
+        doc["emission_texture"] = (out_dir / name).resolve().as_posix()
+    (out_dir / "look.json").write_text(json.dumps(doc, indent=1, ensure_ascii=False), encoding="utf-8")
+    return doc
+
+
+def stage_measure(cfg, step=20, log=print):
+    """새 그림 설정용 측정표: 면별 마스크의 키(top/feet), 머리 가운데 열, 행별 가운데 구간 반폭(정면·후면)과 앞뒤 끝(측면).
+    설정의 views 숫자와 torso 키 표를 손으로 정할 때 근거로 쓴다(모델의 계산, 맞춤은 렌더를 보고 한다)."""
+    out = {}
+    for v, vc in cfg["views"].items():
+        if "image" not in vc:
+            continue
+        im = load_rgb(resolve_art(cfg, vc["image"]))
+        m = figure_mask(im, cfg.get("mask", {}).get("threshold", 22), vc.get("trim", 0), vc.get("window"))
+        ys = np.where(m.any(1))[0]
+        head = m[ys[0] + 10:ys[0] + 60]
+        hc = [(np.where(r)[0].min() + np.where(r)[0].max()) / 2 for r in head if r.any()]
+        rows = {}
+        for y in range(int(ys[0]), int(ys[-1]) + 1, step):
+            iv = G.intervals(m[y])
+            c = min(iv, key=lambda i: abs((i[0] + i[1]) / 2 - float(np.median(hc)))) if iv else None
+            rows[y] = dict(n=len(iv), central=c, all=iv)
+        out[v] = dict(top=int(ys[0]), feet=int(ys[-1]), head_cx=float(np.median(hc)), rows=rows)
+        log("%-6s top %d feet %d head_cx %.1f" % (v, ys[0], ys[-1], np.median(hc)))
+        for y, r in rows.items():
+            c = r["central"]
+            if c:
+                log("   y=%4d n=%d central %4d..%4d (c %.0f hw %.0f)" % (y, r["n"], c[0], c[1], (c[0] + c[1]) / 2, (c[1] - c[0]) / 2))
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="그림 시트 -> 리깅된 주인공 glb")
     ap.add_argument("--config", required=True)
     ap.add_argument("--work", required=True, help="큰 중간 파일 폴더(D 드라이브)")
-    ap.add_argument("--stage", default="all", choices=["all", "geom", "bake", "glb", "views", "rig", "poses", "check"])
+    ap.add_argument("--stage", default="all", choices=["all", "measure", "geom", "bake", "glb", "views", "rig", "poses", "check", "look"])
+    ap.add_argument("--look-out", help="stage look(와 all)에서 look.json·발광 가면을 낼 폴더")
     ap.add_argument("--tag", default="", help="views 결과 폴더·파일 이름 꼬리표")
     ap.add_argument("--no-preview", action="store_true")
     a = ap.parse_args(argv)
@@ -667,6 +760,10 @@ def main(argv=None):
     work.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     times = {}
+    if a.stage == "measure":
+        res = stage_measure(cfg)
+        (work / "measure.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
+        return 0
     if a.stage in ("all", "geom", "bake"):
         t = time.time(); g = stage_geom(cfg, work); times["geom"] = time.time() - t
         print("geom: parts %d triangles %d" % (len(g["parts"]), sum(len(p["tris"]) for p in g["parts"])))
@@ -682,6 +779,8 @@ def main(argv=None):
     if a.stage in ("all", "poses"):
         times["poses"] = stage_poses(cfg, work)
     code = 0
+    if a.look_out and a.stage in ("all", "look", "bake"):
+        stage_look(cfg, work, a.look_out)
     if a.stage in ("all", "check"):
         code, text = stage_check(cfg, work)
         print(text)

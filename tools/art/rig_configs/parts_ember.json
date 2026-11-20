@@ -1,0 +1,8 @@
+{
+  "_about": "화염 마녀 부품(A7-1): 금빛 어깨 갑옷, 용암 팔이 있는 캐릭터 오른쪽(-X) 한 쪽만. 위팔 뼈(upper_arm_cr_r)의 머리(어깨 관절)에 묶는다(쇄골에 묶으면 팔이 흔들릴 때 팔이 갑옷을 뚫는다: 달리기에서 최대 14cm 겹침을 잰 뒤 바꿈).",
+  "parts": [
+    {"name": "ember_pauldron", "bone": "upper_arm_cr_r", "kind": "pauldron", "at": 0.0, "offset": [-0.008, 0.0, -0.026], "smooth": true,
+     "params": {"rx": 0.098, "ry": 0.108, "rz": 0.066, "up": 0.03, "up_scale": 0.72, "flare": 1.10, "tilt_deg": -14},
+     "color": "#b8892e"}
+  ]
+}

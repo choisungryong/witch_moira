@@ -1,32 +1,65 @@
 {
-  "_about": "번개 마녀 설정. 입력은 낮은 해상도 3면 시트(hi3d-*.png, 512x1024 한 사람 높이 약 980px, 시트 가장자리에 칸막이 선이 있어 trim). 바지·짧은 머리라 치마·긴 머리 부위가 없다. 측면 그림은 캐릭터 오른쪽에서 본 것(얼굴이 그림 오른쪽, side.az=-90). 3/4·클로즈업은 아직 없다(Codex 한도 뒤).",
+  "_about": "번개 마녀 설정(고해상 면별 그림 front/side/back-r1 + 3q-r2, 1024x1536). 바지·짧은 머리라 치마·땋은 머리가 없다. 몸통은 y400부터 마스크 폭(팔이 떨어진 곳), 윗부분은 key 표. 측면 그림은 캐릭터 왼쪽에서 본 것(얼굴이 그림 왼쪽, 기본 az 90). 머리 뻗친 덩어리는 hair.locks의 뾰족한 관(spikes)이 키운다.",
   "name": "storm",
   "height": 1.96,
-  "art_root": "_local/art/3d-sheets/storm/",
+  "art_root": "_local/art/3d-sheets/storm/hires/",
   "views": {
-    "front": {"image": "hi3d-front.png", "feet": 1003, "top": 28, "cx": 331, "trim": 6, "window": [50, 500]},
-    "side":  {"image": "hi3d-side.png",  "feet": 1003, "top": 30, "cx": 255, "trim": 6, "az": -90, "window": [140, 380]},
-    "back":  {"image": "hi3d-back.png",  "feet": 1003, "top": 30, "cx": 185, "trim": 6, "window": [30, 450]}
+    "front": {"image": "front-r1.png", "feet": 1502, "top": 21, "cx": 511},
+    "side":  {"image": "side-r1.png",  "feet": 1499, "top": 22, "cx": 505},
+    "back":  {"image": "back-r1.png",  "feet": 1483, "top": 34, "cx": 512},
+    "3q":    {"image": "3q-r2.png", "az": -35, "fit": true, "fit_starts": [-25, -35, -45]}
   },
   "mask": {"threshold": 22},
+  "head_views": [{"name": "hfront", "image": "hfront-r1.png", "ref": "front", "groups": ["head"], "qual": 1.4}],
   "flatten": {"strength": 0.8, "clusters": 12, "clamp": [0.65, 1.6]},
   "bake": {"power": 4.0, "texture": 2048, "arm_occlusion_px": 9, "depth_tol": 0.012},
   "torso": {
-    "y0": 190, "y1": 500, "step": 10, "S": 24, "mask_from": 10000, "side_from": 10000, "hip_from": 10000,
-    "key_y": [190, 215, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 545, 560],
-    "key_half_width": [36, 60, 66, 67, 63, 57, 52, 51, 60, 70, 80, 92, 91, 95, 100, 101, 99, 98, 96],
-    "key_zf": [215, 205, 198, 198, 205, 207, 208, 208, 205, 205, 197, 190, 190, 190, 205, 205, 205, 205, 205],
-    "key_zb": [272, 300, 316, 318, 313, 311, 309, 309, 309, 309, 312, 308, 303, 303, 306, 306, 302, 300, 300],
-    "hip": {"y": [500], "half_width": [100], "zf": [205], "zb": [306]}
+    "y0": 236, "y1": 744, "step": 12, "S": 24, "mask_from": 400, "side_from": 400, "hip_from": 700,
+    "key_y": [236, 262, 282, 302, 322, 342, 362, 382, 400],
+    "key_half_width": [36, 50, 92, 112, 112, 108, 104, 100, 99],
+    "key_zf": [483, 475, 460, 452, 432, 410, 396, 390, 397],
+    "key_zb": [562, 568, 578, 584, 584, 586, 584, 580, 572],
+    "hip": {"y": [700, 722, 744], "half_width": [149, 148, 146], "zf": [422, 418, 417], "zb": [591, 580, 566]}
   },
-  "neck": {"y": [135, 150, 165, 180, 195], "half_width": [24, 24, 25, 30, 40], "half_depth": [27, 27, 28, 32, 42], "zc": 235},
-  "head": {"top_rows": [32, 36, 42, 50, 60], "y1": 150, "step": 7, "S": 20, "x_pick": 322, "dens": 1.6,
-           "taper": {"from_y": 128, "to_y": 150, "hw_end": 26, "hd_end": 30, "zc_end": 235}},
-  "arm": {"y0": 280, "y1": 560, "min_dx": 90, "top_extrap": [200, 230, 256], "top_r": [26, 26, 25],
-          "depth_y": [230, 520], "depth_z": [262, 258], "flat": 0.85,
+  "neck": {"y": [188, 205, 225, 245, 262], "half_width": [30, 34, 36, 44, 60], "half_depth": [32, 36, 38, 42, 56], "zc": 522},
+  "head": {"top_rows": [25, 30, 36, 44, 54], "y1": 200, "step": 7, "S": 20, "x_pick": 510, "dens": 1.6,
+           "taper": {"from_y": 165, "to_y": 200, "hw_end": 36, "hd_end": 40, "zc_end": 522}},
+  "hair": {
+    "dens": 1.0,
+    "z_y": [10, 100, 170], "z_c": [520, 524, 516],
+    "locks": [
+      {"x": 480, "y_top": 80, "y_end": 8, "drift": -34, "r": 19, "flat": 0.9, "rings": 9},
+      {"x": 546, "y_top": 78, "y_end": 4, "drift": 38, "r": 19, "flat": 0.9, "rings": 9},
+      {"x": 512, "y_top": 64, "y_end": -2, "drift": 4, "r": 17, "flat": 0.9, "rings": 9, "z_off": -24},
+      {"x": 424, "y_top": 120, "y_end": 82, "drift": -52, "r": 18, "flat": 0.9, "rings": 9},
+      {"x": 604, "y_top": 120, "y_end": 80, "drift": 54, "r": 18, "flat": 0.9, "rings": 9},
+      {"x": 512, "y_top": 118, "y_end": 74, "drift": 10, "r": 20, "flat": 0.9, "rings": 9, "z_off": 62}
+    ]
+  },
+  "arm": {"y0": 396, "y1": 815, "min_dx": 110, "top_extrap": [290, 330, 366], "top_r": [34, 33, 31],
+          "depth_y": [300, 800], "depth_z": [545, 500], "hand_rings": 6, "flat": 0.85,
           "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105}},
-  "leg": {"y0": 500, "y1": 985, "step": 14, "min_dx": 20, "extend_up": [468, 486], "depth_k": 0.96},
-  "foot": {"x0": 335, "x1": 205, "step": 11, "y0": 940, "y1": 1004, "width_x": [335, 300, 260, 225, 205], "width": [9, 18, 22, 20, 17], "wmax": 22},
+  "leg": {"y0": 745, "y1": 1400, "step": 14, "min_dx": 20, "extend_up": [700, 722], "depth_k": 0.96},
+  "foot": {"x0": 392, "x1": 570, "step": 12, "y0": 1385, "y1": 1505, "width_x": [392, 430, 480, 530, 566], "width": [14, 24, 27, 24, 20],
+           "sole_image": "boots-r1.png", "sole_box": [1130, 0, 1536, 1024], "wmax": 27},
+  "texture_tag": "a7",
+  "parts": "tools/art/rig_configs/parts_storm.json",
+  "paint": {
+    "fill": [
+      {"name": "arm_glow", "parts": ["arm_l", "arm_r", "hand_*"], "color": "#8f6bff", "weight": 0.16, "val_min": 0.55}
+    ],
+    "bolts": [
+      {"name": "veins", "parts": ["arm_l", "arm_r"], "mirror_parts": ["arm_r"], "color": "#c9a8ff", "width_px": 11, "glow_px": 4, "albedo_mix": 0.8,
+       "paths": [
+         [[0.90, 0.03], [0.84, 0.10], [0.93, 0.18], [0.85, 0.26], [0.95, 0.34], [0.88, 0.42]],
+         [[0.64, 0.06], [0.70, 0.14], [0.62, 0.22], [0.69, 0.31], [0.63, 0.40]]
+       ]}
+    ],
+    "detect": [
+      {"name": "gems", "parts": ["torso", "neck"], "hue": [262, 305], "sat_min": 0.40, "val_min": 0.45, "mode": "texel", "gain": 1.7, "grow": 1, "blur": 1}
+    ]
+  },
+  "look": {"albedo_mul": 0.9, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.1, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#8f7bff", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
     "mesh": {"min_vertices": 10}
   }

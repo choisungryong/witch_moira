@@ -257,8 +257,8 @@ def build_hair(R: Rows, c):
         ra = r * lk.get("flat", 0.75)
         pts = make_rings(centers, r, ra, (0, 1, 0), lk.get("S", 8))
         out.append(part_from_rings("hair_lock_%d" % i, pts, centers, (False, True), "hair", hr.get("dens", 1.0)))
-    br = hr.get("braid")
-    if br:
+    braids = ([hr["braid"]] if hr.get("braid") else []) + list(hr.get("braids", []))   # braids: 등 뒤로 늘어지는 땋은 머리 같은 추가분
+    for bi, br in enumerate(braids):
         bp = np.array(br["points"], float)
         bc = np.array([[R.X(x), R.Yw(z), R.Z(y)] for x, y, z in bp])
         brad = np.array(br["radius"], float) * R.sf
@@ -266,7 +266,7 @@ def build_hair(R: Rows, c):
         bcd = np.array([[np.interp(i, range(len(bc)), bc[:, k]) for k in range(3)] for i in idx])
         brd = np.interp(idx, range(len(bc)), brad)
         pts = make_rings(bcd, brd, brd, (0, 1, 0), 10)
-        out.append(part_from_rings("braid", pts, bcd, (True, True), "hair", hr.get("dens", 1.0)))
+        out.append(part_from_rings("braid" if bi == 0 else "braid_%d" % bi, pts, bcd, (True, True), "hair", hr.get("dens", 1.0)))
     return out
 
 
@@ -310,6 +310,7 @@ def finger_parts(side_name, sgn, centers, h, S=6):
             ("ring", 0.009, 5, 0.87, 0.0085, 0.0), ("pinky", 0.026, 12, 0.70, 0.0072, 0.006),
             ("thumb", -0.038, -42, 0.66, 0.0100, 0.040)]
     for k, (nm, yo, ang, ln, rad, back) in enumerate(spec):
+        ln = h.get("finger_len", {}).get(nm, ln)   # 손 클로즈업에서 잰 손가락 길이 비(냉기: hands-r2)로 덮기
         th = math.radians(ang)
         # u 를 Y 축 쪽으로 th 만큼 눕힌 방향(u 는 거의 아래쪽이라 x-z 평면, 눕히는 평면은 u 와 Y)
         d = u * math.cos(th) + yv * math.sin(th)

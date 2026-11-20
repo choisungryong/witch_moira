@@ -10,6 +10,9 @@ parts.json (예는 tools/art/rig_configs/parts_demo.json)
       "kind": "ellipsoid", "at": 0.12, "radius": [0.045, 0.05, 0.025], "offset": [0, 0, 0], "color": "#8a6a3a"},
      {"name": "acc_head", "bone": "head_cr", "source": "hat.glb", "scale": 1.0, "offset": [0, 0, 0.9], "rotate_deg": [0, 0, 0], "color": "#444444"}
   ]}
+  kind: "ellipsoid"(기본) 또는 part_shapes.py의 모양("fur_collar" 털 목도리, "pauldron" 어깨 갑옷, "side_panel" 허리 자락 판, "hem_tube" 판 아랫단 테).
+        모양 변수는 "params"(미터, 키 2.0 m 기준), "smooth": true면 부드러운 음영. 위치는 뼈 머리 + (꼬리-머리)*at + offset*키.
+  --check-clips run,idle,cast: 각 동작 프레임에서 부품 정점이 몸 메시 안으로 들어간 깊이를 잰다(보고서 penetration). 쉬는 자세에서 이미 겹친 만큼은 뺀다.
   at: 뼈 머리에서 꼬리까지의 비율 위치. radius·offset: 키(H) 대비 비율(뼈대 공간, 정면 -Y). source가 있으면 그 메시를 가져와 한 덩어리로 합친다.
 
 묶는 방식: 부품 정점 전부가 그 뼈 하나에 가중치 1(뼈에 단단히 붙음). 몸 위에 맞춰 늘어지는 옷은 이 방식으로 안 된다(달릴 때 밑 옷과 어긋남. 실증 문서 6.2절).
@@ -20,10 +23,90 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+
+import numpy as np
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rig_common as rc  # noqa: E402
+import part_shapes  # noqa: E402
+
+
+def mesh_from_arrays(name, verts, tris, smooth=False):
+    import bpy
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(map(float, v)) for v in verts], [], [tuple(int(i) for i in t) for t in tris])
+    me.update()
+    if smooth:
+        me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
+        me.update()
+    obj = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def penetration_report(arm, body, parts, clip_names, step=3, margin=0.004, max_depth=0.05):
+    """부품 정점이 몸 메시 안(법선 뒤쪽)으로 들어간 깊이(m). 쉬는 자세 값은 따로 적고, 동작 값에서 빼서 판단한다.
+    반환 {부품: {"rest_max", "rest_count", "clips": {동작: {"max", "count_over", "worst_frame"}}}}. count_over는 margin(기본 4mm)보다 깊은 정점 수의 프레임 최대.
+    max_depth(기본 5cm)보다 먼 값은 버린다: 몸 메시는 겹친 관들이라 먼 곳에서 '가장 가까운 면의 법선 뒤쪽' 판정이 거짓으로 나온다(어깨 갑옷이 목 쪽 면에 14cm로 잡힌 것을 확인)."""
+    import bpy
+    from mathutils.bvhtree import BVHTree
+    sc = bpy.context.scene
+    ad = arm.animation_data_create()
+
+    def set_action(act):
+        ad.action = act
+        if hasattr(ad, "action_slot") and len(act.slots):
+            ad.action_slot = act.slots[0]
+
+    def depths(frame):
+        sc.frame_set(frame)
+        dg = bpy.context.evaluated_depsgraph_get()
+        bev = body.evaluated_get(dg)
+        bvh = BVHTree.FromObject(body, dg)
+        res = {}
+        for p in parts:
+            pev = p.evaluated_get(dg)
+            me = pev.to_mesh()
+            mw = pev.matrix_world
+            worst, cnt = 0.0, 0
+            for v in me.vertices:
+                co = mw @ v.co
+                hit = bvh.find_nearest(co)
+                if hit[0] is None:
+                    continue
+                d = hit[3]
+                inside = (co - hit[0]).dot(hit[1]) < 0
+                if inside and d <= max_depth:
+                    worst = max(worst, d)
+                    if d > margin:
+                        cnt += 1
+            pev.to_mesh_clear()
+            res[p.name] = (worst, cnt)
+        return res
+    rep = {p.name: {"clips": {}} for p in parts}
+    first = bpy.data.actions.get(clip_names[0]) if clip_names else None
+    if first is not None:
+        set_action(first)
+    r0 = depths(0)
+    for p in parts:
+        rep[p.name]["rest_max"], rep[p.name]["rest_count"] = r0[p.name]
+    for cn in clip_names:
+        act = bpy.data.actions.get(cn)
+        if act is None:
+            continue
+        set_action(act)
+        last = int(act.frame_range[1])
+        best = {p.name: (0.0, 0, 0) for p in parts}
+        for f in range(0, last + 1, step):
+            r = depths(f)
+            for p in parts:
+                w, c = r[p.name]
+                if w > best[p.name][0]:
+                    best[p.name] = (w, c, f)
+        for p in parts:
+            rep[p.name]["clips"][cn] = {"max": best[p.name][0], "count_over": best[p.name][1], "worst_frame": best[p.name][2]}
+    return rep
 
 
 def make_ellipsoid(name, center, radius, seg=16, rings=8):
@@ -113,6 +196,10 @@ def add_part(spec, arm, rig, H):
                 me.transform(Matrix.Scale(-1, 4, Vector((1, 0, 0))))
                 me.flip_normals()
             me.transform(Matrix.Translation(rig.head[b] + off))
+        elif spec.get("kind") in part_shapes.SHAPES:
+            c = rig.head[b] + (rig.tail[b] - rig.head[b]) * spec.get("at", 0.0) + off
+            v, t = part_shapes.build(spec["kind"], spec.get("params", {}), scale=H / 2.0, mirror=sx < 0)
+            obj = mesh_from_arrays(name + "_" + b, v + np.array([c.x, c.y, c.z]), t, spec.get("smooth", False))
         else:
             c = rig.head[b] + (rig.tail[b] - rig.head[b]) * spec.get("at", 0.0) + off
             rad = [x * H for x in spec.get("radius", (0.04, 0.04, 0.04))]
@@ -143,6 +230,7 @@ def main(argv):
     ap.add_argument("--out-blend")
     ap.add_argument("--report")
     ap.add_argument("--fps", type=int, default=60)
+    ap.add_argument("--check-clips", default="", help="쉼표로 이은 동작 이름: 부품이 몸을 뚫는지 잰다(느림: 부품 정점 x 프레임 수)")
     a = ap.parse_args(argv)
     bpy.ops.wm.open_mainfile(filepath=a.blend)
     arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
@@ -160,6 +248,8 @@ def main(argv):
                       "bones": sorted({vg.name for vg in o.vertex_groups}), "material": o.data.materials[0].name if o.data.materials else None}
                      for o in added],
            "total_triangles": sum(rc.triangle_count(o) for o in meshes), "actions": [x.name for x in bpy.data.actions]}
+    if a.check_clips:
+        rep["penetration"] = penetration_report(arm, body[0], added, [c for c in a.check_clips.split(",") if c])
     if a.out_blend:
         bpy.ops.wm.save_as_mainfile(filepath=a.out_blend, compress=True)
     if a.report:

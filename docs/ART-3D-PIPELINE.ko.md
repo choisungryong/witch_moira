@@ -69,7 +69,13 @@ $PY = "C:/Users/twins/AppData/Local/Programs/Python/Python310/python.exe"; $W = 
 - 설정 JSON(`tools/art/char_configs/<이름>.json`)이 캐릭터마다 다른 모든 것이다: 그림 경로와 시점별 발·정수리 행·가운데 열(+가장자리 `trim`, 이웃 그림이 걸치면 `window`), 몸통 폭 표(손으로 정한 값), 부위 행 구간, 머리카락 locks, 치마 겹, 장화 구간. `rig` 키는 rig_build/rig_clips에 넘기는 설정이다.
 - **새 캐릭터(화염 등)**: ① 그림 세 장의 크기를 `figure_mask`로 확인(배경이 단색 회색이어야 함) ② 설정을 `frost.json`(치마) 또는 `storm.json`(바지)에서 복사해 views 숫자부터 맞춘다 ③ `--stage bake`, `--stage glb`, `--stage views` 순으로 돌려 compare.png를 보며 몸통 표·치마 구간을 고친다 ④ 전체를 돌린다. 걸린 품은 번개 한 번의 실측이 보고서에 있다.
 - 화염·번개 고해상 그림이 오면: `tools/art/char_configs/ember.json`(틀만, 값은 냉기에서 복사)과 `storm.json`의 `views.*.image`를 새 그림 이름으로 바꾸고 위 전체 명령. 화염의 어깨 갑옷은 `rig_parts.py`로 별도 부품.
-- 자체 검사: `python tools/art/test_char_from_sheets.py`(Blender 없이), `RIG_BLENDER_TESTS=1`이면 번개를 끝까지(그림이 있을 때).
+- **A7-1 겉모습(2026-11-20)**: 세 마녀가 게임 크기에서 갈리도록 설정에 아래 칸이 늘었다(`tools/art/char_configs/{frost,storm,ember}.json`, 번개 머리 끝 보라 판은 `storm_tip.json` = `extends`로 storm 위에 덮음).
+  - `parts`: 뼈에 묶는 부품 설정(`tools/art/rig_configs/parts_<마녀>.json`). `rig_parts.py`가 모양(`part_shapes.py`: `fur_collar` 털 목도리, `pauldron` 어깨 갑옷, `side_panel` 허리 자락 판, `hem_tube` 판 아랫단 테)을 만들어 한 뼈에 묶고, 동작마다 몸 메시 안으로 들어간 깊이를 잰다(`--check-clips`, 보고서 `penetration`; 5cm 넘는 값은 버린다: 겹친 관 메시라 거짓으로 나온다).
+  - `paint`: 구운 텍스처 위에 원소 자리를 그리고 같은 UV의 발광 가면 `emission.png`를 만든다(`char_paint.py`). `detect`(색상·채도·밝기로 얼음 선·용암·보석 찾기), `bolts`(번개 핏줄을 굵은 꺾은 선으로 직접 그림, 둘레는 한 바퀴 이어짐), `fill`(부위 전체 옅은 발광), `tips`(머리 끝 물들이기).
+  - `look`: 마녀별 겉모습 값(지시서 A7 2.3 칸) -> `--look-out DIR`이 `look.json`과 `<마녀>_<tag>_emission.png`를 낸다. 발광 가면은 몸 텍스처에만 있다(부품 재질에는 없음).
+  - `texture_tag`: glb 안 이미지 이름을 `<마녀>_<tag>_albedo`로 만든다(위 1항 텍스처 이름 함정: `color` 같은 흔한 이름을 피한다). 부품 이미지는 `<부품 이름>_mat_tex`라 부품 이름 앞에 마녀 이름을 붙인다.
+  - 보조: `--stage measure`(새 그림의 키·행 폭 측정표), `char_render.py game --screen-h 720|1080 --silhouette --emission ... --emission-mode add|only`, `char_board.py`(세 마녀 판의 색·회색조·실루엣·눈가림 판과 명도·원소 면적 값. Blender 평면 조명 기준이라 게임 값이 아니다).
+- 자체 검사: `python tools/art/test_char_from_sheets.py`, `python tools/art/test_part_shapes.py`(모두 Blender 없이), `RIG_BLENDER_TESTS=1`이면 번개를 끝까지(그림이 있을 때).
 
 ## 아는 한계
 

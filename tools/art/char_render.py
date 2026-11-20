@@ -42,13 +42,63 @@ def setup_scene(bg=(0.44, 0.44, 0.45), light="FLAT"):
     return sc, cam
 
 
+def activate_image_nodes():
+    """작업대(Workbench) 렌더용 재질 준비. 큰 텍스처는 활성 이미지 노드로 두고, 8x8 단색 부품 재질(rig_parts)은 흰색으로 나오므로
+    이미지 노드를 지우고 표시색(diffuse_color)에 그 색을 넣는다(TEXTURE 모드는 이미지 없는 재질에 표시색을 쓴다)."""
+    import bpy
+    for m in bpy.data.materials:
+        if not m.use_nodes:
+            continue
+        for n in list(m.node_tree.nodes):
+            if n.type == "TEX_IMAGE" and n.image is not None:
+                if max(n.image.size) <= 16:
+                    px = [(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4) for c in n.image.pixels[:3]]   # 이미지 값(sRGB) -> 선형(표시색 칸은 선형)
+                    m.diffuse_color = (px[0], px[1], px[2], 1.0)
+                    m.node_tree.nodes.remove(n)
+                else:
+                    m.node_tree.nodes.active = n
+
+
+def apply_emission(new_images, mask_path, mode, gain):
+    """몸 텍스처(가장 큰 새 이미지)에 발광 가면을 더하거나(add) 가면만 남긴다(only). Blender 이미지는 아래가 먼저이고 선형 색이다.
+    게임의 발광은 조명 위에 더해지므로 평면 조명 렌더에서는 단순 더하기로 근사한다(게임 값이 아니다)."""
+    import bpy
+    import numpy as np
+    big = [i for i in new_images if min(i.size) >= 256]
+    if not big:
+        return
+    img = big[0]
+    w, h = img.size
+    mimg = bpy.data.images.load(str(mask_path), check_existing=False)   # Blender 안에는 PIL이 없다. 이미지는 아래가 먼저·선형 색으로 읽힌다
+    mimg.scale(w, h)
+    mbuf = np.empty(w * h * 4, np.float32)
+    mimg.pixels.foreach_get(mbuf)
+    mk = mbuf.reshape(h, w, 4)[..., :3] * gain
+    buf = np.empty(w * h * 4, np.float32)
+    img.pixels.foreach_get(buf)
+    px = buf.reshape(h, w, 4)
+    if mode == "add":
+        px[..., :3] = np.clip(px[..., :3] + mk, 0, 1)
+    else:
+        px[..., :3] = np.clip(mk / max(gain, 1e-6), 0, 1)
+    img.pixels.foreach_set(px.reshape(-1))
+    img.update()
+    if mode == "only":   # 부품(단색 재질)은 가면이 없으니 검정
+        import bpy
+        for m in bpy.data.materials:
+            if m.use_nodes and not any(n.type == "TEX_IMAGE" for n in m.node_tree.nodes):
+                m.diffuse_color = (0.0, 0.0, 0.0, 1.0)
+
+
 def load_model(path):
     import bpy
     if str(path).lower().endswith(".blend"):
         bpy.ops.wm.open_mainfile(filepath=str(path))
+        activate_image_nodes()
         return [o for o in bpy.data.objects]
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=str(path))
+    activate_image_nodes()
     return [o for o in bpy.data.objects if o not in before]
 
 
@@ -101,22 +151,45 @@ def main(argv):
     ap.add_argument("--scale", type=float, default=1.32)
     ap.add_argument("--xs", help="game: 모델별 x 위치(쉼표). 기본 모델 순서대로 -1.3, 0, 1.3 ...")
     ap.add_argument("--game-frame", default="idle:0")
+    ap.add_argument("--emission", action="append", help="game: 모델과 같은 순서의 발광 가면 png(없으면 none). --emission-mode와 함께")
+    ap.add_argument("--emission-mode", choices=["off", "add", "only"], default="off",
+                    help="game: add = 몸 텍스처에 가면을 더해(발광 근사) 렌더, only = 가면만(원소 자리 면적 재기용)")
+    ap.add_argument("--emission-gain", type=float, default=0.9)
+    ap.add_argument("--screen-h", type=int, default=1080, help="game: 화면 높이(1080 또는 720). 판 높이 180px가 화면의 몇 분의 몇인지 정한다(720이면 주인공이 2/3 크기)")
+    ap.add_argument("--bg", help="game: 바탕색 r,g,b (0..1). 기본 어두운 바닥 0.03,0.04,0.045")
+    ap.add_argument("--silhouette", action="store_true", help="game: 단색 검정 실루엣을 밝은 바탕에(회색조 판의 실루엣 기준 판)")
     a = ap.parse_args(argv)
     import bpy
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     if a.mode == "game":
         rc.reset_scene(60)
-        sc, cam = setup_scene((0.03, 0.04, 0.045))
+        sc, cam = setup_scene((0.82, 0.82, 0.82) if a.silhouette else (tuple(float(v) for v in a.bg.split(",")) if a.bg else (0.03, 0.04, 0.045)))
+        if a.silhouette:
+            sc.display.shading.color_type = "SINGLE"
+            sc.display.shading.single_color = (0.0, 0.0, 0.0)
         xs = [float(v) for v in a.xs.split(",")] if a.xs else [(-1.3 + 1.3 * i) for i in range(len(a.model))]
-        for path, x in zip(a.model, xs):
-            objs = load_model(path)
-            for o in objs:
-                if o.parent is None:
-                    o.location.x += x
         clip, fr = a.game_frame.split(":")
-        pose_to(clip, int(fr))
-        scale_crop = 24 / a.scale * (180 / 1080)
+        for mi, (path, x) in enumerate(zip(a.model, xs)):
+            acts_before = set(bpy.data.actions)
+            imgs_before = set(bpy.data.images)
+            objs = load_model(path)
+            if a.emission_mode != "off" and a.emission and mi < len(a.emission) and a.emission[mi] != "none":
+                apply_emission([i for i in bpy.data.images if i not in imgs_before], a.emission[mi], a.emission_mode, a.emission_gain)
+            for o in objs:
+                if o.parent is None:   # 화면 가로 방향(카메라 오른쪽 = (0.786, 0.618))으로 x미터 옮겨 한 줄로 세운다
+                    o.location.x += x * 0.786
+                    o.location.y += x * 0.618
+            # 모델마다 동작 이름이 같아(run, run.001 ...) 방금 들어온 동작에서 고른다
+            rig = next((o for o in objs if o.type == "ARMATURE"), None)
+            act = next((x for x in bpy.data.actions if x not in acts_before and (x.name == clip or x.name.startswith(clip + "."))), None)
+            if rig is not None and act is not None:
+                ad = rig.animation_data_create()
+                ad.action = act
+                if hasattr(ad, "action_slot") and len(act.slots):
+                    ad.action_slot = act.slots[0]
+        bpy.context.scene.frame_set(int(fr))
+        scale_crop = 24 / a.scale * (180 / a.screen_h)
         loc = (11, -14, 19)
         from mathutils import Vector
         tgt = Vector((0, 0, 1.0))

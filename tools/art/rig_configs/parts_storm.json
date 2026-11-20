@@ -1,0 +1,11 @@
+{
+  "_about": "번개 마녀 부품(A7-1): 왼쪽 허리(+X)에서 늘어지는 짧은 판(허리 자락)과 아랫단 테. 골반 뼈(pelvis_cr)에 묶고 무릎 위(허리띠 아래 0.44 m, 키 2.0 m 기준)에서 끝난다. 다리 바깥(x 0.2 이상)에 벌려 두어 달리기에서 다리를 뚫지 않는다. 판은 불투명(A3 1.3).",
+  "parts": [
+    {"name": "storm_hip_panel", "bone": "pelvis_cr", "kind": "side_panel", "at": 0.0, "offset": [0, 0, 0],
+     "params": {"top": 0.065, "length": 0.44, "x_top": 0.235, "x_bot": 0.275, "w_top": 0.20, "w_bot": 0.27, "thick": 0.010, "hem_amp": 0.025, "hem_wave": 3, "cy": 0.02, "cols": 9, "rows": 6},
+     "color": "#5c3f9e"},
+    {"name": "storm_hip_rim", "bone": "pelvis_cr", "kind": "hem_tube", "at": 0.0, "offset": [0, 0, 0], "smooth": true,
+     "params": {"top": 0.065, "length": 0.44, "x_top": 0.235, "x_bot": 0.275, "w_bot": 0.27, "hem_amp": 0.025, "hem_wave": 3, "tube": 0.008, "cy": 0.02, "cols": 9},
+     "color": "#b79bff"}
+  ]
+}

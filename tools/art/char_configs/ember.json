@@ -1,359 +1,66 @@
 {
- "_about": "화염 마녀 설정의 틀(아직 돌리지 않음). 고해상 면별 그림(front/side/back/3q, 머리 클로즈업)이 오면 views의 image를 맞추고 행 구간표(torso/neck/head/arm/leg/foot/skirt)를 마스크 렌더를 보며 고친다. 값은 냉기 설정을 출발점으로 복사한 것이라 그대로는 맞지 않는다. 화염의 특징: 비치는 치마 겹(skirt.tiers 늘리고 얇게, 바깥 겹 dens 낮춤)과 어깨 갑옷(별도 부품: tools/art/rig_parts.py 와 rig_configs/parts_demo.json 형식으로 shoulder_cr_l/r 뼈에 묶는다), 어깨 길이 머리(hair.locks 줄이고 braid 없음). 돌릴 명령: docs/ART-3D-PIPELINE.ko.md 2절.",
- "name": "ember",
- "height": 2.02,
- "art_root": "_local/art/3d-sheets/ember/hires/",
- "views": {
-  "front": {
-   "image": "front-r1.png",
-   "feet": 1469,
-   "top": 24,
-   "cx": 511
+  "_about": "화염 마녀 설정(고해상 면별 그림 front/side/back-r1 + 3q-r1, 1024x1536). 값은 냉기 설정을 출발점으로 마스크 측정표(char_from_sheets --stage measure)와 렌더 대조로 고쳤다. 용암 팔은 캐릭터 오른쪽(-X, 그림 왼쪽), 금빛 어깨 갑옷도 그쪽이며 별도 부품(rig_configs/parts_ember.json)이다. 눈이 주황이라 머리 클로즈업 눈 맞춤(청색 규칙)은 쓰지 않는다. 어깨 길이 물결 머리는 hair.locks.",
+  "name": "ember",
+  "height": 2.0,
+  "art_root": "_local/art/3d-sheets/ember/hires/",
+  "views": {
+    "front": {"image": "front-r1.png", "feet": 1471, "top": 22, "cx": 511},
+    "side":  {"image": "side-r1.png",  "feet": 1493, "top": 17, "cx": 506},
+    "back":  {"image": "back-r1.png",  "feet": 1488, "top": 23, "cx": 511},
+    "3q":    {"image": "3q-r1.png", "az": -35, "fit": true, "fit_starts": [-25, -35, -45]}
   },
-  "side": {
-   "image": "side-r1.png",
-   "feet": 1498,
-   "top": 17,
-   "cx": 500
+  "mask": {"threshold": 22},
+  "flatten": {"strength": 0.8, "clusters": 12, "clamp": [0.65, 1.6]},
+  "bake": {"power": 4.0, "texture": 2048, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
+  "torso": {
+    "y0": 236, "y1": 760, "step": 12, "S": 24, "mask_from": 384, "side_from": 384, "hip_from": 500,
+    "key_y": [236, 256, 270, 290, 320, 350, 384],
+    "key_half_width": [36, 54, 92, 110, 108, 102, 96],
+    "key_zf": [480, 462, 440, 420, 400, 386, 384],
+    "key_zb": [548, 556, 565, 572, 574, 574, 576],
+    "hip": {"y": [500, 545, 600, 650, 700, 760], "half_width": [78, 88, 94, 96, 98, 98], "zf": [402, 400, 400, 398, 398, 398], "zb": [560, 562, 564, 566, 566, 566]}
   },
-  "back": {
-   "image": "back-r1.png",
-   "feet": 1498,
-   "top": 26,
-   "cx": 511
-  },
-  "3q": {
-   "image": "3q-r1.png",
-   "az": -35,
-   "fit": true,
-   "fit_starts": [
-    -25,
-    -35,
-    -45
-   ]
-  }
- },
- "mask": {
-  "threshold": 22
- },
- "flatten": {
-  "strength": 0.8,
-  "clusters": 12,
-  "clamp": [
-   0.65,
-   1.6
-  ]
- },
- "bake": {
-  "power": 4.0,
-  "texture": 2048,
-  "arm_occlusion_px": 9,
-  "depth_tol": 0.012,
-  "clamp_z": {
-   "leg": 0.974
-  }
- },
- "torso": {
-  "y0": 236,
-  "y1": 700,
-  "step": 12,
-  "S": 24,
-  "mask_from": 440,
-  "side_from": 410,
-  "hip_from": 500,
-  "key_y": [
-   235,
-   255,
-   270,
-   290,
-   320,
-   350,
-   380,
-   410,
-   440
-  ],
-  "key_half_width": [
-   34,
-   58,
-   104,
-   122,
-   118,
-   112,
-   104,
-   90,
-   72
-  ],
-  "key_zf": [
-   462,
-   448,
-   430,
-   412,
-   398,
-   385,
-   376,
-   384,
-   392
-  ],
-  "key_zb": [
-   540,
-   552,
-   558,
-   562,
-   564,
-   562,
-   558,
-   556,
-   552
-  ],
-  "hip": {
-   "y": [
-    500,
-    545,
-    600,
-    650,
-    700
-   ],
-   "half_width": [
-    82,
-    90,
-    92,
-    92,
-    88
-   ],
-   "zf": [
-    400,
-    400,
-    400,
-    398,
-    396
-   ],
-   "zb": [
-    552,
-    554,
-    556,
-    560,
-    556
-   ]
-  }
- },
- "neck": {
-  "y": [
-   188,
-   210,
-   232,
-   252,
-   266
-  ],
-  "half_width": [
-   27,
-   26,
-   26,
-   30,
-   44
-  ],
-  "half_depth": [
-   30,
-   29,
-   29,
-   34,
-   48
-  ],
-  "zc": 508
- },
- "head": {
-  "top_rows": [
-   26,
-   30,
-   36,
-   44,
-   54
-  ],
-  "y1": 203,
-  "step": 7,
-  "S": 20,
-  "x_pick": 500,
-  "dens": 1.6,
-  "taper": {
-   "from_y": 165,
-   "to_y": 203,
-   "hw_end": 40,
-   "hd_end": 44,
-   "zc_end": 506
-  }
- },
- "hair": {
-  "dens": 1.0,
-  "z_y": [
-   100,
-   170,
-   260,
-   350,
-   470
-  ],
-  "z_c": [
-   575,
-   596,
-   604,
-   604,
-   592
-  ],
-  "locks": [
-   {
-    "x": 468,
-    "y_top": 130,
-    "y_end": 440,
-    "r": 24,
-    "sway": 6,
-    "waves": 1.5,
-    "rings": 14
-   },
-   {
-    "x": 500,
-    "y_top": 120,
-    "y_end": 468,
-    "r": 26,
-    "sway": -5,
-    "waves": 1.5,
-    "rings": 14,
-    "z_off": 6
-   },
-   {
-    "x": 532,
-    "y_top": 120,
-    "y_end": 472,
-    "r": 26,
-    "sway": 5,
-    "waves": 1.5,
-    "rings": 14,
-    "z_off": 6
-   }
-  ]
- },
- "arm": {
-  "y0": 380,
-  "y1": 756,
-  "min_dx": 110,
-  "top_extrap": [
-   300,
-   330,
-   356
-  ],
-  "top_r": [
-   34,
-   34,
-   33
-  ],
-  "depth_y": [
-   300,
-   740
-  ],
-  "depth_z": [
-   560,
-   500
-  ],
-  "hand_rings": 6,
-  "flat": 0.85,
-  "hand": {
-   "trim": 0.035,
-   "palm_len": 0.095,
-   "overlap": 0.012,
-   "wrist_half": 0.026,
-   "palm_half": 0.04,
-   "thick_half": 0.0105
-  }
- },
- "leg": {
-  "y0": 745,
-  "y1": 1398,
-  "step": 14,
-  "min_dx": 20,
-  "extend_up": [
-   700,
-   722
-  ],
-  "depth_k": 0.96
- },
- "foot": {
-  "x0": 380,
-  "x1": 556,
-  "step": 12,
-  "y0": 1385,
-  "y1": 1500,
-  "width_x": [
-   380,
-   420,
-   470,
-   520,
-   552
-  ],
-  "width": [
-   16,
-   26,
-   29,
-   25,
-   22
-  ],
-  "sole_image": "boots-r1.png",
-  "sole_box": [
-   1130,
-   0,
-   1536,
-   1024
-  ],
-  "wmax": 29
- },
- "skirt": {
-  "S": 28,
-  "thick": 4.0,
-  "dens": 1.0,
-  "dens_in": 0.25,
-  "tiers": [
-   {
-    "y0": 508,
-    "y1": 672,
-    "rings": 9,
-    "ramp_y": [
-     508,
-     565
-    ],
-    "top_hw": 86,
-    "top_hd": 76,
-    "k_y": [
-     508,
-     672
-    ],
-    "k": [
-     1.0,
-     1.0
+  "neck": {"y": [186, 205, 225, 245, 262], "half_width": [29, 28, 28, 33, 50], "half_depth": [31, 31, 31, 36, 52], "zc": 515},
+  "head": {"top_rows": [26, 30, 36, 44, 54], "y1": 210, "step": 7, "S": 20, "x_pick": 510, "dens": 1.6,
+           "taper": {"from_y": 168, "to_y": 210, "hw_end": 40, "hd_end": 44, "zc_end": 515}},
+  "hair": {
+    "dens": 1.0,
+    "z_y": [100, 170, 240], "z_c": [560, 588, 590],
+    "locks": [
+      {"x": 418, "y_top": 150, "y_end": 236, "r": 24, "sway": 5, "waves": 2.0, "rings": 10, "z_off": -50},
+      {"x": 604, "y_top": 150, "y_end": 236, "r": 24, "sway": -5, "waves": 2.0, "rings": 10, "z_off": -50},
+      {"x": 468, "y_top": 140, "y_end": 242, "r": 28, "sway": 6, "waves": 2.0, "rings": 10, "z_off": 10},
+      {"x": 512, "y_top": 130, "y_end": 246, "r": 30, "sway": -5, "waves": 2.0, "rings": 10, "z_off": 16},
+      {"x": 556, "y_top": 140, "y_end": 242, "r": 28, "sway": 6, "waves": 2.0, "rings": 10, "z_off": 10}
     ]
-   },
-   {
-    "y0": 590,
-    "y1": 738,
-    "rings": 8,
-    "k_y": [
-     590,
-     672,
-     738
-    ],
-    "k": [
-     0.9,
-     0.94,
-     1.0
+  },
+  "arm": {"y0": 392, "y1": 805, "min_dx": 110, "top_extrap": [296, 330, 362], "top_r": [34, 34, 33],
+          "depth_y": [300, 800], "depth_z": [540, 500], "hand_rings": 6, "flat": 0.85,
+          "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105}},
+  "leg": {"y0": 835, "y1": 1400, "step": 14, "min_dx": 20, "extend_up": [700, 740, 790], "depth_k": 0.96},
+  "foot": {"x0": 374, "x1": 560, "step": 12, "y0": 1385, "y1": 1500, "width_x": [374, 410, 460, 510, 556], "width": [14, 24, 27, 24, 20],
+           "sole_image": "boots-r1.png", "sole_box": [1130, 0, 1536, 1024], "wmax": 27},
+  "skirt": {
+    "S": 28, "thick": 4.0, "dens": 1.0, "dens_in": 0.25,
+    "tiers": [
+      {"y0": 505, "y1": 700, "rings": 9, "ramp_y": [505, 565], "top_hw": 86, "top_hd": 76, "k_y": [505, 700], "k": [1.0, 1.0]},
+      {"y0": 600, "y1": 790, "rings": 9, "k_y": [600, 700, 790], "k": [0.92, 0.96, 1.0]}
     ]
-   }
-  ]
- },
- "rig": {
-  "mesh": {
-   "min_vertices": 10
+  },
+  "texture_tag": "a7",
+  "parts": "tools/art/rig_configs/parts_ember.json",
+  "paint": {
+    "fill": [
+      {"name": "lava_arm_glow", "parts": ["arm_r", "hand_r_*"], "color": "#ff7a1a", "weight": 0.30}
+    ],
+    "detect": [
+      {"name": "lava", "parts": ["arm_r", "hand_r_*"], "hue": [8, 45], "sat_min": 0.50, "val_min": 0.62, "mode": "texel", "gain": 1.5, "grow": 3, "blur": 1, "boost_albedo": 0.5},
+      {"name": "gems", "parts": ["torso", "neck", "skirt*", "arm_l", "hand_l_*"], "hue": [8, 34], "sat_min": 0.75, "val_min": 0.80, "mode": "texel", "gain": 1.4, "grow": 1, "blur": 1},
+      {"name": "hair_tips", "parts": ["head", "hair_lock_*"], "hue": [8, 40], "sat_min": 0.60, "val_min": 0.62, "mode": "texel", "gain": 1.25, "grow": 1, "blur": 2}
+    ]
+  },
+  "look": {"albedo_mul": 1.0, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#ff943d", "light_key": 1.0, "light_fill": 0.5},
+  "rig": {
+    "mesh": {"min_vertices": 10}
   }
- },
- "_todo": [
-  "views.*.feet/top/cx 를 새 그림에서 다시 잰다",
-  "hair.braid 제거, locks 를 어깨 길이로",
-  "skirt.tiers 비치는 겹 추가, 어깨 갑옷은 rig_parts 부품",
-  "foot 장화(무릎 길이)로 leg.y1/foot 구간 수정",
-  "boots 클로즈업이 오면 foot.sole_image/sole_box 맞춤"
- ]
 }

@@ -28,17 +28,20 @@
     "dens": 1.0,
     "z_y": [100, 170, 260, 350, 470], "z_c": [575, 596, 604, 604, 592],
     "locks": [
-      {"x": 468, "y_top": 130, "y_end": 440, "r": 24, "sway": 6, "waves": 1.5, "rings": 14},
-      {"x": 500, "y_top": 120, "y_end": 468, "r": 26, "sway": -5, "waves": 1.5, "rings": 14, "z_off": 6},
-      {"x": 532, "y_top": 120, "y_end": 472, "r": 26, "sway": 5, "waves": 1.5, "rings": 14, "z_off": 6},
-      {"x": 562, "y_top": 130, "y_end": 450, "r": 24, "sway": -6, "waves": 1.5, "rings": 14}
+      {"x": 468, "y_top": 130, "y_end": 380, "r": 24, "sway": 6, "waves": 1.5, "rings": 14},
+      {"x": 562, "y_top": 130, "y_end": 380, "r": 24, "sway": -6, "waves": 1.5, "rings": 14}
     ],
     "braid": {"points": [[445, 150, 480], [440, 200, 478], [432, 250, 455], [424, 300, 403], [416, 340, 386], [410, 372, 384]],
-              "radius": [22, 21, 19, 17, 14, 11], "rings": 14}
+              "radius": [22, 21, 19, 17, 14, 11], "rings": 14},
+    "braids": [
+      {"points": [[511, 185, 572], [511, 240, 588], [511, 300, 600], [511, 380, 606], [511, 440, 604], [511, 478, 600]],
+       "radius": [30, 33, 34, 32, 26, 16], "rings": 16}
+    ]
   },
   "arm": {"y0": 380, "y1": 756, "min_dx": 110, "top_extrap": [300, 330, 356], "top_r": [34, 34, 33],
           "depth_y": [300, 740], "depth_z": [560, 500], "hand_rings": 6, "flat": 0.85,
-          "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105}},
+          "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105,
+                   "finger_len": {"index": 0.80, "middle": 0.88, "ring": 0.82, "pinky": 0.64, "thumb": 0.62}}},
   "leg": {"y0": 745, "y1": 1398, "step": 14, "min_dx": 20, "extend_up": [700, 722], "depth_k": 0.96},
   "foot": {"x0": 380, "x1": 556, "step": 12, "y0": 1385, "y1": 1500, "width_x": [380, 420, 470, 520, 552], "width": [16, 26, 29, 25, 22],
            "sole_image": "boots-r1.png", "sole_box": [1130, 0, 1536, 1024], "wmax": 29},
@@ -49,6 +52,16 @@
       {"y0": 590, "y1": 738, "rings": 8, "k_y": [590, 672, 738], "k": [0.9, 0.94, 1.0]}
     ]
   },
+  "texture_tag": "a7",
+  "parts": "tools/art/rig_configs/parts_frost.json",
+  "paint": {
+    "detect": [
+      {"name": "ice_base", "parts": ["arm_l", "hand_l_*"], "hue": [185, 225], "sat_min": 0.10, "val_min": 0.45, "mode": "texel", "gain": 0.55, "grow": 0, "blur": 1},
+      {"name": "ice_lines", "parts": ["arm_l", "hand_l_*"], "hue": [180, 215], "sat_min": 0.38, "val_min": 0.50, "mode": "texel", "gain": 1.7, "grow": 1, "blur": 1},
+      {"name": "gems", "parts": ["torso", "neck", "skirt*", "arm_r", "hand_r_*"], "hue": [178, 215], "sat_min": 0.50, "val_min": 0.55, "mode": "texel", "gain": 1.7, "grow": 1, "blur": 1}
+    ]
+  },
+  "look": {"albedo_mul": 0.85, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#9ce7ef", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
     "mesh": {"min_vertices": 10}
   }

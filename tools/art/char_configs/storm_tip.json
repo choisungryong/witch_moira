@@ -1,0 +1,17 @@
+{
+ "_about": "번개 마녀 머리 끝 보라 판(사용자 질문 9절 1의 B안). storm.json 위에 hair_lock(뻗친 뾰족한 관) 끝만 보라로 물들이고 약하게 빛낸다. 바탕 은백은 그대로.",
+ "extends": "storm.json",
+ "name": "storm",
+ "paint": {
+  "tips": {
+   "parts": [
+    "hair_lock_*"
+   ],
+   "from_v": 0.4,
+   "color": "#9b6cff",
+   "mix": 0.8,
+   "glow": 0.7
+  }
+ },
+ "texture_tag": "a7tip"
+}
