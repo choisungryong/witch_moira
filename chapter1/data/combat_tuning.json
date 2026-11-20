@@ -131,5 +131,43 @@
                   "resonance": {"axis_points": 2, "partner_points": 1, "axis_cap_bonus": 1, "unlock_points": 2, "link_scale_bps": 30000},
                   "evolve_partner_bonus_bps": 0}
     }
+  },
+  "elites": {
+    "enabled": false,
+    "balance_status": "가설. 균형 뒤 확정 (D13 5.1·5.6, D2 2.3). 켜기 전에 sim_power --elite-hp로 처치 시간 4~8초를 맞춘다",
+    "per_zone": [2, 2, 2],
+    "at_seal_bps": [3000, 6500],
+    "kinds": [{"walker": 100}, {"walker": 60, "charger": 25, "ranged": 15}, {"walker": 45, "charger": 30, "ranged": 25}],
+    "hp": [190, 310, 520],
+    "damage_bps": 15000, "speed_bps": 11000, "radius_bps": 13500,
+    "xp": [8, 10, 12],
+    "affixes_per_zone": [0, 0, 0], "affixes": {}
+  },
+  "extras": {
+    "enabled": false,
+    "balance_status": "가설. 균형 뒤 확정 (D13 5.2·5.6). 사당 효과 크기·상자 내용·끈 길이는 N1 뒤 정한다",
+    "guarded": {
+      "sites": [
+        {"id": "guard.z0", "zone": 0, "at_bps": 3400, "kind": "shrine", "pool": "seung1",
+         "points": [[12, 10], [-12, 10], [12, -12], [-12, -13]]},
+        {"id": "guard.z1", "zone": 1, "at_bps": 0, "kind": "chest", "pool": "",
+         "points": [[10, 12], [-10, -12], [12, -10], [-12, 12]]}
+      ],
+      "distance_m": [12.0, 16.0], "leash_m": 6.0, "aggro_m": 4.0, "alert_ticks": 24, "return_far_m": 12.0, "return_after_ticks": 360,
+      "tiers": [{"id": "plain", "weight": 100, "elite_hp_bps": 10000, "chest_class": "guarded_chest"}],
+      "potions": 1
+    },
+    "shrines": {
+      "touch_radius_m": 1.6, "stay_ticks": 1800, "guarded_ticks_bps": 15000,
+      "kinds": {
+        "luck":    {"ticks": 1800, "drop_bps": 20000, "quality_bps": {"rare": 20000, "legendary": 15000, "unique": 15000}},
+        "power":   {"ticks": 1800, "stats": {"cooldown_bps": 4300}},
+        "swift":   {"ticks": 1800, "stats": {"move_speed_bps": 2500, "dash_cooldown_bps": 4000}},
+        "harvest": {"ticks": 2400, "stats": {"soul_gain_bps": 5000, "pickup_radius_cm": 300}},
+        "ward":    {"ticks": 1800, "stats": {"damage_reduction_bps": 3000}, "heal_bps": 2500}
+      },
+      "pool": {"seung1": ["luck", "power", "swift"], "seung2": ["luck", "power", "harvest", "swift"], "jeon_a": ["ward", "power"]}
+    },
+    "chests": {"open_radius_m": 1.6, "orb_xp": 5, "class": "chest"}
   }
 }

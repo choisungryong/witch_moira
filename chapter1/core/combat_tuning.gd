@@ -18,9 +18,17 @@ const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks"
 const OPENING_STEP_KEYS := ["id","max_ticks","kills","amount","interval_ticks","alive_cap","ring_m","heading","speed_bps","acquire_m","orb_pull_m","crest","mix","first_visit_only"]
 const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
-## "grace" (boon cadence, tools and grades, D13 4.3/4.11) is checked in full; "elites" and "extras" (D13 W4/W5) are only
-## required to be an object with a bool "enabled" until their own steps tighten them.
+## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
+## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
 const OPTIONAL_ROOT := ["rhythm","grace","elites","extras"]
+const ELITES_KEYS := ["enabled","balance_status","per_zone","at_seal_bps","kinds","hp","damage_bps","speed_bps","radius_bps","xp","affixes_per_zone","affixes"]
+const EXTRAS_KEYS := ["enabled","balance_status","guarded","shrines","chests"]
+const EXTRAS_LATER := ["unguarded","rituals","grade"]
+const GUARDED_KEYS := ["sites","distance_m","leash_m","aggro_m","alert_ticks","return_far_m","return_after_ticks","tiers","potions"]
+const SITE_KEYS := ["id","zone","at_bps","kind","pool","points"]
+## Gear stats a shrine may add for a while (never max_hp_raw: the body is not rebuilt by a timed buff).
+const SHRINE_STATS := ["damage_bps","cooldown_bps","damage_reduction_bps","pickup_radius_cm","move_speed_bps","dash_cooldown_bps","soul_gain_bps"]
+const SHRINE_QUALITIES := ["rare","legendary","unique"]
 const GRACE_KEYS := ["enabled","balance_status","evolve_min_level","final_offer","min_gap_ticks","tools","survival_from_level","pact_from_level","link_slots","grades"]
 const GRACE_PROTECT_WORDS := ["evolve_keystone","evolve","passive","axis","survival"]
 const GRACE_BANISH_KINDS := ["unlock","axis","rank","survival","link","pact"]
@@ -94,8 +102,8 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 		# The per-beat alive_cap is bounded by the document's own alive_cap, so that one has to be sound first.
 		issues.append_array(_rhythm_issues(v.rhythm,int(v.alive_cap) if integer(v.alive_cap,1,100000) else 1))
 	if v.has("grace"): issues.append_array(_grace_issues(v.grace))
-	for name in ["elites","extras"]:
-		if v.has(name) and not (v[name] is Dictionary and v[name].get("enabled") is bool): issues.append(name+" shape")
+	if v.has("elites"): issues.append_array(_elites_issues(v.elites))
+	if v.has("extras"): issues.append_array(_extras_issues(v.extras))
 	return issues
 
 static func _bps(v: Variant, high: int = 10000) -> bool:
@@ -154,6 +162,153 @@ static func _grade_issues(d: Variant) -> Array[String]:
 		var q: Variant = j.resonance
 		if not q is Dictionary or not GrowthCatalog.keys_match(q,["axis_points","partner_points","axis_cap_bonus","unlock_points","link_scale_bps"]) or not integer(q.axis_points,0,4) or not integer(q.partner_points,0,2) or not integer(q.axis_cap_bonus,0,2) or not integer(q.unlock_points,0,4) or not integer(q.link_scale_bps,10000,100000): issues.append("grace grades jackpot resonance")
 		if not integer(j.evolve_partner_bonus_bps,0,100000): issues.append("grace grades jackpot evolve_partner_bonus_bps")
+	return issues
+
+## D13 5.1 (D2 5.1) ranges. Every problem is one short path; an empty list means the block is usable. The affixes of D2 E2 are not
+## built yet: the block must say none (all zero, empty), so a document cannot ask for what the core does not do.
+static func _elites_issues(b: Variant) -> Array[String]:
+	if not b is Dictionary or not GrowthCatalog.keys_match(b,ELITES_KEYS): return ["elites keys"]
+	var issues: Array[String] = []
+	if not b.enabled is bool: issues.append("elites enabled")
+	if not b.balance_status is String: issues.append("elites balance_status")
+	if not int_array(b.per_zone,3,0,4): issues.append("elites per_zone")
+	var rises: bool = b.at_seal_bps is Array and b.at_seal_bps.size() >= 1 and b.at_seal_bps.size() <= 4
+	if rises:
+		var previous := 0
+		for amount in b.at_seal_bps:
+			if not integer(amount,1,9999) or int(amount) <= previous: rises = false;break
+			previous = int(amount)
+	if not rises: issues.append("elites at_seal_bps")
+	elif int_array(b.per_zone,3,0,4):
+		for count in b.per_zone:
+			if int(count) > b.at_seal_bps.size(): issues.append("elites per_zone above the at_seal_bps entries");break
+	if not b.kinds is Array or b.kinds.size() != 3: issues.append("elites kinds")
+	else:
+		for weights in b.kinds:
+			var ok: bool = weights is Dictionary and not weights.is_empty()
+			var total := 0
+			if ok:
+				for kind in weights:
+					if not kind in KINDS or not integer(weights[kind],0,100): ok = false;break
+					total += int(weights[kind])
+			if not ok or total < 1: issues.append("elites kinds weights");break
+	if not int_array(b.hp,3,1,5000): issues.append("elites hp")
+	for key in ["damage_bps","speed_bps","radius_bps"]:
+		if not integer(b[key],5000,30000): issues.append("elites "+key)
+	if not int_array(b.xp,3,0,1000): issues.append("elites xp")
+	if not int_array(b.affixes_per_zone,3,0,0) or not b.affixes is Dictionary or not b.affixes.is_empty(): issues.append("elites affixes (not built: all zero and empty)")
+	return issues
+
+## D13 5.2 ranges (guarded sites, shrines, chests). The keys of W5-b/c may be present as plain objects.
+static func _extras_issues(b: Variant) -> Array[String]:
+	if not b is Dictionary: return ["extras keys"]
+	var base_keys: Dictionary = b.duplicate()
+	for later in EXTRAS_LATER:
+		if b.has(later):
+			if not b[later] is Dictionary: return ["extras "+later]
+			base_keys.erase(later)
+	if not GrowthCatalog.keys_match(base_keys,EXTRAS_KEYS): return ["extras keys"]
+	var issues: Array[String] = []
+	if not b.enabled is bool: issues.append("extras enabled")
+	if not b.balance_status is String: issues.append("extras balance_status")
+	var kinds: Variant = null
+	var pools: Variant = null
+	var s: Variant = b.shrines
+	if not s is Dictionary or not GrowthCatalog.keys_match(s,["touch_radius_m","stay_ticks","guarded_ticks_bps","kinds","pool"]): issues.append("extras shrines keys")
+	else:
+		if not number(s.touch_radius_m,.5,4.0): issues.append("extras shrines touch_radius_m")
+		if not integer(s.stay_ticks,60,7200): issues.append("extras shrines stay_ticks")
+		if not integer(s.guarded_ticks_bps,5000,30000): issues.append("extras shrines guarded_ticks_bps")
+		issues.append_array(_shrine_kind_issues(s.kinds))
+		if s.kinds is Dictionary and not s.kinds.is_empty(): kinds = s.kinds
+		if not s.pool is Dictionary or s.pool.is_empty(): issues.append("extras shrines pool")
+		else:
+			pools = s.pool
+			for key in s.pool:
+				var list: Variant = s.pool[key]
+				var ok: bool = list is Array and list.size() >= 1 and list.size() <= 8
+				if ok:
+					for kind in list:
+						if not kind is String or kinds == null or not kinds.has(kind): ok = false;break
+				if not ok: issues.append("extras shrines pool "+str(key))
+	issues.append_array(_guarded_issues(b.guarded,pools))
+	var c: Variant = b.chests
+	if not c is Dictionary or not GrowthCatalog.keys_match(c,["open_radius_m","orb_xp","class"]) or not number(c.open_radius_m,.5,4.0) or not integer(c.orb_xp,0,100) or not c["class"] is String or String(c["class"]).is_empty(): issues.append("extras chests")
+	return issues
+
+static func _shrine_kind_issues(kinds: Variant) -> Array[String]:
+	if not kinds is Dictionary or kinds.is_empty() or kinds.size() > 8: return ["extras shrines kinds"]
+	var issues: Array[String] = []
+	for id_ in kinds:
+		var k: Variant = kinds[id_]
+		var tag := "extras shrines kind "+str(id_)+" "
+		if not id_ is String or String(id_).is_empty() or not k is Dictionary or not integer(k.get("ticks"),60,7200): issues.append(tag+"ticks");continue
+		var allowed := ["ticks","stats","drop_bps","quality_bps","heal_bps"]
+		var effects := 0
+		for key in k:
+			if not key in allowed: issues.append(tag+"key "+str(key))
+		if k.has("stats"):
+			effects += 1
+			if not k.stats is Dictionary or k.stats.is_empty(): issues.append(tag+"stats")
+			else:
+				for stat in k.stats:
+					if not stat in SHRINE_STATS or not integer(k.stats[stat],1,10000): issues.append(tag+"stat "+str(stat))
+		if k.has("drop_bps"):
+			effects += 1
+			if not integer(k.drop_bps,10000,100000): issues.append(tag+"drop_bps")
+		if k.has("quality_bps"):
+			var q: Variant = k.quality_bps
+			if not q is Dictionary or q.is_empty(): issues.append(tag+"quality_bps")
+			else:
+				for quality in q:
+					if not quality in SHRINE_QUALITIES or not integer(q[quality],10000,100000): issues.append(tag+"quality_bps "+str(quality))
+		if k.has("heal_bps"):
+			effects += 1
+			if not integer(k.heal_bps,1,10000): issues.append(tag+"heal_bps")
+		if effects == 0: issues.append(tag+"has no effect")
+	return issues
+
+static func _guarded_issues(g: Variant, pools: Variant) -> Array[String]:
+	if not g is Dictionary or not GrowthCatalog.keys_match(g,GUARDED_KEYS): return ["extras guarded keys"]
+	var issues: Array[String] = []
+	if not g.sites is Array or g.sites.size() < 1 or g.sites.size() > 4: issues.append("extras guarded sites");return issues
+	var seen := {}
+	var previous_zone := 0
+	var previous_at := -1
+	for index in g.sites.size():
+		var site: Variant = g.sites[index]
+		var tag := "extras guarded site %d " % index
+		if not site is Dictionary or not GrowthCatalog.keys_match(site,SITE_KEYS): issues.append(tag+"keys");continue
+		if not site.id is String or String(site.id).is_empty() or seen.has(site.id): issues.append(tag+"id")
+		else: seen[site.id] = true
+		if not integer(site.zone,0,1) or not integer(site.at_bps,0,9999): issues.append(tag+"zone/at_bps");continue
+		# The core walks the list once: zone order, then the progress at which a site is put down.
+		if int(site.zone) < previous_zone or (int(site.zone) == previous_zone and int(site.at_bps) <= previous_at): issues.append(tag+"order")
+		previous_zone = int(site.zone);previous_at = int(site.at_bps)
+		if not site.kind in ["shrine","chest"]: issues.append(tag+"kind")
+		elif site.kind == "shrine" and (not site.pool is String or pools == null or not pools.has(site.pool)): issues.append(tag+"pool")
+		elif site.kind == "chest" and site.pool != "": issues.append(tag+"pool (a chest has none)")
+		var ok_points: bool = site.points is Array and site.points.size() >= 1 and site.points.size() <= 8
+		if ok_points:
+			for point in site.points:
+				if not number_array(point,2,-17.0,17.0): ok_points = false;break
+		if not ok_points: issues.append(tag+"points (1..8 of [x,y] within 17 m of the zone centre)")
+	if not number_array(g.distance_m,2,4.0,18.0) or float(g.distance_m[0]) > float(g.distance_m[1]): issues.append("extras guarded distance_m")
+	if not number(g.leash_m,2.0,12.0): issues.append("extras guarded leash_m")
+	if not number(g.aggro_m,1.0,8.0): issues.append("extras guarded aggro_m")
+	elif number(g.leash_m,2.0,12.0) and float(g.aggro_m) > float(g.leash_m): issues.append("extras guarded aggro_m above leash_m")
+	if not integer(g.alert_ticks,0,120): issues.append("extras guarded alert_ticks")
+	if not number(g.return_far_m,6.0,30.0): issues.append("extras guarded return_far_m")
+	if not integer(g.return_after_ticks,60,1800): issues.append("extras guarded return_after_ticks")
+	if not integer(g.potions,0,3): issues.append("extras guarded potions")
+	if not g.tiers is Array or g.tiers.size() < 1 or g.tiers.size() > 3: issues.append("extras guarded tiers")
+	else:
+		var ids := {}
+		for tier in g.tiers:
+			if not tier is Dictionary or not GrowthCatalog.keys_match(tier,["id","weight","elite_hp_bps","chest_class"]) or not tier.id is String or String(tier.id).is_empty() or ids.has(tier.id) \
+				or not integer(tier.weight,1,10000) or not integer(tier.elite_hp_bps,5000,40000) or not tier.chest_class is String or String(tier.chest_class).is_empty():
+				issues.append("extras guarded tier");break
+			ids[tier.id] = true
 	return issues
 
 static func _mix_valid(mix: Variant) -> bool:

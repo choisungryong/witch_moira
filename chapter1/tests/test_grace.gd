@@ -156,11 +156,15 @@ func part_a() -> void:
 	var rhythm_only := shipped_tuning()
 	rhythm_only.erase("rhythm")
 	check(issues(rhythm_only).is_empty(), "A a document without rhythm is still valid")
-	# elites / extras: only the shape (an object with a bool enabled) until W4/W5 tighten it.
+	# elites / extras: the blocks W4-a / W5-a check in full (every range is in test_elites.gd); here only that they are optional keys
+	# of the document, that a bare {"enabled": false} no longer passes for them and that the wrong shapes are rejected.
 	for name in ["elites", "extras"]:
 		var t := shipped_tuning()
+		check(issues(t).is_empty() and t[name].enabled == false, "A the shipped %s block is valid and OFF" % name)
+		t.erase(name)
+		check(issues(t).is_empty(), "A a document without %s is valid" % name)
 		t[name] = {"enabled": false}
-		check(issues(t).is_empty(), "A %s with enabled false is accepted" % name)
+		check(not issues(t).is_empty(), "A %s with only enabled is rejected (the block has its full shape now)" % name)
 		t[name] = {"enabled": 1}
 		check(not issues(t).is_empty(), "A %s with a non-bool enabled is rejected" % name)
 		t[name] = []

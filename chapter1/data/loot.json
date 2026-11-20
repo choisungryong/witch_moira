@@ -103,6 +103,13 @@
     "carrier": {"picks": 2, "no_drop": 0, "drop": 10000, "level_bonus": 2, "quality": {"common": 0, "magic": 7700, "rare": 2000, "legendary": 220, "unique": 80}, "slot_weights": {"weapon": 14, "head": 14, "body": 14, "hands": 14, "feet": 14, "charm": 6, "ring": 10}},
     "champion": {"picks": 3, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8970, "rare": 800, "legendary": 150, "unique": 80}},
     "boss": {"picks": 5, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}},
-    "boss_first_kill": {"picks": 1, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["unique_primary"], "quality": {"common": 0, "magic": 0, "rare": 0, "legendary": 0, "unique": 10000}}
+    "boss_first_kill": {"picks": 1, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["unique_primary"], "quality": {"common": 0, "magic": 0, "rare": 0, "legendary": 0, "unique": 10000}},
+    "chest": {"picks": 1, "no_drop": 0, "drop": 10000, "level_bonus": 2, "quality": {"common": 0, "magic": 8500, "rare": 1200, "legendary": 200, "unique": 100}, "slot_weights": {"weapon": 14, "head": 14, "body": 14, "hands": 14, "feet": 14, "charm": 6, "ring": 10}},
+    "guarded_chest": {"picks": 2, "no_drop": 0, "drop": 10000, "level_bonus": 2, "quality": {"common": 0, "magic": 7300, "rare": 2400, "legendary": 200, "unique": 100}, "slot_weights": {"weapon": 14, "head": 14, "body": 14, "hands": 14, "feet": 14, "charm": 6, "ring": 10}},
+    "ritual_chest": {"picks": 2, "no_drop": 0, "drop": 10000, "level_bonus": 2, "quality": {"common": 0, "magic": 7000, "rare": 2600, "legendary": 250, "unique": 150}, "slot_weights": {"weapon": 14, "head": 14, "body": 14, "hands": 14, "feet": 14, "charm": 6, "ring": 10}},
+    "boss_g1": {"picks": 3, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}},
+    "boss_g2": {"picks": 4, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}},
+    "boss_g3": {"picks": 5, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare", "rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}},
+    "boss_g4": {"picks": 6, "no_drop": 0, "drop": 10000, "level_bonus": 3, "guaranteed": ["rare", "rare"], "quality": {"common": 0, "magic": 8550, "rare": 800, "legendary": 350, "unique": 300}}
   }
 }

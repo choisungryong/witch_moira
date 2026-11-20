@@ -208,6 +208,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		_install_tuning(_shared_tuning)
 	if not _prepare_spells():return false
 	if not _prepare_descent():return false
+	if not _prepare_elites():return false
 	_activate_build()
 	_world_uniques36.clear()
 	zone=0;zone_kills=0;potions=int(tuning.potion.start);_next_potion=0;_champion_id=-1;_boss_phase=0;_next_ward=0
@@ -220,10 +221,12 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	_opening_on=_rhythm_on and tuning.rhythm.has("opening") and bool(tuning.rhythm.opening.enabled)
 	_op_active=false;_op_done=false;_op_list.clear();_op_step=-1;_op_step_start=0;_op_step_kills=0;_op_step_spawned=0;_op_crest_done=false
 	_op_prev_angle=0.0;_op_heading=Vector2.ZERO;_op_total_kills=0;_spawn_tags={}
+	_elites_reset(seed_)
 	for i in 3:seals.append({"kills":0,"champion_spawned":false,"cleared":false})
 	for def in RITUALS:rituals[def.id]={"state":"ready","progress":0,"started_tick":-1,"completed_tick":-1}
 	if not super.start(seed_,primary):return false
 	_descent_reset()
+	_elites_metrics()
 	_mark_owners.clear()
 	_last_ward_burst=-100000
 	for id_ in SKILL_IDS:
@@ -576,7 +579,8 @@ func _enemy_definition(e: Dictionary) -> Dictionary:
 
 ## normal | elite | champion | boss: the final boss is the zone 2 guardian (chapter_boss), the other seal guardians carry a title_key.
 func _enemy_role(e: Dictionary) -> String:
-	if not e.elite:return "normal"
+	# A strong body made by _spawn_elite (grade "elite", D13 W4-a) is not a seal guardian: e.elite stays false for it.
+	if not e.elite:return "elite" if e.get("grade","")=="elite" else "normal"
 	if e.get("chapter_boss",false):return "boss"
 	return "champion" if e.has("title_key") else "elite"
 
@@ -873,6 +877,7 @@ func run_progress() -> Dictionary:
 	return {"beat_id":beat_id,"zone":zone,"zone_bps":_zone_bps(),"phase":phase,"markers":markers}
 
 func _step_enemies() -> void:
+	if _extras_on:_guard_step()
 	# ward_gap_ticks: a floor strike already telegraphed is never moved (the player has read it). Instead the
 	# final boss does not begin a wind-up whose end would fall within the gap of a pending burst; it waits
 	# (a one-tick recovery, repeated) until the wind-up would end clear of every pending burst.
@@ -924,6 +929,7 @@ func _potion_roll() -> bool:
 
 func _on_elite_defeated(e: Dictionary) -> void:
 	if _build_active:_progress_guardian()
+	if _elites_on:_elites_zone_left(zone)
 	seals[zone].cleared=true;_record("seal_cleared");_elite_killed=false;_champion_id=-1
 	if tuning.orbs.vacuum_on_seal:_vacuum_orbs()
 	if zone==2:
@@ -934,6 +940,7 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	else:
 		for i in int(tuning.potion.seal_drops):_drop_potion(e.position+Vector2(.4*i,0))
 		zone+=1;zone_kills=0;_zone_entered=false
+		if _extras_on:_sites_zone_left(zone-1)
 		if _rhythm_on:_rest_until=tick+int(tuning.rhythm.gate_rest_ticks)
 		_emit("gate_opened",ZONES[zone]-Vector2(24,0),{"zone":zone})
 		_record("gate_opened")
@@ -979,6 +986,15 @@ func _maybe_drop_item(e: Dictionary) -> void:
 			if notable:marked=true
 			_publish_item(item,e.position,true,notable,"first_kill" if index<first_kill_drops else ("boss" if boss else "champion"))
 		return
+	# A strong body (grade "elite", D13 W4-a): the elite table, on the floor like any ordinary drop; a guard opens its site after it.
+	if e.get("grade","")=="elite":
+		_elite_died(e)
+		for item in loot.roll_class(_loot_rng,"elite",level,primary_,_luck_mods()):
+			if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
+				metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
+			_publish_item(item,e.position,false,false,"elite")
+		if e.has("guard_uid"):_guard_unlock(e)
+		return
 	# Early guaranteed pieces keep the first minute from being empty-handed.
 	var forced_slots := ["weapon","body","hands","feet"]
 	var thresholds := [6,35,90,160]
@@ -987,7 +1003,7 @@ func _maybe_drop_item(e: Dictionary) -> void:
 			_publish_item(loot.roll_item(_loot_rng,level,"magic",forced_slots[_guaranteed_drops]),e.position,false,false,"forced")
 		_guaranteed_drops+=1
 		return
-	for item in loot.roll_class(_loot_rng,"normal",level,primary_):
+	for item in loot.roll_class(_loot_rng,"normal",level,primary_,_luck_mods()):
 		if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
 			metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
 		_publish_item(item,e.position,false,false,"normal")
@@ -1008,10 +1024,12 @@ func _has_unique(drops: Array[Dictionary]) -> bool:
 	return false
 
 ## `source` (D11 D5) only names where the drop came from on the event; it is never written into the item.
-func _publish_item(item: Dictionary,point: Vector2,direct: bool,boss_reward: bool=false,source: String="") -> void:
+func _publish_item(item: Dictionary,point: Vector2,direct: bool,boss_reward: bool=false,source: String="",extra: Dictionary={}) -> void:
 	_item_sequence+=1;item.uid=_item_sequence;item.position=point;item.collected=direct;item.drop_tick=tick
 	item.objective_reward=boss_reward;metrics.dropped_items+=1
-	_emit("item_drop",point,{"item":item.duplicate(true),"source":source})
+	var drop_details := {"item":item.duplicate(true),"source":source}
+	if not extra.is_empty():drop_details.merge(extra)
+	_emit("item_drop",point,drop_details)
 	if direct:
 		if inventory.size()<MAX_INVENTORY or (boss_reward and inventory.size()<MAX_INVENTORY+1):
 			inventory.append(item);metrics.picked_items+=1
@@ -1290,6 +1308,8 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 	_step_fields()
 	if mode!="playing":return
 	_step_rituals()
+	if _elites_on:_step_elites()
+	if _extras_on:_step_extras()
 	var live: Array[Dictionary]=[]
 	for pickup in potion_pickups:
 		if potions<int(tuning.potion.carry_max) and hero.position.distance_squared_to(pickup.position)<1.6*1.6:
@@ -1326,6 +1346,371 @@ func objective() -> Dictionary:
 		var e: Dictionary=enemies[_champion_id]
 		result.kind="boss" if _rhythm_on and zone==2 else "champion";result.hp=ceili(float(e.hp_raw)/UNIT);result.hp_max=ceili(float(e.max_hp_raw)/UNIT);result.title_key=String(e.get("title_key",""))
 	return result
+
+# ---------------------------------------------------------------- elite body and guarded sites (D13 W4-a, W5-a)
+# tuning.elites.enabled gives the strong body (grade "elite": one ordinary kind made stronger, never a seal guardian) and, per zone,
+# elites that walk in with the crowd. tuning.extras.enabled puts a locked shrine or chest into a zone with an elite standing guard;
+# the elite's death unlocks it. Both off (the shipped file) = none of this exists in the run, its snapshot or its random streams.
+# Positions, kinds and tiers are drawn from _extras_rng (its own stream, seeded in start()); drops come from _loot_rng as always.
+# The read functions are extras_view() and the enemy dictionaries (grade, guard_uid, guard_state), all read only for the screen.
+
+const EXTRAS_SEED_MASK := 0x45585452
+const KINDS_ORDER := ["walker","ranged","charger"]
+var _elites_on := false
+var _extras_on := false
+var _extras_rng := RandomNumberGenerator.new()
+var _elite_made: Array[int] = [0,0,0]
+var _elite_skipped := 0
+var _sites: Array[Dictionary] = []
+var _site_next := 0
+var _buffs: Array[Dictionary] = []
+
+## Read the two switches and check what the data names against the other data files. A guarded site needs the body, so extras
+## without elites is refused (start() returns false).
+func _prepare_elites() -> bool:
+	_elites_on=tuning.has("elites") and bool(tuning.elites.enabled)
+	_extras_on=tuning.has("extras") and bool(tuning.extras.enabled)
+	if not _extras_on:return true
+	if not _elites_on:errors.assign(["extras needs elites.enabled: a guarded site is guarded by an elite"]);return false
+	if loot==null:errors.assign(["extras needs the loot tables"]);return false
+	var extras: Dictionary=tuning.extras
+	var classes: Dictionary=loot.data.treasure_classes
+	for tier in extras.guarded.tiers:
+		if not classes.has(tier.chest_class):errors.assign(["extras tier "+str(tier.id)+": no treasure class "+str(tier.chest_class)]);return false
+	for id_ in extras.shrines.kinds:
+		for stat in extras.shrines.kinds[id_].get("stats",{}):
+			if not loot.data.limits.has(stat):errors.assign(["extras shrine "+str(id_)+": no gear limit for "+str(stat)]);return false
+	# A site must not stand on a ritual spot (6 m clear of it).
+	for site in extras.guarded.sites:
+		for point in site.points:
+			for def in RITUALS:
+				if int(def.zone)==int(site.zone) and Vector2(float(point[0]),float(point[1])).distance_to(def.position-ZONES[int(site.zone)])<6.0:
+					errors.assign(["extras site "+str(site.id)+": a point is closer than 6 m to the ritual "+str(def.id)]);return false
+	return true
+
+func _elites_reset(seed_: int) -> void:
+	_extras_rng.seed=seed_ ^ EXTRAS_SEED_MASK
+	_elite_made.assign([0,0,0]);_elite_skipped=0;_sites.clear();_site_next=0;_buffs.clear()
+
+## The run's tallies; start() has made `metrics` by now. Only a run with the elite body has them, so a plain run keeps the old metrics.
+## ttk_ticks: from the body's birth to its death. fight_ticks: from the first notice (a guard) or birth (a walker-in) to its death.
+func _elites_metrics() -> void:
+	if not _elites_on:return
+	metrics.elites={"spawned":0,"killed":0,"skipped":0,"ttk_ticks":[],"fight_ticks":[]}
+	if _extras_on:metrics.sites={"placed":0,"skipped":0,"engaged":0,"unlocked":0,"chests_opened":0,"shrines_taken":0,"shrines_expired":0,"locked_expired":0}
+
+## The strong body of D13 W4-a. Health is the zone's fixed figure (times `opts.hp_bps`), the other numbers are the ordinary kind's
+## times the data's bps; the experience is the zone's. `opts` of a guard: guard_uid, anchor, leash. Returns the new id, 0 when refused.
+func _spawn_elite(kind: String,point: Vector2,zone_: int,opts: Dictionary={}) -> int:
+	var rules: Dictionary=tuning.elites
+	_spawn_tags={"grade":"elite"}
+	var made := _spawn(kind,point)
+	_spawn_tags={}
+	if not made:return 0
+	var e: Dictionary=enemies[_enemy_sequence]
+	var definition: Dictionary=e.definition
+	var hp := maxi(1,int(rules.hp[zone_])*int(opts.get("hp_bps",10000))/10000)
+	definition.hp=hp;definition.damage=int(definition.damage)*int(rules.damage_bps)/10000
+	definition.speed=float(definition.speed)*float(rules.speed_bps)/10000.0;definition.xp=int(rules.xp[zone_])
+	e.hp_raw=hp*UNIT;e.max_hp_raw=e.hp_raw
+	e.radius=float(e.radius)*float(rules.radius_bps)/10000.0
+	e.grade="elite";e.born_tick=tick
+	var guard_uid := int(opts.get("guard_uid",0))
+	if guard_uid>0:
+		e.guard_uid=guard_uid;e.guard_state="guard";e.guard_anchor=opts.anchor;e.guard_leash=float(opts.leash)
+		e.guard_hp_seen=int(e.hp_raw);e.guard_far_since=-1;e.guard_alert_until=0;e.engaged_tick=-1
+	metrics.elites.spawned=int(metrics.elites.spawned)+1
+	_emit("elite_spawned",e.position,{"target_id":int(e.id),"kind":kind,"zone":zone_,"grade":"elite","affixes":[],"radius_bps":int(rules.radius_bps),"radius":float(e.radius),"guard_uid":guard_uid})
+	return int(e.id)
+
+## An elite kind by the zone's weights (walker, ranged, charger order), one draw from _extras_rng.
+func _elite_kind(zone_: int) -> String:
+	var weights: Dictionary=tuning.elites.kinds[zone_]
+	var total := 0
+	for kind in KINDS_ORDER:total+=int(weights.get(kind,0))
+	var draw := _extras_rng.randi_range(1,total)
+	for kind in KINDS_ORDER:
+		draw-=int(weights.get(kind,0))
+		if draw<=0:return kind
+	return "walker"
+
+## A point on the ordinary spawn ring, but from _extras_rng, so that switching the elites on never moves the spawn stream.
+func _extras_spawn_point(min_radius: float,max_radius: float) -> Vector2:
+	for attempt in 16:
+		var angle := _extras_rng.randf_range(0,TAU)
+		var point := _clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_extras_rng.randf_range(min_radius,max_radius))
+		if point.distance_squared_to(hero.position)>=min_radius*min_radius*.64:return point
+	var inward: Vector2=(ZONES[zone]-hero.position).normalized()
+	if inward.length_squared()<.01:inward=Vector2.LEFT
+	return _clamp_point(hero.position+inward*min_radius)
+
+## Elites that walk in (D2 2.1): the n-th of a zone comes when the zone's kills reach seal_kills*at_seal_bps[n]. A full alive cap
+## holds it back to a later tick; the run opening and the seal guardian hold it back for good (the guardian: until the zone is left).
+func _step_elites() -> void:
+	if _op_active or not _zone_entered or seals[zone].champion_spawned:return
+	var rules: Dictionary=tuning.elites
+	var made := int(_elite_made[zone])
+	if made>=int(rules.per_zone[zone]) or zone_kills<int(tuning.seal_kills[zone])*int(rules.at_seal_bps[made])/10000 or alive_count()>=int(tuning.alive_cap):return
+	var point := _extras_spawn_point(float(tuning.spawn.ring_min_m),float(tuning.spawn.ring_max_m))
+	if _spawn_elite(_elite_kind(zone),point,zone)>0:_elite_made[zone]=made+1
+
+## What was due in a zone and never came is thrown away and counted (D2 2.1 elites_skipped).
+func _elites_zone_left(zone_: int) -> void:
+	var missing := maxi(0,int(tuning.elites.per_zone[zone_])-int(_elite_made[zone_]))
+	_elite_skipped+=missing;metrics.elites.skipped=_elite_skipped
+
+## A strong body died (any kind of kill): the tallies. The guard's fight time starts at its first notice.
+func _elite_died(e: Dictionary) -> void:
+	metrics.elites.killed=int(metrics.elites.killed)+1
+	metrics.elites.ttk_ticks.append(tick-int(e.get("born_tick",tick)))
+	var since: int=int(e.get("engaged_tick",-1)) if e.has("guard_uid") else int(e.get("born_tick",tick))
+	if since>=0:metrics.elites.fight_ticks.append(tick-since)
+
+# ---- guarded sites
+
+func _step_extras() -> void:
+	_place_next_site()
+	_step_sites()
+	_step_buffs()
+
+## The next site of the list is put down when its zone is the hero's, the zone has been entered, the run opening is over and the seal
+## progress has reached at_bps. A site whose zone was left (or whose seal guardian is already out) is dropped and counted.
+func _place_next_site() -> void:
+	var list: Array=tuning.extras.guarded.sites
+	while _site_next<list.size() and int(list[_site_next].zone)<zone:
+		_site_next+=1;metrics.sites.skipped=int(metrics.sites.skipped)+1
+	if _site_next>=list.size():return
+	var def: Dictionary=list[_site_next]
+	if int(def.zone)!=zone:return
+	if seals[zone].champion_spawned:
+		_site_next+=1;metrics.sites.skipped=int(metrics.sites.skipped)+1;return
+	if not _zone_entered or _op_active or _zone_bps()<int(def.at_bps):return
+	if _place_site(def):_site_next+=1
+
+## One draw order, always the same: the tier (only when there is a choice), the point (only when several fit), the shrine kind, the
+## elite's kind. A refused body (entity limit) leaves no site and the same site is tried again next tick.
+func _place_site(def: Dictionary) -> bool:
+	var g: Dictionary=tuning.extras.guarded
+	var tier := _pick_tier(g.tiers)
+	var point := _pick_site_point(ZONES[int(def.zone)],def.points,g.distance_m)
+	var shrine_kind := ""
+	if def.kind=="shrine":
+		var pool: Array=tuning.extras.shrines.pool[def.pool]
+		shrine_kind=String(pool[_extras_rng.randi_range(0,pool.size()-1)])
+	var uid := _sites.size()+1
+	var body := _spawn_elite(_elite_kind(int(def.zone)),point,int(def.zone),{"hp_bps":int(tier.elite_hp_bps),"guard_uid":uid,"anchor":point,"leash":float(g.leash_m)})
+	if body<=0:return false
+	_sites.append({"uid":uid,"id":String(def.id),"kind":String(def.kind),"zone":int(def.zone),"shrine_kind":shrine_kind,"tier":String(tier.id),"position":point,
+		"state":"locked","elite_id":body,"placed_tick":tick,"open_until":0,"buff_until":0})
+	metrics.sites.placed=int(metrics.sites.placed)+1
+	_emit("guard_spawned",point,{"uid":uid,"id":String(def.id),"kind":String(def.kind),"shrine_kind":shrine_kind,"tier":String(tier.id),"zone":int(def.zone),
+		"elite_id":body,"radius":float(g.leash_m),"aggro":float(g.aggro_m)})
+	return true
+
+func _pick_tier(tiers: Array) -> Dictionary:
+	if tiers.size()==1:return tiers[0]
+	var total := 0
+	for tier in tiers:total+=int(tier.weight)
+	var draw := _extras_rng.randi_range(1,total)
+	for tier in tiers:
+		draw-=int(tier.weight)
+		if draw<=0:return tier
+	return tiers[tiers.size()-1]
+
+## A candidate point (relative to the zone centre) whose distance to the hero is inside distance_m; one of several is drawn, and when
+## none fits the one closest to the range is taken (no draw).
+func _pick_site_point(center: Vector2,points: Array,range_m: Array) -> Vector2:
+	var low := float(range_m[0]);var high := float(range_m[1])
+	var fits: Array[Vector2]=[]
+	var best := Vector2.ZERO;var best_gap := INF
+	for p in points:
+		var at := _clamp_point(center+Vector2(float(p[0]),float(p[1])))
+		var d := at.distance_to(hero.position)
+		var gap := maxf(0.0,maxf(low-d,d-high))
+		if gap<=0.0:fits.append(at)
+		elif gap<best_gap:best_gap=gap;best=at
+	if fits.is_empty():return best
+	if fits.size()==1:return fits[0]
+	return fits[_extras_rng.randi_range(0,fits.size()-1)]
+
+## The guard's states: guard (stands) -> alert (the first notice: close enough, or hit; it only turns and waits alert_ticks)
+## -> fight (walks at the hero, never beyond its leash from the anchor) -> return (the hero stayed farther than return_far_m for
+## return_after_ticks: walks home; noticing again sends it back to alert) -> guard. Runs before the enemies move. A guard whose
+## site was dropped with its zone is taken out of the world here, one tick after the zone was left (never in the middle of a hit).
+func _guard_step() -> void:
+	var g: Dictionary=tuning.extras.guarded
+	for site in _sites:
+		if site.state=="gone":
+			var left: Variant=enemies.get(int(site.elite_id))
+			if left is Dictionary and left.hp_raw>0 and left.has("guard_uid"):
+				enemies.erase(int(site.elite_id));_alive=maxi(0,_alive-1)
+			continue
+		if site.state!="locked":continue
+		var found: Variant=enemies.get(int(site.elite_id))
+		if not found is Dictionary or found.hp_raw<=0:continue
+		var e: Dictionary=found
+		var hit: bool=int(e.hp_raw)<int(e.guard_hp_seen)
+		e.guard_hp_seen=int(e.hp_raw)
+		var distance: float=e.position.distance_to(hero.position)
+		var noticed: bool=hit or distance<=float(g.aggro_m)
+		match String(e.guard_state):
+			"guard":
+				if noticed:_guard_set(site,e,"alert")
+			"alert":
+				if tick>=int(e.guard_alert_until):_guard_set(site,e,"fight")
+			"fight":
+				if distance>float(g.return_far_m):
+					if int(e.guard_far_since)<0:e.guard_far_since=tick
+					elif tick-int(e.guard_far_since)>=int(g.return_after_ticks):_guard_set(site,e,"return")
+				else:e.guard_far_since=-1
+			"return":
+				if noticed:_guard_set(site,e,"alert")
+				elif e.position.distance_to(e.guard_anchor)<=.05:e.position=e.guard_anchor;_guard_set(site,e,"guard")
+
+func _guard_set(site: Dictionary,e: Dictionary,to: String) -> void:
+	var from := String(e.guard_state)
+	e.guard_state=to
+	if to=="alert":
+		e.guard_alert_until=tick+int(tuning.extras.guarded.alert_ticks)
+		# The first notice is the "engaged" moment (the sound cue); later notices only change the state.
+		if int(e.engaged_tick)<0:
+			e.engaged_tick=tick;metrics.sites.engaged=int(metrics.sites.engaged)+1
+			_emit("guard_engaged",e.position,{"uid":int(site.uid),"elite_id":int(e.id)})
+	elif to=="fight" or to=="guard":e.guard_far_since=-1
+	_emit("guard_state",e.position,{"uid":int(site.uid),"elite_id":int(e.id),"from":from,"to":to})
+
+## The guard died (called from its drop): the site unlocks. A chest opens on the spot (its tier's treasure class on the floor,
+## and the potions); a shrine stays open for shrines.stay_ticks.
+func _guard_unlock(e: Dictionary) -> void:
+	var site: Dictionary={}
+	for candidate in _sites:
+		if int(candidate.uid)==int(e.guard_uid):site=candidate
+	if site.is_empty() or site.state!="locked":return
+	metrics.sites.unlocked=int(metrics.sites.unlocked)+1
+	_emit("guard_unlocked",site.position,{"uid":int(site.uid),"kind":site.kind,"shrine_kind":site.shrine_kind,"elite_id":int(e.id)})
+	if site.kind=="shrine":
+		site.state="open";site.open_until=tick+int(tuning.extras.shrines.stay_ticks)
+		return
+	site.state="taken"
+	var g: Dictionary=tuning.extras.guarded
+	var chest_class := ""
+	for tier in g.tiers:
+		if tier.id==site.tier:chest_class=String(tier.chest_class)
+	var drops: Array[Dictionary]=loot.roll_class(_loot_rng,chest_class,ZONE_LEVELS[int(site.zone)],String(growth.snapshot().primary))
+	metrics.sites.chests_opened=int(metrics.sites.chests_opened)+1
+	_emit("chest_opened",site.position,{"uid":int(site.uid),"guarded":true,"count":drops.size()})
+	for index in drops.size():
+		var spot: Vector2=site.position
+		if drops.size()>1:spot+=Vector2.from_angle(TAU*float(index)/float(drops.size())+.5)*.9
+		if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
+			metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
+		_publish_item(drops[index],spot,false,false,"chest",{"site_uid":int(site.uid)})
+	for i in int(g.potions):_drop_potion(site.position+Vector2(-.9-.4*i,0))
+
+## An open shrine is taken by walking onto it, and lapses when it has stood open too long.
+func _step_sites() -> void:
+	var rules: Dictionary=tuning.extras.shrines
+	for site in _sites:
+		if site.state!="open":continue
+		if tick>=int(site.open_until):
+			site.state="gone";metrics.sites.shrines_expired=int(metrics.sites.shrines_expired)+1
+			_emit("shrine_expired",site.position,{"uid":int(site.uid),"kind":site.shrine_kind});continue
+		if hero.position.distance_to(site.position)<=float(rules.touch_radius_m):_take_shrine(site)
+
+func _take_shrine(site: Dictionary) -> void:
+	var rules: Dictionary=tuning.extras.shrines
+	var kind: Dictionary=rules.kinds[site.shrine_kind]
+	var ticks := int(kind.ticks)*int(rules.guarded_ticks_bps)/10000
+	site.state="taken";site.buff_until=tick+ticks
+	metrics.sites.shrines_taken=int(metrics.sites.shrines_taken)+1
+	# The same kind again only fills its time anew; different kinds run side by side.
+	var found := false
+	for buff in _buffs:
+		if buff.kind==site.shrine_kind:buff.until_tick=tick+ticks;found=true
+	if not found:_buffs.append({"kind":String(site.shrine_kind),"until_tick":tick+ticks})
+	if kind.has("heal_bps"):hero.hp_raw=mini(int(hero.max_hp_raw),int(hero.hp_raw)+int(hero.max_hp_raw)*int(kind.heal_bps)/10000)
+	_buffs_changed()
+	_emit("shrine_taken",site.position,{"uid":int(site.uid),"kind":String(site.shrine_kind),"until_tick":tick+ticks,"guarded":true})
+
+func _step_buffs() -> void:
+	if _buffs.is_empty():return
+	var live: Array[Dictionary]=[]
+	var ended := false
+	for buff in _buffs:
+		if tick>=int(buff.until_tick):ended=true;_emit("buff_ended",hero.position,{"kind":String(buff.kind)})
+		else:live.append(buff)
+	if not ended:return
+	_buffs=live
+	_buffs_changed()
+
+## The gear numbers and the grade luck take the buffs in (stats only change when a buff starts or ends).
+func _buffs_changed() -> void:
+	_recompute_gear()
+	if _grace_on and growth.grades_on():
+		var luck: Dictionary=growth.snapshot().grace.luck
+		var mul := int(tuning.grace.grades.luck.shrine_mul_bps) if _buff_kind_active("luck") else 10000
+		growth.set_grade_luck(mul,int(luck.reward_grade),int(luck.gear_bps))
+
+func _buff_kind_active(kind: String) -> bool:
+	for buff in _buffs:
+		if buff.kind==kind:return true
+	return false
+
+## Gear totals plus the stats of the running shrine buffs, each touched stat cut to the loot grammar's limit.
+func _apply_buff_stats(stats: Dictionary) -> void:
+	if _buffs.is_empty():return
+	var kinds: Dictionary=tuning.extras.shrines.kinds
+	var touched := {}
+	for buff in _buffs:
+		var add: Dictionary=kinds[buff.kind].get("stats",{})
+		for stat in add:
+			stats[stat]=int(stats.get(stat,0))+int(add[stat]);touched[stat]=true
+	var limits: Dictionary=loot.data.limits
+	for stat in touched:stats[stat]=clampi(int(stats[stat]),int(limits[stat][0]),int(limits[stat][1]))
+
+## The shrine of luck's drop mods for roll_class (ordinary kills and elites only); {} without it, which is the plain draw.
+func _luck_mods() -> Dictionary:
+	if _buffs.is_empty():return {}
+	var kinds: Dictionary=tuning.extras.shrines.kinds
+	for buff in _buffs:
+		var rule: Dictionary=kinds[buff.kind]
+		if rule.has("drop_bps"):return {"drop_bps":int(rule.drop_bps),"quality_bps":rule.get("quality_bps",{}).duplicate()}
+	return {}
+
+## The zone was left: what is still locked disappears with its guard (no death, no drop, no seal kill) and an unused open shrine lapses.
+## The elite itself is removed at the start of the next tick (_guard_step).
+func _sites_zone_left(left_zone: int) -> void:
+	for site in _sites:
+		if int(site.zone)!=left_zone:continue
+		if site.state=="locked":
+			site.state="gone";metrics.sites.locked_expired=int(metrics.sites.locked_expired)+1
+			_emit("guard_expired",site.position,{"uid":int(site.uid),"kind":site.kind,"elite_id":int(site.elite_id)})
+		elif site.state=="open":
+			site.state="gone";metrics.sites.shrines_expired=int(metrics.sites.shrines_expired)+1
+			_emit("shrine_expired",site.position,{"uid":int(site.uid),"kind":site.shrine_kind})
+		elif site.state=="taken":site.state="gone"
+
+## Read only, for the screen and the sound. Changes nothing, draws nothing. {"enabled":false} while the extras are off.
+## {enabled, sites:[{uid, id, kind "shrine"|"chest", zone, shrine_kind ("" for a chest), tier, position, state "locked"|"open"|"taken"|"gone",
+##  elite_id, guard_state ("guard"|"alert"|"fight"|"return" while locked and alive, else ""), ticks_left (an open shrine: until it lapses;
+##  a taken shrine: until its buff ends; else 0), leash_m, aggro_m}], buffs:[{kind, until_tick, left_ticks}]}
+## A chest's content is never in it (the hidden part of the bet). A chest goes locked -> taken on the tick its guard dies.
+func extras_view() -> Dictionary:
+	if not _extras_on:return {"enabled":false}
+	var g: Dictionary=tuning.extras.guarded
+	var list: Array[Dictionary]=[]
+	for site in _sites:
+		var left := 0
+		if site.state=="open":left=maxi(0,int(site.open_until)-tick)
+		elif site.state=="taken" and site.kind=="shrine":left=maxi(0,int(site.buff_until)-tick)
+		var state := ""
+		var body: Variant=enemies.get(int(site.elite_id))
+		if site.state=="locked" and body is Dictionary and body.hp_raw>0:state=String(body.guard_state)
+		list.append({"uid":int(site.uid),"id":String(site.id),"kind":String(site.kind),"zone":int(site.zone),"shrine_kind":String(site.shrine_kind),"tier":String(site.tier),
+			"position":site.position,"state":String(site.state),"elite_id":int(site.elite_id),"guard_state":state,"ticks_left":left,"leash_m":float(g.leash_m),"aggro_m":float(g.aggro_m)})
+	var running: Array[Dictionary]=[]
+	for buff in _buffs:running.append({"kind":String(buff.kind),"until_tick":int(buff.until_tick),"left_ticks":maxi(0,int(buff.until_tick)-tick)})
+	return {"enabled":true,"sites":list,"buffs":running}
 
 # ---------------------------------------------------------------- descent (D15 A, chapter1/data/descent.json)
 # The ultimate: a gauge that only events fill, a call that holds the core still (mode "descent", no tick), and a sweep that
@@ -1743,6 +2128,9 @@ func snapshot() -> Dictionary:
 		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
+	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
+	if _elites_on:result.chapter.elites={"made":_elite_made.duplicate(),"skipped":_elite_skipped}
+	if _extras_on:result.chapter.extras={"sites":_sites.duplicate(true),"buffs":_buffs.duplicate(true),"next_site_index":_site_next}
 	# The descent's state exists only in a run whose descent.json is on (D15 A6.2); a run without it keeps the old snapshot.
 	if not descent.is_empty():
 		result.descent={"gauge":_d_gauge,"uses":_d_uses,"cost_now":_descent_cost(),"ready":_d_ready,"hold":_descent_hold,"sweep":_d_sweep.duplicate(true),

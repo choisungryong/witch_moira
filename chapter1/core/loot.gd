@@ -270,11 +270,22 @@ func _roll_unique(rng: RandomNumberGenerator, level: int, primary: String, prima
 	if pool.is_empty(): return {}
 	return make_unique(pool[rng.randi_range(0,pool.size()-1)].id,level)
 
-## Resolve one treasure class into zero or more items.
-func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, primary: String = "") -> Array[Dictionary]:
+## Resolve one treasure class into zero or more items. `mods` (D13 5.2 shrine of luck) is optional: {drop_bps: share of the drop weight
+## in ten-thousandths, quality_bps: {quality: share of that quality's weight}}. Without it (the default) the draws and their count are
+## exactly what they were before the argument existed.
+func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, primary: String = "", mods: Dictionary = {}) -> Array[Dictionary]:
 	var drops: Array[Dictionary] = []
 	if not data.treasure_classes.has(class_id): return drops
 	var tc: Dictionary = data.treasure_classes[class_id]
+	var drop_weight := int(tc.drop)
+	var quality_weights: Dictionary = tc.quality
+	if not mods.is_empty():
+		drop_weight = drop_weight*int(mods.get("drop_bps",10000))/10000
+		var shares: Dictionary = mods.get("quality_bps",{})
+		if not shares.is_empty():
+			quality_weights = tc.quality.duplicate()
+			for quality in shares:
+				if quality_weights.has(quality): quality_weights[quality] = int(quality_weights[quality])*int(shares[quality])/10000
 	var level := _clamp_level(zone_level+int(tc.level_bonus))
 	var weights: Dictionary = tc.get("slot_weights",{})
 	var guaranteed: Array = tc.get("guaranteed",[])
@@ -284,8 +295,8 @@ func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, p
 			if guaranteed[pick] == "unique_primary": item = _roll_unique(rng,level,primary,true)
 			else: item = roll_item(rng,level,String(guaranteed[pick]),"",weights)
 		else:
-			if rng.randi_range(1,int(tc.no_drop)+int(tc.drop)) <= int(tc.no_drop): continue
-			var quality := _weighted(rng,tc.quality,data.qualities)
+			if rng.randi_range(1,int(tc.no_drop)+drop_weight) <= int(tc.no_drop): continue
+			var quality := _weighted(rng,quality_weights,data.qualities)
 			if quality == "unique":
 				item = _roll_unique(rng,level,primary,false)
 				if item.is_empty(): quality = "legendary"

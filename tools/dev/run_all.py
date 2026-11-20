@@ -48,8 +48,8 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 # --only accepts check names and these groups.
 ALIASES = {
     'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'app-guard', 'app-loadout'],
-    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'grace', 'descent'],
-    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'grace', 'descent', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
+    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'grace', 'descent', 'elites'],
+    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'run-spells', 'grace', 'descent', 'elites', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
     'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest', 'screen-contract'],
@@ -130,6 +130,7 @@ def checks():
         godot_check('rhythm', 'res://chapter1/tests/test_rhythm.gd', 'CHAPTER1_RHYTHM_TEST_RESULT', timeout=600),
         godot_check('grace', 'res://chapter1/tests/test_grace.gd', 'CHAPTER1_GRACE_RESULT', timeout=600),
         godot_check('descent', 'res://chapter1/tests/test_descent.gd', 'CHAPTER1_DESCENT_TEST_RESULT', timeout=600),
+        godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
         godot_check('run-record', 'res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.

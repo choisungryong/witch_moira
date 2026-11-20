@@ -348,12 +348,17 @@ func _apply_trial() -> void:
 	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
 	# The run opening (D15 B) is the long one unless asked otherwise: the app has no play counter yet (no schema change).
 	if "--chapter1-opening=returning" in _user_args():run.opening_first_visit=false
-	if "rhythm" in parts:
+	# rhythm and elites both change the one tuning document, so it is read once and handed over once.
+	if "rhythm" in parts or "elites" in parts:
 		var tuning_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
-		if tuning_doc is Dictionary and tuning_doc.get("rhythm") is Dictionary:
-			tuning_doc["rhythm"]["enabled"]=true
-			if tuning_doc["rhythm"].get("opening") is Dictionary:tuning_doc["rhythm"]["opening"]["enabled"]=true
-			if not run.set_tuning(tuning_doc):push_warning("trial rhythm refused: "+str(run.errors))
+		if tuning_doc is Dictionary:
+			if "rhythm" in parts and tuning_doc.get("rhythm") is Dictionary:
+				tuning_doc["rhythm"]["enabled"]=true
+				if tuning_doc["rhythm"].get("opening") is Dictionary:tuning_doc["rhythm"]["opening"]["enabled"]=true
+			# The strong elites (D13 W4-a) and the shrine / chest they guard (W5-a) go on together: a site is guarded by an elite.
+			if "elites" in parts and tuning_doc.get("elites") is Dictionary and tuning_doc.get("extras") is Dictionary:
+				tuning_doc["elites"]["enabled"]=true;tuning_doc["extras"]["enabled"]=true
+			if not run.set_tuning(tuning_doc):push_warning("trial tuning refused: "+str(run.errors))
 	if "spells" in parts:
 		var spells_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))
 		if spells_doc is Dictionary:

@@ -35,6 +35,11 @@ var stop_s := 0.0
 ## "off" counts the gauge but never calls. --spells-on: the in-run spell composition on in memory (the pilot picks its own cards).
 var descent_policy := ""
 var spells_on := false
+## --extras-on: the strong elites (D13 W4-a) and the guarded shrine / chest (W5-a) on in memory (the files stay off).
+## --pilot-extras: this tool only (chapter_pilot.gd is untouched): the pilot's step is replaced by a walk to a freed shrine, or to a locked
+## site within 20 m when the run is in a lull (or has no rhythm), or while its guard is already fighting; it stands still next to the guard.
+var extras_on := false
+var pilot_extras := false
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -61,6 +66,8 @@ func execute() -> void:
 				quit(1)
 				return
 		elif arg == "--spells-on": spells_on = true
+		elif arg == "--extras-on": extras_on = true
+		elif arg == "--pilot-extras": pilot_extras = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
 	if not out.begins_with("_local/") or out.contains("..") or out.contains(":") or out.begins_with("/"):
 		push_error("measure_rhythm: --out must be a relative path under _local/ (got %s)" % out)
@@ -138,10 +145,18 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var pilot = Pilot.new()
 	pilot.run = run
 	run.first_boss_kill = true
-	if rhythm_on:
-		var rhythm_problem := TrialDocs.enable_rhythm_problem(run, true)
-		if not rhythm_problem.is_empty():
-			push_error("measure_rhythm: " + rhythm_problem)
+	if rhythm_on or extras_on:
+		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
+		if rhythm_on:
+			doc.rhythm.enabled = true
+			doc.rhythm.trial.enabled = true
+			# D15 O-1: the run opening comes with the rhythm in a trial run (`--chapter1-trial=...,rhythm`), so it does here.
+			if doc.rhythm.has("opening"): doc.rhythm.opening.enabled = true
+		if extras_on:
+			doc.elites.enabled = true
+			doc.extras.enabled = true
+		if not run.set_tuning(doc):
+			push_error("measure_rhythm: rhythm document rejected %s" % str(run.errors))
 			return {}
 	if spells_on:
 		var spells_problem := TrialDocs.enable_spells_problem(run)
@@ -171,8 +186,10 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var all_types: Dictionary = {}
 	var level_first := -1.0
 	var descent_ends: Array = []
+	var ex := {"born": {}, "engaged": {}, "walk_in_s": [], "guard_fight_s": [], "guard_placed_s": [], "guard_unlocked_s": [], "taken_s": [], "chest_s": [], "expired": 0, "locked_expired": 0}
 	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
 		var mv: Vector2 = pilot.decide()
+		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
 		guard += 1
@@ -186,6 +203,7 @@ func play(seed_: int, prim: String) -> Dictionary:
 			last_seq = int(ev.seq)
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
 			var esec: float = float(ev.tick) / 60.0
+			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
 				cur_beat = str(ev.get("id", ev.get("beat", ev.get("name", "beat%d" % beat_order.size()))))
@@ -269,7 +287,60 @@ func play(seed_: int, prim: String) -> Dictionary:
 	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "view": run.descent_view()},
+		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list}
+
+## --pilot-extras: where the bot walks (see the header of this file). Reads the core's read-only views; the core is moved only by step().
+func extras_move(run, mv: Vector2) -> Vector2:
+	var view: Dictionary = run.extras_view()
+	if not bool(view.enabled) or run.mode != "playing": return mv
+	var lull: bool = String(run.run_progress().phase) == "lull" or not rhythm_on
+	var goal := Vector2.ZERO
+	var found := false
+	var best := INF
+	for site in view.sites:
+		var d: float = run.hero.position.distance_to(site.position)
+		var wanted := false
+		if site.state == "open": wanted = true
+		elif site.state == "locked": wanted = (d <= 20.0 and lull) or site.guard_state in ["alert", "fight"]
+		if wanted and d < best:
+			best = d
+			goal = site.position
+			found = true
+	if not found: return mv
+	# A freed shrine is walked onto; a locked site is approached to 3 m and then the bot waits for its guard to fall.
+	var open_goal := false
+	for site in view.sites:
+		if site.state == "open" and site.position == goal: open_goal = true
+	if best <= (0.8 if open_goal else 3.0): return Vector2.ZERO
+	return (goal - run.hero.position).normalized()
+
+## One event into the run's elite / site record (only with --extras-on).
+func ex_event(ex: Dictionary, ev: Dictionary) -> void:
+	var sec: float = float(ev.tick) / 60.0
+	match String(ev.type):
+		"elite_spawned":
+			if int(ev.guard_uid) == 0: ex.born[int(ev.target_id)] = int(ev.tick)
+		"death":
+			if String(ev.get("role", "")) == "elite" and ex.born.has(int(ev.target_id)):
+				ex.walk_in_s.append(snappedf(float(int(ev.tick) - int(ex.born[int(ev.target_id)])) / 60.0, 0.1))
+		"guard_spawned": ex.guard_placed_s.append(snappedf(sec, 0.1))
+		"guard_engaged": ex.engaged[int(ev.uid)] = int(ev.tick)
+		"guard_unlocked":
+			ex.guard_unlocked_s.append(snappedf(sec, 0.1))
+			if ex.engaged.has(int(ev.uid)): ex.guard_fight_s.append(snappedf(float(int(ev.tick) - int(ex.engaged[int(ev.uid)])) / 60.0, 0.1))
+		"shrine_taken": ex.taken_s.append(snappedf(sec, 0.1))
+		"chest_opened": ex.chest_s.append(snappedf(sec, 0.1))
+		"shrine_expired": ex.expired += 1
+		"guard_expired": ex.locked_expired += 1
+
+func extras_summary(run, ex: Dictionary) -> Dictionary:
+	if not extras_on: return {"on": false}
+	var sites: Dictionary = run.metrics.get("sites", {})
+	var placed := int(sites.get("placed", 0))
+	return {"on": true, "pilot_extras": pilot_extras, "metrics_sites": sites.duplicate(true), "metrics_elites": {"spawned": int(run.metrics.elites.spawned), "killed": int(run.metrics.elites.killed), "skipped": int(run.metrics.elites.skipped)},
+		"walk_in_ttk_s": ex.walk_in_s, "guard_fight_s": ex.guard_fight_s, "guard_placed_s": ex.guard_placed_s, "guard_unlocked_s": ex.guard_unlocked_s, "shrine_taken_s": ex.taken_s, "chest_opened_s": ex.chest_s,
+		"shrines_lapsed": int(ex.expired), "locked_expired": int(ex.locked_expired), "sites_placed": placed, "unlock_rate": snappedf(float(int(sites.get("unlocked", 0))) / maxf(1.0, float(placed)), 0.01)}
 
 func bin_acc(d: Dictionary, sec: float) -> Dictionary:
 	var k := int(sec / bin_s)
@@ -388,6 +459,11 @@ func print_run(r: Dictionary) -> void:
 		print("  descent[%s]: uses=%d ready_at=%s used_at=%s kills_by_descent=%d gauge_in=%d wasted=%d refunded=%d strong_dmg_raw=%d" % [r.descent.policy, int(dm.get("uses", 0)),
 			str(dm.get("ready_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), str(dm.get("call_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), dk,
 			int(dm.get("gauge_in", 0)), int(dm.get("wasted", 0)), int(dm.get("refunded", 0)), int(dm.get("strong_damage_raw", 0))])
+	if bool(r.elites.on):
+		var el: Dictionary = r.elites
+		print("  elites[pilot_extras=%s]: walk-in spawned=%d killed=%d skipped=%d ttk_s=%s | sites placed=%d engaged=%d unlocked=%d (rate %.2f) chests=%d shrines_taken=%d lapsed=%d locked_expired=%d skipped=%d | guard fight_s=%s placed_at=%s" % [str(el.pilot_extras),
+			int(el.metrics_elites.spawned) - int(el.sites_placed), int(el.metrics_elites.killed), int(el.metrics_elites.skipped), str(el.walk_in_ttk_s), int(el.sites_placed), int(el.metrics_sites.get("engaged", 0)), int(el.metrics_sites.get("unlocked", 0)),
+			float(el.unlock_rate), int(el.metrics_sites.get("chests_opened", 0)), int(el.metrics_sites.get("shrines_taken", 0)), int(el.shrines_lapsed), int(el.locked_expired), int(el.metrics_sites.get("skipped", 0)), str(el.guard_fight_s), str(el.guard_placed_s)])
 	print("  grace: n=%d first=%.1fs longest_gap=%.1fs last_to_end=%.1fs first75=%d at %s" % [s.grace_count, s.grace_first_s, s.grace_longest_gap_s, s.grace_last_to_end_s, s.grace_first75, str(s.grace_times)])
 	print("  worst bin: %s hits=%d dmg/maxhp=%.2f   hits_total=%d events_dropped=%d" % [s.worst_bin, s.worst_bin_hits, float(s.worst_bin_dmg), s.hits_total, s.events_dropped])
 	print("  bin       | kills kpm  | alive avg p90 max | hits dmg  | atk  | pHit/kill | grace | drops(src)        | dropped_ev")

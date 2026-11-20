@@ -320,10 +320,16 @@ func _recompute_gear() -> void:
 	var totals := _gear_totals(equipped)
 	_gear_stats.clear()
 	_gear_stats.merge(totals)
+	_apply_buff_stats(_gear_stats)
 	var body := _hero_body(_gear_stats)
 	hero.max_hp_raw = body.max_hp_raw
 	hero.hp_raw = mini(int(hero.hp_raw),int(hero.max_hp_raw))
 	hero.speed = body.speed
+
+## Timed stats on top of the worn gear (D13 5.2 shrines). The chapter core adds them to `stats`; here there are none, so the
+## gear totals are the stats. preview_equip and compare_item never see them (they read _gear_totals).
+func _apply_buff_stats(_stats: Dictionary) -> void:
+	pass
 
 ## Pure: summed gear stats for an equip map {slot: uid} over the bag. No state change.
 func _gear_totals(equip_map: Dictionary) -> Dictionary:
@@ -444,7 +450,8 @@ func preview_equip(uid: int, slot: String = "") -> Dictionary:
 	if chosen.is_empty() or not chosen in EQUIP_SLOTS: chosen = target_slot(item)
 	var slot_ok: bool = (item.slot == "ring") == (chosen in ["ring","ring2"]) and (item.slot == "ring" or chosen == item.slot)
 	var level_ok := can_equip(item)
-	var before := stat_sheet()
+	# Gear only: a timed shrine buff is in stat_sheet() but belongs to neither side of "what if I wear this" (D13 5.2).
+	var before := _sheet_of(_gear_totals(equipped),equipped)
 	var map := equipped.duplicate()
 	if slot_ok:
 		var previous := equip_slot_of(uid)
@@ -615,6 +622,7 @@ func _step_enemies() -> void:
 			else: continue
 		if e.state == "dash":
 			e.position = _clamp_point(e.position+e.attack_direction*9.0*STEP)
+			if e.has("guard_anchor"): _guard_leash(e)
 			if not e.attacked and e.position.distance_to(hero.position) <= float(e.radius)+.28:
 				_hero_damage(int(def.damage)*UNIT,e.position,_source_kind_of(e),int(e.id))
 				e.attacked = true
@@ -642,12 +650,17 @@ func _step_enemies() -> void:
 			e.state = "recover"
 			e.state_until = tick+int(def.recover)
 			continue
+		# A guarding elite (D13 5.2) only fights in its "fight" state; before that it stands, afterwards it walks back to its anchor.
+		if e.has("guard_state") and e.guard_state != "fight":
+			if e.guard_state == "return": _guard_walk_back(e,speed)
+			continue
 		var attack_distance := .85
 		if e.kind == "ranged": attack_distance = 6.0
 		elif e.kind == "charger": attack_distance = 5.0
 		elif e.kind == "elite": attack_distance = 3.0 if int(e.attack_index)%2 == 0 else 6.0
 		var approach := _approach_crowd(e,speed,attack_distance)
 		e.position = approach.position
+		if e.has("guard_anchor"): _guard_leash(e)
 		delta = hero.position-e.position
 		distance = delta.length()
 		toward = delta/distance if distance > .001 else toward
@@ -670,6 +683,20 @@ func _step_enemies() -> void:
 				hazard_radius = hazard_length+.44
 			e.telegraph = {"shape":e.attack_kind,"direction":toward,"radius":hazard_radius,"length":hazard_length,"width":1.42 if e.kind == "charger" else .88,"rays":rays,"remaining_ticks":int(def.windup)}
 		if _terminal_mode == "defeat": return
+
+## A guarding elite (D13 5.2) never stands farther than its leash from its anchor.
+func _guard_leash(e: Dictionary) -> void:
+	var anchor: Vector2 = e.guard_anchor
+	var offset: Vector2 = e.position-anchor
+	var leash := float(e.guard_leash)
+	if offset.length_squared() > leash*leash: e.position = _clamp_point(anchor+offset.normalized()*leash)
+
+## One step of the walk home (state "return"): straight to the anchor at the body's own speed, no crowd steering.
+func _guard_walk_back(e: Dictionary, speed: float) -> void:
+	var to_anchor: Vector2 = e.guard_anchor-e.position
+	var distance := to_anchor.length()
+	if distance <= .0001: return
+	e.position = _clamp_point(e.position+to_anchor/distance*minf(distance,speed*STEP))
 
 func _crowd_neighbors(point: Vector2, self_id: int) -> Array[int]:
 	var result: Array[int] = []
@@ -1280,7 +1307,7 @@ func _cleanup() -> void:
 		var e: Dictionary = enemies[id_]
 		if e.hp_raw > 0: alive += 1
 		if e.hp_raw <= 0 and tick-int(e.dead_tick) > 75: enemies.erase(id_)
-		elif e.hp_raw > 0 and e.position.distance_squared_to(hero.position) > 25.0*25.0 and not e.elite and e.state == "move" and (tick >= int(e.frozen_until) and tick >= int(e.get("stunned_until",0))):
+		elif e.hp_raw > 0 and e.position.distance_squared_to(hero.position) > 25.0*25.0 and not e.elite and not e.has("guard_uid") and e.state == "move" and (tick >= int(e.frozen_until) and tick >= int(e.get("stunned_until",0))):
 			# Recycle only a freely approaching survivor. A paid windup, dash,
 			# recovery or frozen body keeps its attack/telegraph origin until it
 			# returns to movement; relocation never creates another reward identity.
