@@ -85,7 +85,8 @@ func _poll_telegraphs(run: RefCounted, frame: int) -> void:
 		if not _tele_seen.has(id): fresh.append(e)
 	_tele_seen = live
 	for e in fresh:
-		var event := {"type":"telegraph_start","tick":int(run.tick),"shape":String(e.telegraph.get("shape","")),"kind":String(e.get("kind","")),"count":up,"elite":bool(e.get("elite",false))}
+		var id: int=int(e.get("id",0))
+		var event := {"type":"telegraph_start","tick":int(run.tick),"shape":String(e.telegraph.get("shape","")),"kind":String(e.get("kind","")),"count":up,"elite":bool(e.get("elite",false)) or String(e.get("grade",""))=="elite","id":int(id),"at":[snappedf(e.position.x,.01),snappedf(e.position.y,.01)]}
 		for name in names:
 			if started.has(name) or not _matches(event,name): continue
 			_start(name,event,int(run.tick),run,frame)

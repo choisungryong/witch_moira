@@ -55,6 +55,14 @@ var _routed_c := 0
 ## A6-5: the telegraph quads (one MultiMesh, drawn by `telegraph_fill` and `telegraph`).
 const TELE_MAX := 96
 var _tele_mm: MultiMesh
+## U-62: the floor telegraph (line, capsule, fill) is only drawn for bodies of at least this rank. 0 = every enemy (the old
+## look, U-56), 1 = elite and above (elite, champion, boss; their floor hazards always draw). Lower it to go back.
+const TELE_FLOOR_MIN_RANK := 1
+## Normal ranged / charging enemies draw a small body cue instead (one MultiMesh of billboards, see telegraph_cue.gdshader).
+const TELE_CUE_MAX := 64
+const TELE_CUE_HEIGHT := {"ranged":2.3,"charger":1.6}
+var telegraph_cue: MultiMeshInstance3D
+var _cue_mm: MultiMesh
 ## A6-RS RS1: the ring spell's own presenter (composition) and the run's spell document (read-only, set every sync).
 const RingSpellFx := preload("res://chapter1/view/fx/ring_spell_fx.gd")
 var _ring_fx := RingSpellFx.new()
@@ -111,6 +119,17 @@ func setup__cloister(owner_view: Node3D) -> void:
 	for tele_node in [telegraph_fill,telegraph]:
 		tele_node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		view.add_child(tele_node)
+	var cue_quad := QuadMesh.new();cue_quad.size=Vector2(2,2)
+	_cue_mm=MultiMesh.new()
+	_cue_mm.transform_format=MultiMesh.TRANSFORM_3D
+	_cue_mm.use_colors=true;_cue_mm.use_custom_data=true
+	_cue_mm.mesh=cue_quad
+	_cue_mm.instance_count=TELE_CUE_MAX
+	_cue_mm.visible_instance_count=0
+	var cue_mat := ShaderMaterial.new();cue_mat.shader=preload("res://chapter1/view/fx/telegraph_cue.gdshader");cue_mat.render_priority=12
+	telegraph_cue=MultiMeshInstance3D.new();telegraph_cue.multimesh=_cue_mm;telegraph_cue.material_override=cue_mat
+	telegraph_cue.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	view.add_child(telegraph_cue)
 	beams=MeshInstance3D.new()
 	beams.material_override=particle_mat
 	view.add_child(beams)
@@ -269,16 +288,32 @@ func _tele_put(buf: PackedFloat32Array,n: int,at: Vector2,dir: Vector2,half_x: f
 ## A6-5: enemy telegraphs and the boss floor strikes. Reads the core's telegraph record only (shape, direction, rays,
 ## length, width/radius, remaining_ticks) and the enemy's own windup length: progress = 1 - remaining / windup.
 ## The picture uses exactly the radii and lengths the core resolves the hit with.
+## Rank of a body for the floor telegraph: 0 normal, 1 elite / champion / boss (read-only core state, same reading as the core's _enemy_role).
+static func _tele_rank(e: Dictionary) -> int:
+	return 1 if (bool(e.get("elite",false)) or String(e.get("grade",""))=="elite") else 0
+
 func _sync_telegraphs(run: RefCounted) -> void:
 	var buf := _mmbuf(_tele_mm)
+	var cue := _mmbuf(_cue_mm)
 	var n := 0
+	var c := 0
 	for e in _enemies_frame:
 		if e.telegraph.is_empty() or e.hp_raw<=0: continue
-		if n>=TELE_MAX: break
 		var t: Dictionary=e.telegraph
 		var win := float(maxi(1,int(e.get("definition",run.ENEMY_DEFS[e.kind]).get("windup",48))))
 		var rem := float(t.get("remaining_ticks",win))
 		var p := clampf(1.0-rem/win,0,1)
+		if _tele_rank(e)<TELE_FLOOR_MIN_RANK:
+			# a normal body: only the small cue at the body (ranged and charging bodies; the cue never covers the floor)
+			var cue_h: float=float(TELE_CUE_HEIGHT.get(String(e.kind),0.0))
+			if cue_h>0.0 and c<TELE_CUE_MAX:
+				var cat: Vector2=e.position
+				var o := c*MM_STRIDE
+				_wx(cue,o,Transform3D(Basis.IDENTITY,Vector3(cat.x,cue_h,cat.y)))
+				_wc(cue,o+MM_COLOR,Color(1.0 if rem<=3.0 else 0.0,0,0,1));_wc(cue,o+MM_CUSTOM,Color(0.24,p,0,0))
+				c+=1
+			continue
+		if n>=TELE_MAX: break
 		var heavy: bool=e.elite
 		var tint := Color(1.0 if heavy else 0.0,1.6 if heavy else 1.0,1.0 if rem<=3.0 else 0.0,1)
 		var at: Vector2=e.position
@@ -314,6 +349,7 @@ func _sync_telegraphs(run: RefCounted) -> void:
 			var radius := float(h.radius)
 			_tele_put(buf,n,h.position,Vector2.RIGHT,radius+.25,radius+.25,Color(0,clampf(1.0-left/span,0,1),0,radius),Color(2,1.5,1.0 if left<=3.0 else 0.0,1));n+=1
 	_mmflush(_tele_mm,buf,n)
+	_mmflush(_cue_mm,cue,c)
 
 func _kick(strength: float, tick: int) -> void:
 	if tick-_last_camera_tick<14:return
@@ -886,7 +922,7 @@ func consume__q16(events: Array) -> void:
 ## After actual victory, expire only the combat presentation, retaining loot.
 var _ending20_age := 0.0
 var _ending20_active := false
-const ENDING20_NODES := ["projectiles","shards","impacts","plumes","telegraph","telegraph_fill","beams","arc_surface","ice_batch","ice_fragment_batch","contact_batch"]
+const ENDING20_NODES := ["projectiles","shards","impacts","plumes","telegraph","telegraph_fill","telegraph_cue","beams","arc_surface","ice_batch","ice_fragment_batch","contact_batch"]
 func sync__q20(run: RefCounted,delta: float) -> void:
 	sync__q14(run,delta)
 	if run.mode=="victory":_ending20_active=true
