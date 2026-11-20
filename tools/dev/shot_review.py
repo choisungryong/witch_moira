@@ -506,9 +506,169 @@ def to_markdown(result, compare, limits):
     return "\n".join(L)
 
 
+# ---------------------------------------------------------------- 주인공 자르기 측정과 판 A·B (A7-0, 지시서 2.5절)
+# 입력: rig_game_probe.gd --hero-mask --hero-crop-ticks=...가 낸 폴더(crop_tNNNN.png + crop_tNNNN.mask.png, 240x240 원 크기).
+# 가면(.mask.png)의 알파가 "주인공 화소"다. 가림(앞에 선 적, 효과)은 가면이 무시하므로 가면 안에는 위에 덮인 효과 화소도 들어 있다.
+
+ELEMENT_HUE = {"ember": 27.0, "frost": 186.0, "arc": 227.0}  # 게임의 원소색 ff943d, 9ce7ef, 8fa6ff의 색상(도). --element-hue로 바꾼다(예: arc=248).
+HERO_BAND_PX = 12      # 가면 바깥 고리띠 폭(2.5절 4번째 잰 값)
+EFFECT_LUM_MIN = 0.45  # 고리띠 안에서 "효과 화소"로 세는 최소 밝기(바닥과 효과를 가르는 근사. 지시서에 정의가 없어 이 도구가 정한 값)
+HERO_LIMITS = {"white_pct_max": 10.0, "lum_mean": (0.30, 0.55), "element_pct": (12.0, 25.0), "other_element_pct_max": 5.0, "ring_gap_min": 0.20}
+
+
+def hue_dist(h, target):
+    d = np.abs(h - target) % 360.0
+    return np.minimum(d, 360.0 - d)
+
+
+def dilate(mask, px):
+    """정사각 팽창(2px+1 한 변). PIL MaxFilter는 홀수 크기만 받는다."""
+    im = Image.fromarray((mask * 255).astype(np.uint8))
+    return np.array(im.filter(ImageFilter.MaxFilter(2 * px + 1))) > 127
+
+
+def measure_hero(rgb, hero_mask, element, hues=None):
+    """rgb: (h,w,3) 0..1, hero_mask: (h,w) bool. 지시서 2.5절의 잰 값."""
+    hues = hues or ELEMENT_HUE
+    n = int(hero_mask.sum())
+    out = {"hero_pixels": n}
+    if n == 0:
+        return out
+    y = luminance(rgb)
+    h, s, _ = hsv(rgb)
+    py = y[hero_mask]
+    out["white_pct"] = float((py > 0.85).mean() * 100)
+    out["lum_mean"] = float(py.mean())
+    out["lum_p90"] = float(np.percentile(py, 90))
+    sat = s[hero_mask] >= 0.35
+    for name, deg in hues.items():
+        near = (hue_dist(h[hero_mask], deg) <= 25.0) & sat
+        out["element_pct_" + name] = float(near.mean() * 100)
+    out["element_pct"] = out.get("element_pct_" + element, float("nan"))
+    out["other_element_pct_max"] = max([out["element_pct_" + k] for k in hues if k != element] or [0.0])
+    band = dilate(hero_mask, HERO_BAND_PX) & ~hero_mask
+    out["band_pixels"] = int(band.sum())
+    if band.any():
+        by = y[band]
+        out["band_lum_mean"] = float(by.mean())
+        eff = by > EFFECT_LUM_MIN
+        out["band_effect_pixels"] = int(eff.sum())
+        if eff.any():
+            out["band_effect_lum_mean"] = float(by[eff].mean())
+            out["ring_gap"] = float(by[eff].mean() - py.mean())  # 효과 화소 평균 - 주인공 평균. 기준: >= 0.20 (자기 효과 한가운데에서만 뜻이 있다)
+    return out
+
+
+def check_hero(m, element):
+    """지시서 2.5절 기준에 대한 ok/FAIL. 값이 없으면 'n/a'. ring_gap은 자기 효과 한가운데 순간에서만 읽는다."""
+    res = {}
+    if "lum_mean" not in m:
+        return res
+    res["white_pct"] = "ok" if m["white_pct"] <= HERO_LIMITS["white_pct_max"] else "FAIL"
+    lo, hi = HERO_LIMITS["lum_mean"]
+    res["lum_mean"] = "ok" if lo <= m["lum_mean"] <= hi else "FAIL"
+    lo, hi = HERO_LIMITS["element_pct"]
+    res["element_pct"] = "ok" if lo <= m["element_pct"] <= hi else "FAIL"
+    res["other_element_pct_max"] = "ok" if m["other_element_pct_max"] <= HERO_LIMITS["other_element_pct_max"] else "FAIL"
+    res["ring_gap"] = ("ok" if m["ring_gap"] >= HERO_LIMITS["ring_gap_min"] else "FAIL") if "ring_gap" in m else "n/a"
+    return res
+
+
+def hero_crops(folder):
+    """폴더의 crop_tNNNN.png 가운데 가면이 있는 것: [(틱, 그림 경로, 가면 경로)] 틱 순."""
+    out = []
+    for n in sorted(os.listdir(folder)):
+        if n.startswith("crop_t") and n.endswith(".png") and not n.endswith(".mask.png"):
+            tick = int(n[len("crop_t"):-len(".png")])
+            mask = os.path.join(folder, n[:-4] + ".mask.png")
+            out.append((tick, os.path.join(folder, n), mask if os.path.isfile(mask) else None))
+    return out
+
+
+def load_hero(path_img, path_mask):
+    rgb = np.asarray(Image.open(path_img).convert("RGB"), dtype=np.float64) / 255.0
+    mask = None
+    if path_mask:
+        mask = np.array(Image.open(path_mask).convert("RGBA"))[..., 3] > 127
+    return rgb, mask
+
+
+def hero_sheets(entries, out_dir, seed=7, cell=240):
+    """entries: [(마녀 이름, 틱, 그림 경로)]. 3x3 판 셋: 이름 붙은 것, 판 A(이름 가림, 칸 섞음, 컬러), 판 B(같은 판 회색조). 열쇠는 json."""
+    import random
+    n = len(entries)
+    cols = 3
+    rows = (n + cols - 1) // cols
+
+    def paste_all(order, labels, gray):
+        sheet = Image.new("RGB", (cols * cell + (cols + 1) * 4, rows * cell + (rows + 1) * 4), (70, 70, 74))
+        for k, idx in enumerate(order):
+            im = Image.open(entries[idx][2]).convert("RGB")
+            if im.size != (cell, cell):
+                im = im.resize((cell, cell), Image.LANCZOS)
+            if gray:
+                im = ImageOps.grayscale(im).convert("RGB")
+            if labels:
+                _label(im, labels[k])
+            sheet.paste(im, (4 + (k % cols) * (cell + 4), 4 + (k // cols) * (cell + 4)))
+        return sheet
+
+    natural = list(range(n))
+    shuffled = natural[:]
+    random.Random(seed).shuffle(shuffled)
+    os.makedirs(out_dir, exist_ok=True)
+    paste_all(natural, ["%s t%d" % (e[0], e[1]) for e in entries], False).save(os.path.join(out_dir, "hero-sheet-labeled.png"))
+    paste_all(shuffled, [str(k + 1) for k in range(n)], False).save(os.path.join(out_dir, "hero-sheet-A.png"))
+    paste_all(shuffled, [str(k + 1) for k in range(n)], True).save(os.path.join(out_dir, "hero-sheet-B-gray.png"))
+    key = {str(k + 1): {"witch": entries[idx][0], "tick": entries[idx][1]} for k, idx in enumerate(shuffled)}
+    with open(os.path.join(out_dir, "hero-sheet-key.json"), "w", encoding="utf-8") as f:
+        json.dump(key, f, ensure_ascii=False, indent=1)
+    return key
+
+
+def run_hero(specs, out_dir, hues=None):
+    """specs: [(마녀 이름, 폴더)]. 측정 json/md와 판 A·B를 out_dir에 쓴다."""
+    result = {"hues": hues or ELEMENT_HUE, "limits": {k: list(v) if isinstance(v, tuple) else v for k, v in HERO_LIMITS.items()}, "rows": []}
+    entries = []
+    for name, folder in specs:
+        for tick, pimg, pmask in hero_crops(folder):
+            entries.append((name, tick, pimg))
+            row = {"witch": name, "tick": tick, "image": pimg, "mask": pmask}
+            if pmask is None:
+                row["note"] = "가면 없음(--hero-mask 없이 찍은 폴더): 측정 안 함"
+            else:
+                rgb, mask = load_hero(pimg, pmask)
+                row["measure"] = measure_hero(rgb, mask, name, hues)
+                row["check"] = check_hero(row["measure"], name)
+            result["rows"].append(row)
+    os.makedirs(out_dir, exist_ok=True)
+    result["sheet_key"] = hero_sheets(entries, out_dir) if entries else {}
+    with open(os.path.join(out_dir, "hero-measure.json"), "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=1)
+    L = ["# 주인공 자르기 측정 (A7-0)", "", DISCLAIMER, "",
+         "가면 알파 = 주인공 화소(가림 무시). 효과 화소는 고리띠에서 밝기 > %.2f인 것(근사). ring_gap은 자기 효과 한가운데 순간에서만 뜻이 있다." % EFFECT_LUM_MIN, "",
+         "| 마녀 | 틱 | 주인공 화소 | 흰(>0.85) % | 평균 명도 | 원소색 % | 다른 원소색 최대 % | 고리 효과 평균 명도 | ring_gap | 판정 |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for r in result["rows"]:
+        m = r.get("measure")
+        if not m or "lum_mean" not in m:
+            L.append("| %s | %d | - | - | - | - | - | - | - | %s |" % (r["witch"], r["tick"], r.get("note", "주인공 화소 0")))
+            continue
+        chk = " ".join("%s=%s" % (k, v) for k, v in r["check"].items())
+        L.append("| %s | %d | %d | %.1f | %.3f | %.1f | %.1f | %s | %s | %s |" % (
+            r["witch"], r["tick"], m["hero_pixels"], m["white_pct"], m["lum_mean"], m["element_pct"], m["other_element_pct_max"],
+            "%.3f" % m["band_effect_lum_mean"] if "band_effect_lum_mean" in m else "-", "%.3f" % m["ring_gap"] if "ring_gap" in m else "-", chk))
+    L.append("")
+    with open(os.path.join(out_dir, "hero-measure.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(L))
+    return result
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="캡처 전후 비교와 화면 측정. " + DISCLAIMER)
-    ap.add_argument("folders", nargs="+", help="캡처 폴더 하나(측정만) 또는 둘(전, 후)")
+    ap.add_argument("folders", nargs="*", help="캡처 폴더 하나(측정만) 또는 둘(전, 후). --hero-sheet만 쓰면 생략")
+    ap.add_argument("--hero-sheet", action="append", default=[], metavar="NAME=DIR",
+                    help="주인공 자르기 폴더(rig_game_probe.gd --hero-mask --hero-crop-ticks). NAME은 ember|frost|arc. 여러 번. 측정 json/md와 판 A·B를 --out에 쓴다")
+    ap.add_argument("--element-hue", action="append", default=[], metavar="NAME=DEG", help="원소색 색상(도)을 바꾼다(예: arc=248)")
     ap.add_argument("--out", required=True, help="출력 폴더(경로에 _local 필요)")
     ap.add_argument("--limits", default=None)
     ap.add_argument("--play", default=None)
@@ -520,10 +680,27 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if len(args.folders) > 2:
         ap.error("폴더는 하나 또는 둘")
+    if not args.folders and not args.hero_sheet:
+        ap.error("캡처 폴더 또는 --hero-sheet가 필요하다")
     for p in args.folders:
         if not os.path.isdir(p):
             ap.error("폴더가 없다: " + p)
     _check_out(args.out)
+    if args.hero_sheet:
+        specs = []
+        for item in args.hero_sheet:
+            name, _, folder = item.partition("=")
+            if not folder or not os.path.isdir(folder):
+                ap.error("--hero-sheet NAME=DIR: 폴더가 없다: " + item)
+            specs.append((name, folder))
+        hues = dict(ELEMENT_HUE)
+        for item in args.element_hue:
+            name, _, deg = item.partition("=")
+            hues[name] = float(deg)
+        res = run_hero(specs, args.out, hues)
+        print("주인공 측정 %d칸 -> %s" % (len(res["rows"]), args.out))
+        if not args.folders:
+            return 0
     cfg = {k: (list(v) if isinstance(v, list) else v) for k, v in DEFAULTS.items()}
     if args.play:
         cfg["play"] = parse_box(args.play)

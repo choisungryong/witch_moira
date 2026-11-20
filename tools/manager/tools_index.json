@@ -100,7 +100,7 @@
       {"path": "tools/art/rig_clips.py", "use": "3D 3단계: 동작 6개(idle·run·cast·hit·death·dodge, 60fps)를 코드로 찍어 glb로. --retarget-from으로 기존 동작 옮기기(Blender)"},
       {"path": "tools/art/rig_parts.py", "use": "3D 4단계: 같은 뼈대에 소품 메시를 뼈에 붙여 한 glb로, 단색 텍스처(Blender)"},
       {"path": "tools/art/rig_check.py", "use": "3D 5단계: 내보낸 glb가 게임의 계약(뼈·클립·재질·삼각형·방향·크기)을 지키는지. asset_intake의 자리표 대조를 부름(Blender 필요 없음)"},
-      {"path": "chapter1/tests/rig_game_probe.gd", "use": "3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행)"},
+      {"path": "chapter1/tests/rig_game_probe.gd", "use": "3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행). A7-0 시험 인수: --hero-look(겉모습 값 덮기), --hero-mask·--hero-crop-ticks(주인공 가면과 240x240 원 크기 자르기), --burst=틱,수(연속 캡처), --foot-log(발 미끄러짐·걸음 박자), --hero-cast-overlay=0|1. 자르기 측정과 판 A·B는 tools/dev/shot_review.py --hero-sheet"},
       {"path": "tools/art/rig_common.py", "use": "3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음)"}
     ]},
     {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [

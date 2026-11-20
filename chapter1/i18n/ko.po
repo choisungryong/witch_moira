@@ -386,7 +386,7 @@ msgstr "서리창 랭크 {rank}으로 시작"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "서리창 씨앗 없이 진화"
+msgstr "결정 은총 없이 진화"
 
 #. Save refusal text
 msgid "profile.error.preview_only"

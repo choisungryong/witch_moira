@@ -171,5 +171,78 @@ class EndToEndTest(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(out, "s1-gray.png")))
 
 
+class HeroMeasureTest(unittest.TestCase):
+    """A7-0: 주인공 가면 안의 명도·원소색 비율, 고리띠, 판 A·B."""
+
+    @staticmethod
+    def crop(body_rgb, size=240):
+        """검은 바닥에 가운데 40x80 주인공(body_rgb)과 그 둘레 고리 밖 밝은 효과 한 줄. 가면은 주인공 자리."""
+        img = np.zeros((size, size, 3), dtype=np.uint8)
+        mask = np.zeros((size, size), dtype=bool)
+        img[100:180, 100:140] = body_rgb
+        mask[100:180, 100:140] = True
+        img[100:180, 146:150] = (230, 230, 230)  # 가면 바깥 6px: 고리띠 안의 효과 화소
+        return img, mask
+
+    def test_element_and_cross_element(self):
+        img, mask = self.crop((255, 148, 61))  # 주황 = ember 색
+        m = sr.measure_hero(img / 255.0, mask, "ember")
+        self.assertAlmostEqual(m["element_pct"], 100.0)
+        self.assertAlmostEqual(m["element_pct_frost"], 0.0)
+        self.assertAlmostEqual(m["other_element_pct_max"], 0.0)
+        # 게임의 frost 색 9ce7ef는 채도가 0.347이라 "채도 >= 0.35" 기준에 들지 못한다(지시서 2.5절의 기준과 색의 어긋남). 시험은 더 진한 청록으로.
+        self.assertLess(sr.hsv(np.array([[[156, 231, 239]]]) / 255.0)[1][0, 0], 0.35)
+        img, mask = self.crop((60, 200, 230))  # frost 계열 색을 ember로 재면 다른 원소색 100%
+        m = sr.measure_hero(img / 255.0, mask, "ember")
+        self.assertAlmostEqual(m["element_pct"], 0.0)
+        self.assertAlmostEqual(m["other_element_pct_max"], 100.0)
+
+    def test_white_and_mean(self):
+        img, mask = self.crop((240, 240, 240))
+        m = sr.measure_hero(img / 255.0, mask, "frost")
+        self.assertAlmostEqual(m["white_pct"], 100.0)
+        self.assertAlmostEqual(m["lum_mean"], 240 / 255, places=3)
+        self.assertEqual(sr.check_hero(m, "frost")["white_pct"], "FAIL")
+
+    def test_ring_gap(self):
+        img, mask = self.crop((60, 60, 60))
+        m = sr.measure_hero(img / 255.0, mask, "frost")
+        self.assertGreater(m["band_effect_pixels"], 0)
+        self.assertAlmostEqual(m["band_effect_lum_mean"], 230 / 255, places=3)
+        self.assertAlmostEqual(m["ring_gap"], 230 / 255 - 60 / 255, places=3)
+        self.assertEqual(sr.check_hero(m, "frost")["ring_gap"], "ok")
+
+    def test_empty_mask(self):
+        m = sr.measure_hero(np.zeros((8, 8, 3)), np.zeros((8, 8), dtype=bool), "frost")
+        self.assertEqual(m["hero_pixels"], 0)
+        self.assertEqual(sr.check_hero(m, "frost"), {})
+
+    def test_sheets_and_cli(self):
+        with tempfile.TemporaryDirectory() as t:
+            specs = []
+            for name, rgb in (("ember", (255, 148, 61)), ("frost", (156, 231, 239)), ("arc", (143, 166, 255))):
+                d = os.path.join(t, name)
+                os.makedirs(d)
+                for tick in (600, 1500, 2400):
+                    img, mask = self.crop(rgb)
+                    Image.fromarray(img).save(os.path.join(d, "crop_t%04d.png" % tick))
+                    alpha = np.zeros((240, 240, 4), dtype=np.uint8)
+                    alpha[..., 3] = mask * 255
+                    Image.fromarray(alpha).save(os.path.join(d, "crop_t%04d.mask.png" % tick))
+                specs.append("%s=%s" % (name, d))
+            out = os.path.join(t, "_local", "o")
+            args = ["--out=" + out]
+            for s in specs:
+                args += ["--hero-sheet", s]
+            self.assertEqual(sr.main(args), 0)
+            for n in ("hero-measure.json", "hero-measure.md", "hero-sheet-A.png", "hero-sheet-B-gray.png", "hero-sheet-labeled.png", "hero-sheet-key.json"):
+                self.assertTrue(os.path.exists(os.path.join(out, n)), n)
+            with open(os.path.join(out, "hero-measure.json"), encoding="utf-8") as f:
+                res = json.load(f)
+            self.assertEqual(len(res["rows"]), 9)
+            self.assertEqual(len(res["sheet_key"]), 9)
+            self.assertEqual(Image.open(os.path.join(out, "hero-sheet-A.png")).size, (3 * 240 + 4 * 4, 3 * 240 + 4 * 4))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

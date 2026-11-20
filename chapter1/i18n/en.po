@@ -381,7 +381,7 @@ msgstr "Start the lance at rank {rank}"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "Evolve without the Frost Lance Seed"
+msgstr "Evolve without the crystal grace"
 
 #. Save refusal text
 msgid "profile.error.preview_only"

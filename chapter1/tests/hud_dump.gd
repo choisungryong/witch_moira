@@ -155,7 +155,8 @@ func _initialize() -> void:
 		elif arg == "--dump-extra": dump_extra = true
 		elif arg == "--menu-tour": menu_tour = true
 		elif arg.begins_with("--asset-usage="): asset_usage_path = arg.trim_prefix("--asset-usage=")
-		elif arg.begins_with("--burst="): burst_arg = arg.trim_prefix("--burst=")
+		# "--burst=<tick>,<frames>" (two integers) is the hero capture of rig_game_probe.gd, not an event-name burst.
+		elif arg.begins_with("--burst=") and not _is_tick_burst(arg.trim_prefix("--burst=")): burst_arg = arg.trim_prefix("--burst=")
 		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
@@ -204,6 +205,10 @@ func _initialize() -> void:
 		burst.spells_on = run_spells_arg == "on"
 	if burst != null or not spells_pick.is_empty():
 		physics_frame.connect(_on_physics_frame)
+
+func _is_tick_burst(value: String) -> bool:
+	var parts := value.split(",")
+	return parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int()
 
 ## One sentence for the first argument problem, or "". Runs before anything is loaded.
 func _check_args() -> String:
