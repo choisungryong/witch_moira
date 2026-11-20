@@ -24,9 +24,12 @@ const PACE_KEYS := ["soft_after_ticks","ramp_bps_per_s","max_bps"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
 ## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
-const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor"]
+const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow"]
 ## D20: the evolved ember falls from the sky instead of flying. Absent block = it flies as before.
 const METEOR_KEYS := ["fall_ticks","lead_bps","scatter_cm","radius_bps","damage_bps"]
+## D21 N2: gear of a high enough quality stays on the ground and is gathered when a gate opens. Absent block or "enabled": false = the old 180 s rule.
+## The quality names are checked against loot.json when the run starts (the loader has no loot tables).
+const LOOT_FLOW_KEYS := ["enabled","keep_min_quality","gate_sweep_min_quality"]
 const ELITES_KEYS := ["enabled","balance_status","per_zone","at_seal_bps","kinds","hp","damage_bps","speed_bps","radius_bps","xp","affixes_per_zone","affixes"]
 const EXTRAS_KEYS := ["enabled","balance_status","guarded","shrines","chests"]
 const EXTRAS_LATER := ["unguarded","rituals","grade"]
@@ -111,6 +114,15 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	if v.has("grace"): issues.append_array(_grace_issues(v.grace))
 	if v.has("elites"): issues.append_array(_elites_issues(v.elites))
 	if v.has("extras"): issues.append_array(_extras_issues(v.extras))
+	if v.has("loot_flow"): issues.append_array(_loot_flow_issues(v.loot_flow))
+	return issues
+
+static func _loot_flow_issues(b: Variant) -> Array[String]:
+	if not b is Dictionary or not GrowthCatalog.keys_match(b,LOOT_FLOW_KEYS): return ["loot_flow keys"]
+	var issues: Array[String] = []
+	if not b.enabled is bool: issues.append("loot_flow enabled")
+	for key in ["keep_min_quality","gate_sweep_min_quality"]:
+		if not b[key] is String or String(b[key]).is_empty(): issues.append("loot_flow "+key)
 	return issues
 
 ## D20 ranges: fall 0.1 to 2 s, lead 0 to 1, scatter up to 6 m, radius and damage multipliers 0.3x to 3x.

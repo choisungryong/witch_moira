@@ -219,6 +219,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	if not _prepare_spells():return false
 	if not _prepare_descent():return false
 	if not _prepare_elites():return false
+	if not _prepare_loot_flow():return false
 	_activate_build()
 	_world_uniques36.clear()
 	zone=0;zone_kills=0;potions=int(tuning.potion.start);_next_potion=0;_champion_id=-1;_boss_phase=0;_next_ward=0
@@ -1042,6 +1043,7 @@ func _on_elite_defeated(e: Dictionary) -> void:
 		if _rhythm_on:_rest_until=tick+int(tuning.rhythm.gate_rest_ticks)
 		_emit("gate_opened",ZONES[zone]-Vector2(24,0),{"zone":zone})
 		_record("gate_opened")
+		if not _gate_sweep_qualities.is_empty():_sweep_ground_items_by_gate()
 
 ## The last seal's grace (tuning.final_level_on_boss_spawn): when the final boss appears, the orbs still on
 ## the ground flow to the hero and the collected experience rises to the last level threshold.
@@ -1123,6 +1125,18 @@ func _sweep_ground_items() -> void:
 		if inventory.size()<MAX_INVENTORY:
 			item.collected=true;inventory.append(item);metrics.picked_items+=1
 			_emit("item_pickup",hero.position,{"item":item.duplicate(true),"swept":true})
+		else:left.append(item)
+	items=left
+
+## D21 N2: when a gate opens, the gear of the zone being left that is of a swept quality goes into the bag.
+## The target is "quality at or above the threshold" whether or not the item is veiled; an identify scroll (W6) would be spent or offered at this spot, nothing here assumes it.
+## Only qualities from loot_flow.keep_min_quality up stay on the ground past 180 s, so nothing older than the last gate is left there but a full bag's leftovers.
+func _sweep_ground_items_by_gate() -> void:
+	var left: Array[Dictionary]=[]
+	for item in items:
+		if item.quality in _gate_sweep_qualities and inventory.size()<MAX_INVENTORY:
+			item.collected=true;inventory.append(item);metrics.picked_items+=1
+			_emit("item_pickup",hero.position,{"item":item.duplicate(true),"swept":true,"by":"gate"})
 		else:left.append(item)
 	items=left
 
@@ -1301,6 +1315,53 @@ func can_equip(item: Dictionary) -> bool:
 	if _build_active:level=maxi(level,int(_build.character_level))
 	return int(item.get("required_level",1))<=level
 
+## D21 N1: what the pickup of bag item `uid` should do on screen. Read only: no state, no random draw, no event.
+## {react:"quiet"|"auto_equip"|"card"|"open", better, empty_slot, slot, replaces_uid, top_rows:[at most 3 rows of preview_equip().rows]}.
+## Order: unknown uid -> {}; worn already or level too low -> quiet; quality at open_min_quality or above -> open; empty slot -> auto_equip
+## (card when auto_equip_empty is off); better by loot.is_upgrade -> card; else quiet. {} too when loot.json has no pickup_flow block.
+## The thresholds come from loot.json "pickup_flow"; the screen reads its time keys itself.
+func pickup_verdict(uid: int) -> Dictionary:
+	if loot==null or not loot.data.has("pickup_flow"):return {}
+	var item := _owned(uid)
+	if item.is_empty():return {}
+	var flow: Dictionary=loot.data.pickup_flow
+	var slot := target_slot(item)
+	var current := _owned(int(equipped.get(slot,-1)))
+	var empty_slot := current.is_empty()
+	var worn := not equip_slot_of(uid).is_empty()
+	# D21 v2: an unappraised item (veiled:true; none exist while identify is off) only counts its base numbers, so "better" is unknown.
+	var veiled: bool=bool(item.get("veiled",false))
+	var better := "unknown"
+	if not veiled:better="yes" if not worn and bool(loot.is_upgrade(item,current,_primary_id)) else "no"
+	var react := "quiet"
+	if not worn and can_equip(item):
+		var order: Array=loot.data.qualities
+		if order.find(item.quality)>=order.find(flow.open_min_quality):react="open"
+		elif veiled:
+			if empty_slot and bool(flow.auto_equip_veiled):react="auto_equip"
+			else:react="card"
+		elif empty_slot:react="auto_equip" if bool(flow.auto_equip_empty) else "card"
+		elif better=="yes" or String(flow.card_min)=="any":react="card"
+	var top: Array[Dictionary]=[]
+	if react!="quiet":top=_top_rows(preview_equip(uid,slot).get("rows",[]))
+	# Callers read the result by key; keys may be added.
+	return {"react":react,"veiled":veiled,"better":better,"empty_slot":empty_slot,"slot":slot,"replaces_uid":int(current.get("uid",0)),"top_rows":top}
+
+## The (at most) three rows that change the most in relative size. Stable on ties; copies the rows.
+func _top_rows(rows: Array) -> Array[Dictionary]:
+	var ranked: Array[Dictionary]=[]
+	for row in rows:
+		if row.change=="same":continue
+		var scale:=maxf(maxf(absf(float(row.before)),absf(float(row.after))),.000001)
+		ranked.append({"key":absf(float(row.delta))/scale,"row":row})
+	for i in range(1,ranked.size()):
+		var held: Dictionary=ranked[i];var j:=i-1
+		while j>=0 and float(ranked[j].key)<float(held.key):ranked[j+1]=ranked[j];j-=1
+		ranked[j+1]=held
+	var result: Array[Dictionary]=[]
+	for i in mini(3,ranked.size()):result.append(ranked[i].row.duplicate(true))
+	return result
+
 func import_starting_gear(gear: Array[Dictionary]) -> bool:
 	if mode!="playing" or tick!=0 or not inventory.is_empty() or gear.size()>EQUIP_SLOTS.size():return false
 	var slots := {}
@@ -1472,6 +1533,20 @@ var _elite_skipped := 0
 var _sites: Array[Dictionary] = []
 var _site_next := 0
 var _buffs: Array[Dictionary] = []
+
+var _gate_sweep_qualities: Array[String] = []
+
+## D21 N2: read tuning.loot_flow. Off (or absent) leaves both lists empty and the 180 s rule untouched. The quality names must exist in loot.json.
+func _prepare_loot_flow() -> bool:
+	_kept_qualities.clear();_gate_sweep_qualities.clear()
+	if not tuning.has("loot_flow") or not bool(tuning.loot_flow.enabled):return true
+	if loot==null:errors.assign(["loot_flow needs the loot tables"]);return false
+	var order: Array=loot.data.qualities
+	for key in ["keep_min_quality","gate_sweep_min_quality"]:
+		if not order.has(tuning.loot_flow[key]):errors.assign(["loot_flow "+key+" is not a quality of loot.json"]);return false
+	for i in range(order.find(tuning.loot_flow.keep_min_quality),order.size()):_kept_qualities.append(String(order[i]))
+	for i in range(order.find(tuning.loot_flow.gate_sweep_min_quality),order.size()):_gate_sweep_qualities.append(String(order[i]))
+	return true
 
 ## Read the two switches and check what the data names against the other data files. A guarded site needs the body, so extras
 ## without elites is refused (start() returns false).

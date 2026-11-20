@@ -8,6 +8,8 @@ extends Control
 const CONTRACT_VERSION := 1
 const Grace = preload("res://chapter1/view/hud/grace_parts.gd")
 const Kit = preload("res://chapter1/view/hud/grace_draw.gd")
+const Parts = preload("res://chapter1/view/hud/ui_parts.gd")
+const Motion = preload("res://chapter1/view/hud/ui_motion.gd")
 const Palette = preload("res://chapter1/view/hud/palette.gd")
 const Loc = preload("res://chapter1/view/loc.gd")
 
@@ -17,7 +19,7 @@ signal exclude(card_ref: String)
 signal keep(card_ref: String)
 signal ready_for_pick   ## the cards settled (the host ignores it; the capture tool waits for it)
 
-const LOCK := 0.25        ## a pick is refused for this long after the cards settle (Input48; Space is never a confirm key)
+const LOCK := Motion.PICK_LOCK        ## a pick is refused for this long after the cards settle (Input48; Space is never a confirm key)
 const DEMON_BOB := 22.0   ## body bob, peak to peak, in 1600 x 900 code px
 const DEMON_PERIOD := 2.7
 const TRAIL_LAG := 0.2
@@ -42,7 +44,7 @@ var intro_start := 0.0
 var events: Array = []
 var reduce_motion := false
 var capture_mode := false   ## a still capture: the idle motion stays off
-var confirm_len := 0.46
+var confirm_len := Motion.SCENE_OUT
 var el := "frost"
 var jackpot_index := -1
 var card_nodes: Array = []
@@ -108,7 +110,7 @@ func apply(c: Dictionary) -> void:
 
 func _build() -> void:
 	el = String(contract.get("witch", {}).get("element", "frost"))
-	_flame = Kit.el_color(el).lerp(Grace.FLAME_WARM, 0.55)
+	_flame = Kit.el_color(el).lerp(Palette.FLAME_WARM, 0.55)
 	for i in cards.size():
 		if Grace.grade_key(String(cards[i].get("grade", "common"))) == "jackpot": jackpot_index = i
 	stage = Control.new()
@@ -128,7 +130,7 @@ func _layout() -> void:
 	_shafts(Vector2(420, 0))
 	_demon(Rect2(366, 40, 868, 1300))
 	_motes(Rect2(300, 60, 700, 700))
-	hand_glow = Grace.glow_rect(stage, Vector2.ZERO, 1.0, Kit.with_alpha(Kit.el_color(el), 0.34))
+	hand_glow = Parts.glow_rect(stage, Vector2.ZERO, 1.0, Kit.with_alpha(Kit.el_color(el), 0.34))
 	hand_glow.size = Vector2(900, 340)
 	hand_glow.position = Vector2(800, 670) - hand_glow.size * 0.5
 	var centres := [Vector2(538, 622), Vector2(800, 592), Vector2(1062, 622)]
@@ -182,10 +184,10 @@ func _post_layout() -> void:
 		_aura_mat.set_shader_parameter("amt", 0.30)
 		demon_trail.material = _aura_mat
 		demon_trail.modulate = Color.WHITE
-	if jackpot_index >= 0 and Grace.tex("sigil") != null:
+	if jackpot_index >= 0 and Parts.tex("sigil") != null:
 		var r: Rect2 = jackpot_parts.rect
 		var d := r.size.x * 1.15
-		_sigil_bg = Grace.art_rect(cards_root, "sigil", Rect2(r.get_center() - Vector2(d, d) * 0.5, Vector2(d, d)), {"add": true, "tint": Kit.with_alpha(Color.WHITE, 0.6)})
+		_sigil_bg = Parts.art_rect(cards_root, "sigil", Rect2(r.get_center() - Vector2(d, d) * 0.5, Vector2(d, d)), {"add": true, "tint": Kit.with_alpha(Color.WHITE, 0.6)})
 		cards_root.move_child(_sigil_bg, card_nodes[jackpot_index].get_index())
 		_sigil_bg.modulate.a = 0.0
 		_sigil_bg.rotation = card_nodes[jackpot_index].rotation
@@ -218,7 +220,7 @@ func _flicker(t: float) -> void:
 
 # ============================================================ stage parts
 func _ground() -> void:
-	var tex: Texture2D = Grace.tex("demon_" + el)
+	var tex: Texture2D = Parts.tex("demon_" + el)
 	var base: Color = Palette.PLATE
 	if tex != null: base = tex.get_image().get_pixel(10, 10)   ## the figure's own ground colour: the picture melts into the stage
 	var g := ColorRect.new()
@@ -226,17 +228,17 @@ func _ground() -> void:
 	g.size = Kit.SIZE
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(g)
-	Grace.glow_rect(stage, Vector2(300, 260), 560.0, Kit.with_alpha(Kit.el_color(el), 0.16))
-	var vig := Grace.ArtLayer.new()
+	Parts.glow_rect(stage, Vector2(300, 260), 560.0, Kit.with_alpha(Kit.el_color(el), 0.16))
+	var vig := Parts.ArtLayer.new()
 	vig.texture = Kit.vignette_texture()
 	vig.size = Kit.SIZE
 	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vig.modulate = Kit.with_alpha(Color.WHITE, 0.8)
+	vig.modulate = Kit.with_alpha(Color.WHITE, Palette.SCRIM_SCENE_VIGNETTE)
 	stage.add_child(vig)
 
 func _shafts(origin: Vector2, count := 2) -> void:
 	for i in count:
-		var g := Grace.glow_rect(stage, origin + Vector2(float(i) * 130.0, 400.0), 1.0, Kit.with_alpha(Kit.el_color(el), 0.10))
+		var g := Parts.glow_rect(stage, origin + Vector2(float(i) * 130.0, 400.0), 1.0, Kit.with_alpha(Kit.el_color(el), 0.10))
 		g.size = Vector2(300.0 + 80.0 * i, 1500.0)
 		g.position = origin + Vector2(float(i) * 150.0 - g.size.x * 0.5, 380.0 - g.size.y * 0.5)
 		g.pivot_offset = g.size * 0.5
@@ -245,9 +247,9 @@ func _shafts(origin: Vector2, count := 2) -> void:
 
 func _demon(rect: Rect2) -> void:
 	demon_rect = rect
-	var tex: Texture2D = Grace.tex("demon_" + el)
+	var tex: Texture2D = Parts.tex("demon_" + el)
 	if tex == null: return
-	demon_trail = Grace.ArtLayer.new()
+	demon_trail = Parts.ArtLayer.new()
 	demon_trail.texture = tex
 	demon_trail.position = rect.position
 	demon_trail.size = rect.size
@@ -256,7 +258,7 @@ func _demon(rect: Rect2) -> void:
 	demon_trail.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	demon_trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(demon_trail)
-	demon = Grace.ArtLayer.new()
+	demon = Parts.ArtLayer.new()
 	demon.texture = tex
 	demon.position = rect.position
 	demon.size = rect.size
@@ -264,11 +266,11 @@ func _demon(rect: Rect2) -> void:
 	demon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	demon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(demon)
-	demon_rim = Grace.glow_rect(stage, rect.position + rect.size * Vector2(0.62, 0.42), rect.size.x * 0.55, Kit.with_alpha(Kit.el_color(el), 0.10))
+	demon_rim = Parts.glow_rect(stage, rect.position + rect.size * Vector2(0.62, 0.42), rect.size.x * 0.55, Kit.with_alpha(Kit.el_color(el), 0.10))
 
 ## Small things of the element around the figure (embers / ice shards / current dots), one layer, placed once and drifted by motes_time(t).
 func _motes(zone: Rect2, count := 26) -> void:
-	motes = Grace.layer(stage, Callable(self, "_paint_motes"), Rect2(Vector2.ZERO, Kit.SIZE))
+	motes = Parts.layer(stage, Callable(self, "_paint_motes"), Rect2(Vector2.ZERO, Kit.SIZE))
 	var m := CanvasItemMaterial.new()
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	motes.material = m
@@ -299,10 +301,10 @@ func _paint_motes(c: Control) -> void:
 
 func _title_block(center_x: float, y: float, width: float, candle_dx: float, candle_h: float, candle_y: float) -> void:
 	var last := String(contract.get("moment", {}).get("kind", "")) == "last"
-	plaque_node = Grace.title(self, String(ui.title_last if last else ui.title), width, String(contract.get("moment", {}).get("label", "")))
+	plaque_node = Parts.title(self, String(ui.title_last if last else ui.title), width, String(contract.get("moment", {}).get("label", "")))
 	plaque_node.position = Vector2(center_x - plaque_node.size.x * 0.5, y)
 	for sgn in [-1.0, 1.0]:
-		var c = Grace.candle(self, Vector2(center_x + sgn * candle_dx - candle_h * 0.25, candle_y), candle_h, _flame)
+		var c = Parts.candle(self, Vector2(center_x + sgn * candle_dx - candle_h * 0.25, candle_y), candle_h, _flame)
 		c.animated = not reduce_motion
 		candle_nodes.append(c)
 
@@ -310,7 +312,7 @@ func _band(pos: Vector2, width: float) -> void:
 	band_node = Grace.band(self, pos, width, contract)
 
 func _knobs(pos: Vector2, gap: float) -> void:
-	knob_nodes = Grace.handles(self, contract, pos, gap)
+	knob_nodes = Parts.handles(self, contract, pos, gap)
 	for k in knob_nodes:
 		k.pressed.connect(_knob_pressed)
 
@@ -323,7 +325,7 @@ func _knob_pressed(id: String) -> void:
 		"keep": keep.emit(String(cards[at].id))
 
 func _note(rect: Rect2) -> void:
-	note_node = Grace.note(self, rect, contract)
+	note_node = Parts.note(self, rect, contract)
 
 ## The demon's line (none when she does not speak).
 func _speech(pos: Vector2, width: float) -> void:
@@ -353,16 +355,16 @@ func _cards_into(rects: Array, tilts: Array) -> void:
 func _jackpot_fx(r: Rect2, heat_rect: Rect2, stamp_pos: Vector2, tilt := 0.0) -> void:
 	if jackpot_index < 0: return
 	var c := r.get_center()
-	var halo := Grace.glow_rect(cards_root, c, r.size.x * 0.62, Kit.with_alpha(Palette.BRASS_HI, 0.0))
+	var halo := Parts.glow_rect(cards_root, c, r.size.x * 0.62, Kit.with_alpha(Palette.BRASS_HI, 0.0))
 	cards_root.move_child(halo, card_nodes[jackpot_index].get_index())
-	var heat := Grace.layer(self, Callable(self, "_paint_heat"), Rect2(Vector2.ZERO, Kit.SIZE))
+	var heat := Parts.layer(self, Callable(self, "_paint_heat"), Rect2(Vector2.ZERO, Kit.SIZE))
 	heat.set_meta("rect", heat_rect)
 	heat.set_meta("tilt", tilt)
 	heat.modulate.a = 0.0
 	var stamp_node = Grace.jackpot(self, String(ui.fated_banner), Vector2(230, 84))
 	stamp_node.position = stamp_pos - stamp_node.size * 0.5
 	stamp_node.modulate.a = 0.0
-	var sp := Grace.layer(self, Callable(self, "_paint_sparks"), Rect2(Vector2.ZERO, Kit.SIZE))
+	var sp := Parts.layer(self, Callable(self, "_paint_sparks"), Rect2(Vector2.ZERO, Kit.SIZE))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
 	var pts: Array = []
@@ -379,7 +381,7 @@ func _jackpot_fx(r: Rect2, heat_rect: Rect2, stamp_pos: Vector2, tilt := 0.0) ->
 	var m := CanvasItemMaterial.new()
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	sp.material = m
-	var eye: Control = Grace.glow_rect(self, Vector2.ZERO, 23.0, Kit.with_alpha(Kit.el_color(el), 0.0))
+	var eye: Control = Parts.glow_rect(self, Vector2.ZERO, 23.0, Kit.with_alpha(Kit.el_color(el), 0.0))
 	jackpot_parts = {"halo": halo, "heat": heat, "stamp": stamp_node, "sparks": sp, "eye": eye, "rect": r}
 
 func _paint_heat(c: Control) -> void:
@@ -387,7 +389,7 @@ func _paint_heat(c: Control) -> void:
 	c.draw_set_transform(r.get_center(), float(c.get_meta("tilt", 0.0)))
 	var h := Rect2(-r.size * 0.5, r.size)
 	for k in 6:
-		c.draw_rect(h.grow(float(k) * 2.5), Kit.with_alpha(Grace.JACKPOT_GOLD, 0.5 * (1.0 - float(k) / 6.0)), false, 3.0)
+		c.draw_rect(h.grow(float(k) * 2.5), Kit.with_alpha(Palette.GRACE_JACKPOT, 0.5 * (1.0 - float(k) / 6.0)), false, 3.0)
 
 func _paint_sparks(c: Control) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -397,8 +399,8 @@ func _paint_sparks(c: Control) -> void:
 	for p0 in c.get_meta("pts", []):
 		var p: Vector2 = ctr.lerp(p0, b)
 		var s := rng.randf_range(1.4, 3.6)
-		c.draw_circle(p, s, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.9))
-		c.draw_circle(p, s * 2.6, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.16))
+		c.draw_circle(p, s, Kit.with_alpha(Palette.GRACE_JACKPOT, 0.9))
+		c.draw_circle(p, s * 2.6, Kit.with_alpha(Palette.GRACE_JACKPOT, 0.16))
 
 # ============================================================ motion hooks (pure functions of an amount or a time)
 func jackpot_state(a: float) -> void:
@@ -478,7 +480,7 @@ func _intro_t(t: float) -> void:
 	if hand_glow != null:
 		var fl := 0.0
 		if long and not final: fl = sin(PI * clampf((t - 1.2) / 0.4, 0.0, 1.0))
-		hand_glow.modulate = Kit.with_alpha(Kit.el_color(el).lerp(Grace.FLAME_WARM, 0.25 * fl), 0.34 + 0.40 * fl)
+		hand_glow.modulate = Kit.with_alpha(Kit.el_color(el).lerp(Palette.FLAME_WARM, 0.25 * fl), 0.34 + 0.40 * fl)
 	_flicker(_pose_t)
 	if final:
 		for i in card_nodes.size():
@@ -575,7 +577,7 @@ func _paint_trail(c: Control) -> void:
 		var p := _fly_from.lerp(_fly_to, e) + Vector2(0, -110.0 * sin(PI * e))
 		var f := 1.0 - float(k) / 12.0
 		c.draw_circle(p, 5.0 + 17.0 * f, Kit.with_alpha(col, 0.55 * f))
-		c.draw_circle(p, 2.0 + 7.0 * f, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.6 * f))
+		c.draw_circle(p, 2.0 + 7.0 * f, Kit.with_alpha(Palette.GRACE_JACKPOT, 0.6 * f))
 
 func _paint_socket(c: Control) -> void:
 	if _sock_a <= 0.0: return
@@ -589,8 +591,8 @@ func _fly_ease(u: float) -> float:
 
 func _prepare_confirm(i: int) -> void:
 	var cd = card_nodes[i]
-	var en: String = Grace.emblem_name(String(cards[i].get("element", el)), String(cards[i].get("kind", "new")))
-	if Grace.tex(en) != null: _fly = Grace.art_rect(self, en, Rect2(Vector2.ZERO, Vector2(64, 64)))
+	var en: String = Parts.emblem_name(String(cards[i].get("element", el)), String(cards[i].get("kind", "new")))
+	if Parts.tex(en) != null: _fly = Parts.art_rect(self, en, Rect2(Vector2.ZERO, Vector2(64, 64)))
 	_fly_from = cd.emblem_center()
 	_fly_to = band_node.target_for(cards[i])
 	_fly_s0 = cd.emblem_box.size.x * cd.scale.x / 64.0
@@ -598,12 +600,12 @@ func _prepare_confirm(i: int) -> void:
 	if _fly != null: _fly.visible = false
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	_trail_layer = Grace.layer(self, Callable(self, "_paint_trail"), Rect2(Vector2.ZERO, Kit.SIZE))
+	_trail_layer = Parts.layer(self, Callable(self, "_paint_trail"), Rect2(Vector2.ZERO, Kit.SIZE))
 	_trail_layer.material = add
-	_sock_layer = Grace.layer(self, Callable(self, "_paint_socket"), Rect2(Vector2.ZERO, Kit.SIZE))
+	_sock_layer = Parts.layer(self, Callable(self, "_paint_socket"), Rect2(Vector2.ZERO, Kit.SIZE))
 	var centre := demon_rect.position + demon_rect.size * Vector2(0.5, 0.3)
-	_burst = Grace.glow_rect(stage, centre, 460.0, Kit.with_alpha(Kit.el_color(el), 0.0))
-	_burst_gold = Grace.glow_rect(stage, centre, 240.0, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.0))
+	_burst = Parts.glow_rect(stage, centre, 460.0, Kit.with_alpha(Kit.el_color(el), 0.0))
+	_burst_gold = Parts.glow_rect(stage, centre, 240.0, Kit.with_alpha(Palette.GRACE_JACKPOT, 0.0))
 	cd.set_meta("emblem_node", cd.find_child(en, false, false))
 
 func _confirm_anim(index: int) -> float:
@@ -639,7 +641,7 @@ func _confirm_t(i: int, t: float) -> void:
 	_sock_layer.queue_redraw()
 	var bu := 0.0 if t < 0.36 else smoothstep(0.36, 0.4, t) * (1.0 - 0.6 * smoothstep(0.4, 0.46, t))
 	_burst.modulate = Kit.with_alpha(Kit.el_color(el), 0.55 * bu)
-	_burst_gold.modulate = Kit.with_alpha(Grace.JACKPOT_GOLD, 0.45 * bu)
+	_burst_gold.modulate = Kit.with_alpha(Palette.GRACE_JACKPOT, 0.45 * bu)
 	var du := clampf((t - 0.36) / 0.15, 0.0, 1.0)
 	for k in card_nodes.size():
 		if k == i: continue

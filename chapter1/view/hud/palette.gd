@@ -10,12 +10,26 @@ const QUALITY_RARE := Color("e0c47e")
 ## Legendary stays orange by director decision; change this one constant to recolour it everywhere.
 const QUALITY_LEGENDARY := Color("e8703a")
 const QUALITY_UNIQUE := Color("efac59")
-const QUALITY_COLORS := {"common":QUALITY_COMMON,"magic":QUALITY_MAGIC,"rare":QUALITY_RARE,"legendary":QUALITY_LEGENDARY,"unique":QUALITY_UNIQUE}
+## Set gear (not in the game yet; A3-U10 proposal, provisional until decided).
+const QUALITY_SET := Color("7cc47a")
+## The grace screen's top grade ("jackpot"): a grace grade, not a gear grade. Always shown with the crown-spike frame (A10 1.8).
+const GRACE_JACKPOT := Color("ffc24d")
+const QUALITY_COLORS :={"common":QUALITY_COMMON,"magic":QUALITY_MAGIC,"rare":QUALITY_RARE,"legendary":QUALITY_LEGENDARY,"unique":QUALITY_UNIQUE}
 
 ## ---- Text ----
 const INK := Color("f2ebd8")            ## default text
 const INK_DIM := Color("b9b2a1")        ## secondary text
 const INK_FAINT := Color("97988e")      ## hints, sources
+const TEXT_DISABLED := Color("777a78")  ## a disabled button's text
+## Reading surface (a side note) and its dark ink.
+const PARCHMENT := Color(0.75, 0.64, 0.46)
+const PARCHMENT_INK := Color(0.13, 0.095, 0.06)
+const PARCHMENT_INK_DIM := Color(0.27, 0.19, 0.11)
+## A value that rises / falls (always with an arrow or a sign, never colour alone).
+const GAIN := Color("8fd694")
+const LOSS := Color("e07a6a")
+## Candle flame base.
+const FLAME_WARM := Color("ffb25a")
 ## ---- Frames ----
 const BRASS := Color("aa8d58")          ## frame
 const BRASS_DIM := Color("665343")      ## weak frame, inactive
@@ -28,6 +42,9 @@ const SURFACE_RAISED := Color("202628") ## button / card
 const SCRIM := Color(.01,.015,.02,.72)
 const PLATE := Color(.035,.045,.05,.92) ## combat bar plate
 const SLOT := Color(.075,.095,.105,1)   ## combat bar slot and tree tile
+## Dim behind a full-screen scene (grace, character select, result, gear): black, plus a vignette whose edge alpha is SCRIM_SCENE_VIGNETTE (A10 1.3).
+const SCRIM_SCENE := Color(0,0,0,.65)
+const SCRIM_SCENE_VIGNETTE := 0.80
 ## ---- Threat and life ----
 const THREAT := Color("ff2f4f")         ## enemy danger
 const THREAT_DEEP := Color("7a1424")    ## boss health fill

@@ -44,9 +44,11 @@
         },
         "pose": {
           "run_time_scale": 0.6,
+          "stride_world_m": 2.15,
           "idle_loop_s": 1.2,
           "cast_start_s": 0.15,
           "cast_time_scale": 2.25,
+          "hit_start_s": 0,
           "hit_time_scale": 3,
           "death_max_age_s": 0.9
         },
@@ -708,6 +710,31 @@
         "alpha": true
       }
     },
+    "world.edge.props": {
+      "kind": "prop_atlas",
+      "file": "quality03/cloister_props_v01.png",
+      "meta": "quality03/cloister_props_v01.json",
+      "used": "yes",
+      "source": "A10 section 4 (map edge, E1), chapter1/view/world/chapter_world.gd EDGE_ROWS; the low wall, slab, cross and rubble sprites of the existing cloister prop atlas, scaled to 0.7-1.2 m; replace the atlas and keep the ids",
+      "contract": {
+        "group": "world.edge",
+        "ids_required": [
+          "wall",
+          "grave_slab",
+          "grave_cross",
+          "rubble"
+        ]
+      }
+    },
+    "world.edge.stone": {
+      "kind": "texture",
+      "file": "quality03/ground_flagstone_v01.png",
+      "used": "yes",
+      "source": "A10 section 4 (map edge, E1), chapter1/view/world/chapter_world.gd _build_edge_batches; skin of the footing course under the edge wall (triplanar)",
+      "contract": {
+        "square": true
+      }
+    },
     "world.mark.guard_ring": {
       "kind": "texture",
       "file": "",
@@ -1050,6 +1077,218 @@
       "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-arc-full-a2.png, copied as is; replace when the figure is chosen",
       "contract": {
         "alpha": false
+      }
+    },
+    "ui.kit.title_plaque": {
+      "kind": "texture",
+      "inherit": "ui.grace.title_plaque",
+      "source": "A10 W0: the shared kit id of the grace screen's picture (the file is still the ui.grace one; the old id stays). ui_parts.gd asks ui.kit first, then ui.grace"
+    },
+    "ui.kit.candle": {
+      "kind": "texture",
+      "inherit": "ui.grace.candle",
+      "source": "A10 W0: the shared kit id of the grace screen's picture (the file is still the ui.grace one; the old id stays). ui_parts.gd asks ui.kit first, then ui.grace"
+    },
+    "ui.kit.knobs": {
+      "kind": "texture",
+      "inherit": "ui.grace.knobs",
+      "source": "A10 W0: the shared kit id of the grace screen's picture (the file is still the ui.grace one; the old id stays). ui_parts.gd asks ui.kit first, then ui.grace"
+    },
+    "ui.kit.parchment": {
+      "kind": "texture",
+      "inherit": "ui.grace.parchment",
+      "source": "A10 W0: the shared kit id of the grace screen's picture (the file is still the ui.grace one; the old id stays). ui_parts.gd asks ui.kit first, then ui.grace"
+    },
+    "ui.kit.board": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K1: the contract board of a window (leather, two gold stitch lines, brass corner caps and rivets; nine-sliced). Until it exists UiStyle.window('board') returns the flat window",
+      "contract": {
+        "size": [
+          1536,
+          1024
+        ]
+      }
+    },
+    "ui.kit.button.primary": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K2: primary button face (leather plate, brass rim, small buckle under; nine-sliced). States are code tints",
+      "contract": {
+        "size": [
+          768,
+          192
+        ]
+      }
+    },
+    "ui.kit.button.secondary": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K2: secondary button face (leather plate, dark iron rim; nine-sliced); the danger button uses it with the danger mark",
+      "contract": {
+        "size": [
+          768,
+          192
+        ]
+      }
+    },
+    "ui.kit.mark.danger": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K3: broken wax seal mark of a danger button (no words)",
+      "contract": {
+        "size": [
+          256,
+          256
+        ]
+      }
+    },
+    "ui.kit.toggle": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K4: brass toggle, on and off",
+      "contract": {
+        "size": [
+          512,
+          256
+        ]
+      }
+    },
+    "ui.kit.band.notice": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K6: leather band for a band notice (buckles at both ends, middle empty)",
+      "contract": {
+        "size": [
+          1536,
+          256
+        ]
+      }
+    },
+    "ui.grade.frame.common": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: square grade frame of gear (common); the shape differs by grade so grades part without colour",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.ground.common": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: grade ground of gear (common)",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.frame.magic": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: square grade frame of gear (magic); the shape differs by grade so grades part without colour",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.ground.magic": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: grade ground of gear (magic)",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.frame.rare": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: square grade frame of gear (rare); the shape differs by grade so grades part without colour",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.ground.rare": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: grade ground of gear (rare)",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.frame.legendary": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: square grade frame of gear (legendary); the shape differs by grade so grades part without colour",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.ground.legendary": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: grade ground of gear (legendary)",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.frame.unique": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: square grade frame of gear (unique); the shape differs by grade so grades part without colour",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
+      }
+    },
+    "ui.grade.ground.unique": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A10 2.4 K5: grade ground of gear (unique)",
+      "contract": {
+        "size": [
+          512,
+          512
+        ]
       }
     }
   }

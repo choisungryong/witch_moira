@@ -174,9 +174,29 @@ static func _nine(file: String, margin: int, content: Array) -> StyleBoxTexture:
 # ---- Kinds ----
 
 ## Big window: menu, modals, confirm windows (K1).
-static func window() -> StyleBox:
+## `kind` "flat" (default) is the window every screen has today. `kind` "board" is the contract board of A10 (ui.kit.board, nine-sliced); without that picture it
+## is the flat window, so asking for it never fails. Screens opt in to "board" one by one (A10 W2...), nothing flips by itself when the picture arrives.
+static func window(kind := "flat") -> StyleBox:
+	if kind == "board":
+		var t: Texture2D = _parts().tex("board")
+		if t != null:
+			var m := int(minf(t.get_width(), t.get_height()) * BOARD_MARGIN_FRAC)
+			var s := StyleBoxTexture.new()
+			s.texture = t
+			s.texture_margin_left = m; s.texture_margin_right = m; s.texture_margin_top = m; s.texture_margin_bottom = m
+			s.content_margin_left = 44; s.content_margin_top = 44; s.content_margin_right = 44; s.content_margin_bottom = 44
+			s.draw_center = true
+			return s
 	if bound(): return _nine("window_96.png", 40, [44, 44, 44, 44])
 	return flat(Palette.SURFACE, Palette.BRASS)
+
+## The slice margin of the board picture as a fraction of its short side (a placeholder until the real picture fixes it).
+const BOARD_MARGIN_FRAC := 0.10
+const PARTS_FILE := "res://chapter1/view/hud/ui_parts.gd"
+
+## ui_parts.gd reads this file, so this file loads it at call time (a preload would be a cycle).
+static func _parts() -> GDScript:
+	return load(PARTS_FILE)
 
 ## Small plate: place and time, route, vital texts (K2s).
 static func plate() -> StyleBox:
@@ -248,16 +268,82 @@ static func button_face(state: String) -> StyleBox:
 	var s := flat(entry[0], entry[1]); s.set_content_margin_all(12)
 	return s
 
+## The A10 button: kind "primary" / "secondary" / "danger" (danger = the secondary face; its seal mark is drawn by the screen), state as button_face().
+## Leather faces from ui.kit.button.*; until they exist it is the button face every screen has today. States are code tints on the one picture.
+static func button_kind(kind: String, state: String) -> StyleBox:
+	var t: Texture2D = _parts().tex("button_primary" if kind == "primary" else "button_secondary")
+	if t == null: return button_face(state)
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	var m := int(t.get_height() * 0.3)
+	s.texture_margin_left = m; s.texture_margin_right = m; s.texture_margin_top = m; s.texture_margin_bottom = m
+	s.content_margin_left = 14; s.content_margin_right = 14; s.content_margin_top = 10; s.content_margin_bottom = 10
+	s.draw_center = true
+	match state:
+		"hover": s.modulate_color = Color(1.18, 1.12, 0.92)
+		"pressed": s.modulate_color = Color(0.72, 0.72, 0.72)
+		"disabled": s.modulate_color = Color(0.55, 0.55, 0.55, 0.8)
+	return s
+
 ## Selection mark: bright brass edge only (K16). Never a plain frame.
-static func focus_mark() -> StyleBoxFlat:
-	var focus := StyleBoxFlat.new(); focus.bg_color = Color(0, 0, 0, 0); focus.border_color = Palette.BRASS_HI; focus.set_border_width_all(3)
+## kind "box" (default): the 3 px square edge every screen has today (the fall-back path). "button": with the A10 button faces the face itself brightens
+## (button_kind hover), so no edge is drawn; without them it is the box. "row": a list row's mark, a brass bar on its left edge.
+static func focus_mark(kind := "box") -> StyleBox:
+	if kind == "button" and _parts().tex("button_primary") != null: return StyleBoxEmpty.new()
+	var focus := StyleBoxFlat.new(); focus.bg_color = Color(0, 0, 0, 0); focus.border_color = Palette.BRASS_HI
+	if kind == "row":
+		focus.border_width_left = 4
+		focus.bg_color = Color(Palette.BRASS_HI.r, Palette.BRASS_HI.g, Palette.BRASS_HI.b, 0.10)
+	else:
+		focus.set_border_width_all(3)
 	return focus
+
+## The seven text sizes of A10 1.9 (1600 x 900 code units). role "t1".."t7" -> {size, font, color}; `font` overrides the face ("heading" "body" "bold" "number").
+const TEXT_ROLES := {
+	"t1": {"size": 36, "font": "heading", "color": "ink"},
+	"t2": {"size": 30, "font": "heading", "color": "ink"},
+	"t3": {"size": 26, "font": "heading", "color": "ink"},
+	"t4": {"size": 20, "font": "body", "color": "ink"},
+	"t5": {"size": 17, "font": "body", "color": "ink"},
+	"t6": {"size": 15, "font": "body", "color": "dim"},
+	"t7": {"size": 14, "font": "body", "color": "dim"}}
+
+static func text(role: String, font := "") -> Dictionary:
+	var r: Dictionary = TEXT_ROLES.get(role, TEXT_ROLES["t5"])
+	return {"size": int(r.size), "font": font if font != "" else String(r.font), "color": Palette.INK if r.color == "ink" else Palette.INK_DIM}
+
+## A Label of a text role (size, face and colour from text()); `color` overrides the colour.
+static func text_label(value: String, role: String, font := "", color := Color(0, 0, 0, 0)) -> Label:
+	var t := text(role, font)
+	var l := Label.new()
+	l.text = value
+	l.add_theme_font_override("font", Loc.font(String(t.font)))
+	l.add_theme_font_size_override("font_size", int(t.size))
+	l.add_theme_color_override("font_color", color if color.a > 0.0 else t.color)
+	return l
+
+## The dim behind a screen, as a node of the full parent size: kind "window" (SCRIM, the scene shows through) or "scene" (SCRIM_SCENE plus the vignette).
+static func scrim(kind: String) -> Control:
+	var back := ColorRect.new()
+	back.mouse_filter = Control.MOUSE_FILTER_STOP
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if kind != "scene":
+		back.color = Palette.SCRIM
+		return back
+	back.color = Palette.SCRIM_SCENE
+	var vig = _parts().ArtLayer.new()
+	vig.texture = load("res://chapter1/view/hud/grace_draw.gd").vignette_texture()
+	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vig.modulate = Color(1, 1, 1, Palette.SCRIM_SCENE_VIGNETTE)
+	back.add_child(vig)
+	return back
 
 static func button(text: String, action: Callable) -> Button:
 	var b := Button.new(); b.text = text; b.custom_minimum_size.y = 48
 	b.add_theme_font_size_override("font_size", 18)
 	b.add_theme_color_override("font_color", Palette.INK)
-	b.add_theme_color_override("font_disabled_color", Color("777a78"))
+	b.add_theme_color_override("font_disabled_color", Palette.TEXT_DISABLED)
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(state, button_face(state))
 	b.add_theme_stylebox_override("focus", focus_mark())

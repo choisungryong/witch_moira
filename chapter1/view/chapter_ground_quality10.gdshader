@@ -2,6 +2,7 @@ shader_type spatial;
 // Godot 4.5 spatial shader built-ins and sampler syntax:
 // https://docs.godotengine.org/en/4.5/tutorials/shaders/shader_reference/spatial_shader.html
 #include "res://chapter1/view/hero_light.gdshaderinc"
+#include "res://chapter1/view/edge_dim.gdshaderinc"
 uniform sampler2D flagstone : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D soil : source_color, filter_linear_mipmap, repeat_enable;
 uniform bool has_flagstone = false;
@@ -59,7 +60,12 @@ void fragment() {
   surface=mix(surface*vec3(.9,.91,1.04),vec3(.24,.20,.13),rings*.13*paving*ring_reach);
  }
  // The hero is the centre of the light; effect lights lift it again (hero_light.gdshaderinc).
- ALBEDO=surface*lit_field(world_xz);
+ vec3 lit_surface=surface*lit_field(world_xz);
+ // Outside the walkable edge: sunk to edge_look.x of the brightness plus a thin cool fog (A10 W4).
+ float sunk=edge_shade(world_xz);
+ float fog_wisp=.85+.3*noise21(world_xz*.23+vec2(5.1,9.7));
+ lit_surface=mix(lit_surface*mix(1.,edge_look.x,sunk),edge_fog.rgb,clamp(sunk*edge_look.z*fog_wisp,0.,1.));
+ ALBEDO=lit_surface;
 	// Small lighting relief from the independently generated stone image. This
 	// changes only shading; the walkable floor remains the Chapter09 plane.
 	float h=dot(stone,vec3(.3,.59,.11))*.12*paving;

@@ -60,6 +60,7 @@ func _check(doc: Dictionary) -> Array[String]:
 	if not issues.is_empty(): return issues
 	if doc.schema_version != 2: issues.append("Unsupported schema")
 	issues.append_array(_check_rare_names(doc.rare_names))
+	if doc.has("pickup_flow"): issues.append_array(_check_pickup_flow(doc.pickup_flow,doc.qualities))
 	var seen: Dictionary = {}
 	for row in doc.bases:
 		if seen.has("b:"+str(row.id)): issues.append("Duplicate base "+str(row.id))
@@ -99,6 +100,21 @@ func _check(doc: Dictionary) -> Array[String]:
 
 ## rare_names = {"first": [{"id","name"}...], "second": [...]}. Ids are permanent (saved items point at them), unique over both
 ## lists and made of lowercase letters and digits; a word is one non-empty token without spaces or control characters.
+## D21 N3: optional block read by Chapter.pickup_verdict (the first three keys) and by the screen (the three time keys).
+func _check_pickup_flow(b: Variant, qualities: Array) -> Array[String]:
+	var keys := ["card_min","open_min_quality","auto_equip_empty","auto_equip_veiled","merge_seconds","card_seconds","auto_equip_seconds"]
+	if not b is Dictionary or b.size() != keys.size(): return ["pickup_flow keys"]
+	for key in keys:
+		if not b.has(key): return ["pickup_flow keys"]
+	var issues: Array[String] = []
+	if not b.card_min in ["better","any"]: issues.append("pickup_flow card_min")
+	if not b.open_min_quality in qualities: issues.append("pickup_flow open_min_quality")
+	if not b.auto_equip_empty is bool: issues.append("pickup_flow auto_equip_empty")
+	if not b.auto_equip_veiled is bool: issues.append("pickup_flow auto_equip_veiled")
+	for key in ["merge_seconds","card_seconds","auto_equip_seconds"]:
+		if not (b[key] is int or b[key] is float) or float(b[key]) < 0.0 or float(b[key]) > 60.0: issues.append("pickup_flow "+key)
+	return issues
+
 func _check_rare_names(names: Variant) -> Array[String]:
 	var issues: Array[String] = []
 	if not names is Dictionary or not names.has("first") or not names.has("second") or names.size() != 2:

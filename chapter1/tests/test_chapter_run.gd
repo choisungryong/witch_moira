@@ -992,6 +992,100 @@ func execute() -> void:
 	build_checks()
 	abandon_checks()
 	sheet_checks()
+	pickup_flow_checks()
 	if "--negative" in OS.get_cmdline_user_args():check(false,"Intentional checker failure")
 	print("CHAPTER_FULL_TEST ",JSON.stringify({"checks":checks,"failures":failures,"scope":"Fixtures and12000 item rolls; not normal-run pacing or visual approval"}))
 	quit(0 if failures.is_empty() else 1)
+
+## D21 W1: pickup_verdict (N1), pickup_flow (N3), loot_flow (N2). Items and stats are made by hand so every verdict is known.
+func pickup_flow_checks() -> void:
+	var run=Chapter.new();check(run.start(43,FROST),"D21 run starts")
+	check(run.loot.data.has("pickup_flow") and run.loot.data.pickup_flow.open_min_quality=="legendary","D21 loot.json carries the pickup_flow block and the loader accepts it")
+	var mk := func(uid: int,slot_: String,stats: Dictionary,quality: String="magic",req: int=1) -> Dictionary:
+		return {"uid":uid,"name":"item%d"%uid,"slot":slot_,"stats":stats,"quality":quality,"item_level":1,"affixes":[],"description":"","required_level":req}
+	run.inventory.clear();run.equipped.clear();run._recompute_gear()
+	run.inventory.append(mk.call(921,"weapon",{"damage_bps":500}))
+	run.inventory.append(mk.call(922,"weapon",{"damage_bps":5000}))
+	run.inventory.append(mk.call(923,"weapon",{"damage_bps":100}))
+	run.inventory.append(mk.call(924,"body",{"max_hp_raw":2560},"legendary"))
+	run.inventory.append(mk.call(925,"ring",{"damage_bps":9000},"rare",99))
+	run.inventory.append(mk.call(926,"head",{"max_hp_raw":2560},"unique"))
+	var before := fingerprint(run)
+	var v1: Dictionary=run.pickup_verdict(921)
+	check(v1.react=="auto_equip" and v1.empty_slot and v1.better=="yes" and not v1.veiled and v1.slot=="weapon" and v1.replaces_uid==0,"D21 an empty slot the level allows gives auto_equip")
+	check(v1.top_rows.size()>=1 and v1.top_rows.size()<=3,"D21 the verdict carries one to three rows of preview_equip")
+	check(run.pickup_verdict(924).react=="open" and run.pickup_verdict(926).react=="open","D21 legendary and unique give open, also on an empty slot")
+	check(run.pickup_verdict(925).react=="quiet" and run.pickup_verdict(925).top_rows.is_empty(),"D21 a required level above the hero's gives quiet")
+	check(run.pickup_verdict(99999).is_empty(),"D21 an unknown uid gives {}")
+	check(fingerprint(run)==before,"D21 pickup_verdict leaves equipped, hero, _gear_stats and snapshot byte-identical")
+	run.equipped.weapon=921;run._recompute_gear()
+	var worn_before := fingerprint(run)
+	var v2: Dictionary=run.pickup_verdict(922)
+	check(v2.react=="card" and v2.better=="yes" and not v2.empty_slot and v2.replaces_uid==921,"D21 a clearly better item for a filled slot gives card")
+	check(run.pickup_verdict(923).react=="quiet" and run.pickup_verdict(923).better=="no","D21 a worse item gives quiet")
+	check(run.pickup_verdict(921).react=="quiet","D21 an item already worn gives quiet")
+	check(fingerprint(run)==worn_before,"D21 pickup_verdict with gear worn leaves the state byte-identical")
+	# Veiled gear (marked by hand; nothing marks it while identify is off): better is unknown, the branch is auto_equip / open / card.
+	run.inventory.append(mk.call(941,"weapon",{"damage_bps":100}))
+	run.inventory.append(mk.call(942,"body",{"max_hp_raw":2560},"legendary"))
+	run.inventory.append(mk.call(943,"feet",{"max_hp_raw":2560},"rare"))
+	run.inventory.append(mk.call(944,"head",{"max_hp_raw":2560},"rare"))
+	for veiled_uid in [941,942,943,944]:
+		for it in run.inventory:
+			if it.uid==veiled_uid:it.veiled=true
+	run.equipped.head=944
+	var vv: Dictionary=run.pickup_verdict(943)
+	check(vv.veiled and vv.better=="unknown" and vv.react=="auto_equip","D21 veiled item for an empty slot gives auto_equip with better unknown")
+	check(run.pickup_verdict(942).react=="open" and run.pickup_verdict(942).veiled,"D21 veiled legendary gives open")
+	check(run.pickup_verdict(941).react=="card" and run.pickup_verdict(941).better=="unknown" and run.pickup_verdict(921).veiled==false,"D21 veiled item for a filled slot gives card, an unmarked item stays veiled false")
+	run.loot.data.pickup_flow.auto_equip_veiled=false
+	check(run.pickup_verdict(943).react=="card","D21 auto_equip_veiled false: a veiled item for an empty slot gives card")
+	run.loot.data.pickup_flow.auto_equip_veiled=true
+	run.equipped.erase("head")
+	for it in run.inventory:it.erase("veiled")
+	# The thresholds are data: one value turns the rule.
+	var flow: Dictionary=run.loot.data.pickup_flow
+	flow.open_min_quality="common"
+	check(run.pickup_verdict(923).react=="open" and run.pickup_verdict(922).react=="open","D21 open_min_quality common: every pickup gives open")
+	flow.open_min_quality="legendary";flow.card_min="any"
+	check(run.pickup_verdict(923).react=="card","D21 card_min any: a worse item gives card")
+	flow.card_min="better";run.equipped.erase("weapon");run._recompute_gear();flow.auto_equip_empty=false
+	check(run.pickup_verdict(921).react=="card","D21 auto_equip_empty false: an empty slot gives card")
+	flow.auto_equip_empty=true
+	# Loader: a bad block is refused, a missing one is allowed.
+	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/loot.json"))
+	doc.pickup_flow.open_min_quality="mythic"
+	var bad_path := "user://d21_bad_loot.json"
+	var f := FileAccess.open(bad_path,FileAccess.WRITE);f.store_string(JSON.stringify(doc));f.close()
+	var probe=run.loot.get_script().new()
+	check(not probe.load_file(bad_path),"D21 loot.gd refuses an unknown open_min_quality")
+	doc.erase("pickup_flow")
+	f=FileAccess.open(bad_path,FileAccess.WRITE);f.store_string(JSON.stringify(doc));f.close()
+	var probe2=run.loot.get_script().new()
+	check(probe2.load_file(bad_path),"D21 loot.gd allows a document without pickup_flow")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bad_path))
+	# N2: loot_flow.
+	var default_run=Chapter.new();default_run.start(17,EMBER)
+	check(default_run._kept_qualities.is_empty() and default_run._gate_sweep_qualities.is_empty(),"D21 loot_flow off by default: no kept quality")
+	var flow_run := tuned_run({"loot_flow":{"enabled":true,"keep_min_quality":"rare","gate_sweep_min_quality":"rare"}})
+	var plain_run := tuned_run({})
+	for r in [flow_run,plain_run]:
+		r.items.clear();r.inventory.clear()
+		var spot: Vector2=r.hero.position+Vector2(30,0)
+		for pair in [[931,"rare"],[932,"magic"],[933,"legendary"],[934,"common"]]:
+			var it: Dictionary=mk.call(int(pair[0]),"head",{"max_hp_raw":256},String(pair[1]))
+			it.position=spot;it.drop_tick=0;it.collected=false;r.items.append(it)
+		r.tick=181*60;r._collect_pickups()
+	var kept: Array[int]=[]
+	for it in flow_run.items:kept.append(int(it.uid))
+	check(kept==[931,933] and plain_run.items.is_empty(),"D21 loot_flow on: rare and legendary stay past 180 s, magic and common go; off: all go")
+	flow_run.events.clear()
+	flow_run._on_elite_defeated({"position":Vector2(8,8)})
+	var swept: Array[int]=[]
+	for ev in flow_run.events:
+		if ev.type=="item_pickup" and ev.get("swept",false) and ev.get("by","")=="gate":swept.append(int(ev.item.uid))
+	var in_bag: Array[int]=[]
+	for it in flow_run.inventory:in_bag.append(int(it.uid))
+	check(int(flow_run.zone)==1 and swept==[931,933] and in_bag==[931,933] and flow_run.items.is_empty(),"D21 loot_flow on: the gate gathers the kept gear into the bag with by:gate")
+	var bad_flow=Chapter.new();bad_flow.set_tuning(tuning_with({"loot_flow":{"enabled":true,"keep_min_quality":"mythic","gate_sweep_min_quality":"rare"}}))
+	check(not bad_flow.start(17,EMBER),"D21 loot_flow with an unknown quality name refuses the start")

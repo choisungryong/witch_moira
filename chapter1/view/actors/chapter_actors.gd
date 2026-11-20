@@ -1,4 +1,5 @@
 extends RefCounted
+const AssetSlots = preload("res://chapter1/view/assets/asset_slots.gd")
 ## Flattened by tools/dev/flatten_chain.py from chapter1/view/chapter_actors_quality42.gd.
 ## Methods named x__tag are the earlier layers of x; calls between them were super calls.
 
@@ -42,7 +43,7 @@ var _hero_rim: MeshInstance3D
 var _hero_rim_material: ShaderMaterial
 var _hero_rim_frame: Texture2D
 var _hero_overlapped := false
-const HERO_STRIDE := 2.15
+var _hero_stride := 1.0
 
 func setup__cloister(owner_view: Node3D) -> void:
 	view=owner_view
@@ -315,7 +316,7 @@ func _present_position(actor: Node3D, at: Vector2, tick: int, playing: bool, fra
 		sample.previous=sample.current if continuous else at
 		sample.current=at;sample.tick=tick
 		if continuous and playing:
-			var stride: float=HERO_STRIDE if actor==hero else (1.45 if actor.get_meta("kind")=="elite" else 1.0)
+			var stride: float=_hero_stride if actor==hero else (1.45 if actor.get_meta("kind")=="elite" else 1.0)
 			sample.phase=fposmod(float(sample.phase)+distance/stride,1.0)
 	elif sample.current!=at:
 		# Same-tick fixture changes and retry/teleports snap, not slide.
@@ -414,10 +415,9 @@ func sync__chapter(run: RefCounted,delta: float) -> void:
 # ---- chapter1/view/rigged_hero_actors.gd ----
 ## Research presenter: actual skeleton, distance gait and upper-body release.
 ## No physics/hitbox/skill/loot changes. Source09 sprite presenter is preserved.
-const MODEL := "res://chapter1/art/rigged_mage/v01/mage_animated.glb"
+const HERO_SLOT := "actor.hero.model"
 const Staff=preload("res://chapter1/view/ember_staff_visual.gd")
 var rig_model: Node3D
-const HERO_MODEL_SCALE := 1.32
 const HERO_ELEMENT_COLORS := {"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Color("9ce7ef"),"chapter1.skill.arc":Color("8fa6ff")}
 var _hero_materials: Array[StandardMaterial3D]=[]
 var _hero_disc_material: StandardMaterial3D
@@ -440,6 +440,23 @@ var _hand := -1
 var _finger := -1
 var _grip_basis := Basis.IDENTITY
 var _grip_ready := false
+# Hero slot numbers (read once per body from the asset slot contract, not every frame).
+var _hero_hand_bone := ""
+var _hero_finger_bone := ""
+var _hero_upper_prefixes: Array[String]=[]
+var _hero_upper_contains: Array[String]=[]
+var _clip_idle := "idle"
+var _clip_run := "run"
+var _clip_cast := "cast"
+var _clip_hit := "hit"
+var _clip_death := "death"
+var _run_time_scale := 1.0
+var _idle_loop_s := 1.0
+var _cast_start_s := 0.0
+var _cast_time_scale := 1.0
+var _hit_start_s := 0.0
+var _hit_time_scale := 1.0
+var _death_max_age_s := 0.0
 
 func _load_sprite(kind: String) -> void:
 	if kind!="hero":_load_sprite__cloister(kind)
@@ -449,10 +466,12 @@ func setup__rigged(owner_view: Node3D) -> void:
 	_setup_artist_lights()
 	_staff=Staff.new();hero.add_child(_staff)
 	_setup_hero_ground_ring()
-	_hand=rig_skeleton.find_bone("hand_cr_r");_finger=rig_skeleton.find_bone("finger_middle.01.r")
-	_sample("idle",0)
+	var rigged := rig_skeleton!=null and rig_player!=null
+	if rigged:
+		_hand=rig_skeleton.find_bone(_hero_hand_bone);_finger=rig_skeleton.find_bone(_hero_finger_bone)
+		_sample(_clip_idle,0)
 	temporary_art=false
-	print("RIGGED_HERO_READY ",JSON.stringify({"source":MODEL,"bones":rig_skeleton.get_bone_count(),"clips":Array(rig_player.get_animation_list()),"upper_body_bones":_upper.size(),"scope":"Research comparison, not final motion/art approval"}))
+	if rigged:print("RIGGED_HERO_READY ",JSON.stringify({"source":AssetSlots.path(HERO_SLOT),"bones":rig_skeleton.get_bone_count(),"clips":Array(rig_player.get_animation_list()),"upper_body_bones":_upper.size(),"scope":"Research comparison, not final motion/art approval"}))
 
 func _setup_artist_lights() -> void:
 	# Sprite art carries baked light. Give the live mesh a matched key/fill on
@@ -471,18 +490,55 @@ func _create__rigged(kind: String) -> Node3D:
 			sprite.alpha_cut=SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
 		return enemy
 	var actor := Node3D.new();actor.set_meta("kind","hero")
-	var scene := load(MODEL) as PackedScene
+	var values := _hero_slot_values(HERO_SLOT)
+	_use_hero_values(values)
+	var scene := AssetSlots.scene(HERO_SLOT)
 	if scene==null:push_error("Rigged hero import missing");return actor
-	rig_model=scene.instantiate();rig_model.scale=Vector3.ONE*HERO_MODEL_SCALE;actor.add_child(rig_model)
+	rig_model=scene.instantiate();rig_model.scale=values.scale;actor.add_child(rig_model)
 	rig_player=rig_model.find_child("AnimationPlayer",true,false)
 	rig_skeleton=rig_model.find_child("Skeleton3D",true,false)
 	if rig_player==null or rig_skeleton==null:push_error("Rigged hero skeleton/animations missing");return actor
 	rig_player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	for i in rig_skeleton.get_bone_count():
 		var name_: String=rig_skeleton.get_bone_name(i)
-		if name_.begins_with("spine_") or name_.begins_with("neck_") or name_.begins_with("head_") or name_.contains("arm_") or name_.begins_with("shoulder_") or name_.begins_with("hand_") or name_.begins_with("finger_") or name_.begins_with("thumb."):_upper[i]=true
+		if _is_upper_bone(name_):_upper[i]=true
 	_setup_materials(rig_model)
 	return actor
+
+## Everything the hero body needs from its slot contract: scale, bones, clips, pose numbers.
+func _hero_slot_values(id: String) -> Dictionary:
+	var pose: Dictionary=AssetSlots.contract(id).get("pose",{})
+	return {
+		"scale":AssetSlots.scale3(id),
+		"hand_bone":AssetSlots.bone(id,"hand_r"),
+		"finger_bone":AssetSlots.bone(id,"finger_r"),
+		"upper_prefixes":AssetSlots.bone_group(id,"upper_prefixes"),
+		"upper_contains":AssetSlots.bone_group(id,"upper_contains"),
+		"clips":{"idle":AssetSlots.clip(id,"idle"),"run":AssetSlots.clip(id,"run"),"cast":AssetSlots.clip(id,"cast"),"hit":AssetSlots.clip(id,"hit"),"death":AssetSlots.clip(id,"death")},
+		"pose":{
+			"run_time_scale":float(pose.get("run_time_scale",1.0)),"stride_world_m":float(pose.get("stride_world_m",1.0)),
+			"idle_loop_s":float(pose.get("idle_loop_s",1.0)),"cast_start_s":float(pose.get("cast_start_s",0.0)),
+			"cast_time_scale":float(pose.get("cast_time_scale",1.0)),"hit_start_s":float(pose.get("hit_start_s",0.0)),
+			"hit_time_scale":float(pose.get("hit_time_scale",1.0)),"death_max_age_s":float(pose.get("death_max_age_s",0.0)),
+		},
+	}
+
+func _use_hero_values(values: Dictionary) -> void:
+	var clips: Dictionary=values.clips
+	var pose: Dictionary=values.pose
+	_hero_hand_bone=values.hand_bone;_hero_finger_bone=values.finger_bone
+	_hero_upper_prefixes=values.upper_prefixes;_hero_upper_contains=values.upper_contains
+	_clip_idle=clips.idle;_clip_run=clips.run;_clip_cast=clips.cast;_clip_hit=clips.hit;_clip_death=clips.death
+	_run_time_scale=pose.run_time_scale;_hero_stride=pose.stride_world_m;_idle_loop_s=pose.idle_loop_s
+	_cast_start_s=pose.cast_start_s;_cast_time_scale=pose.cast_time_scale
+	_hit_start_s=pose.hit_start_s;_hit_time_scale=pose.hit_time_scale;_death_max_age_s=pose.death_max_age_s
+
+func _is_upper_bone(bone_name: String) -> bool:
+	for prefix in _hero_upper_prefixes:
+		if bone_name.begins_with(prefix):return true
+	for part in _hero_upper_contains:
+		if bone_name.contains(part):return true
+	return false
 
 func _setup_materials(node: Node) -> void:
 	for child in node.get_children():
@@ -565,8 +621,8 @@ func _update_pose__rigged(actor: Node3D,direction: Vector2,moving: bool,casting:
 	if rig_player==null:return
 	if dead:
 		if not _was_dead:_death_age=0
-		_was_dead=true;_death_age=minf(.9,_death_age+_render_delta)
-		_sample("death",_death_age);return
+		_was_dead=true;_death_age=minf(_death_max_age_s,_death_age+_render_delta)
+		_sample(_clip_death,_death_age);return
 	_was_dead=false
 	if _render_playing:
 		_idle_age+=_render_delta
@@ -576,18 +632,18 @@ func _update_pose__rigged(actor: Node3D,direction: Vector2,moving: bool,casting:
 		if moving:
 			var sample: Dictionary=actor.get_meta("motion_sample",{})
 			var fraction := clampf(Engine.get_physics_interpolation_fraction(),0,1)
-			var stride_step: float=Vector2(sample.get("previous",Vector2.ZERO)).distance_to(sample.get("current",Vector2.ZERO))/HERO_STRIDE
+			var stride_step: float=Vector2(sample.get("previous",Vector2.ZERO)).distance_to(sample.get("current",Vector2.ZERO))/_hero_stride
 			_phase=fposmod(float(sample.get("phase",0.0))-(1.0-fraction)*stride_step,1)
-	var poses := _sample("run" if moving else "idle",_phase*.6 if moving else fposmod(_idle_age,1.2))
+	var poses := _sample(_clip_run if moving else _clip_idle,_phase*_run_time_scale if moving else fposmod(_idle_age,_idle_loop_s))
 	if casting:
 		var age := clampf(float(tick-_cast_tick)/60.0,0,.2)
-		var released := _sample("cast",.15+age*2.25)
+		var released := _sample(_clip_cast,_cast_start_s+age*_cast_time_scale)
 		var weight := 1.0-smoothstep(.04,.2,age)
 		for i in poses.size():
 			if _upper.has(i):poses[i]=poses[i].interpolate_with(released[i],weight)
 	if hit:
 		var age := clampf(float(tick-(_hit_until-6))/60.0,0,.1)
-		var struck := _sample("hit",age*3)
+		var struck := _sample(_clip_hit,_hit_start_s+age*_hit_time_scale)
 		for i in poses.size():
 			if _upper.has(i):poses[i]=poses[i].interpolate_with(struck[i],.55*sin(PI*age/.1))
 	_write_pose(poses)
@@ -1950,7 +2006,7 @@ func rest_for_menu() -> void:
 	if rig_player!=null:
 		# The player was left on the last clip (death, run...); put it back on the clip setup() ended with.
 		var samples_before := _pose_samples
-		_sample("idle",0);_pose_samples=samples_before
+		_sample(_clip_idle,0);_pose_samples=samples_before
 	if rig_skeleton!=null and _rest_bones.size()==rig_skeleton.get_bone_count():
 		for i in _rest_bones.size():
 			rig_skeleton.set_bone_pose_position(i,_rest_bones[i][0]);rig_skeleton.set_bone_pose_rotation(i,_rest_bones[i][1]);rig_skeleton.set_bone_pose_scale(i,_rest_bones[i][2])

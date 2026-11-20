@@ -1,6 +1,7 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled;
 #include "res://chapter1/view/hero_light.gdshaderinc"
+#include "res://chapter1/view/edge_dim.gdshaderinc"
 uniform float age=0.0;
 varying vec2 world_xz;
 void vertex() {
@@ -13,5 +14,6 @@ void vertex() {
 void fragment() {
  // Match the authored-light perimeter props, with darker roots and soft tips.
  // Thin physical blades lost their shape under the current low ambient light.
- ALBEDO=COLOR.rgb*mix(.85,1.20,UV.y)*lit_field(world_xz);
+ float sunk=edge_shade(world_xz);
+ ALBEDO=mix(COLOR.rgb*mix(.85,1.20,UV.y)*lit_field(world_xz)*mix(1.,edge_look.x,sunk),edge_fog.rgb,sunk*edge_look.z);
 }

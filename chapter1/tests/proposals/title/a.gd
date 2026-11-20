@@ -9,16 +9,16 @@ extends "res://chapter1/tests/proposals/title/base.gd"
 ## _local at run time), the word-mark (a title-font text), the front layer of the door seams (a dark gradient here).
 
 const AXIS := [0.36, 0.70, 0.68]            ## where the figure's vertical axis stands inside the focused door (BRIEF 3.2.1)
-const TEXT_X := [540.0, 520.0, 1000.0]      ## x of the text bundle when witch j has the focus (px)
-const TEXT_SIDE := [1, -1, -1]              ## +1: the text is on the right of the door (shade comes from its right edge)
+const TEXT_X := [470.0, 520.0, 1000.0]      ## x of the text column when witch j has the focus (px); the column is 504 px wide
+const TEXT_W := 420.0                       ## the column's width (code units)
 const S_FOCUS := 0.74
 const S_DIM := 0.66
 const FOOT_FOCUS := 1060.0
 const FOOT_DIM := 1050.0
 const BOTTOM := 1024.0
 const DEVIL_AREA := [Rect2(900, -40, 800, 680), Rect2(0, -200, 740, 620), Rect2(300, -40, 800, 680)]
-const BLOCK := {"width": 360, "title": 60, "title_min": 60, "line": 24, "traits": 20, "skill": 22, "skill_icon": 48, "level": 22,
-	"button": 30, "button_h": 68, "action": 20, "gaps": [10, 12, 14, 16, 18, 22], "button_first": true, "summary": false, "actions": "row"}
+const Dress = preload("res://chapter1/tests/proposals/title/dress.gd")
+const BLOCK := {"width": TEXT_W, "plaque": 290.0, "note_h": 150.0, "hint": true}
 
 var stage: Control
 var doors: Array = []
@@ -33,9 +33,6 @@ var iris: Control
 var logo: Label
 var logo_font: FontVariation
 var top_shade: Control
-var right_shade_node: Control
-var hint: Label
-var saved: Label
 var _dx: Array = [0.0, 0.0, 0.0]
 var _dw: Array = [640.0, 640.0, 640.0]
 var _portrait_started := false
@@ -127,26 +124,26 @@ func _build() -> void:
 	burst.size = size
 	burst.unit = 1.7
 	stage.add_child(burst)
-	# text side shade, one per witch (BRIEF 3.2.1: 520 px wide, SURFACE .78 -> 0)
+	# a soft shade behind each text column (the leather and the parchment carry the rest; the figure behind stays readable)
 	for i in 3:
-		var side := int(TEXT_SIDE[i])
-		var edge_x := 960.0 if i == 0 else (480.0 if i == 1 else 960.0)
-		var x0 := edge_x - 620.0 if side > 0 else edge_x
-		var c0 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.0 if side > 0 else 0.86)
-		var c1 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.86 if side > 0 else 0.0)
-		var sh := Parts.hgrad(self, Rect2(Parts.px(x0), 0, Parts.px(620.0), size.y), c0, c1)
+		var sh := TextureRect.new()
+		sh.texture = Kit.glow()
+		sh.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sh.stretch_mode = TextureRect.STRETCH_SCALE
+		sh.self_modulate = Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.78)
+		sh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sh.size = Vector2(Parts.px(TEXT_W * 1.2 + 360.0), Parts.px(1000.0))
+		sh.position = Vector2(Parts.px(float(TEXT_X[i]) + TEXT_W * 0.6) - sh.size.x * 0.5, Parts.px(40.0))
 		sh.modulate.a = 0.0
+		add_child(sh)
 		shades.append(sh)
 	for i in 3:
-		var b: Dictionary = Parts.build_block(i, cards[i], ui, profile, BLOCK)
+		var b: Dictionary = Dress.build_block(i, cards[i], ui, profile, BLOCK)
 		add_child(b.root)
 		blocks.append(b)
 		tags.append(_make_tag(i))
 	_wire_blocks()
 	top_shade = Parts.vgrad(self, Rect2(0, 0, Parts.px(700.0), Parts.px(150.0)), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.0))
-	var right_shade := Parts.vgrad(self, Rect2(size.x - Parts.px(900.0), 0, Parts.px(900.0), Parts.px(150.0)), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.0))
-	right_shade.name = "TopRightShade"
-	right_shade_node = right_shade
 	logo_font = FontVariation.new()
 	logo_font.base_font = Kit.Loc.font("heading")
 	logo = Label.new()
@@ -157,21 +154,6 @@ func _build() -> void:
 	logo.add_theme_constant_override("shadow_offset_y", 2)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
-	saved = Kit.lbl(self, _saved_text(), Vector2(Parts.px(40.0), Parts.px(84.0)), Parts.px(600.0), Parts.fs(17.0), Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_LEFT, false)
-	var quit_item: Control = Parts.ActionItem.new()
-	quit_item.setup(String(ui.quit), Parts.fs(20.0), Palette.INK_DIM, 0, Palette.GROWTH)
-	quit_item.position = Vector2(Parts.px(1896.0) - quit_item.size.x, Parts.px(26.0))
-	quit_item.connect("pressed", func(): request.emit("quit_request", focus_index))
-	add_child(quit_item)
-	corner_quit = quit_item
-	var set_item: Control = Parts.ActionItem.new()
-	set_item.setup(String(ui.settings), Parts.fs(20.0), Palette.INK_DIM, 0, Palette.GROWTH)
-	set_item.position = Vector2(quit_item.position.x - Parts.px(28.0) - set_item.size.x, Parts.px(26.0))
-	set_item.connect("pressed", func(): request.emit("open_settings", focus_index))
-	add_child(set_item)
-	corner_settings = set_item
-	var hint_w := Parts.px(560.0)
-	hint = Kit.lbl(self, String(ui.keys), Vector2(set_item.position.x - Parts.px(32.0) - hint_w, Parts.px(30.0)), hint_w, Parts.fs(17.0), Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_RIGHT, false)
 	marker = Parts.Marker.new()
 	add_child(marker)
 	flash = ColorRect.new()
@@ -195,17 +177,6 @@ func _build() -> void:
 		if ch != stage and ch is CanvasItem and (ch as CanvasItem).z_index == 0:
 			(ch as CanvasItem).z_index = 10
 	_update()
-
-func _saved_text() -> String:
-	var parts: Array = []
-	if bool(profile.get("enabled", true)):
-		parts.append(String(ui.saved))
-	else:
-		parts.append(String(ui.save_off))
-	parts.append(String(contract.get("build", "")))
-	if bool(contract.get("qa_run", false)):
-		parts.append(String(ui.qa))
-	return " · ".join(PackedStringArray(parts))
 
 ## The small name tag under a door that is not in focus: title and level (+ points), centred on x = 0 of its own container.
 func _make_tag(i: int) -> Control:
@@ -249,6 +220,10 @@ func _ce() -> float:
 
 func _on_skip_intro(_shift: float) -> void:
 	pass
+
+## Esc opens the menu screen (pause: settings, quit). Neither is drawn on this screen any more.
+func _escape() -> void:
+	request.emit("open_menu", focus_index)
 
 func _on_focus(old: int, new_: int) -> void:
 	if new_ >= 0:
@@ -417,7 +392,7 @@ func _update() -> void:
 		var seam: Control = seams[k]
 		seam.position.x = sx - seam.size.x * 0.5
 		seam.modulate.a = 1.0 - c
-	# chrome (text, corners) alpha
+	# chrome (text column) alpha
 	var chrome := 1.0
 	if state == "idle" or state == "intro":
 		chrome = Parts.ramp(e, 2.2, 2.5)
@@ -442,7 +417,7 @@ func _update() -> void:
 		var sb: Control = blocks[focus_index].start
 		sb.set("flash", (1.0 - Parts.ramp(ce, 0.0, 0.06)) if in_confirm else 0.0)
 	_logo(e, ce)
-	for c2 in [hint, saved, corner_settings, corner_quit, top_shade, right_shade_node]:
+	for c2 in [top_shade]:
 		(c2 as Control).modulate.a = chrome
 	# effects of the confirm
 	flash.color = Color(0, 0, 0, 0)

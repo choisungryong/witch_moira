@@ -2,6 +2,7 @@
   "schema_version": 2,
   "provenance": "independent_design; structure informed by Diablo II treasure-class and affix tables, no names, numbers or items copied",
   "balance_status": "starting_hypothesis_tuned_by_simulation",
+  "pickup_flow": {"card_min": "better", "open_min_quality": "legendary", "auto_equip_empty": true, "auto_equip_veiled": true,"merge_seconds": 3.0, "card_seconds": 6.0, "auto_equip_seconds": 1.5},
   "slots": ["weapon", "head", "body", "hands", "feet", "charm", "ring"],
   "equip_slots": ["weapon", "head", "body", "hands", "feet", "charm", "ring", "ring2"],
   "jewelry_slots": ["charm", "ring"],

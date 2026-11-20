@@ -7,8 +7,8 @@ const Loc = preload("res://chapter1/view/loc.gd")
 const SELF_PATH := "res://chapter1/view/hud/grace_draw.gd"
 
 const SIZE := Vector2(1600, 900)
-const GAIN := Color("8fd694")  ## a rising value (green + arrow)
-const LOSS := Color("e07a6a")  ## a falling value
+const GAIN := Palette.GAIN  ## a rising value (green + arrow)
+const LOSS := Palette.LOSS  ## a falling value
 const WRAP := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
 
 static var _glow: GradientTexture2D
@@ -232,7 +232,7 @@ static func draw_emblem(ci: CanvasItem, kind: String, element: String, c: Vector
 # ---- the code face of a card (used only when the frame / ground pictures are missing) ----
 
 const GRADE_RANK := {"common": 0, "scarce": 1, "fated": 2}
-const GRADE_EXTRA := {"scarce": Color("e0c47e"), "fated": Color("ffc24d")}
+const GRADE_EXTRA := {"scarce": Palette.QUALITY_RARE, "fated": Palette.GRACE_JACKPOT}
 
 static func grade_color(grade: String) -> Color:
 	return GRADE_EXTRA.get(grade, Palette.QUALITY_COMMON)

@@ -90,6 +90,8 @@ var _primary_id := ""
 ## Role and pressure numbers (chapter1/data/combat_tuning.json). Empty means every rule that
 ## reads it is off, which is how this base core runs on its own.
 var tuning: Dictionary = {}
+## D21 N2: qualities that never leave the ground by age (filled by the chapter core when tuning.loot_flow is on; empty = the 180 s rule for all).
+var _kept_qualities: Array[String] = []
 ## Child projectiles born during a projectile step; they join the list once the step ends.
 var _pending_children: Array[Dictionary] = []
 ## D20: falls of the evolved ember (Meteor) that are booked and have not landed yet: {id, position, land_tick, cast_id}. Empty (and absent
@@ -1357,7 +1359,7 @@ func _collect_pickups() -> void:
 			inventory.append(item)
 			metrics.picked_items += 1
 			_emit("item_pickup",hero.position,{"item":item.duplicate(true)})
-		elif tick-int(item.drop_tick) < 180*HZ: ground.append(item)
+		elif tick-int(item.drop_tick) < 180*HZ or item.quality in _kept_qualities: ground.append(item)
 	items = ground
 	if not growth.snapshot().pending_levels.is_empty():
 		_emit("level_choice",hero.position,{"level":growth.snapshot().level})

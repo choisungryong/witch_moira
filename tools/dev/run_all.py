@@ -137,7 +137,8 @@ def checks():
         godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),
         godot_check('descent-fx', 'res://chapter1/tests/test_descent_fx.gd', 'CHAPTER1_DESCENT_FX_TEST_RESULT', timeout=300),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
-        godot_check('run-record', 'res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),
+        godot_check('ui-parts', 'res://chapter1/tests/test_ui_parts.gd', 'CHAPTER1_UI_PARTS_RESULT', timeout=120),
+        godot_check('run-record','res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.
         godot_check('run-spells', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--fast'], timeout=900),
         godot_check('run-spells-full', 'res://chapter1/tests/test_run_spells.gd', 'CHAPTER1_RUN_SPELLS_RESULT', ['--runs-only'], timeout=2400, slow=True),

@@ -12,18 +12,17 @@ extends "res://chapter1/tests/proposals/title/base.gd"
 const SCALE := [0.864, 0.864, 0.816]
 const AXIS_X := [1212.0, 1212.0, 1248.0]
 const TOP_Y := -19.0
-const BAND := Rect2(48, 96, 560, 904)
-const BAND_PAD := 48.0
+const BAND := Rect2(48, 72, 640, 928)
+const BAND_PAD := 16.0
 const SWEEP := 0.35
 const AUTO_SWAP := 12.0
 const DEVIL_AREA := [Rect2(1300, 0, 620, 620), Rect2(1400, -440, 520, 620), Rect2(1300, 0, 620, 620)]
-const MENU_X := 128.0
+const MENU_X := 250.0
 const MENU_Y := 470.0
 const MENU_STEP := 68.0
 const MEDAL_D := 112.0
-const BLOCK := {"width": 464, "title": 64, "title_min": 44, "line": 26, "traits": 20, "skill": 24, "skill_icon": 56, "level": 24,
-	"button": 32, "button_h": 76, "action": 22, "action_step": 52, "gaps": [8, 10, 12, 12, 14, 18], "button_first": false, "summary": true,
-	"summary_px": 18, "actions": "column"}
+const Dress = preload("res://chapter1/tests/proposals/title/dress.gd")
+const BLOCK := {"width": 440.0, "plaque": 300.0, "note_h": 150.0, "hint": true}
 
 var worlds: Array = []
 var world_stage: Control
@@ -42,10 +41,8 @@ var dim: ColorRect
 var rise: Control
 var logo: Label
 var logo_font: FontVariation
-var hint: Label
-var saved: Label
+var hint: Control
 var confirm_line: Label
-var costume_strap: Control
 var burst: Control
 var _intro_stamp := -12345.0
 var _last_rect: Array = [Rect2(), Rect2(), Rect2()]
@@ -142,48 +139,21 @@ class MenuItem extends Control:
 		if not on:
 			return
 		var kit = load("res://chapter1/tests/proposals/growth_choice/kit.gd")
-		var style_lib = load("res://chapter1/view/hud/ui_style.gd")
+		var parts = load("res://chapter1/view/hud/ui_parts.gd")  ## the leather strip of the grace screen's bands, as the highlighted row's plate
 		var pad := 10.0
-		var plate := Rect2(-pad, -pad * 0.4, size.x + pad * 2.0 + 60.0, size.y + pad * 0.8)
-		draw_style_box(style_lib.button_face("normal"), plate)
+		var ph := size.y + pad * 0.8
+		var cap := 125.0 * (ph / 51.7)  ## the left cap of the strip is ~2.4 x its height wide; the word starts after the buckle
+		var plate := Rect2(-cap * 0.78, -pad * 0.4, size.x + cap * 0.78 + 90.0, ph)
+		draw_set_transform(plate.position)
+		parts.Band.paint(self, plate.size.x, plate.size.y)
+		draw_set_transform(Vector2.ZERO)
 		kit.diamond(self, Vector2(float(label.get_theme_font_size("font_size")) * 0.3, size.y * 0.5), 5.0, kit.Palette.BRASS_HI)
 
-## The leather strip: ui_style window piece, darkened, with a brass clasp on the top edge (shape only; the clasp art is NEW ART NEEDED).
+## The container the text column slides in with. It paints nothing itself: a soft shade of the panel colour lies behind the column (added in _build),
+## the leather, brass and parchment are the column's own parts (dress.gd). It never takes the mouse.
 class Strip extends Control:
 	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_STOP
-	func _draw() -> void:
-		var kit = load("res://chapter1/tests/proposals/growth_choice/kit.gd")
-		var style_lib = load("res://chapter1/view/hud/ui_style.gd")
-		draw_style_box(style_lib.window(), Rect2(Vector2.ZERO, size))
-		draw_rect(Rect2(Vector2(6, 6), size - Vector2(12, 12)), Color(0.02, 0.018, 0.016, 0.55))
-		var cx := size.x * 0.5
-		draw_rect(Rect2(cx - 22, -6, 44, 16), Color(kit.Palette.BRASS_DIM.r, kit.Palette.BRASS_DIM.g, kit.Palette.BRASS_DIM.b, 1.0))
-		draw_rect(Rect2(cx - 22, -6, 44, 16), kit.Palette.BRASS, false, 2.0)
-		kit.diamond(self, Vector2(cx, 2), 4.0, kit.Palette.BRASS_HI)
-
-## Folded costume strap on the right edge (BRIEF 3.3.1: 24 px wide); opens the costume screen.
-class Strap extends Control:
-	signal pressed
-	var hot := false
-	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		mouse_entered.connect(func():
-			hot = true
-			queue_redraw())
-		mouse_exited.connect(func():
-			hot = false
-			queue_redraw())
-		gui_input.connect(func(e: InputEvent):
-			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-				pressed.emit())
-	func _draw() -> void:
-		var kit = load("res://chapter1/tests/proposals/growth_choice/kit.gd")
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.045, 0.04, 0.92))
-		draw_rect(Rect2(Vector2.ZERO, size), kit.Palette.BRASS if hot else kit.Palette.BRASS_DIM, false, 2.0)
-		for k in 3:
-			draw_line(Vector2(4, size.y * (0.3 + 0.2 * float(k))), Vector2(size.x - 4, size.y * (0.3 + 0.2 * float(k))), Color(1, 1, 1, 0.12), 1.0)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 # ---------------------------------------------------------------- build
 
@@ -270,19 +240,20 @@ func _build() -> void:
 	strip = Strip.new()
 	strip.size = Vector2(Parts.px(BAND.size.x), Parts.px(BAND.size.y))
 	add_child(strip)
+	Parts.hgrad(strip, Rect2(-Parts.px(BAND.position.x), -Parts.px(BAND.position.y), Parts.px(BAND.size.x + 320.0), size.y), Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.90), Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.0))
 	var ui_names := ["ember", "frost", "storm"]
 	var medal_total := MEDAL_D * 3.0 + 20.0 * 2.0
 	var medal_x0 := (BAND.size.x - medal_total) * 0.5
 	for i in 3:
 		var m := Medal.new()
 		m.setup(_medal_texture(i, String(ui_names[i])), Parts.px(MEDAL_D))
-		m.position = Vector2(Parts.px(medal_x0 + (MEDAL_D + 20.0) * float(i)), Parts.px(40.0))
+		m.position = Vector2(Parts.px(medal_x0 + (MEDAL_D + 20.0) * float(i)), Parts.px(16.0))
 		var idx := i
 		m.pressed.connect(func(): if state == "ready": set_focus(idx))
 		strip.add_child(m)
 		medals.append(m)
 	for i in 3:
-		var b: Dictionary = Parts.build_block(i, cards[i], ui, profile, BLOCK)
+		var b: Dictionary = Dress.build_block(i, cards[i], ui, profile, BLOCK)
 		strip.add_child(b.root)
 		blocks.append(b)
 	_wire_blocks()
@@ -309,13 +280,10 @@ func _build() -> void:
 	logo.add_theme_constant_override("shadow_offset_y", 2)
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(logo)
-	saved = Kit.lbl(self, _saved_text(), Vector2(Parts.px(48.0), Parts.px(1036.0)), Parts.px(500.0), Parts.fs(17.0), Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_LEFT, false)
-	hint = Kit.lbl(self, String(ui.keys_title), Vector2(Parts.px(1020.0), Parts.px(1036.0)), Parts.px(860.0), Parts.fs(17.0), Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_RIGHT, false)
-	costume_strap = Strap.new()
-	costume_strap.size = Vector2(Parts.px(24.0), Parts.px(260.0))
-	costume_strap.position = Vector2(Parts.px(1872.0), Parts.px(410.0))
-	costume_strap.connect("pressed", func(): if state == "ready": request.emit("open_costume", focus_index))
-	add_child(costume_strap)
+	hint = Dress.HintRow.new()  ## the title state's key line (the select state's one lives in the column)
+	hint.setup([["↑↓", String(ui.get("hint_pick", "고르기"))], ["Enter", String(ui.get("hint_ok", "확인"))], ["Esc", String(ui.get("hint_menu", "메뉴"))]], Parts.px(460.0))
+	hint.position = Vector2(Parts.px(MENU_X - 34.0), Parts.px(MENU_Y + MENU_STEP * 5.0 + 24.0))
+	add_child(hint)
 	confirm_line = Label.new()
 	confirm_line.add_theme_font_override("font", Kit.Loc.font("heading"))
 	confirm_line.add_theme_font_size_override("font_size", Parts.fs(36.0))
@@ -353,14 +321,6 @@ func _build() -> void:
 	_update()
 
 var _menu_actions: Array = []
-
-func _saved_text() -> String:
-	var parts: Array = []
-	parts.append(String(contract.get("build", "")))
-	parts.append(String(ui.saved) if bool(profile.get("enabled", true)) else String(ui.save_off))
-	if bool(contract.get("qa_run", false)):
-		parts.append(String(ui.qa))
-	return " · ".join(PackedStringArray(parts))
 
 func _medal_texture(i: int, id: String) -> Texture2D:
 	var path := ProjectSettings.globalize_path("res://chapter1/art/portraits/%s/layers/L4_head.png" % id)
@@ -595,7 +555,7 @@ func _update() -> void:
 		if state == "intro":
 			a = 0.0
 		var root: Control = b.root
-		var top_px := minf(194.0, 856.0 - float(b.height) / Parts.K)
+		var top_px := minf(150.0, BAND.size.y - 8.0 - float(b.height) / Parts.K)
 		root.position = Vector2(Parts.px(BAND_PAD), Parts.px(top_px) + Parts.px(8.0) * (1.0 - a))
 		root.visible = a > 0.01
 		root.modulate.a = a
@@ -603,11 +563,7 @@ func _update() -> void:
 		(medals[i] as Control).set("amount", Parts.ease_out(focus_amount(i)) if state != "idle" else 0.0)
 	# logo: big on the title, small on the select state
 	_logo(sf, chrome, e)
-	hint.text = String(ui.keys_title) if stage_target == "title" else String(ui.keys_select)
-	for c2 in [hint, saved]:
-		(c2 as Control).modulate.a = chrome * (1.0 if state != "idle" else 0.0)
-	costume_strap.visible = sf > 0.5 and state != "idle" and profile.get("enabled", true)
-	costume_strap.modulate.a = chrome * Parts.ramp(sf, 0.5, 1.0)
+	hint.modulate.a = chrome * (1.0 - Parts.ramp(sf, 0.0, 0.5)) * (1.0 if state != "idle" else 0.0)
 	# the start button flash and the confirm
 	if focus_index >= 0:
 		var sb: Control = blocks[focus_index].start

@@ -160,7 +160,7 @@ func _bake_prop_surface__q03(entries: Array[Dictionary], texture: Texture2D, lab
 		var texcoords := [Vector2(u0,uv_max.y),Vector2(u1,uv_max.y),Vector2(u1,uv_min.y),Vector2(u0,uv_min.y)]
 		for index in [0,1,2,0,2,3]:
 			var tint: Color=entry.tint
-			tint.a=1.0 if float(entry.height)>1.0 else 0.0
+			tint.a=1.0 if float(entry.height)>1.0 and not entry.get("solid",false) else 0.0
 			verts.append(corners[index]);uvs.append(texcoords[index]);colors.append(tint)
 	var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX]=verts;arrays[Mesh.ARRAY_TEX_UV]=uvs;arrays[Mesh.ARRAY_COLOR]=colors
@@ -272,6 +272,7 @@ func _compose_cloister() -> void:
 	for i in 100:
 		var side := -1 if i%2 else 1
 		_prop("grass_bent" if i%3 else "fern_moss",Vector3(_rng.randf_range(30,65),.005,side*_rng.randf_range(14,21)),_rng.randf_range(.28,.5),Color(.7,.68,.6),i%2==0)
+	_compose_edges()
 
 func _ring(at: Vector3,inner: float,outer: float,color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new();var mesh := TorusMesh.new();mesh.inner_radius=inner;mesh.outer_radius=outer;mesh.rings=64;mesh.ring_segments=6
@@ -335,7 +336,7 @@ func _ground_material() -> Material:
 	for pair in [["flagstone","ground_flagstone_v01.png"],["soil","ground_soil_v01.png"]]:
 		var texture := _texture(ART_BASE+pair[1])
 		if texture:mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true);art_status.ground.append(pair[1])
-	_register_light_material(mat)
+	_register_light_material(mat);_edge_apply(mat)
 	return mat
 
 func _prop__q10(id_: String,at: Vector3,height: float=0.0,tint: Color=Color.WHITE,mirror: bool=false) -> void:
@@ -393,7 +394,7 @@ func _bake_grass() -> void:
 	var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX]=_grass_vertices;arrays[Mesh.ARRAY_NORMAL]=_grass_normals;arrays[Mesh.ARRAY_COLOR]=_grass_colors;arrays[Mesh.ARRAY_TEX_UV]=_grass_uv
 	var mesh := ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
-	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader");_register_light_material(_grass_material)
+	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader");_register_light_material(_grass_material);_edge_apply(_grass_material)
 	var node := MeshInstance3D.new();node.name="TaperedGrass";node.mesh=mesh;node.material_override=_grass_material;node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(node)
 	_grass_vertices.clear();_grass_normals.clear();_grass_colors.clear();_grass_uv.clear()
 	print("CHAPTER1_GRASS_ART ",JSON.stringify({"patches":art_status.grass_patches,"blades":_grass_blades,"surfaces":1,"collision":false,"source":"independent code geometry"}))
@@ -706,11 +707,241 @@ func _batch22(records: Array[Dictionary],shape: Mesh,label: String) -> void:
 	var node: MultiMeshInstance3D=root.get_node(NodePath(label))
 	node.material_override=material
 
+# ---- A10 W4: the visible edge of the walkable ground (U-64) ----
+## The core stops the hero at zone centre +-19 m (chapter_core.gd _clamp_point, read only; this file never writes it). EDGE_ROWS is the
+## one place the picture is told where that edge is: the wall line, the dimmed ground outside it and the wall's mix all come from
+## these rows. To extend to zone 1 or 2, add a row (centre, half, style, passages) and a style entry; nothing else holds a number.
+## Pieces are the existing prop atlas (slot world.edge.props) scaled to 0.7-1.2 m, a footing course (slot world.edge.stone) and a
+## few iron railing pieces drawn from boxes. Decorative only: no collision, no core state.
+const EDGE_ROWS := [
+	{"zone":0,"center":Vector2(0,0),"half":19.0,"offset":0.3,"style":"graveyard","window_x":Vector2(-200,29),
+	 "passages":[{"side":"east","half_width":3.6,"reach":10.0,"opening":3.0}]},
+]
+## window_x: where this row owns the dimming of the ground (past it the next row's ground is left alone; 29 = where zone 1's walk area starts).
+## passages: a walkable strip leaving the square. opening = half width kept free of wall (the sealed gate stands there); half_width and reach are the core's strip.
+const EDGE_STYLES := {
+	"graveyard":{"seed":640064,"gap_chance":.15,"rail_chance":.12,"slab_chance":.15,"cross_chance":.12,
+		"height_near":Vector2(.72,.95),"height_far":Vector2(.9,1.2),"gap_len":Vector2(2.2,3.4),"rail_len":Vector2(2.4,3.6)},
+}
+## sunk = brightness left outside the walk area; reach = metres over which it falls; fog = amount of the cool fog mixed in.
+const EDGE_LOOK := {"sunk":.34,"reach":1.8,"fog":.20,"fog_color":Color("1b2124")}
+## out = away from the walk area, along = direction of the line, near = faces the camera (lower pieces so the hero's legs stay seen),
+## mirror_wall = the wall sprite's diagonal must be flipped to run along this line on screen.
+const EDGE_SIDES := {
+	"north":{"out":Vector2(0,-1),"along":Vector2(1,0),"near":false,"mirror_wall":true},
+	"south":{"out":Vector2(0,1),"along":Vector2(1,0),"near":true,"mirror_wall":true},
+	"west":{"out":Vector2(-1,0),"along":Vector2(0,1),"near":false,"mirror_wall":false},
+	"east":{"out":Vector2(1,0),"along":Vector2(0,1),"near":true,"mirror_wall":false},
+}
+const EDGE_SLOT_PROPS := "world.edge.props"
+const EDGE_SLOT_STONE := "world.edge.stone"
+const EdgeSlots=preload("res://chapter1/view/assets/asset_slots.gd")
+var _edge_anchors: Array[Vector2]=[]
+var _edge_blocks: Array[Dictionary]=[]
+var _edge_iron: Array[Dictionary]=[]
+var edge_stats: Dictionary={}
+
+func edge_rows() -> Array:
+	return EDGE_ROWS
+## Foot points of everything placed on an edge line (for the capture tool's gap measure).
+func edge_anchors() -> Array[Vector2]:
+	var all: Array[Vector2]=_edge_anchors.duplicate()
+	for gate in gates:
+		for z in 7:all.append(Vector2(gate.position.x,gate.position.z-3.0+z))
+	return all
+
+func _edge_apply(mat: ShaderMaterial) -> void:
+	var rects := PackedVector4Array();var wins := PackedVector4Array()
+	for row in EDGE_ROWS:
+		var c: Vector2=row.center;var h: float=row.half;var win: Vector2=row.window_x
+		rects.append(Vector4(c.x-h,c.y-h,c.x+h,c.y+h));wins.append(Vector4(win.x,win.y,0,0))
+		for passage in row.get("passages",[]):
+			var side: Dictionary=EDGE_SIDES[passage.side];var out_: Vector2=side.out;var along: Vector2=side.along
+			var a := c+out_*h-along*float(passage.half_width);var b := c+out_*(h+float(passage.reach))+along*float(passage.half_width)
+			rects.append(Vector4(minf(a.x,b.x),minf(a.y,b.y),maxf(a.x,b.x),maxf(a.y,b.y)));wins.append(Vector4(win.x,win.y,0,0))
+	assert(rects.size()<=8)
+	var count := mini(rects.size(),8)
+	while rects.size()<8:
+		rects.append(Vector4.ZERO);wins.append(Vector4.ZERO)
+	mat.set_shader_parameter("edge_count",count);mat.set_shader_parameter("edge_rect",rects);mat.set_shader_parameter("edge_win",wins)
+	var fog: Color=(EDGE_LOOK.fog_color as Color).srgb_to_linear()
+	mat.set_shader_parameter("edge_look",Vector4(EDGE_LOOK.sunk,EDGE_LOOK.reach,EDGE_LOOK.fog,0));mat.set_shader_parameter("edge_fog",Vector4(fog.r,fog.g,fog.b,1))
+
+func _edge_at(row: Dictionary,side: Dictionary,t: float,extra: float=0.0) -> Vector2:
+	var c: Vector2=row.center;var out_: Vector2=side.out;var along: Vector2=side.along
+	return c+along*t+out_*(float(row.half)+float(row.offset)+extra)
+
+## Screen width covered by one metre of the line (the camera sees a line along x or z foreshortened).
+func _edge_screen_k(side: Dictionary) -> float:
+	var right := Vector3.UP.cross(CAMERA_OFFSET.normalized()).normalized();var along: Vector2=side.along
+	return maxf(.3,absf(right.x*along.x+right.z*along.y))
+
+func _edge_sprite(id_: String,at: Vector2,height: float,mirror: bool,tint: Color) -> void:
+	if not _prop_defs.has(id_):return
+	_prop(id_,Vector3(at.x,0,at.y),height,tint,mirror)
+	if not _prop_entries.is_empty() and _prop_entries[-1].id==id_:_prop_entries[-1]["solid"]=true
+	_edge_anchors.append(at)
+
+func _edge_sprite_width(id_: String,height: float) -> float:
+	if not _prop_defs.has(id_):return height
+	var region: Array=_prop_defs[id_].region
+	return float(region[2])/float(region[3])*height
+
+func _edge_block(side: Dictionary,t0: float,t1: float,row: Dictionary,height: float,depth: float,rng: RandomNumberGenerator) -> void:
+	var along: Vector2=side.along
+	var mid := (t0+t1)*.5
+	var at := _edge_at(row,side,mid,depth*.5-.15)
+	var angle := atan2(-along.y,along.x)+rng.randf_range(-.04,.04)
+	var shade := rng.randf_range(.86,1.1)
+	_edge_blocks.append({"transform":Transform3D(Basis(Vector3.UP,angle)*Basis.from_scale(Vector3(absf(t1-t0)+.08,height,depth)),Vector3(at.x,height*.5,at.y)),"tint":Color(.5*shade,.52*shade,.5*shade,1)*1.85})
+	_edge_anchors.append(at)
+
+func _edge_footing(side: Dictionary,t0: float,t1: float,row: Dictionary,low: bool,rng: RandomNumberGenerator) -> void:
+	var t := t0
+	while t<t1-.05:
+		var len_ := minf(rng.randf_range(1.2,1.9),t1-t)
+		var height := rng.randf_range(.10,.16) if low else rng.randf_range(.22,.42)
+		_edge_block(side,t,t+len_,row,height,rng.randf_range(.5,.7),rng)
+		t+=len_
+
+func _edge_rail(side: Dictionary,t0: float,t1: float,row: Dictionary,rng: RandomNumberGenerator) -> void:
+	var along: Vector2=side.along
+	var angle := atan2(-along.y,along.x)
+	var length_ := t1-t0
+	var posts := int(ceil(length_/1.2))+1
+	var step := length_/float(posts-1)
+	var base := _edge_at(row,side,0.0,.25)
+	var ink := Color(.16,.15,.14,1)
+	for i in posts:
+		var at := base+along*(t0+step*i)
+		var lean := rng.randf_range(-.06,.06)
+		_edge_iron.append({"transform":Transform3D(Basis(Vector3.UP,angle)*Basis(Vector3.BACK,lean)*Basis.from_scale(Vector3(.09,rng.randf_range(.95,1.1),.09)),Vector3(at.x,.5,at.y)),"tint":ink})
+		_edge_iron.append({"transform":Transform3D(Basis(Vector3.UP,angle)*Basis.from_scale(Vector3(.16,.12,.16)),Vector3(at.x,1.06,at.y)),"tint":ink*1.3})
+	var mid := base+along*((t0+t1)*.5)
+	for height in [.38,.86]:
+		_edge_iron.append({"transform":Transform3D(Basis(Vector3.UP,angle)*Basis.from_scale(Vector3(length_,.05,.05)),Vector3(mid.x,height,mid.y)),"tint":ink})
+	var pickets := int(length_/.32)
+	for i in pickets:
+		if rng.randf()<.18:continue
+		var at := base+along*(t0+(float(i)+.5)*length_/float(pickets))
+		var tall := rng.randf_range(.6,.9)
+		_edge_iron.append({"transform":Transform3D(Basis(Vector3.UP,angle)*Basis(Vector3.BACK,rng.randf_range(-.1,.1))*Basis.from_scale(Vector3(.035,tall,.035)),Vector3(at.x,tall*.5+.1,at.y)),"tint":ink*1.15})
+	_edge_footing(side,t0,t1,row,true,rng)
+	_edge_anchors.append(mid)
+
+func _edge_gap(side: Dictionary,t0: float,t1: float,row: Dictionary,rng: RandomNumberGenerator) -> void:
+	## A collapse: the course is low and a heap of fallen stone fills it, so the gap reads blocked, not open.
+	_edge_footing(side,t0,t1,row,true,rng)
+	var tint := Color(.52,.51,.5)
+	var t := t0+.5
+	var k := _edge_screen_k(side)
+	while t<t1-.2:
+		var h := rng.randf_range(.95,1.2)
+		_edge_sprite("rubble",_edge_at(row,side,t,rng.randf_range(0,.25)),h,rng.randf()<.5,tint*rng.randf_range(.9,1.05))
+		t+=_edge_sprite_width("rubble",h)/k*.8
+
+func _edge_side(row: Dictionary,side_name: String,style: Dictionary,rng: RandomNumberGenerator) -> void:
+	var side: Dictionary=EDGE_SIDES[side_name]
+	var k := _edge_screen_k(side)
+	var reach := float(row.half)+float(row.offset)+.6
+	var opening := Vector2(1,-1)
+	for passage in row.get("passages",[]):
+		if passage.side==side_name:opening=Vector2(-float(passage.opening),float(passage.opening))
+	var height_range: Vector2=style.height_near if side.near else style.height_far
+	var t := -reach
+	var last_gap := true  ## no collapse at a line's start
+	while t<reach:
+		if t>=opening.x and t<opening.y:
+			## The gate strip stays open. A rubble heap at each end so the wall looks broken there, not cut.
+			_edge_sprite("rubble",_edge_at(row,side,opening.y+.3,.1),.9,false,Color(.6,.59,.57))
+			t=opening.y
+			last_gap=true
+			continue
+		var roll := rng.randf()
+		var kind := "wall"
+		var chance_gap := float(style.gap_chance)
+		var chance_rail := chance_gap+float(style.rail_chance)
+		var chance_slab := chance_rail+float(style.slab_chance)
+		var chance_cross := chance_slab+float(style.cross_chance)
+		if not last_gap and roll<chance_gap and t<reach-4.0:kind="gap"
+		elif roll>=chance_gap and roll<chance_rail and t<reach-4.0:kind="rail"
+		elif roll>=chance_rail and roll<chance_slab:kind="slab"
+		elif roll>=chance_slab and roll<chance_cross:kind="cross"
+		var tint := Color(.75,.8,.83)*rng.randf_range(.92,1.06)
+		var stop := minf(reach,opening.x) if opening.x>t else reach
+		if kind=="gap" or kind=="rail":
+			var span: Vector2=style.gap_len if kind=="gap" else style.rail_len
+			var len_ := minf(rng.randf_range(span.x,span.y),stop-t)
+			if len_>=1.4:
+				if kind=="gap":_edge_gap(side,t,t+len_,row,rng)
+				else:_edge_rail(side,t,t+len_,row,rng)
+				t+=len_
+				last_gap=true
+				continue
+			kind="wall"
+		var h := rng.randf_range(height_range.x,height_range.y)
+		var id_ := "wall"
+		if kind=="slab":
+			id_="grave_slab";h=rng.randf_range(.5,.7)
+		elif kind=="cross":
+			id_="grave_cross";h=rng.randf_range(.8,.95) if bool(side.near) else rng.randf_range(.95,1.2)
+		var width := _edge_sprite_width(id_,h)
+		var step := maxf(.8,width/k*.8)
+		var mid := t+step*.5
+		_edge_footing(side,t,t+step,row,false,rng)
+		var mirror := bool(side.mirror_wall) if id_=="wall" else rng.randf()<.5
+		_edge_sprite(id_,_edge_at(row,side,mid),h,mirror,tint)
+		t+=step
+		last_gap=false
+
+func _compose_edges() -> void:
+	var meta: String=String(EdgeSlots.slot(EDGE_SLOT_PROPS).get("meta",""))
+	if meta!="":_load_prop_doc(EdgeSlots.ART_ROOT+meta)
+	_edge_anchors.clear();_edge_blocks.clear();_edge_iron.clear()
+	for row in EDGE_ROWS:
+		var style: Dictionary=EDGE_STYLES[row.style]
+		var rng := RandomNumberGenerator.new();rng.seed=int(style.seed)+int(row.zone)*101
+		for side_name in ["north","south","west","east"]:_edge_side(row,side_name,style,rng)
+		## Corners are closed with a heap and a block, so no diagonal gap is left between two lines.
+		var line := float(row.half)+float(row.offset)
+		for sx in [-1.0,1.0]:
+			for sz in [-1.0,1.0]:
+				var c: Vector2=row.center
+				var at := c+Vector2(sx,sz)*(line+.15)
+				_edge_sprite("rubble",at,rng.randf_range(1.0,1.25),sx*sz<0,Color(.6,.59,.57))
+				_edge_sprite("rubble",at+Vector2(sx,sz)*.7,.75,sx*sz>0,Color(.56,.55,.54))
+				_edge_blocks.append({"transform":Transform3D(Basis(Vector3.UP,PI*.25)*Basis.from_scale(Vector3(1.0,.34,1.0)),Vector3(at.x,.17,at.y)),"tint":Color(.5,.52,.5,1)*1.85})
+	edge_stats={"anchors":_edge_anchors.size(),"blocks":_edge_blocks.size(),"iron":_edge_iron.size()}
+
+func _build_edge_batches() -> void:
+	if not _edge_blocks.is_empty():
+		var points: Array[Vector3]=[]
+		for z in [-.5,.5]:
+			for x in [-.5,.5]:
+				for y in [-.5,.5]:points.append(Vector3(x,y,z))
+		var mat := StandardMaterial3D.new();mat.albedo_texture=EdgeSlots.texture(EDGE_SLOT_STONE)
+		mat.vertex_color_use_as_albedo=true;mat.roughness=.97;mat.uv1_triplanar=true;mat.uv1_world_triplanar=true;mat.uv1_scale=Vector3.ONE*.7
+		_edge_batch(_edge_blocks,_stone_geometry37._chamfer37(points,.06),mat,"EdgeFooting")
+	if not _edge_iron.is_empty():
+		var iron := StandardMaterial3D.new();iron.vertex_color_use_as_albedo=true;iron.roughness=.62;iron.metallic=.35
+		var box := BoxMesh.new();box.size=Vector3.ONE
+		_edge_batch(_edge_iron,box,iron,"EdgeIron")
+	edge_stats["batches"]=int(not _edge_blocks.is_empty())+int(not _edge_iron.is_empty())
+	art_status.edge=edge_stats
+
+func _edge_batch(records: Array[Dictionary],shape: Mesh,mat: Material,label: String) -> void:
+	var mm := MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.use_colors=true;mm.mesh=shape;mm.instance_count=records.size()
+	for i in records.size():
+		mm.set_instance_transform(i,records[i].transform);mm.set_instance_color(i,records[i].tint)
+	var node := MultiMeshInstance3D.new();node.name=label;node.multimesh=mm;node.material_override=mat
+	node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(node)
+
 # ---- chapter1/view/chapter_world_quality51.gd ----
 const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
 const Loc=preload("res://chapter1/view/loc.gd")
 func setup(view: Node3D) -> void:
 	setup__q31d(view)
+	_build_edge_batches()
 	# Flat arrow points along local+Z, matching atan2(direction.x,direction.y).
 	var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX]=PackedVector3Array([Vector3(0,0,.9),Vector3(-.45,0,.1),Vector3(.45,0,.1),Vector3(-.13,0,.1),Vector3(.13,0,.1),Vector3(-.13,0,-.6),Vector3(.13,0,-.6)])

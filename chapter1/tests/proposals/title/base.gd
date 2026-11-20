@@ -18,7 +18,8 @@ signal request(action: String, index: int)
 const Parts = preload("res://chapter1/tests/proposals/title/parts.gd")
 const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
 const Palette = preload("res://chapter1/view/hud/palette.gd")
-const LOCK := 0.25
+const Motion = preload("res://chapter1/view/hud/ui_motion.gd")
+const LOCK := Motion.PICK_LOCK
 const HOVER_DWELL := 0.12
 const FOCUS_ANIM := 0.30
 
@@ -279,13 +280,13 @@ func focus_amount(i: int) -> float:
 func _wire_blocks() -> void:
 	for i in blocks.size():
 		var b: Dictionary = blocks[i]
-		(b.start as Control).connect("pressed", func(): if i == focus_index: try_pick(i))
+		(b.start as Control).connect("pressed", func(_a = null): if i == focus_index: try_pick(i))
 		if b.tree != null:
-			(b.tree as Control).connect("pressed", func(): if i == focus_index: request.emit("open_tree", i))
+			(b.tree as Control).connect("pressed", func(_a = null): if i == focus_index: request.emit("open_tree", i))
 		if b.stash != null:
-			(b.stash as Control).connect("pressed", func(): if i == focus_index: request.emit("open_stash", i))
+			(b.stash as Control).connect("pressed", func(_a = null): if i == focus_index: request.emit("open_stash", i))
 		if b.costume != null:
-			(b.costume as Control).connect("pressed", func(): if i == focus_index: request.emit("open_costume", i))
+			(b.costume as Control).connect("pressed", func(_a = null): if i == focus_index: request.emit("open_costume", i))
 
 func _focus_order() -> Array:
 	var order: Array = [0]

@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-20 20:50:43 · 도구 135개
+생성: 2026-11-20 21:59:05 · 도구 141개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -176,6 +176,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 |---|---|---|---|
 | `chapter1/tests/bake_vat.gd` | 걷는 적을 정점 애니메이션으로 굽기 | Bakes the walker (skeleton outlaw) into vertex animation textures and verifies the result. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/bake_vat.gd -- --out=_local/vat/ [--save] [--cpu] [--no-verify]` |
 | `chapter1/tests/vat_preview.gd` | 구운 결과를 뼈 애니메이션과 나란히 | Side by side: the bone-animated skeleton outlaw (left) and the baked MultiMesh instance (right), same clip, same time. | `python tools/dev/godot.py --resolution 1280x720 --path . res://chapter1/tests/vat_preview.tscn -- --chapter1-profile-off --shots=_local/shots/vat-walker [--vat=_local/vat/walker] [--crowd=300]` |
+| `chapter1/tests/edge_shots.gd` | 맵 경계 캡처: 주인공을 걷는 땅의 가장자리 점(네 변·귀퉁이·1m 안)에 세워 찍고, 발에서 막는 것까지의 화소 거리를 json으로. --combat=<점>은 적이 모인 뒤 한 장. --at=x,y,이름으로 아무 점 | Map-edge capture tool (A10 W4, U-64). Starts a run on the real scene, holds the hero at points on the walkable edge of | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/edge_shots.gd -- \` |
 
 ## 에셋 제작(asset-producer)
 
@@ -256,6 +257,10 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/sim_power.gd` | Power bench ("short proving ground", D12 P3 / P9): measures what a FIXED in-run spell build really does on the real core. |  |
 | `chapter1/tests/spells_pick.gd` | Check tool, not product code. How a tool turns the in-run spell composition ON and how it picks growth cards for it |  |
 | `chapter1/tests/trial_state_probe.gd` | Prints what the app's `--chapter1-trial=` handling (chapter_one.gd `_apply_trial`) did to the core, for the arguments this process got. |  |
+| `tools/art/albedo_fix.py` | 구운 몸 그림(albedo)의 상자 구간 안을 피부색으로 매끈하게 메운다. numpy만 쓴다. base_build.py가 부른다. |  |
+| `tools/art/arm_restore.py` | 맞춤(fit)이 납작하게 누른 팔 단면을 원본 기본 몸의 굵기로 되돌린다. numpy만 쓴다(Blender 없음). base_build.py가 부른다. |  |
+| `tools/art/arm_section.py` | 팔 단면 재기(Blender 5.3). 위팔·아래팔·손목 근처의 단면(뼈 축에 수직인 평면에 정점을 내려 2차원 주성분으로 긴 폭·짧은 폭, 볼록 껍질 넓이)을 쉬는 자세와 지정한 동작 프레임에서 잰다. | `python tools/art/arm_section.py --blend X.blend [--gltf 원본.gltf] [--pose run:10] [--side l] [--json out.json]` |
+| `tools/art/arm_shade.py` | 구운 몸 그림(albedo)의 팔 구간에 원통 음영을 넣는다. numpy만 쓴다(Blender 없음). base_build.py가 부른다. |  |
 | `tools/art/base_bake.py` | 기본 몸 메시에 우리 면별 그림을 입힌다(numpy/scipy/PIL, Blender 필요 없음). 입력은 base_dump.py의 npz, 설정 json, 실루엣 방식 모델(목표 형상)이다. | `python tools/art/base_bake.py --config tools/art/base_configs/frost.json --dump dump.npz --out-dir DIR` |
 | `tools/art/base_build.py` | 맞춘 기본 몸 + 구운 그림 + 부품(치마, 머리) + 사람 동작을 한 개의 리깅된 glb로 묶는다(Blender 5.3). base_dump -> base_bake 다음 걸음. | `python tools/art/base_build.py --config tools/art/base_configs/frost_build.json --out-blend X.blend --out-glb Y.glb` |
 | `tools/art/base_dump.py` | 기본 몸을 쉬는 자세(T자)와 A자세 두 벌 좌표로 덤프한다(Blender 5.3). 그림 투영은 A자세에서 하고(원화가 A자세), 뼈대·동작은 T자 쉬는 자세 그대로 쓴다. | `python tools/art/base_dump.py --body body.gltf --out dump.npz [--arm-angle 38] [--mesh Superhero_Female]` |
@@ -273,6 +278,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/char_sharpness.py` | 선명도 앞뒤 판: 같은 각도·같은 크기로 전신, 상체 확대, 머리 확대를 렌더해 모델 여러 개를 가로로 나란히 놓는다(Blender 필요, 평면 조명 작업대 렌더). | `python tools/art/char_sharpness.py --out sheet.png --work DIR --model before=a.glb --model after=b.glb [--model 4k=c.glb] [--az 0]` |
 | `tools/art/gallery.py` | Draft gallery index tool (replaces organize.py / register_*.py / reg_*.py / setpick*.py). Works on | `python tools/art/gallery.py lint  [--check-manager] [--json OUT]`<br>`python tools/art/gallery.py add` |
 | `tools/art/gen.py` | Codex image-generation batch runner (replaces the per-batch batch_*.py / run_*.py / revise.py copies). | `python tools/art/gen.py CONFIG.json`<br>`python tools/art/gen.py CONFIG.json --only a-1 a-2` |
+| `tools/art/hero_burn.py` | 게임 안 캡처에서 주인공 영역의 밝기 잘림을 잰다(PIL·numpy). rig_game_probe.gd --hero-mask --hero-crop-ticks 의 crop_tNNNN.png + crop_tNNNN.mask.png 가 입력이다. | `python tools/art/hero_burn.py <캡처 폴더> [--out burn.json]` |
 | `tools/art/limb_audit.py` | 팔다리 점검(Blender 안): 키 대비 비율, 관절(팔꿈치·무릎)에서 가중치가 섞이는 폭, 팔다리 굵기를 잰다. 보고서 JSON과 표를 낸다. | `python tools/art/limb_audit.py --blend rigged.blend --out audit.json [--side l]` |
 | `tools/art/limb_stick.py` | 원본 동작과 우리 뼈대를 막대 그림으로 같은 프레임에 나란히 놓는다(PIL만, Blender 필요 없음). rig_mocap의 `dump` 결과를 읽는다. | `python tools/art/limb_stick.py --dump run_dump.json --out sticks.png [--frames 0,5,10,...] [--src-scale 1.216]` |
 | `tools/art/mixamo_inspect.py` | Mixamo FBX 동작을 열어 살핀다(Blender 5.3): 길이, 프레임 수, 원본 프레임률 추정, 엉덩이가 앞으로 나아가는지(제자리 여부), 반복 이음 오차, 뼈 이름, 손 뻗음 최댓값 시각. | `python tools/art/mixamo_inspect.py --dir DIR --out report.json [--files "Running.fbx,Idle.fbx"] [--src-fps 30]` |
@@ -305,4 +311,4 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/video_strip.py` | 녹화 영상의 구간을 원래 프레임률로 뽑아 잘라 확대하고, 프레임 번호를 붙여 가로 띠(판)로 이어 붙인다. | `python tools/dev/video_strip.py _local/ref/sacrata/yt/sacrata-yt-0-21m.mp4 --start 342 --dur 2` |
 | `tools/manager/audit_view.py` | 점검 화면의 뒷면: 가장 최근 audit 결과를 읽고(읽기 전용), 다시 돌리기는 audit.py 를 하위 프로세스로 부른다. |  |
 
-chapter1/tests/test_*.gd 26개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
+chapter1/tests/test_*.gd 27개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.

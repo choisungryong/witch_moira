@@ -109,7 +109,8 @@
     ]},
     {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [
       {"path": "chapter1/tests/bake_vat.gd", "use": "걷는 적을 정점 애니메이션으로 굽기"},
-      {"path": "chapter1/tests/vat_preview.gd", "use": "구운 결과를 뼈 애니메이션과 나란히"}
+      {"path": "chapter1/tests/vat_preview.gd", "use": "구운 결과를 뼈 애니메이션과 나란히"},
+      {"path": "chapter1/tests/edge_shots.gd", "use": "맵 경계 캡처: 주인공을 걷는 땅의 가장자리 점(네 변·귀퉁이·1m 안)에 세워 찍고, 발에서 막는 것까지의 화소 거리를 json으로. --combat=<점>은 적이 모인 뒤 한 장. --at=x,y,이름으로 아무 점"}
     ]},
     {"id": "asset-producer", "label": "에셋 제작(asset-producer)", "about": "그림 후처리.", "tools": [
       {"path": "tools/art/make_equipment_icons.py", "use": "생성된 장비 아이콘을 게임 크기로 가공"},
