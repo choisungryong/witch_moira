@@ -88,6 +88,8 @@ const QUEUE_FILES := {
 	"spell_ember": "spell-ember/spell-ember-a1.png", "spell_frost": "spell-frost/spell-frost-a1.png", "spell_arc": "spell-arc/spell-arc-a1.png",
 	"spell_ember_ring": "spell-ember-ring/spell-ember-ring-a1.png", "spell_frost_ring": "spell-frost-ring/spell-frost-ring-a1.png",
 	"spell_arc_ring": "spell-arc-ring/spell-arc-ring-a2.png",
+	"demon_ember": "pledge-ember-full/pledge-ember-full-a1.png", "demon_frost": "pledge-frost-full-c/pledge-frost-full-c-a1.png",
+	"demon_arc": "pledge-arc-full/pledge-arc-full-a2.png",
 }
 
 static var _dir_ready := false
@@ -336,6 +338,7 @@ static func emblem_name(element: String, kind: String) -> String:
 ## A round spell mark: the spell picture (basic or ring) when it exists, else the code emblem of kit.gd.
 static func spell_icon(parent: Control, emblem: String, element: String, box: Rect2) -> Control:
 	var name_ := "spell_%s%s" % [element, "_ring" if emblem == "ring" else ""]
+	if emblem == "ring" and tex(name_ + "_v2") != null: name_ += "_v2"   ## the redrawn orbiting ring (kit); the old walled ring stays as the fallback
 	var a := art_rect(parent, name_, box)
 	if a != null:
 		note_source("spell icons", source_of(name_))
@@ -387,6 +390,7 @@ class GraceCard extends Control:
 	var _back: Control
 	var _sigil: Control
 	var _front: Array = []
+	var _art_nodes: Array = []   ## the picture layers (dimmed by set_focus_amount); the TEXT keeps its full colour so it stays readable on a dimmed card
 
 	func build(card: Dictionary, i: int, sz: Vector2, ui: Dictionary) -> void:
 		idx = i
@@ -408,14 +412,17 @@ class GraceCard extends Control:
 		art_face = P.tex("frame_" + gkey) != null and P.tex("bg_" + gkey) != null
 		_under = P.layer(self, Callable(self, "_paint_under"))
 		if art_face:
-			var bg: Control = P.art_rect(self, "bg_" + gkey, Rect2(Vector2.ZERO, sz), {"bright": [0.92, 1.0, 1.08][rank]})
+			var bg: Control = P.art_rect(self, "bg_" + gkey, Rect2(Vector2.ZERO, sz), {"bright": [0.92, 1.28, 1.08][rank], "tint": [Color.WHITE, Color(1.1, 1.0, 0.84), Color.WHITE][rank]})
 			_front.append(bg)
+			_art_nodes.append(bg)
 			P.note_source("card ground", P.source_of("bg_" + gkey))
 			var shade: Control = P.layer(self, Callable(self, "_paint_shade"))
 			_front.append(shade)
+			_art_nodes.append(shade)
 		else:
 			P.note_source("card ground", "code")
 		_front.append(_under)
+		_art_nodes.append(_under)
 		# medallion: behind it the grade light (rare: a thin warm rim; jackpot: the turning sigil, additive)
 		var emb := minf(w * 0.70, h * 0.44)
 		emblem_box = Rect2(Vector2((w - emb) * 0.5, h * 0.145), Vector2(emb, emb))
@@ -427,6 +434,7 @@ class GraceCard extends Control:
 			_sigil = P.art_rect(self, "sigil", Rect2(ec - Vector2(emb, emb) * 0.62, Vector2(emb, emb) * 1.24), {"add": true, "tint": Color(1, 1, 1, 0.55)})
 			if _sigil != null:
 				_front.append(_sigil)
+				_art_nodes.append(_sigil)
 				P.note_source("jackpot sigil", P.source_of("sigil"))
 			else:
 				P.note_source("jackpot sigil", "code")
@@ -435,6 +443,7 @@ class GraceCard extends Control:
 		var emb_art: Control = P.art_rect(self, en, emblem_box, {"sat": sat, "bright": [0.92, 1.0, 1.06][rank]})
 		if emb_art != null:
 			_front.append(emb_art)
+			_art_nodes.append(emb_art)
 			P.note_source("card emblems", P.source_of(en))
 		else:
 			var ce = Kit.Emblem.new(String(card.get("emblem", "ring")), el, emblem_box.size, false)
@@ -442,10 +451,12 @@ class GraceCard extends Control:
 			ce.tone = [0.6, 1.0, 1.0][rank]
 			add_child(ce)
 			_front.append(ce)
+			_art_nodes.append(ce)
 			P.note_source("card emblems (missing ones)", "code")
 		if art_face:
 			var fr: Control = P.art_rect(self, "frame_" + gkey, Rect2(Vector2.ZERO, sz))
 			_front.append(fr)
+			_art_nodes.append(fr)
 			P.note_source("card frames", P.source_of("frame_" + gkey))
 		else:
 			P.note_source("card frames", "code")
@@ -472,7 +483,7 @@ class GraceCard extends Control:
 		_front.append(nl)
 		y += nl.size.y - 2.0
 		var tag := String(card.get("kind_label", ""))
-		if String(card.get("tier", "")) != "": tag += "  " + String(card.tier)
+		if String(card.get("tier", "")) != "" and String(card.tier) != grade_name: tag += "  " + String(card.tier)
 		var tf: Dictionary = P.fit_text(tag, small, inner, "bold", 14)
 		var tl: Label = Kit.lbl(self, String(tf.text), Vector2(inset, y), inner, int(tf.size), Kit.el_text(el), "bold", HORIZONTAL_ALIGNMENT_CENTER, false, true)
 		_front.append(tl)
@@ -486,10 +497,14 @@ class GraceCard extends Control:
 			y += vl.size.y + 2.0
 		else:
 			var line := String(card.get("line", card.get("headline", "")))
-			var ll: Label = Kit.lbl(self, line, Vector2(inset, y), inner, small, Palette.INK, "body", HORIZONTAL_ALIGNMENT_CENTER, true, true)
-			_front.append(ll)
-			y += ll.size.y + 2.0
+			# a one-line summary of a new card; when it does not fit the room left (a small card) it is left to the side note, never cut
+			var need: float = Kit.measure(line, small, inner, "body").y + 4.0
+			if need <= h * 0.885 - y - (24.0 if card.get("combo", []).size() > 0 else 0.0):
+				var ll: Label = Kit.lbl(self, line, Vector2(inset, y), inner, small, Palette.INK, "body", HORIZONTAL_ALIGNMENT_CENTER, true, true)
+				_front.append(ll)
+				y += ll.size.y + 2.0
 		var combo: Array = card.get("combo", [])
+		y += 10.0   ## a clear step above the combo row (a tilted card's text boxes must not touch in the layout check)
 		var room := h * 0.885 - y
 		if combo.size() > 0 and room >= 22.0 * s:
 			var cw := Kit.measure(String(ui.get("combo", "")), small, 9999.0, "bold").x
@@ -579,9 +594,10 @@ class GraceCard extends Control:
 				c.draw_rect(Rect2(Vector2.ZERO, size).grow(float(k) * 3.0), Kit.with_alpha(P.name_color(gkey), 0.36 * leak * (1.0 - float(k) / 7.0)), false, 3.0)
 
 	## One call sets the whole reaction of a card: focus 0..1 -> ring, brightness, a small lift (scale <= 1.03).
-	func set_focus_amount(f: float) -> void:
+	func set_focus_amount(f: float, mult := 1.0) -> void:
 		focus = f
-		modulate = Color(0.68, 0.68, 0.7, 1.0).lerp(Color.WHITE, f)
+		var tone := lerpf(0.68, 1.0, f) * mult
+		for n in _art_nodes: n.modulate = Color(tone, tone, tone * 1.03, 1.0)
 		scale = Vector2.ONE * (1.0 + 0.03 * f)
 
 	## Where the mark of this card starts a flight (global coordinates).
@@ -912,10 +928,11 @@ class SideNote extends Control:
 		for ch in _holder.get_children():
 			_holder.remove_child(ch)
 			ch.queue_free()
-		var pad := 26.0
+		var art := _paper_art != null
+		var pad := (size.x * 0.098 + 12.0) if art else 26.0
 		var w := size.x - pad * 2.0
-		var bottom := size.y - 22.0
-		var y := 34.0
+		var bottom := size.y - (size.y * 0.09 + 6.0 if art else 22.0)
+		var y := (size.y * 0.11) if art else 34.0
 		var seen: Array = []
 		var el := String(card.get("element", "frost"))
 		var nl: Label = Kit.lbl(_holder, String(card.get("name", "")), Vector2(pad, y), w, 22, INK_PAPER, "heading", HORIZONTAL_ALIGNMENT_LEFT, false)
@@ -1067,23 +1084,46 @@ static func jackpot(parent: Control, text: String, sz: Vector2) -> JackpotPlaque
 	parent.add_child(p)
 	return p
 
-## The leather board the cards lie on (N1): the art nine-sliced (corner ornaments live in the outer 15 %), else the HUD notice card nine-sliced.
-static func board(parent: Control, rect: Rect2) -> Control:
+## The leather board the cards lie on (kit "board"): nine-sliced at scale `k` (corner 150 source px * k, margins_by_eye 150), the buckle of the top edge
+## cut out of the stretched slice (leather copied over it) and drawn again unstretched on top. Fallback: the HUD notice card nine-sliced.
+class BoardLayer extends Control:
+	var P = load(PARTS_PATH)
+	var patched: Texture2D
+	var orig: Texture2D
+	var margin := 150.0
+	var k := 0.347
+	func _draw() -> void:
+		var tw := float(patched.get_width())
+		var th := float(patched.get_height())
+		var cm := margin * k
+		var xs := [0.0, margin, tw - margin, tw]
+		var ys := [0.0, margin, th - margin, th]
+		var xd := [0.0, cm, size.x - cm, size.x]
+		var yd := [0.0, cm, size.y - cm, size.y]
+		for j in 3:
+			for i in 3:
+				draw_texture_rect_region(patched, Rect2(xd[i], yd[j], xd[i + 1] - xd[i], yd[j + 1] - yd[j]), Rect2(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j]))
+		draw_texture_rect_region(orig, Rect2(Vector2(size.x * 0.5 - 70.0 * k, 0), Vector2(140.0 * k, 90.0 * k)), Rect2(700, 0, 140, 90))
+
+static var _board_patched: Texture2D
+
+static func board(parent: Control, rect: Rect2, corner := 52.0) -> Control:
 	var t := tex("board")
 	if t != null:
-		var n := NinePatchRect.new()
-		n.texture = t
-		var mx := int(t.get_width() * 0.15)
-		var my := int(t.get_height() * 0.15)
-		n.patch_margin_left = mx
-		n.patch_margin_right = mx
-		n.patch_margin_top = my
-		n.patch_margin_bottom = my
+		if _board_patched == null:
+			var img: Image = t.get_image()
+			img.clear_mipmaps()
+			img.blit_rect(img, Rect2i(560, 0, 140, 90), Vector2i(700, 0))
+			img.generate_mipmaps()
+			_board_patched = ImageTexture.create_from_image(img)
+		var n := BoardLayer.new()
+		n.patched = _board_patched
+		n.orig = t
+		n.k = corner / n.margin
 		n.position = rect.position
 		n.size = rect.size
 		n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		n.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		n.material = art_material()
 		parent.add_child(n)
 		note_source("board", source_of("board"))
 		return n
@@ -1099,6 +1139,51 @@ static func board(parent: Control, rect: Rect2) -> Control:
 	parent.add_child(panel)
 	note_source("board", "atlas")
 	return panel
+
+static var _rel_windows := []
+
+## The three window holes of the reliquary picture in SOURCE pixels (found by scanning its alpha once): [Rect2, Rect2, Rect2].
+static func reliquary_windows() -> Array:
+	if not _rel_windows.is_empty(): return _rel_windows
+	var t := tex("reliquary")
+	if t == null: return []
+	var img: Image = t.get_image()
+	img.clear_mipmaps()
+	var w := img.get_width()
+	var h := img.get_height()
+	var xr: Array = []
+	var st := -1
+	for x in w:
+		var clear := img.get_pixel(x, h / 2).a < 0.08
+		if clear and st < 0: st = x
+		if not clear and st >= 0:
+			if x - st > 100: xr.append([st, x - 1])
+			st = -1
+	for r in xr:
+		var cx := (int(r[0]) + int(r[1])) / 2
+		var y0 := h / 2
+		var y1 := h / 2
+		while y0 > 0 and img.get_pixel(cx, y0 - 1).a < 0.08: y0 -= 1
+		while y1 < h - 1 and img.get_pixel(cx, y1 + 1).a < 0.08: y1 += 1
+		_rel_windows.append(Rect2(r[0], y0, int(r[1]) - int(r[0]) + 1, y1 - y0 + 1))
+	return _rel_windows
+
+## The reliquary placed with its left top at `pos`, `width` wide (aspect of the picture kept). Returns {"node", "rect", "windows": [Rect2 in parent coordinates]}.
+## Without the picture: {"node": null, windows: three even rects} so a scene still lays out.
+static func reliquary(parent: Control, pos: Vector2, width: float) -> Dictionary:
+	var t := tex("reliquary")
+	if t == null:
+		note_source("reliquary", "code")
+		var hh := width * 0.667
+		var out: Array = []
+		for i in 3: out.append(Rect2(pos + Vector2(width * (0.07 + 0.31 * i), hh * 0.25), Vector2(width * 0.22, hh * 0.5)))
+		return {"node": null, "rect": Rect2(pos, Vector2(width, hh)), "windows": out}
+	var sc := width / float(t.get_width())
+	var node := art_rect(parent, "reliquary", Rect2(pos, Vector2(width, float(t.get_height()) * sc)))
+	var wins: Array = []
+	for r in reliquary_windows(): wins.append(Rect2(pos + (r as Rect2).position * sc, (r as Rect2).size * sc))
+	note_source("reliquary", source_of("reliquary"))
+	return {"node": node, "rect": Rect2(pos, Vector2(width, float(t.get_height()) * sc)), "windows": wins}
 
 # ============================================================ Candle (iron stand + wax from art or code; the flame is code)
 ## `lit_amount` 0..1 scales the flame and its light (a jackpot can raise it). `animated` false = a still flame (reduced motion). The flame is built
@@ -1122,10 +1207,12 @@ class Candle extends Control:
 		_phase = phase
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		_art = P.art_rect(self, "candle", Rect2(Vector2.ZERO, sz))
-		if _art != null:
-			var m: Dictionary = P.meta("candle")
-			if m.has("wick") and m.wick is Array and (m.wick as Array).size() >= 2: wick = Vector2(float(m.wick[0]), float(m.wick[1]))
+		if P.tex("candle") != null:
+			# the kit candle has no flame: the control grows upward by `room` so the code flame has space above the wick
+			var room := sz.y * 0.22
+			size = Vector2(sz.x, sz.y + room)
+			_art = P.art_rect(self, "candle", Rect2(Vector2(0, room), sz))
+			wick = Vector2(0.5, (room + sz.y * 0.035) / size.y)
 			P.note_source("candle", P.source_of("candle"))
 		else:
 			P.layer(self, Callable(self, "_paint_stand"))
