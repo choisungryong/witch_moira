@@ -66,7 +66,7 @@ func _exit_tree() -> void:
 func _user_args() -> PackedStringArray:
 	return OS.get_cmdline_user_args() if qa_allowed else PackedStringArray()
 func _ready__chapter() -> void:
-	DisplayServer.window_set_title("잿빛 회랑 · Chapter 1")
+	DisplayServer.window_set_title("Catena · Chapter 1")
 	world.setup(self)
 	actors.vat_walker_enabled="--chapter1-vat-walker" in _user_args()
 	actors.setup(self)
@@ -151,7 +151,7 @@ func start_run__chapter(id_: String) -> void:
 	_has_move_target=false
 	_audio_previous=run.hero.position;_audio_step_distance=0
 	audio.set_paused(false)
-	hud.notify("경험치와 장비를 회수하며 회랑 수호자를 준비하세요")
+	hud.notify("경험치와 장비를 회수하며 "+Loc.t("enemy.champion.2.name")+"을 준비하세요")
 
 func retry() -> void:
 	seed_+=1
@@ -413,7 +413,7 @@ func _ready() -> void:
 	hud.skill_tree_commit.connect(_commit_skill_tree)
 	hud.skill_tree_respec.connect(_respec_skill_tree)
 	_ready__chapter()
-	DisplayServer.window_set_title("잿빛 회랑 · 제1장"+(Loc.t("app.window.trial_tag",{"list":",".join(trial_switches)}) if not trial_switches.is_empty() else ""))
+	DisplayServer.window_set_title(Loc.t("app.window.title")+(Loc.t("app.window.trial_tag",{"list":",".join(trial_switches)}) if not trial_switches.is_empty() else ""))
 	print("FULL_CHAPTER_READY ",JSON.stringify({"scene":"chapter1/ChapterOne.tscn","three_connected_zones":true,"scope":"Full chapter implementation candidate; quality/pacing/manual/audio gates open"}))
 ## The stash window's "equip for the next run": onto the witch the title menu shows.
 func _equip_from_stash(id_: int) -> void:
@@ -579,7 +579,7 @@ func _sync_profile(note: String) -> void:
 	hud.invalidate()
 
 # Skill-tree screen (G1 P4). The screen only asks; the profile's public functions decide and save.
-const WITCH_DISPLAY := {"chapter1.character.frost":["서리의 마녀","frost"],"chapter1.character.ember":["잿불의 마녀","ember"],"chapter1.character.arc":["뇌우의 마녀","storm"]}
+const WITCH_DISPLAY := {"chapter1.character.frost":["서리의 마녀","frost"],"chapter1.character.ember":["홍염의 마녀","ember"],"chapter1.character.arc":["뇌우의 마녀","storm"]}
 
 func _tree_info(character_id: String,view: Dictionary) -> Dictionary:
 	var shown: Array=WITCH_DISPLAY.get(character_id,["마녀","frost"])
@@ -683,7 +683,7 @@ func _consume_events() -> void:
 			"gate_opened":hud.notify("봉인 해제 · 동쪽 회랑으로 "+Loc.t("zone.%d.name"%int(event.zone)));_play_routes(audio_routes.late(event))
 			"zone_entered":hud.notify(Loc.t("zone.%d.name"%run.zone)+" · 새로운 봉인을 돌파하세요")
 			"chapter_champion":hud.notify(Loc.t("enemy.champion.%d.name"%int(event.zone))+" 출현");world.kick_camera(.45)
-			"boss_phase":hud.notify("파수왕의 격노 · 재의 낙인을 피하세요");world.kick_camera(.6)
+			"boss_phase":hud.notify(Loc.t("enemy.champion.2.name")+"의 격노 · 낙인을 피하세요");world.kick_camera(.6)
 			"chapter_burst":_play_routes(audio_routes.late(event))
 			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);_play_routes(audio_routes.late(event))
 			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");_play_routes(audio_routes.late(event))

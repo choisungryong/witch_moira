@@ -171,12 +171,12 @@ func _initialize() -> void:
 
 	# ---- describe
 	check(str(SkillTree.describe(tree, "witch.frost.needle", 3)) == str(["관통 +2", "피해 +5%"]), "describe needle 3: " + str(SkillTree.describe(tree, "witch.frost.needle", 3)))
-	check(str(SkillTree.describe(tree, "witch.frost.volley", 2)) == str(["창 +1발", "시전 간격 −4%"]), "describe volley 2: " + str(SkillTree.describe(tree, "witch.frost.volley", 2)))
+	check(str(SkillTree.describe(tree, "witch.frost.volley", 2)) == str(["스피어 +1발", "시전 간격 −4%"]), "describe volley 2: " + str(SkillTree.describe(tree, "witch.frost.volley", 2)))
 	check(str(SkillTree.describe(tree, "witch.frost.chill", 3)) == str(["2번 맞으면 빙결"]), "describe chill 3")
 	check(str(SkillTree.describe(tree, "witch.frost.field", 2)) == str(["서리 지대: 반경 3.5 m · 2.5초 · 감속 45%"]), "describe field 2: " + str(SkillTree.describe(tree, "witch.frost.field", 2)))
 	check(str(SkillTree.describe(tree, "witch.common.ward", 3)) == str(["받는 피해 −9%", "시작 회복약 +1"]), "describe ward 3")
 	check(str(SkillTree.describe(tree, "witch.frost.oath_lance", 1)) == str(["수호자·우두머리 피해 +15%"]), "describe oath lance 1")
-	check(str(SkillTree.describe(tree, "witch.frost.deep_oath", 1)) == str(["서리창 랭크 2으로 시작", "결정 은총 없이 진화"]), "describe deep oath")
+	check(str(SkillTree.describe(tree, "witch.frost.deep_oath", 1)) == str(["아이스 스피어 랭크 2으로 시작", "하갈라즈 룬 없이 진화"]), "describe deep oath")
 	check(SkillTree.describe(tree, "witch.frost.needle", 0).is_empty() and SkillTree.describe(tree, "witch.frost.needle", 6).is_empty() and SkillTree.describe(tree, "nope", 1).is_empty(), "describe of rank 0, rank above max or unknown node is empty")
 	var hidden := true
 	for id_ in nodes:

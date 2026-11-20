@@ -2,7 +2,7 @@
  "screen": "growth_choice",
  "contract_version": 0,
  "variant": "rare",
- "note": "귀한 것이 뜬 경우: 희귀 둘(희귀로 굴린 강화, 서리창 씨앗)과 마법 하나",
+ "note": "귀한 것이 뜬 경우: 희귀 둘(희귀로 굴린 강화, 하갈라즈 룬)과 마법 하나",
  "requested": [
   "cards[].grade / grade_name (growth cards have no grade yet; D11 276-283 colours)",
   "moment.beat (short/long)",
@@ -56,7 +56,7 @@
    "kind": "upgrade",
    "kind_label": "강화 · 넓이",
    "header": "서약",
-   "name": "서리창",
+   "name": "아이스 스피어",
    "tier": "Ⅲ",
    "headline": "창이 더 많은 적을 꿰뚫는다.",
    "delta": {
@@ -81,7 +81,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "서리창 씨앗",
+      "label": "하갈라즈 룬",
       "done": false
      },
      {
@@ -109,9 +109,9 @@
    "kind": "upgrade",
    "kind_label": "강화 · 차단",
    "header": "서약",
-   "name": "서리 울타리",
+   "name": "프로스트 노바",
    "tier": "Ⅱ",
-   "headline": "울타리가 더 넓게, 더 자주 친다.",
+   "headline": "둘레 기술이 더 넓게, 더 자주 친다.",
    "delta": {
     "label": "반경",
     "before": "2.2m",
@@ -155,16 +155,16 @@
    "kind": "prep",
    "kind_label": "진화 준비",
    "header": "서약",
-   "name": "서리창 씨앗",
+   "name": "하갈라즈 룬",
    "tier": "",
-   "headline": "서리창 진화의 열쇠가 된다.",
+   "headline": "아이스 스피어 진화의 열쇠가 된다.",
    "delta": null,
    "meter": null,
    "stats": [
-    "진화까지: 강화 3/5 · 씨앗 ✓ · 짝 1/2"
+    "진화까지: 강화 3/5 · 룬 ✓ · 짝 1/2"
    ],
    "details": [
-    "서리창 진화 조건: 강화 5번 · 이 씨앗 · 짝 기술 강화 2번"
+    "아이스 스피어 진화 조건: 강화 5번 · 이 룬 · 짝 기술 강화 2번"
    ],
    "line": "진화의 열쇠",
    "combo": [],
@@ -174,7 +174,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "서리창 씨앗",
+      "label": "하갈라즈 룬",
       "done": true
      },
      {
@@ -187,7 +187,7 @@
    "terms": [
     {
      "word": "진화",
-     "gloss": "서리창이 파쇄 서리창로 바뀐다."
+     "gloss": "아이스 스피어가 블리자드로 바뀐다."
     }
    ],
    "action": "받아들이기",
@@ -198,13 +198,13 @@
  "owned": {
   "spells": [
    {
-    "name": "서리창",
+    "name": "아이스 스피어",
     "emblem": "lance",
     "element": "frost",
     "level": "2"
    },
    {
-    "name": "서리 울타리",
+    "name": "프로스트 노바",
     "emblem": "ring",
     "element": "frost",
     "level": "1"
@@ -213,11 +213,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "서리창 씨앗",
+    "name": "하갈라즈 룬",
     "owned": false
    },
    {
-    "name": "잿불탄 씨앗",
+    "name": "케나즈 룬",
     "owned": false
    }
   ],

@@ -548,7 +548,7 @@ static func describe_block(block: Dictionary) -> Array[String]:
 	if int(add.get("pierce", 0)) != 0:
 		lines.append("관통 +%d" % int(add.pierce))
 	if int(add.get("projectiles", 0)) != 0:
-		lines.append("창 +%d발" % int(add.projectiles))
+		lines.append("스피어 +%d발" % int(add.projectiles))
 	if int(add.get("shatter_count", 0)) != 0:
 		lines.append("파편 +%d" % int(add.shatter_count))
 	if int(add.get("slow_bps", 0)) != 0:
@@ -585,15 +585,15 @@ static func describe_block(block: Dictionary) -> Array[String]:
 	if int(field_add.get("max_fields", 0)) != 0:
 		lines.append("지대 동시 +%d개" % int(field_add.max_fields))
 	if int(field_add.get("pulse_damage_bps", 0)) != 0:
-		lines.append("지대 피해: 창 피해의 %s%%" % _hundredths(int(field_add.pulse_damage_bps)))
+		lines.append("지대 피해: 스피어 피해의 %s%%" % _hundredths(int(field_add.pulse_damage_bps)))
 	if int(field_add.get("slow_bps_at_least", 0)) != 0:
 		lines.append("지대 감속 %s%%" % _hundredths(int(field_add.slow_bps_at_least)))
 	if int(rules.get("grace_rerolls", 0)) != 0:
 		lines.append("은총 다시 빌기 %d회" % int(rules.grace_rerolls))
 	if rules.has("start_rank"):
-		lines.append("서리창 랭크 %d으로 시작" % int(rules.start_rank))
+		lines.append("아이스 스피어 랭크 %d으로 시작" % int(rules.start_rank))
 	if rules.get("evolve_without_passive", false):
-		lines.append("결정 은총 없이 진화")
+		lines.append("하갈라즈 룬 없이 진화")
 	return lines
 
 ## Display lines of the cumulative effect at `rank` (empty for rank 0 or an unknown node).

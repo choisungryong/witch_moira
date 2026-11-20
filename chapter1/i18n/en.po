@@ -221,15 +221,15 @@ msgstr "Save ready"
 
 #. Zone name, first room
 msgid "zone.0.name"
-msgstr "Ash Forecourt"
+msgstr "Porticus"
 
 #. Zone name, second room
 msgid "zone.1.name"
-msgstr "Fallen Choir"
+msgstr "Cantoria"
 
 #. Zone name, last room
 msgid "zone.2.name"
-msgstr "Sanctum of Cinders"
+msgstr "Sanctum"
 
 #. Ritual name (hold the ring)
 msgid "ritual.vigil.name"
@@ -241,15 +241,15 @@ msgstr "Sealed Reliquary"
 
 #. Seal guardian name, zone 0
 msgid "enemy.champion.0.name"
-msgstr "Gatekeeper of Embers"
+msgstr "Modgud"
 
 #. Seal guardian name, zone 1
 msgid "enemy.champion.1.name"
-msgstr "Frost Choirmaster"
+msgstr "Cantor"
 
 #. Seal guardian name, zone 2 (the chapter boss)
 msgid "enemy.champion.2.name"
-msgstr "Warden-King of the Corridor"
+msgstr "Typhon"
 
 #. Goal line while the next zone is not entered yet
 msgid "hud.objective.move"
@@ -261,39 +261,39 @@ msgstr "Kills around the seal {done} / {total}"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
-msgstr "Ember Burst"
+msgstr "Fireball"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.ember.evolved_name"
-msgstr "Chain Ember Burst"
+msgstr "Meteor"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.frost.name"
-msgstr "Frost Lance"
+msgstr "Ice Spear"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.frost.evolved_name"
-msgstr "Shattering Frost Lance"
+msgstr "Blizzard"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.arc.name"
-msgstr "Chain Current"
+msgstr "Chain Lightning"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.arc.evolved_name"
-msgstr "Forked Chain Current"
+msgstr "Thunderstorm"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.embers.name"
-msgstr "Ember Burst Seed"
+msgstr "Kenaz Rune"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.crystal.name"
-msgstr "Frost Lance Seed"
+msgstr "Hagalaz Rune"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.conductor.name"
-msgstr "Chain Current Seed"
+msgstr "Thurisaz Rune"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.pierce_add"
@@ -301,7 +301,7 @@ msgstr "Pierce +{n}"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.projectiles_add"
-msgstr "Lances +{n}"
+msgstr "Spears +{n}"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.shatter_add"
@@ -365,7 +365,7 @@ msgstr "Fields at once +{n}"
 
 #. Skill tree effect line. {v}: percent
 msgid "tree.effect.field_pulse"
-msgstr "Field damage: {v}% of lance damage"
+msgstr "Field damage: {v}% of spear damage"
 
 #. Skill tree effect line. {v}: percent
 msgid "tree.effect.field_slow_min"
@@ -377,11 +377,11 @@ msgstr "Grace rerolls: {n}"
 
 #. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
 msgid "tree.effect.start_rank"
-msgstr "Start the lance at rank {rank}"
+msgstr "Start Ice Spear at rank {rank}"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "Evolve without the crystal grace"
+msgstr "Evolve without the Hagalaz Rune"
 
 #. Save refusal text
 msgid "profile.error.preview_only"
@@ -485,7 +485,7 @@ msgstr "There is no investment to undo"
 
 #. Save refusal text
 msgid "profile.error.essence_short"
-msgstr "Not enough essence"
+msgstr "Not enough Orichalcum"
 
 #. Save refusal text
 msgid "profile.error.isolated_path_invalid"
@@ -647,7 +647,7 @@ msgstr "{meters} m to the next seal · follow the open east corridor"
 
 #. Route hint in the last zone
 msgid "hud.route.last_seal"
-msgstr "Last seal · defeat the corridor's watch king"
+msgstr "Last seal · defeat Typhon"
 
 #. Route hint inside a zone
 msgid "hud.route.break_seal"
@@ -925,15 +925,15 @@ msgstr "Taken {n}"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.ember_ring.name"
-msgstr "Ember Fence"
+msgstr "Comets"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.frost_ring.name"
-msgstr "Frost Fence"
+msgstr "Frost Nova"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.arc_ring.name"
-msgstr "Current Fence"
+msgstr "Ball Lightning"
 
 #. Card kind line of a ring spell
 msgid "hud.spell.kind.ring"
@@ -1046,7 +1046,7 @@ msgstr "{d} {dd} · {r} {rd}"
 
 #. Passive card text of a run with spell composition
 msgid "hud.spell.passive.body"
-msgstr "Evolution needs: {axis} upgrades · this Seed · {partner} upgrades on the partner skill"
+msgstr "Evolution needs: {axis} upgrades · this Rune · {partner} upgrades on the partner skill"
 
 #. Evolution progress line. {parts}: pieces joined by dots
 msgid "hud.spell.evo.line"
@@ -1062,11 +1062,11 @@ msgstr "upgrades {have} → {next}/{need}"
 
 #. Evolution progress piece. {mark}: check or cross
 msgid "hud.spell.evo.passive"
-msgstr "Seed {mark}"
+msgstr "Rune {mark}"
 
 #. Evolution progress piece shown on the passive card
 msgid "hud.spell.evo.passive_to"
-msgstr "Seed ✗ → ✓"
+msgstr "Rune ✗ → ✓"
 
 #. Evolution progress piece: axis total of the partner spell
 msgid "hud.spell.evo.partner"
@@ -1104,9 +1104,9 @@ msgstr " · {ctl} ×{x}"
 msgid "hud.spell.pair.block_targets"
 msgstr " · targets +{n}"
 
-#. Interlock pair line. {a}: controlling spell, {b}: hitting spell, {via}: control word, {n}: percent
+#. Interlock pair line (the controlling spell is the left mark of the row). {b}: hitting spell, {verb}: state of the enemy, {n}: percent
 msgid "hud.spell.pair.interlock"
-msgstr "{b} +{n}% on enemies {verb} by {a}"
+msgstr "{b} +{n}% on {verb} enemies"
 
 
 
@@ -1127,10 +1127,6 @@ msgstr "Strikes several close enemies and stuns them."
 #. Pair lines that did not fit
 msgid "hud.spell.pair.more"
 msgstr "{n} more"
-
-#. Short subject for the ring spell in a pair line
-msgid "hud.spell.pair.ring_short"
-msgstr "The fence"
 
 #. Second control of an interlock pair line
 msgid "hud.spell.pair.second"
@@ -1183,6 +1179,18 @@ msgstr "Branches {a} → {b}"
 #. Window title suffix while trial switches are on (dev runs only). Leading space is intended. {list}: switch names
 msgid "app.window.trial_tag"
 msgstr " [trial: {list}]"
+
+#. Window title and title-screen chapter heading: the chapter name and number
+msgid "app.window.title"
+msgstr "Catena · Chapter 1"
+
+#. Name of the currency gained by taking equipment apart (a plain word, the number follows)
+msgid "currency.essence"
+msgstr "Orichalcum"
+
+#. Title-screen start button. {name}: the starting skill name
+msgid "hud.menu.start_with"
+msgstr "Start with {name}"
 
 #. The descent (R): the number of enemies the sweep killed, shown once as one merged number. {n}: count
 msgid "descent.kills"

@@ -226,15 +226,15 @@ msgstr "저장 준비"
 
 #. Zone name, first room
 msgid "zone.0.name"
-msgstr "잿빛 앞뜰"
+msgstr "포르티쿠스"
 
 #. Zone name, second room
 msgid "zone.1.name"
-msgstr "무너진 성가대"
+msgstr "칸토리아"
 
 #. Zone name, last room
 msgid "zone.2.name"
-msgstr "재의 성소"
+msgstr "상크툼"
 
 #. Ritual name (hold the ring)
 msgid "ritual.vigil.name"
@@ -246,15 +246,15 @@ msgstr "봉인된 성유물"
 
 #. Seal guardian name, zone 0
 msgid "enemy.champion.0.name"
-msgstr "잿불의 문지기"
+msgstr "모드구드"
 
 #. Seal guardian name, zone 1
 msgid "enemy.champion.1.name"
-msgstr "서리의 성가대장"
+msgstr "칸토르"
 
 #. Seal guardian name, zone 2 (the chapter boss)
 msgid "enemy.champion.2.name"
-msgstr "회랑의 파수왕"
+msgstr "티폰"
 
 #. Goal line while the next zone is not entered yet
 msgid "hud.objective.move"
@@ -266,39 +266,39 @@ msgstr "봉인 주변 처치 {done} / {total}"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
-msgstr "잿불탄"
+msgstr "파이어볼"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.ember.evolved_name"
-msgstr "연쇄 잿불탄"
+msgstr "메테오"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.frost.name"
-msgstr "서리창"
+msgstr "아이스 스피어"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.frost.evolved_name"
-msgstr "파쇄 서리창"
+msgstr "블리자드"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.arc.name"
-msgstr "연쇄 전류"
+msgstr "체인 라이트닝"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.arc.evolved_name"
-msgstr "갈래 연쇄 전류"
+msgstr "썬더스톰"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.embers.name"
-msgstr "잿불탄 씨앗"
+msgstr "케나즈 룬"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.crystal.name"
-msgstr "서리창 씨앗"
+msgstr "하갈라즈 룬"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.conductor.name"
-msgstr "연쇄 전류 씨앗"
+msgstr "투리사즈 룬"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.pierce_add"
@@ -306,7 +306,7 @@ msgstr "관통 +{n}"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.projectiles_add"
-msgstr "창 +{n}발"
+msgstr "스피어 +{n}발"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.shatter_add"
@@ -370,7 +370,7 @@ msgstr "지대 동시 +{n}개"
 
 #. Skill tree effect line. {v}: percent
 msgid "tree.effect.field_pulse"
-msgstr "지대 피해: 창 피해의 {v}%"
+msgstr "지대 피해: 스피어 피해의 {v}%"
 
 #. Skill tree effect line. {v}: percent
 msgid "tree.effect.field_slow_min"
@@ -382,11 +382,11 @@ msgstr "은총 다시 빌기 {n}회"
 
 #. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
 msgid "tree.effect.start_rank"
-msgstr "서리창 랭크 {rank}으로 시작"
+msgstr "아이스 스피어 랭크 {rank}으로 시작"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "결정 은총 없이 진화"
+msgstr "하갈라즈 룬 없이 진화"
 
 #. Save refusal text
 msgid "profile.error.preview_only"
@@ -490,7 +490,7 @@ msgstr "되돌릴 투자가 없습니다"
 
 #. Save refusal text
 msgid "profile.error.essence_short"
-msgstr "재가 모자랍니다"
+msgstr "오리칼쿰이 모자랍니다"
 
 #. Save refusal text
 msgid "profile.error.isolated_path_invalid"
@@ -652,7 +652,7 @@ msgstr "다음 봉인까지 {meters}m · 열린 동쪽 회랑을 따라 이동"
 
 #. Route hint in the last zone
 msgid "hud.route.last_seal"
-msgstr "마지막 봉인 · 회랑의 파수왕을 처치하세요"
+msgstr "마지막 봉인 · 티폰을 처치하세요"
 
 #. Route hint inside a zone
 msgid "hud.route.break_seal"
@@ -930,15 +930,15 @@ msgstr "받은 피해 {n}"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.ember_ring.name"
-msgstr "잿불 울타리"
+msgstr "코멧"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.frost_ring.name"
-msgstr "서리 울타리"
+msgstr "프로스트 노바"
 
 #. Ring spell name (source: run_spells data)
 msgid "skill.chapter1.skill.arc_ring.name"
-msgstr "전류 울타리"
+msgstr "볼 라이트닝"
 
 #. Card kind line of a ring spell
 msgid "hud.spell.kind.ring"
@@ -1051,7 +1051,7 @@ msgstr "{d} {dd} · {r} {rd}"
 
 #. Passive card text of a run with spell composition
 msgid "hud.spell.passive.body"
-msgstr "진화 조건: 강화 {axis}번 · 이 씨앗 · 짝 기술 강화 {partner}번"
+msgstr "진화 조건: 강화 {axis}번 · 이 룬 · 짝 기술 강화 {partner}번"
 
 #. Evolution progress line. {parts}: pieces joined by dots
 msgid "hud.spell.evo.line"
@@ -1067,11 +1067,11 @@ msgstr "강화 {have} → {next}/{need}"
 
 #. Evolution progress piece. {mark}: check or cross
 msgid "hud.spell.evo.passive"
-msgstr "씨앗 {mark}"
+msgstr "룬 {mark}"
 
 #. Evolution progress piece shown on the passive card
 msgid "hud.spell.evo.passive_to"
-msgstr "씨앗 ✗ → ✓"
+msgstr "룬 ✗ → ✓"
 
 #. Evolution progress piece: axis total of the partner spell
 msgid "hud.spell.evo.partner"
@@ -1109,9 +1109,9 @@ msgstr " · {ctl} {x}배"
 msgid "hud.spell.pair.block_targets"
 msgstr " · 대상 +{n}"
 
-#. Interlock pair line. {a}: controlling spell, {b}: hitting spell, {via}: control word, {n}: percent
+#. Interlock pair line (the controlling spell is the left mark of the row). {b}: hitting spell, {verb}: state of the enemy, {n}: percent
 msgid "hud.spell.pair.interlock"
-msgstr "{a|가} {verb} 적에게 {b} +{n}%"
+msgstr "{verb} 적에게 {b} +{n}%"
 
 
 
@@ -1133,29 +1133,25 @@ msgstr "가까이 오는 적 여럿을 세게 쳐서 기절시킨다."
 msgid "hud.spell.pair.more"
 msgstr "외 {n}개"
 
-#. Short subject for the ring spell in a pair line
-msgid "hud.spell.pair.ring_short"
-msgstr "울타리"
-
 #. Second control of an interlock pair line
 msgid "hud.spell.pair.second"
 msgstr "\n{verb} 적 +{n}%"
 
 #. Control verb (adnominal) in a pair line
 msgid "hud.spell.verb.frozen"
-msgstr "얼린"
+msgstr "언"
 
 #. Control verb (adnominal) in a pair line
 msgid "hud.spell.verb.stunned"
-msgstr "기절시킨"
+msgstr "기절한"
 
 #. Control verb (adnominal) in a pair line
 msgid "hud.spell.verb.staggered"
-msgstr "경직시킨"
+msgstr "경직된"
 
 #. Control verb (adnominal) in a pair line
 msgid "hud.spell.verb.slowed"
-msgstr "늦춘"
+msgstr "느려진"
 
 #. Mark adjective in a pair line
 msgid "hud.spell.status.heat"
@@ -1188,6 +1184,18 @@ msgstr "갈래 {a} → {b}"
 #. Window title suffix while trial switches are on (dev runs only). Leading space is intended. {list}: switch names
 msgid "app.window.trial_tag"
 msgstr " [시험: {list}]"
+
+#. Window title and title-screen chapter heading: the chapter name and number
+msgid "app.window.title"
+msgstr "카테나 · 제1장"
+
+#. Name of the currency gained by taking equipment apart (a plain word, the number follows)
+msgid "currency.essence"
+msgstr "오리칼쿰"
+
+#. Title-screen start button. {name}: the starting skill name
+msgid "hud.menu.start_with"
+msgstr "{name|으로} 시작"
 
 #. The descent (R): the number of enemies the sweep killed, shown once as one merged number. {n}: count
 msgid "descent.kills"

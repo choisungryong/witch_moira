@@ -73,7 +73,7 @@
    "kind": "new",
    "kind_label": "새 기술",
    "header": "서약",
-   "name": "잿불 울타리",
+   "name": "코멧",
    "tier": "",
    "headline": "가까이 오는 적을 세게 쳐서 공격을 끊는다.",
    "delta": null,
@@ -99,7 +99,7 @@
      "from_element": "ember",
      "to": "orb",
      "to_element": "ember",
-     "text": "울타리가 경직시킨 적에게 잿불탄 +60%"
+     "text": "경직된 적에게 파이어볼 +60%"
     }
    ],
    "path": null,
@@ -121,9 +121,9 @@
    "kind": "upgrade",
    "kind_label": "강화 · 피해",
    "header": "서약",
-   "name": "잿불탄",
+   "name": "파이어볼",
    "tier": "Ⅱ",
-   "headline": "잿불탄이 더 세게 터진다.",
+   "headline": "파이어볼이 더 세게 터진다.",
    "delta": {
     "label": "피해",
     "before": "14",
@@ -146,7 +146,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "잿불탄 씨앗",
+      "label": "케나즈 룬",
       "done": false
      },
      {
@@ -159,7 +159,7 @@
    "terms": [
     {
      "word": "그을림",
-     "gloss": "맞은 자국. 울타리가 이 적을 치면 터뜨림이 일어난다."
+     "gloss": "맞은 자국. 둘레 기술이 이 적을 치면 터뜨림이 일어난다."
     }
    ],
    "action": "받아들이기",
@@ -174,13 +174,13 @@
    "kind": "trade",
    "kind_label": "새 기술",
    "header": "거래 · 번개의 악마",
-   "name": "연쇄 전류",
+   "name": "체인 라이트닝",
    "tier": "",
    "headline": "맞은 적에게서 적으로 전류가 옮겨 간다.",
    "delta": null,
    "meter": null,
    "stats": [
-    "연쇄 전류가 기절시킨 적에게 잿불탄 +60%"
+    "기절한 적에게 파이어볼 +60%"
    ],
    "details": [
     "맞은 적: 감전"
@@ -192,14 +192,14 @@
      "from_element": "arc",
      "to": "orb",
      "to_element": "ember",
-     "text": "연쇄 전류가 기절시킨 적에게 잿불탄 +60%"
+     "text": "기절한 적에게 파이어볼 +60%"
     }
    ],
    "path": null,
    "terms": [
     {
      "word": "감전",
-     "gloss": "전기가 몸에 남은 상태. 울타리가 터뜨린다."
+     "gloss": "전기가 몸에 남은 상태. 둘레 기술이 터뜨린다."
     }
    ],
    "action": "거래하기",
@@ -210,7 +210,7 @@
  "owned": {
   "spells": [
    {
-    "name": "잿불탄",
+    "name": "파이어볼",
     "emblem": "orb",
     "element": "ember",
     "level": "2"
@@ -219,7 +219,7 @@
   "slots": 3,
   "graces": [
    {
-    "name": "잿불탄 씨앗",
+    "name": "케나즈 룬",
     "owned": false
    }
   ],

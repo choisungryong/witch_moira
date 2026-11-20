@@ -9,7 +9,7 @@
     "skill_id": "chapter1.skill.frost",
     "rank": 4,
     "weight": 1,
-    "title_key": "서리창 진화 · 가장 긴 이름을 붙인 얼어붙은 서약의 창끝",
+    "title_key": "아이스 스피어 진화 · 가장 긴 이름을 붙인 얼어붙은 서약의 창끝",
     "after": {
      "damage_raw": 9216,
      "projectiles": 6,
@@ -25,7 +25,7 @@
     "skill_id": "chapter1.skill.arc",
     "rank": 4,
     "weight": 1,
-    "title_key": "연쇄 전류 진화 · 가장 긴 이름을 붙인 폭풍의 사슬 번개",
+    "title_key": "체인 라이트닝 진화 · 가장 긴 이름을 붙인 벼락의 사슬 번개",
     "after": {
      "damage_raw": 8192,
      "chain_targets": 9,
@@ -39,7 +39,7 @@
     "skill_id": "chapter1.skill.ember",
     "rank": 4,
     "weight": 1,
-    "title_key": "잿불탄 진화 · 가장 긴 이름을 붙인 끝없이 번지는 불꽃",
+    "title_key": "파이어볼 진화 · 가장 긴 이름을 붙인 끝없이 번지는 불꽃",
     "after": {
      "damage_raw": 9984,
      "projectiles": 8,

@@ -227,10 +227,6 @@ static func _pair_rows(hud: Object,body: Control,card: Dictionary,doc: Dictionar
 		body.add_child(row)
 	if shown.size()>3:body.add_child(hud._label(Loc.t("hud.spell.pair.more",{"n":Loc.num(shown.size()-3)}),SMALL_SIZE,Palette.INK_FAINT))
 
-static func _short(doc: Dictionary,skill_id: String) -> String:
-	if String(doc.spells[skill_id].role)=="ring":return Loc.t("hud.spell.pair.ring_short")
-	return Loc.t("skill.%s.name"%skill_id)
-
 static func _pair_text(doc: Dictionary,pair: Dictionary) -> String:
 	var b := Loc.t("skill.%s.name"%pair.b)
 	if String(pair.kind)=="detonate":
@@ -245,7 +241,7 @@ static func _pair_text(doc: Dictionary,pair: Dictionary) -> String:
 	var table: Dictionary=doc.spells[pair.b].get("vs_cc",{})
 	var vias: Array=pair.via.duplicate()
 	vias.sort_custom(func(x,y): return int(table.get(String(x),0))>int(table.get(String(y),0)))
-	var text := Loc.t("hud.spell.pair.interlock",{"a":_short(doc,String(pair.a)),"b":b,"verb":Loc.t("hud.spell.verb."+String(vias[0])),"n":Loc.num(int(table.get(String(vias[0]),0))/100)})
+	var text := Loc.t("hud.spell.pair.interlock",{"b":b,"verb":Loc.t("hud.spell.verb."+String(vias[0])),"n":Loc.num(int(table.get(String(vias[0]),0))/100)})
 	for i in range(1,vias.size()):
 		text+=Loc.t("hud.spell.pair.second",{"verb":Loc.t("hud.spell.verb."+String(vias[i])),"n":Loc.num(int(table.get(String(vias[i]),0))/100)})
 	return text

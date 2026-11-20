@@ -32,11 +32,11 @@ var _selected_item := -1
 var temporary_art := true
 var motion_enabled := true
 var skill_labels: Dictionary={}
-var menu_title := "잿빛 회랑"
-var menu_description := "무리를 휩쓸고, 장비와 기술을 성장시켜 회랑 수호자를 처치하세요."
-var menu_scope := "회랑 진입전 · 한 장을 완성하기 위한 첫 전투 구간"
-var victory_title := "회랑 수호자를 처치했습니다"
-const SKILL_NAMES={"chapter1.skill.ember":"잿불탄","chapter1.skill.frost":"서리창","chapter1.skill.arc":"연쇄 전류"}
+var menu_title := "카테나"
+var menu_description := "무리를 휩쓸고, 장비와 기술을 성장시켜 티폰을 처치하세요."
+var menu_scope := "카테나 진입전 · 한 장을 완성하기 위한 첫 전투 구간"
+var victory_title := "티폰을 처치했습니다"
+const SKILL_NAMES={"chapter1.skill.ember":"파이어볼","chapter1.skill.frost":"아이스 스피어","chapter1.skill.arc":"체인 라이트닝"}
 const SLOT_NAMES={"weapon":"무기","head":"머리","body":"몸통","hands":"장갑","feet":"신발","charm":"목걸이","ring":"반지","ring2":"반지 2"}
 const EQUIP_SLOTS=["weapon","head","body","hands","feet","charm","ring","ring2"]
 
@@ -57,7 +57,7 @@ func setup__cloister(view: Node3D) -> void:
 	root.add_child(top)
 	var row := HBoxContainer.new()
 	top.add_child(row)
-	objective=_label("잿빛 회랑",20,Color("ded8c4"))
+	objective=_label("카테나",20,Color("ded8c4"))
 	objective.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	row.add_child(objective)
 	var item_button := _button(Loc.t("hud.button.equipment"),func():equipment.emit())
@@ -182,9 +182,9 @@ func _build_modal__cloister(run: RefCounted) -> void:
 			var classes := HBoxContainer.new()
 			classes.add_theme_constant_override("separation",16)
 			box.add_child(classes)
-			for pair in [["잿불탄","chapter1.skill.ember"],["서리창","chapter1.skill.frost"],["연쇄 전류","chapter1.skill.arc"]]:
+			for pair in [["파이어볼","chapter1.skill.ember"],["아이스 스피어","chapter1.skill.frost"],["체인 라이트닝","chapter1.skill.arc"]]:
 				var id_: String=pair[1]
-				var b := _button(pair[0]+"으로 시작",func():start.emit(id_))
+				var b := _button(Loc.t("hud.menu.start_with",{"name":pair[0]}),func():start.emit(id_))
 				b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;classes.add_child(b)
 			var spacer := Control.new();spacer.size_flags_vertical=Control.SIZE_EXPAND_FILL;box.add_child(spacer)
 			box.add_child(_motion_control())
@@ -220,7 +220,7 @@ func _build_modal__cloister(run: RefCounted) -> void:
 			box.add_child(_button("계속하기 [Esc]",func():pause_toggle.emit()))
 			box.add_child(_motion_control())
 		"victory","defeat":
-			box.add_child(_label(victory_title if run.mode=="victory" else "회랑에 쓰러졌습니다",32,Color("e5ca94")))
+			box.add_child(_label(victory_title if run.mode=="victory" else "카테나에 쓰러졌습니다",32,Color("e5ca94")))
 			box.add_child(_label("%d 처치 · 레벨 %d · 획득 장비 %d개" % [run.kills,run.growth.snapshot().level,run.inventory.size()],20))
 			box.add_child(_label("다른 기술과 장비 조합으로 다시 도전할 수 있습니다.",18))
 			box.add_child(_button("다시 도전",func():retry.emit()))
@@ -255,8 +255,8 @@ func _stats__cloister(stats: Dictionary) -> String:
 			"max_hp_raw":result.append("최대 생명력 +%d" % (value/256))
 			"damage_reduction_bps":result.append("받는 피해 -%.1f%%" % (float(value)/100))
 			"projectiles":result.append("발사체 +%d (연쇄 기술은 대상 +%d)" % [value,value])
-			"chain_targets":result.append("연쇄 전류 대상 +%d" % value)
-			"shatter_count":result.append("서리창 랭크4 / 진화의 파쇄 파편 +%d" % value)
+			"chain_targets":result.append("체인 라이트닝 대상 +%d" % value)
+			"shatter_count":result.append("아이스 스피어 랭크4 / 진화의 파쇄 파편 +%d" % value)
 			"pickup_radius_cm":result.append("회수 반경 +%.1fm" % (float(value)/100))
 			"cooldown_bps":result.append("기술 주기 단축 +%.1f%%" % (float(value)/100))
 	return "\n".join(result) if not result.is_empty() else "장착 장비 없음"
@@ -320,10 +320,10 @@ var profile_note := ""
 var stash_open := false
 var _storage_selection := -1
 func _init() -> void:
-	menu_title="잿빛 회랑 · 제1장"
-	menu_description="세 봉인을 돌파하고 재의 성소에 도달하세요. 장비와 기술을 성장시켜 회랑의 파수왕을 처치하세요."
+	menu_title=Loc.t("app.window.title")
+	menu_description="세 봉인을 돌파하고 "+Loc.t("zone.2.name")+"에 도달하세요. 장비와 기술을 성장시켜 "+Loc.t("enemy.champion.2.name")+"을 처치하세요."
 	menu_scope="WASD / 좌클릭 이동 · Q 회복약 · E 의식 · 선택 의식은 위험과 추가 보상"
-	victory_title="제1장 · 회랑의 파수왕을 처치했습니다"
+	victory_title="제1장 · "+Loc.t("enemy.champion.2.name")+"을 처치했습니다"
 func setup__chapter(view: Node3D) -> void:
 	setup__cloister(view)
 	boss_bar=_bar(Palette.THREAT_DEEP,_boss_height());boss_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -367,7 +367,7 @@ func _build_stash__chapter() -> void:
 	overlay.visible=true
 	var box := VBoxContainer.new();box.add_theme_constant_override("separation",12);modal.add_child(box)
 	box.add_child(_label("장비 보관함 · %d / 256"%profile_state.get("items",[]).size(),29,Color("e3cd9d")))
-	box.add_child(_label("다음 도전에 가져갈 장비를 슬롯별로 선택하세요. 해체는 해당 장비를 재로 바꿉니다.",16))
+	box.add_child(_label("다음 도전에 가져갈 장비를 슬롯별로 선택하세요. 해체는 해당 장비를 오리칼쿰으로 바꿉니다.",16))
 	var row := HBoxContainer.new();row.size_flags_vertical=Control.SIZE_EXPAND_FILL;row.add_theme_constant_override("separation",24);box.add_child(row)
 	var scroll := ScrollContainer.new();scroll.custom_minimum_size.x=320;scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;row.add_child(scroll)
 	var list := VBoxContainer.new();list.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(list)
@@ -387,8 +387,8 @@ func _build_stash__chapter() -> void:
 		details.add_child(_label(_stats(item.stats),16))
 		if not item.description.is_empty():details.add_child(_label(item.description,16))
 		details.add_child(_button("다음 도전에 장착",func():stash_equip.emit(id_)))
-		details.add_child(_button("해체하여 재로 전환",func():_storage_selection=-1;stash_salvage.emit(id_)))
-	box.add_child(_label("재 %d · 완료한 도전 %d · %s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note],14))
+		details.add_child(_button("해체하여 오리칼쿰으로 전환",func():_storage_selection=-1;stash_salvage.emit(id_)))
+	box.add_child(_label(Loc.t("currency.essence")+" %d · 완료한 도전 %d · %s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note],14))
 	box.add_child(_button("돌아가기",func():stash_open=false;invalidate()))
 
 # ---- chapter1/view/chapter_hud_quality16.gd ----
@@ -455,7 +455,7 @@ func _build_modal__q17(run: RefCounted) -> void:
 			var panel := PanelContainer.new();panel.add_theme_stylebox_override("panel",_style(Color("28231b"),Color("b98140")))
 			var row := HBoxContainer.new();row.add_theme_constant_override("separation",16);panel.add_child(row);row.add_child(_sigil(item))
 			var column := VBoxContainer.new();column.size_flags_horizontal=Control.SIZE_EXPAND_FILL;row.add_child(column)
-			column.add_child(_label("파수왕의 유산 · 고유 장비",14,Palette.QUALITY_UNIQUE))
+			column.add_child(_label(Loc.t("enemy.champion.2.name")+"의 전리품 · 고유 장비",14,Palette.QUALITY_UNIQUE))
 			column.add_child(_label(item.name,24,Color("f0d3a0")))
 			column.add_child(_label(item.get("description",""),16))
 			box.add_child(panel);box.move_child(panel,2)
@@ -965,7 +965,7 @@ func _build_stash() -> void:
 	var details := VBoxContainer.new();details.size_flags_horizontal=Control.SIZE_EXPAND_FILL;details.add_theme_constant_override("separation",14);detail_scroll.add_child(details)
 	if not selected.is_empty():_stash_detail40(details,selected)
 	else:details.add_child(_label("장비를 선택하면 효과와 장착 상태를 확인할 수 있습니다.",18))
-	box.add_child(_label("재 %d · 완료한 도전 %d\n%s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note if not profile_note.is_empty() else "저장 상태 확인 중"],15,Palette.INK_DIM))
+	box.add_child(_label(Loc.t("currency.essence")+" %d · 완료한 도전 %d\n%s"%[profile_state.get("essence",0),profile_state.get("completed_runs",0),profile_note if not profile_note.is_empty() else "저장 상태 확인 중"],15,Palette.INK_DIM))
 	box.add_child(_button("돌아가기 [Esc]",func():stash_open=false;invalidate()))
 	_restore_stash40.call_deferred(_stash_scroll40,_stash_offset40)
 
@@ -983,7 +983,7 @@ func _stash_detail40(details: VBoxContainer,record: Dictionary) -> void:
 	if int(item.get("required_level",1))>1:details.add_child(_label("요구 레벨 %d"%int(item.required_level),15,Palette.INK_DIM))
 	var equip_button := _button("장착 중" if active else "다음 도전에 장착",func():stash_equip.emit(id_));equip_button.disabled=active;details.add_child(equip_button)
 	details.add_child(_button("이 장비 해체",func():_storage_selection=-1;stash_salvage.emit(id_)))
-	details.add_child(_label("해체하면 장비가 사라지고 재로 전환됩니다.",14,Color("bca58f")))
+	details.add_child(_label("해체하면 장비가 사라지고 오리칼쿰으로 전환됩니다.",14,Color("bca58f")))
 
 func _restore_stash40(scroll: ScrollContainer,position_: int) -> void:
 	for i in 2:await root.get_tree().process_frame
@@ -995,7 +995,7 @@ func _reset_stash_filter40() -> void:
 func _build_result40__q40(run: RefCounted) -> void:
 	var box := _clear_modal40()
 	var victorious: bool=run.mode=="victory"
-	box.add_child(_label("회랑의 서약을 완수했습니다" if victorious else "이번 도전이 끝났습니다",32,Palette.INK))
+	box.add_child(_label("카테나의 서약을 완수했습니다" if victorious else "이번 도전이 끝났습니다",32,Palette.INK))
 	var growth: Dictionary=run.growth.snapshot()
 	box.add_child(_label("%02d:%02d  ·  %d 처치  ·  레벨 %d"%[run.tick/3600,(run.tick/60)%60,run.kills,growth.level],19,Palette.INK_DIM))
 	var columns := HBoxContainer.new();columns.size_flags_vertical=Control.SIZE_EXPAND_FILL;columns.add_theme_constant_override("separation",22);box.add_child(columns)
@@ -1017,7 +1017,7 @@ func _build_result40__q40(run: RefCounted) -> void:
 		var reward_frame := PanelContainer.new();reward_frame.add_theme_stylebox_override("panel",_style(Palette.SURFACE_RAISED,Color("b98140")));rewards.add_child(reward_frame)
 		var reward_row := HBoxContainer.new();reward_row.add_theme_constant_override("separation",12);reward_frame.add_child(reward_row)
 		reward_row.add_child(_sigil(elite_item));var names := VBoxContainer.new();names.size_flags_horizontal=Control.SIZE_EXPAND_FILL;reward_row.add_child(names)
-		names.add_child(_label("파수왕의 유산",15,Palette.QUALITY_UNIQUE));names.add_child(_label(elite_item.name,23,Palette.INK))
+		names.add_child(_label(Loc.t("enemy.champion.2.name")+"의 전리품",15,Palette.QUALITY_UNIQUE));names.add_child(_label(elite_item.name,23,Palette.INK))
 	else:rewards.add_child(_label("보유 장비는 보관함에서 확인하고 다음 도전에 장착할 수 있습니다.",18))
 	rewards.add_child(_label("저장 상태",17,Color("a8baaa")))
 	rewards.add_child(_label(profile_note if not profile_note.is_empty() else "저장 상태 확인 중",17))
@@ -1139,7 +1139,7 @@ func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> v
 		button.focus_entered.connect(menu_select_skill.bind(START_SKILLS[i]))
 		button.mouse_entered.connect(button.grab_focus)
 		button.reparent(choices);button.custom_minimum_size.y=88
-		_two_line_choice(button,String(button.text).replace("연쇄 전류으로 시작","연쇄 전류로 시작"),summaries[i],tints[i])
+		_two_line_choice(button,String(button.text),summaries[i],tints[i])
 		button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	_menu_starts.clear()
 	for start_button in starts:_menu_starts.append(start_button as Button)
@@ -1199,7 +1199,7 @@ func _build_modal__q45(run: RefCounted) -> void:
 	if run.mode=="menu":
 		var buttons: Array[Control]=[];_collect_focus38(modal,buttons)
 		for control in buttons:
-			if control is Button:control.text=control.text.replace("연쇄 전류으로 시작","연쇄 전류로 시작")
+			if control is Button:pass
 	elif run.mode=="paused":
 		var box := modal.get_child(0) as VBoxContainer
 		if box==null or box.get_child_count()!=4:return
@@ -1595,7 +1595,7 @@ func _draw_route_marker() -> void:
 const SkillTreePanel=preload("res://chapter1/view/hud/skill_tree_panel.gd")
 const ProfileData=preload("res://chapter1/core/chapter_profile.gd")
 const START_SKILLS=["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
-const WITCH_NAMES=["잿불의 마녀","서리의 마녀","뇌우의 마녀"]
+const WITCH_NAMES=["홍염의 마녀","서리의 마녀","뇌우의 마녀"]
 const PORTRAIT_KEYS=["ember","frost","storm"]
 const GROWTH_FILL_SECONDS := 1.2
 signal skill_tree_open(character_id: String)

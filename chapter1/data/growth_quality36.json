@@ -20,27 +20,27 @@
   "passives": [
     {
       "id": "chapter1.passive.embers",
-      "name": "잔불",
+      "name": "케나즈 룬",
       "weight": 100
     },
     {
       "id": "chapter1.passive.crystal",
-      "name": "결정",
+      "name": "하갈라즈 룬",
       "weight": 100
     },
     {
       "id": "chapter1.passive.conductor",
-      "name": "도체",
+      "name": "투리사즈 룬",
       "weight": 100
     }
   ],
   "skills": [
     {
       "id": "chapter1.skill.ember",
-      "name": "잿불탄",
+      "name": "파이어볼",
       "weight": 100,
       "passive_id": "chapter1.passive.embers",
-      "evolution_name": "연쇄 화염구",
+      "evolution_name": "메테오",
       "ranks": [
         {
           "damage_raw": 3072,
@@ -121,10 +121,10 @@
     },
     {
       "id": "chapter1.skill.frost",
-      "name": "서리창",
+      "name": "아이스 스피어",
       "weight": 100,
       "passive_id": "chapter1.passive.crystal",
-      "evolution_name": "파쇄 물결",
+      "evolution_name": "블리자드",
       "ranks": [
         {
           "damage_raw": 2560,
@@ -205,10 +205,10 @@
     },
     {
       "id": "chapter1.skill.arc",
-      "name": "연쇄 전류",
+      "name": "체인 라이트닝",
       "weight": 100,
       "passive_id": "chapter1.passive.conductor",
-      "evolution_name": "두 갈래 폭풍",
+      "evolution_name": "썬더스톰",
       "ranks": [
         {
           "damage_raw": 2304,

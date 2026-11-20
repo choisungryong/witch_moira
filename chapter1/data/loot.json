@@ -16,27 +16,27 @@
     "arc_damage_bps": [-5000, 10000], "move_speed_bps": [0, 3000], "dash_cooldown_bps": [0, 4000], "soul_gain_bps": [0, 5000]
   },
   "bases": [
-    {"id": "cinder_staff", "name": "잿불 지팡이", "slot": "weapon", "level": 1, "stats": {"damage_bps": 800, "projectiles": 1}},
+    {"id": "cinder_staff", "name": "무스펠 지팡이", "slot": "weapon", "level": 1, "stats": {"damage_bps": 800, "projectiles": 1}},
     {"id": "swift_wand", "name": "박동의 마법봉", "slot": "weapon", "level": 1, "stats": {"damage_bps": 500, "cooldown_bps": 1200}},
     {"id": "piercing_sceptre", "name": "관통의 홀", "slot": "weapon", "level": 3, "stats": {"damage_bps": 1400, "pierce": 1}},
     {"id": "linen_robe", "name": "순례자의 로브", "slot": "body", "level": 1, "stats": {"max_hp_raw": 5120, "damage_reduction_bps": 300}},
     {"id": "iron_vest", "name": "쇠실 흉의", "slot": "body", "level": 2, "stats": {"max_hp_raw": 8960, "damage_reduction_bps": 600, "cooldown_bps": -500}},
     {"id": "warden_mantle", "name": "수문장의 외투", "slot": "body", "level": 3, "stats": {"max_hp_raw": 3840, "damage_reduction_bps": 700, "pickup_radius_cm": 40}},
     {"id": "winter_shard", "name": "겨울 파편", "slot": "charm", "level": 1, "stats": {"slow_bps": 1200, "max_hp_raw": 2560}},
-    {"id": "ember_lens", "name": "잿불 렌즈", "slot": "charm", "level": 2, "stats": {"radius_cm": 40, "fire_damage_bps": 1000}},
+    {"id": "ember_lens", "name": "화경", "slot": "charm", "level": 2, "stats": {"radius_cm": 40, "fire_damage_bps": 1000}},
     {"id": "chain_knot", "name": "연쇄 매듭", "slot": "charm", "level": 3, "stats": {"chain_targets": 1, "damage_bps": -300}},
     {"id": "quick_loop", "name": "은빛 고리", "slot": "ring", "level": 1, "stats": {"cooldown_bps": 500, "pickup_radius_cm": 40}},
     {"id": "glass_ring", "name": "유리 반지", "slot": "ring", "level": 2, "stats": {"damage_bps": 1200, "max_hp_raw": -2560}},
     {"id": "ward_ring", "name": "봉인의 반지", "slot": "ring", "level": 3, "stats": {"damage_reduction_bps": 500, "max_hp_raw": 3072}},
-    {"id": "ash_hood", "name": "재의 두건", "slot": "head", "level": 1, "stats": {"cooldown_bps": 300}},
+    {"id": "ash_hood", "name": "그림니르 두건", "slot": "head", "level": 1, "stats": {"cooldown_bps": 300}},
     {"id": "iron_circlet", "name": "쇠 머리테", "slot": "head", "level": 4, "stats": {"cooldown_bps": 400, "max_hp_raw": 2560}},
     {"id": "seer_veil", "name": "예언자의 베일", "slot": "head", "level": 8, "stats": {"cooldown_bps": 500, "soul_gain_bps": 800}},
     {"id": "linen_wraps", "name": "순례자의 붕대", "slot": "hands", "level": 1, "stats": {"damage_bps": 300}},
-    {"id": "ember_gloves", "name": "잿불 장갑", "slot": "hands", "level": 4, "stats": {"damage_bps": 600}},
+    {"id": "ember_gloves", "name": "키클롭스 장갑", "slot": "hands", "level": 4, "stats": {"damage_bps": 600}},
     {"id": "storm_gauntlets", "name": "뇌전 건틀릿", "slot": "hands", "level": 8, "stats": {"damage_bps": 400, "cooldown_bps": 600}},
     {"id": "worn_sandals", "name": "낡은 샌들", "slot": "feet", "level": 1, "stats": {"move_speed_bps": 300}},
     {"id": "pilgrim_boots", "name": "순례자의 장화", "slot": "feet", "level": 4, "stats": {"move_speed_bps": 500, "max_hp_raw": 1280}},
-    {"id": "ash_striders", "name": "재밟이 장화", "slot": "feet", "level": 8, "stats": {"move_speed_bps": 700, "dash_cooldown_bps": 800}}
+    {"id": "ash_striders", "name": "탈라리아", "slot": "feet", "level": 8, "stats": {"move_speed_bps": 700, "dash_cooldown_bps": 800}}
   ],
   "affixes": [
     {"id": "wrath", "name": "격노", "kind": "prefix", "group": "damage", "slots": ["weapon", "ring", "charm", "hands"], "level": 1, "max_level": 9, "stat": "damage_bps", "low": 800, "high": 1800, "weight": 100},
@@ -66,20 +66,20 @@
     {"id": "galvanic", "name": "전도하는", "slots": ["weapon", "charm", "ring"], "level": 4, "stats": {"chain_targets": 3, "arc_damage_bps": -1000}, "description": "연쇄 +3 · 번개 피해 -10%"}
   ],
   "uniques": [
-    {"id": "ash_bloom", "name": "잿꽃의 유언", "slot": "weapon", "level": 3, "element": "chapter1.skill.ember", "stats": {"damage_bps": -1000, "projectiles": 1, "fire_burst": 1}, "description": "화염 처치 폭발 · 피해 -10% · 발사체 +1"},
+    {"id": "ash_bloom", "name": "레바테인", "slot": "weapon", "level": 3, "element": "chapter1.skill.ember", "stats": {"damage_bps": -1000, "projectiles": 1, "fire_burst": 1}, "description": "화염 처치 폭발 · 피해 -10% · 발사체 +1"},
     {"id": "winter_heart", "name": "겨울의 심장", "slot": "charm", "level": 3, "element": "chapter1.skill.frost", "stats": {"cooldown_bps": -500, "frost_threshold": 1, "shatter_count": 2}, "description": "서리 빙결 문턱 -1(최소2회) · 파쇄 +2 · 기술 주기 증가"},
     {"id": "forked_covenant", "name": "갈림길의 서약", "slot": "ring", "level": 3, "element": "chapter1.skill.arc", "stats": {"arc_branches": 1, "arc_damage_bps": -1200, "chain_targets": 1}, "description": "번개 분기 +1 · 연쇄 +1 · 번개 피해 -12%"}
   ],
   "rare_names": {
     "first": [
       {"id": "f01", "name": "서리"},
-      {"id": "f02", "name": "재의"},
+      {"id": "f02", "name": "그을음", "legacy_names": ["재의"]},
       {"id": "f03", "name": "뇌우"},
       {"id": "f04", "name": "침묵"},
       {"id": "f05", "name": "서약"},
       {"id": "f06", "name": "황혼"},
       {"id": "f07", "name": "순례"},
-      {"id": "f08", "name": "잿빛"},
+      {"id": "f08", "name": "숯", "legacy_names": ["잿빛"]},
       {"id": "f09", "name": "새벽"},
       {"id": "f10", "name": "폐허"}
     ],

@@ -56,7 +56,7 @@
    "kind": "new",
    "kind_label": "새 기술",
    "header": "서약",
-   "name": "서리 울타리",
+   "name": "프로스트 노바",
    "tier": "",
    "headline": "가까이 오는 적을 세게 쳐서 얼린다.",
    "delta": null,
@@ -82,7 +82,7 @@
      "from_element": "frost",
      "to": "lance",
      "to_element": "frost",
-     "text": "울타리가 얼린 적에게 서리창 +60%"
+     "text": "언 적에게 아이스 스피어 +60%"
     }
    ],
    "path": null,
@@ -108,7 +108,7 @@
    "kind": "upgrade",
    "kind_label": "강화 · 넓이",
    "header": "서약",
-   "name": "서리창",
+   "name": "아이스 스피어",
    "tier": "Ⅱ",
    "headline": "창이 더 많은 적을 꿰뚫는다.",
    "delta": {
@@ -133,7 +133,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "서리창 씨앗",
+      "label": "하갈라즈 룬",
       "done": false
      },
      {
@@ -161,13 +161,13 @@
    "kind": "trade",
    "kind_label": "새 기술",
    "header": "거래 · 화염의 악마",
-   "name": "잿불탄",
+   "name": "파이어볼",
    "tier": "",
    "headline": "맞은 적을 그을린다.",
    "delta": null,
    "meter": null,
    "stats": [
-    "서리창이 얼린 적에게 잿불탄 +60% · 늦춘 적 +25%"
+    "언 적에게 파이어볼 +60% · 느려진 적 +25%"
    ],
    "details": [
     "맞은 적: 그을림",
@@ -180,14 +180,14 @@
      "from_element": "frost",
      "to": "orb",
      "to_element": "ember",
-     "text": "서리창이 얼린 적에게 잿불탄 +60% · 늦춘 적 +25%"
+     "text": "언 적에게 파이어볼 +60% · 느려진 적 +25%"
     }
    ],
    "path": null,
    "terms": [
     {
      "word": "그을림",
-     "gloss": "맞은 자국. 울타리가 이 적을 치면 터뜨림이 일어난다."
+     "gloss": "맞은 자국. 둘레 기술이 이 적을 치면 터뜨림이 일어난다."
     }
    ],
    "action": "거래하기",
@@ -198,13 +198,13 @@
  "owned": {
   "spells": [
    {
-    "name": "서리창",
+    "name": "아이스 스피어",
     "emblem": "lance",
     "element": "frost",
     "level": "2"
    },
    {
-    "name": "서리 울타리",
+    "name": "프로스트 노바",
     "emblem": "ring",
     "element": "frost",
     "level": "1"
@@ -213,11 +213,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "서리창 씨앗",
+    "name": "하갈라즈 룬",
     "owned": false
    },
    {
-    "name": "잿불탄 씨앗",
+    "name": "케나즈 룬",
     "owned": false
    }
   ],

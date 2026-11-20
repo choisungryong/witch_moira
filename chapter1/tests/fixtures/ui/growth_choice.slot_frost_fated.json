@@ -73,7 +73,7 @@
    "kind": "new",
    "kind_label": "새 기술",
    "header": "서약",
-   "name": "서리 울타리",
+   "name": "프로스트 노바",
    "tier": "",
    "headline": "가까이 오는 적을 세게 쳐서 얼린다.",
    "delta": null,
@@ -99,7 +99,7 @@
      "from_element": "frost",
      "to": "lance",
      "to_element": "frost",
-     "text": "울타리가 얼린 적에게 서리창 +60%"
+     "text": "언 적에게 아이스 스피어 +60%"
     }
    ],
    "path": null,
@@ -125,7 +125,7 @@
    "kind": "upgrade",
    "kind_label": "강화 · 넓이",
    "header": "서약",
-   "name": "서리창",
+   "name": "아이스 스피어",
    "tier": "Ⅱ",
    "headline": "창이 더 많은 적을 꿰뚫는다.",
    "delta": {
@@ -150,7 +150,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "서리창 씨앗",
+      "label": "하갈라즈 룬",
       "done": false
      },
      {
@@ -178,7 +178,7 @@
    "kind": "upgrade",
    "kind_label": "강화 · 넓이",
    "header": "서약",
-   "name": "서리창",
+   "name": "아이스 스피어",
    "tier": "기연",
    "headline": "강화 세 번의 몫을 한 번에 얻는다.",
    "delta": {
@@ -205,7 +205,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "서리창 씨앗",
+      "label": "하갈라즈 룬",
       "done": false
      },
      {
@@ -225,21 +225,21 @@
    "emblem": "lance",
    "pair": null,
    "resonance": {
-    "partner": "서리 울타리",
-    "text": "조합 기연 · 서리 울타리도 함께 자란다"
+    "partner": "프로스트 노바",
+    "text": "조합 기연 · 프로스트 노바도 함께 자란다"
    }
   }
  ],
  "owned": {
   "spells": [
    {
-    "name": "서리창",
+    "name": "아이스 스피어",
     "emblem": "lance",
     "element": "frost",
     "level": "2"
    },
    {
-    "name": "서리 울타리",
+    "name": "프로스트 노바",
     "emblem": "ring",
     "element": "frost",
     "level": "1"
@@ -248,11 +248,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "서리창 씨앗",
+    "name": "하갈라즈 룬",
     "owned": false
    },
    {
-    "name": "잿불탄 씨앗",
+    "name": "케나즈 룬",
     "owned": false
    }
   ],

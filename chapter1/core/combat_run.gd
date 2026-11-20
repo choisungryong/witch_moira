@@ -36,7 +36,7 @@ const ENEMY_DEFS := {
 	"elite":{"hp":720,"speed":1.75,"radius":.85,"damage":12,"windup":48,"recover":100,"xp":12}
 }
 const ITEM_TEMPLATES := [
-	{"base_id":"chapter1.item.cinder_branch","name":"균열의 잿불 가지","slot":"weapon","stats":{"damage_bps":1000,"projectiles":1},"description":"피해 증가 · 발사체 +1. 연쇄 기술은 연쇄 대상 +1."},
+	{"base_id":"chapter1.item.cinder_branch","name":"균열의 불티 가지","slot":"weapon","stats":{"damage_bps":1000,"projectiles":1},"description":"피해 증가 · 발사체 +1. 연쇄 기술은 연쇄 대상 +1."},
 	{"base_id":"chapter1.item.guard_robe","name":"수호의 재옷","slot":"body","stats":{"max_hp_raw":7680,"damage_reduction_bps":700},"description":"최대 생명력 +30 · 받는 피해 감소. 장착은 현재 생명력을 회복하지 않습니다."},
 	{"base_id":"chapter1.item.harvest_crystal","name":"회수의 재결정","slot":"charm","stats":{"pickup_radius_cm":100,"cooldown_bps":800},"description":"회수 반경 +1m · 기술 주기 단축."},
 	{"base_id":"chapter1.item.conductor_ring","name":"갈래 도체 반지","slot":"ring","stats":{"damage_bps":500,"chain_targets":1,"shatter_count":1},"description":"피해 증가 · 연쇄 +1 · 파쇄 파편 +1."}

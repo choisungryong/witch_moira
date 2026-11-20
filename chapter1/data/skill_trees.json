@@ -44,7 +44,7 @@
           "id": "witch.frost.volley",
           "branch": "lance",
           "tier": 2,
-          "name": "겹창",
+          "name": "겹 스피어",
           "lore": "\"하나로 모자라면 더 빌려라.\" — 후원자",
           "max_rank": 3,
           "requires": {"witch.frost.needle": 2},

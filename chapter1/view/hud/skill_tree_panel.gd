@@ -190,7 +190,7 @@ func request_respec() -> void:
 	if _sum(committed) <= 0:
 		show_notice("초기화할 투자가 없습니다."); return
 	if int(info.get("essence",0)) < int(info.get("respec_cost",0)):
-		show_error("재가 모자랍니다. 필요 %d · 보유 %d" % [int(info.get("respec_cost",0)),int(info.get("essence",0))]); return
+		show_error("오리칼쿰이 모자랍니다. 필요 %d · 보유 %d" % [int(info.get("respec_cost",0)),int(info.get("essence",0))]); return
 	confirm = "respec"; confirm_focus = 1; queue_redraw()
 
 # ------------------------------------------------- data access (swap point)
@@ -275,7 +275,7 @@ func _block_lines(block: Dictionary, per_rank: bool) -> Array:
 	var add: Dictionary = sk.get("add",{})
 	var pct := "%p" if per_rank else "%"
 	if add.has("pierce"): out.append("관통 +%d" % int(add.pierce))
-	if add.has("projectiles"): out.append("창 +%d발" % int(add.projectiles))
+	if add.has("projectiles"): out.append("스피어 +%d발" % int(add.projectiles))
 	if sk.get("mul_bps",{}).has("damage_raw"): out.append("피해 +%d%s" % [(int(sk.mul_bps.damage_raw)-10000)/100,pct])
 	if sk.has("cooldown_bps"): out.append("시전 간격 −%d%%" % ((10000-int(sk.cooldown_bps))/100))
 	if add.has("slow_bps"): out.append("감속 +%d%%p" % (int(add.slow_bps)/100))
@@ -292,15 +292,15 @@ func _block_lines(block: Dictionary, per_rank: bool) -> Array:
 		var a: Dictionary = rules.frost_field_add
 		if a.has("radius_cm"): out.append("지대 반경 +%s m" % _num(float(a.radius_cm)/100.0))
 		if int(a.get("max_fields",0)) > 0: out.append("동시 지대 +%d" % int(a.max_fields))
-		if int(a.get("pulse_damage_bps",0)) > 0: out.append("0.5초마다 창 피해의 %d%%" % (int(a.pulse_damage_bps)/100))
+		if int(a.get("pulse_damage_bps",0)) > 0: out.append("0.5초마다 스피어 피해의 %d%%" % (int(a.pulse_damage_bps)/100))
 		if a.has("slow_bps_at_least"): out.append("지대 감속 %d%%" % (int(a.slow_bps_at_least)/100))
 	var hero: Dictionary = block.get("hero",{})
 	if hero.has("max_hp"): out.append("최대 생명 +%d" % int(hero.max_hp))
 	if hero.has("damage_reduction_bps"): out.append("받는 피해 −%d%%" % (int(hero.damage_reduction_bps)/100))
 	if hero.has("potion_start"): out.append("시작 회복약 +%d" % int(hero.potion_start))
 	if rules.has("grace_rerolls"): out.append("은총 다시 빌기 %d회" % int(rules.grace_rerolls))
-	if rules.has("start_rank"): out.append("서리창 랭크 %d로 시작" % int(rules.start_rank))
-	if bool(rules.get("evolve_without_passive",false)): out.append("결정 은총 없이 진화")
+	if rules.has("start_rank"): out.append("아이스 스피어 랭크 %d로 시작" % int(rules.start_rank))
+	if bool(rules.get("evolve_without_passive",false)): out.append("하갈라즈 룬 없이 진화")
 	return out
 
 # ------------------------------------------------------------ small helpers
@@ -800,7 +800,7 @@ func _draw_bottom() -> void:
 	draw_rect(_ur(bar),PLATE)
 	_rect_line(bar,BRASS_DIM,1.5)
 	var essence := int(info.get("essence",0)); var cost := int(info.get("respec_cost",0))
-	_text(Vector2(46,646),"재 %d · 초기화 비용 %d" % [essence,cost],14,INK)
+	_text(Vector2(46,646),Loc.t("currency.essence")+" %d · 초기화 비용 %d" % [essence,cost],14,INK)
 	if not message.is_empty():
 		var col := WARN if message_error else INK
 		if message_error:
@@ -828,7 +828,7 @@ func _draw_confirm() -> void:
 		yes = "버리고 닫기"; no = "계속 편집 (Esc)"
 	else:
 		title = "전체 초기화"
-		body = "확정한 %d포인트를 모두 돌려받습니다. 비용: 재 %d (보유 %d). 되돌릴 수 없습니다." % [_sum(committed),int(info.get("respec_cost",0)),int(info.get("essence",0))]
+		body = "확정한 %d포인트를 모두 돌려받습니다. 비용: 오리칼쿰 %d (보유 %d). 되돌릴 수 없습니다." % [_sum(committed),int(info.get("respec_cost",0)),int(info.get("essence",0))]
 		yes = "초기화"; no = "취소 (Esc)"
 	_text(Vector2(box.position.x,box.position.y+40),title,22,INK,_head,box.size.x,HORIZONTAL_ALIGNMENT_CENTER)
 	_wrapped(Vector2(box.position.x+30,box.position.y+78),body,15,INK,box.size.x-60.0,4)

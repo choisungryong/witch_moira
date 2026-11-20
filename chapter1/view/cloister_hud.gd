@@ -28,11 +28,11 @@ var _selected_item := -1
 var temporary_art := true
 var motion_enabled := true
 var skill_labels: Dictionary={}
-var menu_title := "잿빛 회랑"
+var menu_title := "카테나"
 var menu_description := "무리를 휩쓸고, 장비와 기술을 성장시켜 회랑 수호자를 처치하세요."
 var menu_scope := "회랑 진입전 · 한 장을 완성하기 위한 첫 전투 구간"
 var victory_title := "회랑 수호자를 처치했습니다"
-const SKILL_NAMES={"chapter1.skill.ember":"잿불탄","chapter1.skill.frost":"서리창","chapter1.skill.arc":"연쇄 전류"}
+const SKILL_NAMES={"chapter1.skill.ember":"파이어볼","chapter1.skill.frost":"아이스 스피어","chapter1.skill.arc":"체인 라이트닝"}
 const SLOT_NAMES={"weapon":"무기","body":"갑옷","charm":"부적","ring":"반지"}
 
 func setup(view: Node3D) -> void:
@@ -54,7 +54,7 @@ func setup(view: Node3D) -> void:
 	root.add_child(top)
 	var row := HBoxContainer.new()
 	top.add_child(row)
-	objective=_label("잿빛 회랑",20,Color("ded8c4"))
+	objective=_label("카테나",20,Color("ded8c4"))
 	objective.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	row.add_child(objective)
 	var item_button := _button("장비 [I]",func():equipment.emit())
@@ -190,7 +190,7 @@ func sync(run: RefCounted, delta: float) -> void:
 			elite_alive=true
 			objective.text="회랑 수호자  %d / %d" % [ceili(float(e.hp_raw)/256),ceili(float(e.max_hp_raw)/256)]
 	if not elite_alive:
-		objective.text="잿빛 회랑  ·  %02d:%02d  ·  %d 처치" % [run.tick/3600,(run.tick/60)%60,run.kills]
+		objective.text="카테나  ·  %02d:%02d  ·  %d 처치" % [run.tick/3600,(run.tick/60)%60,run.kills]
 	dash.text="Space 회피 준비" if run.tick>=run.get_next_dash_tick() else "회피 %.1f초" % (float(run.get_next_dash_tick()-run.tick)/60)
 	debug.text="tick %d · alive %d · projectiles %d · XP %d\nF1 진단 화면" % [run.tick,run.alive_count(),run.projectiles.size(),g.xp]
 
@@ -212,7 +212,7 @@ func _build_modal(run: RefCounted) -> void:
 			var classes := HBoxContainer.new()
 			classes.add_theme_constant_override("separation",16)
 			box.add_child(classes)
-			for pair in [["잿불탄","chapter1.skill.ember"],["서리창","chapter1.skill.frost"],["연쇄 전류","chapter1.skill.arc"]]:
+			for pair in [["파이어볼","chapter1.skill.ember"],["아이스 스피어","chapter1.skill.frost"],["체인 라이트닝","chapter1.skill.arc"]]:
 				var id_: String=pair[1]
 				var b := _button(pair[0]+"으로 시작",func():start.emit(id_))
 				b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;classes.add_child(b)
@@ -285,8 +285,8 @@ func _stats(stats: Dictionary) -> String:
 			"max_hp_raw":result.append("최대 생명력 +%d" % (value/256))
 			"damage_reduction_bps":result.append("받는 피해 -%.1f%%" % (float(value)/100))
 			"projectiles":result.append("발사체 +%d (연쇄 기술은 대상 +%d)" % [value,value])
-			"chain_targets":result.append("연쇄 전류 대상 +%d" % value)
-			"shatter_count":result.append("서리창 랭크4 / 진화의 파쇄 파편 +%d" % value)
+			"chain_targets":result.append("체인 라이트닝 대상 +%d" % value)
+			"shatter_count":result.append("아이스 스피어 랭크4 / 진화의 파쇄 파편 +%d" % value)
 			"pickup_radius_cm":result.append("회수 반경 +%.1fm" % (float(value)/100))
 			"cooldown_bps":result.append("기술 주기 단축 +%.1f%%" % (float(value)/100))
 	return "\n".join(result) if not result.is_empty() else "장착 장비 없음"

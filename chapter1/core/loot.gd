@@ -111,9 +111,15 @@ func _check_rare_names(names: Variant) -> Array[String]:
 			issues.append("Rare names list "+part)
 			continue
 		for entry in names[part]:
-			if not entry is Dictionary or entry.size() != 2 or not entry.has("id") or not entry.has("name") or not entry.id is String or not entry.name is String:
+			if not entry is Dictionary or not (entry.size() == 2 or (entry.size() == 3 and entry.has("legacy_names"))) or not entry.has("id") or not entry.has("name") or not entry.id is String or not entry.name is String:
 				issues.append("Rare word shape in "+part)
 				continue
+			# `legacy_names`: earlier texts of this word, only for matching the item names of schema 1-3 saves (never shown).
+			if entry.has("legacy_names"):
+				if not entry.legacy_names is Array or entry.legacy_names.is_empty(): issues.append("Rare word legacy names "+str(entry.id))
+				else:
+					for old in entry.legacy_names:
+						if not old is String or old.is_empty() or old.length() > 40 or old.contains(" "): issues.append("Rare word legacy name "+str(entry.id))
 			if id_rule.search(entry.id) == null or ids.has(entry.id): issues.append("Rare word id "+str(entry.id))
 			ids[entry.id] = true
 			if entry.name.is_empty() or entry.name.length() > 40 or entry.name.contains(" "): issues.append("Rare word text "+str(entry.id))
@@ -127,9 +133,9 @@ func rare_word_ids(item_name: String) -> Array:
 	var first_id := ""
 	var second_id := ""
 	for entry in data.rare_names.first:
-		if entry.name == parts[0]: first_id = entry.id
+		if entry.name == parts[0] or parts[0] in entry.get("legacy_names",[]): first_id = entry.id
 	for entry in data.rare_names.second:
-		if entry.name == parts[1]: second_id = entry.id
+		if entry.name == parts[1] or parts[1] in entry.get("legacy_names",[]): second_id = entry.id
 	if first_id.is_empty() or second_id.is_empty(): return []
 	return [first_id,second_id]
 
