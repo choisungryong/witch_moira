@@ -457,6 +457,23 @@ var _cast_time_scale := 1.0
 var _hit_start_s := 0.0
 var _hit_time_scale := 1.0
 var _death_max_age_s := 0.0
+# Per-witch bodies (switch --chapter1-hero-models, set by the app; off = the old mage, nothing below runs).
+var hero_models_enabled := false
+const HERO_MODEL_KEYS: Array[String]=["frost","ember","arc"]
+const HERO_LIGHT_KEY := [1.6,Color("eddbc4")]
+const HERO_LIGHT_FILL := [.85,Color("7faad8")]
+var _hero_slot_id := HERO_SLOT
+var _hero_key_light: DirectionalLight3D
+var _hero_fill_light: DirectionalLight3D
+var _hero_look: Dictionary={}
+var _hero_look_due := false
+var _hero_model_warned: Dictionary={}
+var _staff_hand_mode := false
+var _hand_grip := Basis.IDENTITY
+var _staff_tilt := Basis.IDENTITY
+var _staff_scale_v := Vector3.ONE
+## 0 = the staff stays upright beside the hand, 1 = it turns fully with the gripping hand (hero.json staff.follow).
+var _staff_follow := 1.0
 
 func _load_sprite(kind: String) -> void:
 	if kind!="hero":_load_sprite__cloister(kind)
@@ -470,6 +487,10 @@ func setup__rigged(owner_view: Node3D) -> void:
 	if rigged:
 		_hand=rig_skeleton.find_bone(_hero_hand_bone);_finger=rig_skeleton.find_bone(_hero_finger_bone)
 		_sample(_clip_idle,0)
+	if hero_models_enabled:
+		# Load the per-witch scenes now (no instance) so the swap at the start of a run does not stall.
+		for key in HERO_MODEL_KEYS:
+			if AssetSlots.available("actor.hero.%s.model"%key):AssetSlots.scene("actor.hero.%s.model"%key)
 	temporary_art=false
 	if rigged:print("RIGGED_HERO_READY ",JSON.stringify({"source":AssetSlots.path(HERO_SLOT),"bones":rig_skeleton.get_bone_count(),"clips":Array(rig_player.get_animation_list()),"upper_body_bones":_upper.size(),"scope":"Research comparison, not final motion/art approval"}))
 
@@ -479,6 +500,8 @@ func _setup_artist_lights() -> void:
 	for pair in [[Vector3(-42,-35,0),Color("eddbc4"),1.6],[Vector3(-28,145,0),Color("7faad8"),.85]]:
 		var light := DirectionalLight3D.new();light.rotation_degrees=pair[0];light.light_color=pair[1];light.light_energy=pair[2];light.light_cull_mask=2;light.shadow_enabled=false
 		view.add_child(light)
+		if _hero_key_light==null:_hero_key_light=light
+		else:_hero_fill_light=light
 
 func _create__rigged(kind: String) -> Node3D:
 	if kind!="hero":
@@ -532,6 +555,104 @@ func _use_hero_values(values: Dictionary) -> void:
 	_run_time_scale=pose.run_time_scale;_hero_stride=pose.stride_world_m;_idle_loop_s=pose.idle_loop_s
 	_cast_start_s=pose.cast_start_s;_cast_time_scale=pose.cast_time_scale
 	_hit_start_s=pose.hit_start_s;_hit_time_scale=pose.hit_time_scale;_death_max_age_s=pose.death_max_age_s
+
+## Called once when the run's primary skill first becomes known (switch on only): the witch's own body if its slot is
+## really there, else the old mage (one warning per slot id).
+func _choose_hero_model(primary: String) -> void:
+	var id := HERO_SLOT
+	if primary!="":
+		var witch_id := "actor.hero.%s.model"%primary.get_slice(".",primary.get_slice_count(".")-1)
+		if AssetSlots.available(witch_id):id=witch_id
+		elif not _hero_model_warned.has(witch_id):
+			_hero_model_warned[witch_id]=true
+			push_warning("hero model: %s is not available, the old mage body is used"%witch_id)
+	if id!=_hero_slot_id:_swap_hero_model(id)
+
+## Replaces the hero body by the one the slot names: model, bones, clips, pose numbers, staff grip, the two hero lights.
+func _swap_hero_model(id: String) -> void:
+	var scene := AssetSlots.scene(id)
+	if scene==null or rig_model==null:return
+	var model: Node3D=scene.instantiate()
+	var player := model.find_child("AnimationPlayer",true,false) as AnimationPlayer
+	var skeleton := model.find_child("Skeleton3D",true,false) as Skeleton3D
+	if player==null or skeleton==null:
+		model.free();push_warning("hero model: %s has no skeleton or animations, kept the current body"%id);return
+	var values := _hero_slot_values(id)
+	_use_hero_values(values)
+	var parent := rig_model.get_parent();var index := rig_model.get_index()
+	parent.remove_child(rig_model);rig_model.queue_free()
+	rig_model=model;rig_model.scale=values.scale;parent.add_child(rig_model);parent.move_child(rig_model,index)
+	rig_player=player;rig_skeleton=skeleton
+	rig_player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	_upper.clear()
+	for i in rig_skeleton.get_bone_count():
+		if _is_upper_bone(rig_skeleton.get_bone_name(i)):_upper[i]=true
+	_hero_materials.clear();_setup_materials(rig_model)
+	_hand=rig_skeleton.find_bone(_hero_hand_bone);_finger=rig_skeleton.find_bone(_hero_finger_bone)
+	_grip_ready=false
+	_hero_slot_id=id
+	var meta := AssetSlots.meta(id)
+	_hero_look=meta.get("look",{}) if meta.get("look") is Dictionary else {}
+	var samples_before := _pose_samples
+	_setup_staff_grip(id,meta.get("staff",{}) if meta.get("staff") is Dictionary else {})
+	_sample(_clip_idle,0);_pose_samples=samples_before
+	_set_hero_light(_hero_key_light,HERO_LIGHT_KEY[0],HERO_LIGHT_KEY[1])
+	_set_hero_light(_hero_fill_light,HERO_LIGHT_FILL[0],HERO_LIGHT_FILL[1])
+	_hero_look_due=not _hero_look.is_empty()
+
+## Staff cell of hero.json: mode "hand" keeps the staff in the gripping hand (rotation follows the hand), anything else is the old upright staff.
+func _setup_staff_grip(id: String,staff: Dictionary) -> void:
+	_staff_hand_mode=false;_staff_tilt=Basis.IDENTITY;_staff_scale_v=Vector3.ONE;_staff_follow=1.0
+	if _staff!=null:_staff.scale=Vector3.ONE
+	if _staff==null or _hand<0 or _finger<0 or String(staff.get("mode","upright"))!="hand":return
+	var ref: Dictionary=staff.get("grip_ref",{}) if staff.get("grip_ref") is Dictionary else {}
+	_sample(AssetSlots.clip(id,String(ref.get("clip","idle"))),float(ref.get("time",0.0)))
+	var hand := rig_skeleton.global_transform*rig_skeleton.get_bone_global_pose(_hand)
+	_hand_grip=hand.basis.orthonormalized().inverse()*hero.global_basis
+	var tilt: Array=staff.get("tilt_deg",[0,0,0]) if staff.get("tilt_deg") is Array else [0,0,0]
+	if tilt.size()==3:_staff_tilt=Basis.from_euler(Vector3(deg_to_rad(float(tilt[0])),deg_to_rad(float(tilt[1])),deg_to_rad(float(tilt[2]))))
+	_staff_scale_v=Vector3.ONE*float(staff.get("scale",1.0))
+	_staff.scale=_staff_scale_v
+	_staff_follow=clampf(float(staff.get("follow",1.0)),0.0,1.0)
+	_staff_hand_mode=true
+
+func _set_hero_light(light: DirectionalLight3D,energy: float,color: Color) -> void:
+	if light==null:return
+	light.light_energy=energy;light.light_color=color
+
+static func _look_color(value: Variant,fallback: Color) -> Color:
+	if value is Array and value.size()>=3:return Color(float(value[0]),float(value[1]),float(value[2]))
+	if value is float or value is int:return Color(float(value),float(value),float(value))
+	if value is String:return Color(value)
+	return fallback
+
+## The look cells of hero.json (T2-H 3.2) on the body materials and the two hero lights. Applied once, right after the element pass.
+func _apply_hero_look() -> void:
+	var look := _hero_look
+	if look.is_empty():return
+	var element: Color=HERO_ELEMENT_COLORS.get(_hero_element_key,HERO_ELEMENT_COLORS["chapter1.skill.frost"])
+	var mode := String(look.get("emission_mode","none"))
+	var mask: Texture2D=null
+	var emission_id := _hero_slot_id.replace(".model",".emission")
+	if mode=="mask" and AssetSlots.has_slot(emission_id) and AssetSlots.available(emission_id):mask=AssetSlots.texture(emission_id)
+	for material in _hero_materials:
+		material.albedo_color=_look_color(look.get("albedo_mul",1.0),Color.WHITE).lerp(element*1.3,float(look.get("element_lean",0.0)))
+		if mode=="none":material.emission_enabled=false
+		elif mode=="albedo":
+			material.emission_enabled=true;material.emission_texture=material.albedo_texture;material.emission=element*.15
+		elif mode=="mask":
+			# Godot adds the emission colour to the texture: black, or the whole body glows. Only the face whose albedo has the mask's size.
+			var on_body := mask!=null and material.albedo_texture!=null and material.albedo_texture.get_size()==mask.get_size()
+			material.emission_enabled=on_body;material.emission_texture=mask if on_body else null;material.emission=Color.BLACK
+		material.emission_energy_multiplier=float(look.get("emission_energy",material.emission_energy_multiplier))
+		material.rim=float(look.get("rim",material.rim));material.rim_enabled=material.rim>0.0
+		material.rim_tint=float(look.get("rim_tint",material.rim_tint))
+	if _hero_key_light!=null:
+		_hero_key_light.light_energy=float(look.get("light_key",_hero_key_light.light_energy))
+		_hero_key_light.light_color=_look_color(look.get("light_key_color"),_hero_key_light.light_color)
+	if _hero_fill_light!=null:
+		_hero_fill_light.light_energy=float(look.get("light_fill",_hero_fill_light.light_energy))
+		_hero_fill_light.light_color=_look_color(look.get("light_fill_color"),_hero_fill_light.light_color)
 
 func _is_upper_bone(bone_name: String) -> bool:
 	for prefix in _hero_upper_prefixes:
@@ -590,18 +711,28 @@ func _apply_hero_element(primary: String) -> void:
 func sync__rigged(run: RefCounted,delta: float) -> void:
 	_render_delta=delta;_render_playing=run.mode=="playing"
 	sync__chapter(run,delta)
+	if hero_models_enabled:
+		var wanted: String=String(run.growth.snapshot().get("primary",""))
+		if wanted!=_hero_element_key:_choose_hero_model(wanted)
 	if _staff!=null and _hand>=0 and _finger>=0:
 		var hand := rig_skeleton.global_transform*rig_skeleton.get_bone_global_pose(_hand)
 		var finger := rig_skeleton.global_transform*rig_skeleton.get_bone_global_pose(_finger)
 		_staff.global_position=hand.origin.lerp(finger.origin,.5)
 		if not _grip_ready:_grip_basis=hand.basis.orthonormalized().inverse()*hero.global_basis;_grip_ready=true
-		if run.hero.hp_raw<=0:_staff.global_basis=(hand.basis.orthonormalized()*_grip_basis).orthonormalized()
+		if _staff_hand_mode:
+			var held: Basis=(hand.basis.orthonormalized()*_hand_grip*_staff_tilt).orthonormalized()
+			if _staff_follow<1.0 and run.hero.hp_raw>0:
+				var upright: Basis=(hero.global_basis.orthonormalized()*Basis.from_euler(Vector3(deg_to_rad(-3.0),0,deg_to_rad(5.0)))*_staff_tilt).orthonormalized()
+				held=upright.slerp(held,_staff_follow).orthonormalized()
+			_staff.global_basis=held.scaled(_staff_scale_v)
+		elif run.hero.hp_raw<=0:_staff.global_basis=(hand.basis.orthonormalized()*_grip_basis).orthonormalized()
 		else:_staff.basis=Basis.from_euler(Vector3(deg_to_rad(-3+sin(_phase*TAU)*4),0,deg_to_rad(5)))
 		var bottom: Vector3=_staff.global_transform*Vector3(0,-1.05,0)
 		if bottom.y<.025:_staff.global_position.y+=.025-bottom.y
 		var primary: Variant=run.growth.snapshot().get("primary","")
 		var color: Color={"chapter1.skill.ember":Color("ed913e"),"chapter1.skill.frost":Color("89dbe6"),"chapter1.skill.arc":Color("a3b8ef")}.get(primary,Color("89dbe6"))
 		_apply_hero_element(String(primary))
+		if _hero_look_due:_hero_look_due=false;_apply_hero_look()
 		_staff.set_element(color,clampf(1.0-float(run.tick-_cast_tick)/8.0,0,1))
 
 func _sample(clip: String,time_: float) -> Array[Transform3D]:
@@ -2001,6 +2132,7 @@ func _capture_menu_rest() -> void:
 
 func rest_for_menu() -> void:
 	if not _rest_ready:return
+	if hero_models_enabled and _hero_slot_id!=HERO_SLOT:_swap_hero_model(HERO_SLOT)
 	hero.transform=_rest_hero_transform
 	if _staff!=null:_staff.transform=_rest_staff_transform
 	if rig_player!=null:

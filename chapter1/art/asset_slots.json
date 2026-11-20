@@ -55,6 +55,65 @@
         "budget_profile": "hero"
       }
     },
+    "actor.hero.frost.model": {
+      "kind": "model",
+      "file": "actors/hero/frost/model.glb",
+      "meta": "actors/hero/frost/hero.json",
+      "optional": true,
+      "used": "unverified",
+      "source": "T2-H 3.1: frost witch body (image-to-3D body, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/frost.json; the file is not kept in the repository (terms of use unchecked). Numbers: scale 1.32 = old mage height 2.68 m / body 2.03 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.25 m/s x scale 1.32 x 0.5333 s; idle = full clip 1.8667 s; cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25; hit reaction peak at clip 0.50 s -> hit_start_s 0.35 + age 0.05 s x 3; death = full clip 3.6333 s",
+      "contract": {
+        "scale": 1.32,
+        "bones": {
+          "hand_r": "mixamorig_RightHand",
+          "finger_r": "mixamorig_RightHandIndex1"
+        },
+        "bone_groups": {
+          "upper_prefixes": [
+            "mixamorig_Spine",
+            "mixamorig_Neck",
+            "mixamorig_Head"
+          ],
+          "upper_contains": [
+            "Shoulder",
+            "Arm",
+            "Hand"
+          ]
+        },
+        "clips": {
+          "idle": "idle",
+          "run": "run",
+          "cast": "cast",
+          "hit": "hit",
+          "death": "death"
+        },
+        "pose": {
+          "run_time_scale": 0.5333333,
+          "stride_world_m": 5.104,
+          "idle_loop_s": 1.8666667,
+          "cast_start_s": 0.7,
+          "cast_time_scale": 2.25,
+          "hit_start_s": 0.35,
+          "hit_time_scale": 3,
+          "death_max_age_s": 3.6333333
+        },
+        "budget_profile": "hero"
+      }
+    },
+    "actor.hero.ember.model": {
+      "kind": "model",
+      "file": "",
+      "planned": true,
+      "used": "unverified",
+      "source": "T2-H 3.1: ember witch body, same contract shape as actor.hero.frost.model (not built yet)"
+    },
+    "actor.hero.arc.model": {
+      "kind": "model",
+      "file": "",
+      "planned": true,
+      "used": "unverified",
+      "source": "T2-H 3.1: arc (storm) witch body, same contract shape as actor.hero.frost.model (not built yet)"
+    },
     "actor.walker.model": {
       "kind": "model",
       "file": "skeleton_outlaw/v02/skeleton_outlaw_merged.glb",

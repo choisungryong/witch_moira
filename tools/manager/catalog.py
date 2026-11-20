@@ -769,6 +769,8 @@ def asset_entities(c):
         if not f.is_file() or f.suffix.lower() not in cat_of:
             continue
         rel = f.relative_to(ROOT).as_posix()
+        if rel.startswith('chapter1/art/actors/hero/'):
+            continue  # generated bodies are not kept in the repository (.gitignore)
         cat, typ = cat_of[f.suffix.lower()]
         if rel.startswith('chapter1/art/characters/'):
             cat, typ = 'characters', '주인공 원화'

@@ -1,0 +1,60 @@
+{
+  "_about": "Frost witch: Mixamo-rigged body + motions -> chapter1/art/actors/hero/frost/model.glb. Repeat for storm/ember with the same clip names.",
+  "body": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/frost_15k.fbx",
+  "texture_color": "D:/Project/witch-moira-work/char3d/gen3d/frost/game/frost_low15k_color.png",
+  "texture_normal": "D:/Project/witch-moira-work/char3d/gen3d/frost/game/frost_low15k_normal.png",
+  "metallic": 0.0,
+  "roughness": 0.8,
+  "fps": 30,
+  "out": "chapter1/art/actors/hero/frost/model.glb",
+  "clips": [
+    {
+      "name": "idle",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/standing idle.fbx"
+    },
+    {
+      "name": "run",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Fast Run.fbx",
+      "in_place": true,
+      "ground_speed_mps": 7.25
+    },
+    {
+      "name": "walk",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Walking.fbx",
+      "in_place": true
+    },
+    {
+      "name": "cast",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing 1H Magic Attack 01.fbx"
+    },
+    {
+      "name": "cast_area",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing 2H Magic Area Attack 01.fbx"
+    },
+    {
+      "name": "hit",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing React Small From Front.fbx"
+    },
+    {
+      "name": "death",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing React Death Backward.fbx"
+    },
+    {
+      "name": "dodge",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Dodging Right (1).fbx",
+      "frames": [
+        3,
+        32
+      ]
+    },
+    {
+      "name": "dodge_back",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Dodging Back.fbx",
+      "frames": [
+        6,
+        52
+      ]
+    }
+  ],
+  "hero_json": "tools/art/gen3d_mixamo_configs/frost.hero.json"
+}

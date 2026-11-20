@@ -13,3 +13,6 @@ __pycache__/
 
 # 에이전트 작업 폴더
 .claude/worktrees/
+
+# Mixamo/gen3d 생성 몸(이용 약관 확인 전): 올리지 않는다. 만드는 법은 tools/art/gen3d_mixamo_pack.py
+chapter1/art/actors/hero/

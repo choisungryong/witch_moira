@@ -89,12 +89,19 @@ def write_json(path, obj):
         f.write("\n")
 
 
+# 저장소에 올리지 않는 생성 몸(.gitignore와 같은 폴더). 이용 약관을 확인하기 전까지 원장에도 올리지 않는다.
+NOT_KEPT_PREFIXES = ("actors/hero/",)
+
+
 def list_asset_files(root):
     base = art_dir(root)
     out = []
     for p in sorted(base.rglob("*")):
         if p.is_file() and p.suffix.lower() in ASSET_EXT:
-            out.append(p.relative_to(base).as_posix())
+            rel = p.relative_to(base).as_posix()
+            if rel.startswith(NOT_KEPT_PREFIXES):
+                continue
+            out.append(rel)
     return out
 
 

@@ -32,6 +32,7 @@ def main():
     ap.add_argument("--force-times")
     ap.add_argument("--force-start", type=int, default=240)
     ap.add_argument("--crop", type=int, default=480)
+    ap.add_argument("--hero-models", action="store_true", help="본체의 스위치 --chapter1-hero-models를 켠다(자리표의 마녀 몸. --glb 없이 쓴다)")
     ap.add_argument("--sheet", help="강제 동작 캡처(--force-clip)를 주인공 둘레로 잘라 2배 키워 한 장 판으로 이은 PNG 경로")
     ap.add_argument("--hero-xy", default="935,455", help="--sheet 자르기 가운데(화면 화소). 같은 시드·틱이면 판마다 같은 자리")
     ap.add_argument("--sheet-box", type=int, default=360, help="--sheet 자르는 한 변(화소). 2배로 키워 붙인다")
@@ -42,6 +43,8 @@ def main():
     cmd = [PY, "tools/dev/godot.py", "--fixed-fps", "60", "--resolution", "1920x1080", "--path", ".", "--script", "res://chapter1/tests/rig_game_probe.gd", "--",
            "--chapter1-pilot", "--chapter1-profile-off", "--chapter1-qa-ignore-focus", "--chapter1-seed=%d" % a.seed, "--primary=chapter1.skill." + a.primary,
            "--hero-mask", "--hero-crop-size=%d" % a.crop, "--shots=" + str(rel).replace("\\", "/")]
+    if a.hero_models:
+        cmd += ["--chapter1-hero-models"]
     if a.glb:
         cmd += ["--model-glb=" + a.glb, "--hero-boost=0"]
     if a.look:

@@ -19,7 +19,7 @@ const CHECKER_CELL := 8
 const KINDS: Array[String] = ["model", "sprite_sheet", "texture", "atlas", "nine_slice", "portrait_rig", "prop_atlas", "font"]
 const ID_PREFIXES: Array[String] = ["actor", "portrait", "illustration", "ui", "icon", "world", "fx", "font"]
 const USED_VALUES: Array[String] = ["unverified", "yes", "no"]
-const SLOT_KEYS: Array[String] = ["kind", "file", "meta", "fallback", "extra_files", "contract", "planned", "inherit", "used", "source"]
+const SLOT_KEYS: Array[String] = ["kind", "file", "meta", "fallback", "extra_files", "contract", "planned", "inherit", "used", "source", "optional"]
 ## Contract keys each kind knows. An unknown key is a warning in validate_table() (a column nobody reads rots).
 const CONTRACT_KEYS := {
 	"model": ["scale", "bones", "bone_groups", "clips", "tick_hz", "timing_ticks", "timing_s", "pose", "budget_profile", "import"],
@@ -179,6 +179,16 @@ static func contract(id: String) -> Dictionary:
 ## The real resource path ("" when the slot is unknown or only a placeholder can be given).
 static func path(id: String) -> String:
 	return String(_status(id).path)
+
+## True when the slot is in the table, not planned, and its own file (or fallback) is really there.
+static func available(id: String) -> bool:
+	_ensure()
+	return _slots.has(id) and not is_planned(id) and String(_status(id).path) != ""
+
+## A slot whose file may be absent (see "optional").
+static func is_optional(id: String) -> bool:
+	_ensure()
+	return bool(_slots.get(id, {}).get("optional", false))
 
 ## The side JSON's parse result (cached; do not change it). {} when there is none or it cannot be read.
 static func meta(id: String) -> Dictionary:
@@ -372,7 +382,9 @@ static func _status(id: String) -> Dictionary:
 				_warn_once("fb:" + id, "asset_slots: %s: %s not found, using fallback %s" % [id, file, fb])
 			else:
 				st.placeholder = true
-				_note_missing(id, "has no file (%s)" % (file if file != "" else "planned, no art yet"))
+				# optional = a body that is not kept in the repository: absent is a normal state, not a missing asset.
+				if not bool(s.get("optional", false)):
+					_note_missing(id, "has no file (%s)" % (file if file != "" else "planned, no art yet"))
 	_status_cache[id] = st
 	return st
 
@@ -468,6 +480,8 @@ static func _validate_slot(slots: Dictionary, id: String, errors: Array[String],
 	var planned: Variant = s.get("planned", false)
 	if not planned is bool:
 		errors.append("%s: planned must be true or false" % id)
+	if s.has("optional") and not s.optional is bool:
+		errors.append("%s: optional must be true or false" % id)
 	var file: Variant = s.get("file")
 	if not file is String:
 		errors.append("%s: file must be a string" % id)

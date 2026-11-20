@@ -184,6 +184,7 @@ func table_checks() -> Dictionary:
 	if strict_planned:
 		check(planned.is_empty(), "strict-planned: slots with no art yet: %s" % str(planned))
 	coverage_checks(summary)
+	hero_checks(summary)
 	if pins:
 		pin_checks()
 	return summary
@@ -213,6 +214,9 @@ func report(id: String, what: String, problems: Array) -> void:
 func slot_checks(id: String, s: Dictionary, c: Dictionary) -> void:
 	var file := String(s.get("file", ""))
 	var path := Slots.path(id)
+	if path == "" and Slots.is_optional(id):
+		print("NOTE %s: optional file is not in this checkout (%s), not checked" % [id, file])
+		return
 	if path == "":
 		check(false, "%s: file missing: %s%s" % [id, file, " (and fallback missing: %s)" % s.fallback if s.has("fallback") else ""])
 		return
@@ -358,6 +362,95 @@ func coverage_checks(summary: Dictionary) -> void:
 	check(absent.is_empty(), "core ids without a slot: %s" % str(absent))
 	summary["coverage_checked"] = wanted.size()
 	summary["coverage_pending"] = ["icon.equip.<slot> (T7-4)", "portrait.<witch>.rig and illustration.<witch> (T7-4/5)", "world.* (T7-6)", "font.* (T7-4)"]
+
+## Hero bodies (T2-H): every actor.hero*.model slot that has a contract. The old mage always; a per-witch body only when its file is in
+## this checkout (those files are not kept in the repository). Clip lengths are read from the imported glb, not from the code.
+func hero_checks(summary: Dictionary) -> void:
+	var base := Slots.contract("actor.hero.model")
+	var checked: Array = []
+	var skipped: Array = []
+	for id in Slots.slot_ids():
+		if not (id.begins_with("actor.hero.") and id.ends_with(".model")) or Slots.is_planned(id):
+			continue
+		if not Slots.available(id):
+			skipped.append(id)
+			continue
+		checked.append(id)
+		var c := Slots.contract(id)
+		var pose: Dictionary = c.get("pose", {})
+		var problems: Array = []
+		if id != "actor.hero.model":
+			# Same logical bones and groups as the old mage (the real names differ per rig).
+			for group in ["bones", "bone_groups", "clips"]:
+				var mine: Array = (c.get(group, {}) as Dictionary).keys()
+				var theirs: Array = (base.get(group, {}) as Dictionary).keys()
+				mine.sort()
+				theirs.sort()
+				if mine != theirs:
+					problems.append("%s keys %s differ from actor.hero.model %s" % [group, str(mine), str(theirs)])
+			for key in base.get("pose", {}):
+				if not pose.has(key):
+					problems.append("pose.%s is missing" % key)
+		var packed := Slots.scene(id)
+		var root: Node = packed.instantiate()
+		var player := root.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if player == null:
+			problems.append("no AnimationPlayer")
+		else:
+			var tol := 1e-3
+			var rows := [
+				["run", float(pose.get("run_time_scale", 0.0))],
+				["idle", float(pose.get("idle_loop_s", 0.0))],
+				["cast", float(pose.get("cast_start_s", 0.0)) + .2 * float(pose.get("cast_time_scale", 0.0))],
+				["hit", float(pose.get("hit_start_s", 0.0)) + .1 * float(pose.get("hit_time_scale", 0.0))],
+				["death", float(pose.get("death_max_age_s", 0.0))],
+			]
+			for row in rows:
+				var clip_name := Slots.clip(id, String(row[0]))
+				if not player.has_animation(clip_name):
+					problems.append("clip %s is missing" % clip_name)
+				elif float(row[1]) > player.get_animation(clip_name).length + tol:
+					problems.append("%s needs %.4f s but the clip is %.4f s" % [clip_name, float(row[1]), player.get_animation(clip_name).length])
+		if id != "actor.hero.model":
+			var meta := Slots.meta(id)
+			var look: Variant = meta.get("look")
+			if not look is Dictionary:
+				problems.append("hero.json has no look")
+			else:
+				for cell in ["albedo_mul", "element_lean", "emission_mode", "emission_energy", "rim", "rim_tint", "light_key", "light_fill", "mask_rule"]:
+					if not (look as Dictionary).has(cell):
+						problems.append("look.%s is missing" % cell)
+				if String(look.get("emission_mode", "")) == "mask":
+					var emission_id := id.replace(".model", ".emission")
+					if not Slots.has_slot(emission_id):
+						problems.append("emission_mode mask but no slot " + emission_id)
+					else:
+						var size := Slots.texture(emission_id).get_size()
+						var same := false
+						for node in root.find_children("*", "MeshInstance3D", true, false):
+							var mesh := (node as MeshInstance3D).mesh
+							for surface in mesh.get_surface_count():
+								var material := mesh.surface_get_material(surface) as StandardMaterial3D
+								if material != null and material.albedo_texture != null and material.albedo_texture.get_size() == size:
+									same = true
+						if not same:
+							problems.append("no body albedo texture is %dx%d like the emission mask" % [size.x, size.y])
+			var staff: Variant = meta.get("staff", {})
+			if not staff is Dictionary or not String((staff as Dictionary).get("mode", "upright")) in ["upright", "hand"]:
+				problems.append("staff.mode must be upright or hand")
+		root.free()
+		report(id, "hero body", problems)
+	# The key rule: the last segment of a character's signature skill is the last segment of the character id.
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/character_progression.json"))
+	var mismatched: Array = []
+	for character in (data as Dictionary).get("characters", []):
+		var cid := String((character as Dictionary).get("id", ""))
+		var sid := String((character as Dictionary).get("signature_skill_id", ""))
+		if cid.get_slice(".", cid.get_slice_count(".") - 1) != sid.get_slice(".", sid.get_slice_count(".") - 1):
+			mismatched.append(cid)
+	check(mismatched.is_empty(), "character id and signature skill end differently: %s" % str(mismatched))
+	summary["hero_bodies_checked"] = checked
+	summary["hero_bodies_absent"] = skipped
 
 ## The transcribed numbers against the literals still in chapter_actors.gd / walker_vat_spec.gd (T7-1 changes no code).
 func pin_checks() -> void:

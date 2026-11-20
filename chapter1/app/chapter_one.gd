@@ -71,6 +71,7 @@ func _ready__chapter() -> void:
 	DisplayServer.window_set_title("Catena · Chapter 1")
 	world.setup(self)
 	actors.vat_walker_enabled="--chapter1-vat-walker" in _user_args()
+	actors.hero_models_enabled="--chapter1-hero-models" in _user_args()
 	actors.setup(self)
 	effects.setup(self)
 	if not "--chapter1-no-juice" in _user_args():
