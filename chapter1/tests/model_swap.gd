@@ -65,6 +65,7 @@ static func load_look(path: String) -> Dictionary:
 	if not doc is Dictionary:
 		push_error("model_swap: look file is not a json object: " + path)
 		return {}
+	if doc.has("emission_texture"): _mask_texture(String(doc.emission_texture))   # load it now, not inside a draw callback
 	return doc
 
 static func _color(v: Variant, fallback: Color) -> Color:
@@ -79,6 +80,7 @@ static func _mask_texture(path: String) -> Texture2D:
 	if image == null or image.is_empty():
 		push_error("model_swap: emission texture unreadable: " + path)
 		return null
+	image.convert(Image.FORMAT_RGBA8)
 	image.generate_mipmaps()
 	var tex := ImageTexture.create_from_image(image)
 	_tex_cache[path] = tex
@@ -120,9 +122,12 @@ static func apply_look(actors: Object, look: Dictionary) -> void:
 			mat.emission_texture = mat.albedo_texture
 			mat.emission = element * .15
 		elif mode == "mask":
-			mat.emission_enabled = true
-			mat.emission_texture = mask_tex
-			mat.emission = Color.WHITE
+			# The mask shares the body texture's UV. Parts (collar, pauldron, hip panel) have their own small textures and no mask: no glow there.
+			var on_body: bool = mask_tex != null and mat.albedo_texture != null and mat.albedo_texture.get_size() == mask_tex.get_size()
+			mat.emission_enabled = on_body
+			mat.emission_texture = mask_tex if on_body else null
+			# Godot's emission operator is Add (EMISSION = emission colour + texture): the colour must be black or the whole body glows white.
+			mat.emission = Color.BLACK
 		if look.has("emission_energy"): mat.emission_energy_multiplier = float(look.emission_energy)
 		if look.has("rim"):
 			mat.rim_enabled = float(look.rim) > 0.0
@@ -132,6 +137,8 @@ static func apply_look(actors: Object, look: Dictionary) -> void:
 	if lights.size() == 2:
 		if look.has("light_key"): lights[0].light_energy = float(look.light_key)
 		if look.has("light_fill"): lights[1].light_energy = float(look.light_fill)
+		if look.has("light_key_color"): lights[0].light_color = _color(look.light_key_color, lights[0].light_color)
+		if look.has("light_fill_color"): lights[1].light_color = _color(look.light_fill_color, lights[1].light_color)
 
 static func _own(root_node: Node, node: Node) -> void:
 	for child in node.get_children():

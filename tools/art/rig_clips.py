@@ -162,50 +162,180 @@ class Ctx:
 
 # ------------------------------------------------------------------ 클립 정의(시간 t초 -> 자세 명세)
 
+def cc(c, key, default):
+    return c.cfg["clips"].get(key, default)
+
+
+def elem_sides(c):
+    """원소 팔(마녀마다 다름)과 지팡이 쥔 팔의 쪽. 설정 clips.elem_arm = 'l' | 'r'."""
+    e = cc(c, "elem_arm", "l")
+    return e, ("r" if e == "l" else "l")
+
+
 def spec_idle(c, t):
+    """숨(한 주기 1.2초) + 아주 느린 머리 갸웃(두 주기). 길이는 계약(1.2초)이라 긴 무게 이동 겹은 못 넣는다."""
     T = 1.2
     s, co = math.sin(2 * math.pi * t / T), math.cos(2 * math.pi * t / T)
+    s2 = math.sin(4 * math.pi * t / T + 0.7)
     H = c.H
+    e, o = elem_sides(c)
+    sg = 1 if e == "l" else -1
     return {
         "pelvis_t": (0.003 * H * s, 0, -0.004 * H * (0.5 + 0.5 * co)),
         "spine": [(0.6 * s, 0.5 * co, 0), (0.8 * s, 0.4 * co, 0), (1.0 * s, 0, 0)],
-        "head": (-1.4 * s, 0.4 * co, 0),
-        "arms": {"l": (2.0 * s, 1.5 * co, 2.0), "r": (-2.0 * s, -1.5 * co, 2.0)},
+        "head": (-1.4 * s + 0.4 * s2, 0.3 * s2, 0),
+        "arms": {e: (2.0 * s * sg, 1.5 * co * sg, 2.0), o: (-2.0 * s * sg, -1.5 * co * sg, 2.0)},
     }
 
 
 def spec_run(c, t):
+    """몸을 세운 가벼운 뜀. 한 주기(0.6초) = 걸음 둘, 딛는 비율 stance(<0.5)라 두 발이 다 뜨는 구간이 있다.
+    골반은 딛는 중간에 가장 낮고(다리가 굽혀 용수철처럼 눌림, 몸 높이의 약 6%) 뜨는 순간 가장 높다. 몸통 앞 기울기 약 7도.
+    원소 팔은 크게, 지팡이 팔은 굽혀 작게 흔든다."""
     T = 0.6
-    H = c.H
+    H, Lt = c.H, c.Ltot
     ph = (t / T) % 1.0
-    st = c.cfg["clips"]["run_stance_fraction"]
+    st = cc(c, "run_stance_fraction", 0.38)
     a = c.stride * st / 2.0
-    Lt = c.Ltot
-    dx = abs(c.hip['l'].x - c.ankle['l'].x)
-    drop = Lt - math.sqrt(max((0.90 * Lt) ** 2 - a * a - dx * dx - (0.012 * H) ** 2, 0.0))
-    lift_h = 0.18 * Lt
+    comp = cc(c, "run_comp", 0.06) * H
+    lift_h = cc(c, "run_lift", 0.20) * Lt
     feet = {}
     for s, off in (("l", 0.0), ("r", 0.5)):
         pl = (ph + off) % 1.0
         if pl < st:
             u = pl / st
-            f, dz, pit = a * (1 - 2 * u), 0.0, -12.0 * smooth((u - 0.7) / 0.3) * 0
+            f, dz, pit = a * (1 - 2 * u), 0.0, 0.0
         else:
             w = (pl - st) / (1 - st)
             f = -a + 2 * a * smooth(w)
             dz = lift_h * math.sin(math.pi * w) ** 1.2
-            pit = 22.0 * math.sin(math.pi * w)
+            pit = 24.0 * math.sin(math.pi * w)
         feet[s] = {"d": (0, -f, dz), "pitch": pit}
-    yaw = 5.0 * math.cos(2 * math.pi * ph)
-    swing = 35.0 * math.cos(2 * math.pi * ph)
+    # 눌림: 딛는 중간(ph = st/2, 0.5 + st/2)에 1, 뜬 순간에 0
+    press = 0.5 + 0.5 * math.cos(4 * math.pi * (ph - st / 2.0))
+    yaw = 6.0 * math.cos(2 * math.pi * ph)
+    roll = 2.5 * math.sin(2 * math.pi * ph)
+    swing = math.cos(2 * math.pi * ph)
+    e, o = elem_sides(c)
+    sgl = {"l": -1.0, "r": 1.0}      # 왼팔은 왼발이 앞일 때(ph=0) 뒤로
+    amp_e, amp_o = cc(c, "run_arm_elem", 42.0), cc(c, "run_arm_other", 15.0)
+    arms = {
+        e: (sgl[e] * amp_e * swing, -10.0, 70.0 + 18.0 * (1 + sgl[e] * swing * -1) * 0.5),
+        o: (sgl[o] * amp_o * swing + 10.0, -10.0, 95.0),
+    }
     return {
-        "pelvis_t": (0.01 * H * math.sin(2 * math.pi * ph), 0, -drop + 0.012 * Lt * (1 + math.cos(4 * math.pi * ph))),
-        "pelvis_fk": rc.rot("Z", yaw) @ rc.rot("Y", 2.0 * math.sin(2 * math.pi * ph)),
-        "spine": [(3.5, 0, -yaw * 0.4), (3.0, 0, -yaw * 0.5), (2.5, 0, -yaw * 0.6)],
-        "head": (-5.0, 0, -yaw * 0.3),
-        "arms": {"l": (-swing, -14.0, 80.0), "r": (swing, -14.0, 80.0)},
+        "pelvis_t": (0.008 * H * math.sin(2 * math.pi * ph), 0, -0.02 * H - comp * press),
+        "pelvis_fk": rc.rot("Z", yaw) @ rc.rot("Y", roll),
+        "spine": [(2.8, -roll * 0.4, -yaw * 0.4), (2.6, -roll * 0.4, -yaw * 0.5), (2.2, 0, -yaw * 0.6)],
+        "head": (-6.0 + 1.0 * press, 0, -yaw * 0.3),
+        "arms": arms,
         "feet": feet,
     }
+
+
+# ---------- 키 자세 방식: (시간, 값) 이정표 -> 값마다 부드럽게 잇는다
+NEUTRAL = dict(lean=0.0, twist=0.0, pyaw=0.0, sink=0.0, fwd=0.0, lunge=0.0, head_p=0.0, E=(2.0, 0.0, 2.0), O=(2.0, 0.0, 2.0))
+
+
+def key_pose(t, marks):
+    """marks: [(t, {값 일부})]. 빠진 값은 NEUTRAL. 값은 숫자 또는 숫자 묶음."""
+    full = []
+    for tt, d in marks:
+        p = dict(NEUTRAL)
+        p.update(d)
+        full.append((tt, p))
+    if t <= full[0][0]:
+        return full[0][1]
+    for (t0, p0), (t1, p1) in zip(full, full[1:]):
+        if t <= t1:
+            k = smooth((t - t0) / max(t1 - t0, 1e-9))
+            out = {}
+            for key, v0 in p0.items():
+                v1 = p1[key]
+                if isinstance(v0, tuple):
+                    out[key] = tuple(a + (b - a) * k for a, b in zip(v0, v1))
+                else:
+                    out[key] = v0 + (v1 - v0) * k
+            return out
+    return full[-1][1]
+
+
+def pose_to_spec(c, p, lift=False):
+    H, Lt = c.H, c.Ltot
+    e, o = elem_sides(c)
+    sp_w = (0.3, 0.35, 0.35)
+    spec = {
+        "pelvis_t": (0, -p["fwd"] * H, -p["sink"] * Lt),
+        "pelvis_fk": rc.rot("Z", p["pyaw"]),
+        "spine": [(p["lean"] * w, 0, p["twist"] * w) for w in sp_w],
+        "head": (p["head_p"], 0, -p["twist"] * 0.3),
+        "arms": {e: p["E"], o: p["O"]},
+    }
+    if abs(p["lunge"]) > 1e-6:
+        spec["feet"] = {"l": {"d": (0, -p["lunge"] * Lt, 0)}, "r": {"d": (0, p["lunge"] * Lt, 0)}}
+    if lift:
+        spec["lift_to_ground"] = True
+    return spec
+
+
+# 기본기 시전 셋: 모두 0.28초. 예비 0.03초 -> 뻗음 0.07초(이벤트 뒤 4프레임) -> 머묾 -> 되돌아옴 0.28초
+def _marks_frost():      # 곧은 창: 원소 팔을 가슴에서 곧게(몸 가운데 선으로) 앞으로 찌름
+    return [(0.0, {}), (0.03, dict(E=(30, -10, 120), O=(18, 10, 70), lean=-3, twist=-6, head_p=2)),
+            (0.07, dict(E=(90, -32, 3), O=(32, 12, 60), lean=9, twist=8, fwd=0.01, head_p=-4)),
+            (0.12, dict(E=(92, -32, 2), O=(32, 12, 60), lean=9, twist=8, fwd=0.01, head_p=-4)), (0.28, {})]
+
+
+def _marks_storm():      # 꺾인 줄기: 낮게 웅크린 팔을 위로 튕겨 올리고(0.07초) 손목을 꺾으며 아래로 내리긋는다(0.18초)
+    return [(0.0, {}), (0.03, dict(E=(8, 30, 55), O=(10, 20, 80), lean=-4, twist=-3, head_p=3)),
+            (0.07, dict(E=(130, 26, 22), O=(10, 20, 80), lean=5, twist=4, head_p=8)),
+            (0.12, dict(E=(104, 24, 24), O=(10, 20, 80), lean=8, twist=6, head_p=0)),
+            (0.18, dict(E=(58, 16, 34), O=(10, 20, 80), lean=10, twist=7, head_p=-6)), (0.28, {})]
+
+
+def _marks_ember():      # 덩어리 던지기: 팔을 뒤로 젖히며 몸통을 비틀었다가 어깨 위로 던져 몸 전체가 따라감
+    return [(0.0, {}), (0.03, dict(E=(-45, 8, 75), O=(20, 20, 60), lean=-8, twist=-16, pyaw=-10, sink=0.03)),
+            (0.07, dict(E=(105, -10, 15), O=(20, 22, 60), lean=14, twist=14, pyaw=12, sink=0.05, fwd=0.03, lunge=0.08, head_p=-6)),
+            (0.12, dict(E=(125, -8, 5), O=(20, 22, 60), lean=16, twist=16, pyaw=14, sink=0.05, fwd=0.03, lunge=0.08, head_p=-6)), (0.28, {})]
+
+
+def _marks_ring():       # 둘레 주문: 원소 팔을 옆으로 수평으로 펴고 몸을 한 바퀴(약 75도) 돌며 휘두름, 낮게 앉음
+    return [(0.0, {}), (0.06, dict(E=(25, 90, 20), O=(10, 30, 60), twist=-35, pyaw=-20, sink=0.08, lean=4)),
+            (0.16, dict(E=(25, 90, 10), O=(10, 30, 60), twist=40, pyaw=25, sink=0.08, lean=4)),
+            (0.20, dict(E=(25, 90, 10), O=(10, 30, 60), twist=40, pyaw=25, sink=0.08, lean=4)), (0.32, {})]
+
+
+_CALL = dict(E=(175, 18, 3), O=(20, 25, 50), lean=-10, head_p=12)
+
+
+def _marks_call():       # 강림 부름: 원소 팔을 하늘로 올리고(0.4초) 거기서 머문다(0.4~0.9초, 끝이 0.4초 자세와 같아 반복 가능)
+    return [(0.0, {}), (0.4, dict(_CALL)), (0.65, dict(E=(179, 20, 3), O=(20, 25, 50), lean=-11, head_p=13)), (0.9, dict(_CALL))]
+
+
+def _marks_strike():     # 강림 내려침: 시작은 부름의 머문 자세, 뒤로 젖혔다가 땅으로 내리치며 깊이 앉는다
+    return [(0.0, dict(_CALL)), (0.20, dict(E=(185, 10, 0), O=(20, 25, 50), lean=-16, head_p=14, sink=0.03)),
+            (0.32, dict(E=(40, 6, 5), O=(20, 25, 50), lean=26, head_p=-10, sink=0.20, lunge=0.22, fwd=0.05, pyaw=15, twist=12)),
+            (0.50, dict(E=(40, 6, 5), O=(20, 25, 50), lean=26, head_p=-10, sink=0.20, lunge=0.22, fwd=0.05, pyaw=15, twist=12)), (0.9, {})]
+
+
+def _marks_dash():       # 돌진: 몸을 낮추고 앞으로 미끄러짐(구르기 아님), 팔은 뒤로
+    return [(0.0, {}), (0.06, dict(lean=22, sink=0.22, fwd=0.06, lunge=0.28, E=(-40, 20, 30), O=(-35, 20, 30), head_p=-12)),
+            (0.14, dict(lean=22, sink=0.22, fwd=0.06, lunge=0.28, E=(-40, 20, 30), O=(-35, 20, 30), head_p=-12)),
+            (0.2, dict(lean=12, sink=0.10, fwd=0.02, lunge=0.14, E=(-10, 10, 40), O=(-10, 10, 40), head_p=-6))]
+
+
+MARKS = {"cast_basic_frost": _marks_frost, "cast_basic_storm": _marks_storm, "cast_basic_ember": _marks_ember,
+         "cast_ring": _marks_ring, "descent_call": _marks_call, "descent_strike": _marks_strike, "dash": _marks_dash}
+LENGTHS_NEW = {"cast_basic_frost": 0.28, "cast_basic_storm": 0.28, "cast_basic_ember": 0.28, "cast_ring": 0.32,
+               "descent_call": 0.9, "descent_strike": 0.9, "dash": 0.2}
+
+
+def make_marks_spec(name):
+    fn = MARKS[name]
+    marks = fn()
+
+    def spec(c, t):
+        return pose_to_spec(c, key_pose(t, marks), lift=name in ("dash", "descent_strike"))
+    return spec
 
 
 def spec_cast(c, t):
@@ -266,6 +396,9 @@ def spec_dodge(c, t):
 
 
 CLIPS = {"idle": spec_idle, "run": spec_run, "cast": spec_cast, "hit": spec_hit, "death": spec_death, "dodge": spec_dodge}
+for _n in LENGTHS_NEW:
+    CLIPS[_n] = make_marks_spec(_n)
+ALL_CLIPS = list(rc.CLIP_NAMES) + list(LENGTHS_NEW)   # 앞 여섯은 계약 이름, 뒤는 A7-2에서 늘린 것(계약 밖: 주의로만 나온다)
 LOOPING = ("idle", "run")
 
 
@@ -290,7 +423,7 @@ def foot_slide(c, ankles, fps, expect_speed):
     return out
 
 
-def bake_clip(c: Ctx, skin, name, T, fps, cfg, make_spec=None, frames_basis=None):
+def bake_clip(c: Ctx, skin, name, T, fps, cfg, make_spec=None, frames_basis=None, expect_speed=None):
     """한 클립의 모든 프레임을 풀어 (프레임별 기저)와 측정값을 얻는다. frames_basis: 이미 계산된 기저(리타깃)."""
     import numpy as np
     sc = cfg["stretch"]
@@ -327,7 +460,7 @@ def bake_clip(c: Ctx, skin, name, T, fps, cfg, make_spec=None, frames_basis=None
         emin = min(emin, float(r.min()))
         minz = min(minz, float(pos[:, 2].min()))
         ankles.append({s: S.P["tarsal_cr_" + s].translation.copy() for s in "lr"})
-    expect = c.stride / 0.6 if name == "run" else 0.0
+    expect = expect_speed if expect_speed is not None else (c.stride / 0.6 if name == "run" else 0.0)
     rep = {
         "seconds": n / fps, "frames": n + 1, "fps": fps,
         "edge_outside_ratio": (lo + hi) / max(tot, 1), "edge_too_short": lo / max(tot, 1), "edge_too_long": hi / max(tot, 1),
@@ -383,11 +516,23 @@ def make_all(arm, mesh_obj, rig, skin, cfg, out_glb, preview_dir, only=None, ret
     bpy.context.scene.render.fps = fps
     H = float(skin.rest[:, 2].max())
     c = Ctx(rig, H, cfg)
-    report = {"fps": fps, "height": H, "stride_model_m": c.stride, "rest_arm_drop_deg": c.rest_arm_drop, "arm_offset_deg": c.arm_offset, "clips": {}}
-    for name in rc.CLIP_NAMES:
+    st = cfg["clips"].get("run_stance_fraction", 0.38)
+    gstride = cfg["clips"]["game_hero_stride"]
+    report = {"fps": fps, "height": H, "stride_model_m": c.stride, "rest_arm_drop_deg": c.rest_arm_drop, "arm_offset_deg": c.arm_offset, "clips": {},
+              "run_cycle": {"cycle_seconds": 0.6, "steps_per_cycle": 2, "stride_game_m": gstride, "stride_model_m": c.stride,
+                            "stance_fraction": st, "flight_fraction_per_step": 0.5 - st,
+                            "steps_per_second_at_5.8mps": 5.8 / gstride * 2.0, "elem_arm": cfg["clips"].get("elem_arm", "l"),
+                            "note": "게임이 위상 = 이동거리 / stride_game_m 로 돌리면 한 걸음 = stride/2. 클립 길이 0.6초는 계약값일 뿐 속도는 위상이 정한다."},
+              "cast_timing_s": {"windup_peak": 0.03, "extend_peak": 0.07, "hold_until": 0.12, "return_done": 0.28,
+                                "note": "기본기: 이벤트(탄 생성)가 클립 시작이면 뻗음은 4프레임 뒤. 사크라타는 뻗은 뒤 1~2프레임에 탄이므로 게임은 클립을 이벤트 0.03~0.05초 앞에서 시작하는 것을 권한다"}}
+    mocap_cfg = cfg["clips"].get("mocap")
+    mocap_names = set((mocap_cfg or {}).get("clips", {}))
+    for name in ALL_CLIPS:
         if only and name not in only:
             continue
-        T = cfg["clips"]["lengths"][name]
+        if name in mocap_names or (mocap_cfg and name in LENGTHS_NEW):
+            continue      # 사람 동작으로 바꾸는 클립은 절차식으로 만들지 않는다
+        T = cfg["clips"]["lengths"].get(name, LENGTHS_NEW.get(name))
         if retarget and name in retarget:
             basis_list, rep = bake_clip(c, skin, name, T, fps, cfg, frames_basis=retarget[name])
             rep["method"] = "retarget"
@@ -402,6 +547,35 @@ def make_all(arm, mesh_obj, rig, skin, cfg, out_glb, preview_dir, only=None, ret
             bpy.context.scene.frame_set(fi)
             report["solver_vs_blender_max_m"] = verify_solver(arm, rig, S)
         report["clips"][name] = rep
+    if mocap_cfg:
+        import rig_mocap
+        src = rig_mocap.Source(mocap_cfg["source"])
+        mpath = Path(mocap_cfg["map"])
+        if not mpath.is_absolute():
+            mpath = Path(__file__).resolve().parents[2] / mpath
+        mp = rc.read_json(mpath)
+        vg = float(mocap_cfg.get("ground_mps_game", 5.8)) * H / cfg["clips"]["game_target_height"]
+        report["mocap"] = {"source": str(mocap_cfg["source"]), "ground_mps_model": vg}
+        made = {}
+        for name, cclip in mocap_cfg["clips"].items():
+            if only and name not in only:
+                continue
+            vgc = float(cclip.get("ground_mps_game", mocap_cfg.get("ground_mps_game", 5.8))) * H / cfg["clips"]["game_target_height"]
+            frames, mrep = rig_mocap.retarget_clip(c, skin, src, mp, name, cclip, fps, vgc)
+            T = float(cclip["seconds"])
+            _bl, rep = bake_clip(c, skin, name, T, fps, cfg, frames_basis=frames, expect_speed=(vgc if cclip.get("lock") else 0.0))
+            rep["method"] = "mocap"
+            rep["mocap"] = mrep
+            rep["leg_reach_max_ratio"] = mrep["leg_reach_max"]
+            rep["leg_overextended_frames"] = mrep["leg_overextended_frames"]
+            write_action(arm, rig, name, [S.basis for S in frames], fps)
+            made[name] = [S.basis for S in frames]
+            report["clips"][name] = rep
+        for comp in mocap_cfg.get("composites", []):   # 뼈 무리 섞기 확인용(달리며 시전 등): 아래는 lower 클립, 위는 upper 클립(start초부터)
+            bl = compose_blend(made, comp, fps)
+            write_action(arm, rig, comp["name"], bl, fps)
+            report["clips"][comp["name"]] = {"method": "composite", "seconds": comp["seconds"], "frames": len(bl), "parts": comp}
+        src.cleanup()
     for pb in arm.pose.bones:
         pb.rotation_quaternion = (1, 0, 0, 0)
         pb.location = (0, 0, 0)
@@ -412,6 +586,33 @@ def make_all(arm, mesh_obj, rig, skin, cfg, out_glb, preview_dir, only=None, ret
         rc.export_glb(out_glb, arm, [mesh_obj], fps=fps)
         report["out_glb"] = str(out_glb)
     return report
+
+
+UPPER_W = {"spine_cr_01": 0.5, "spine_cr_02": 1.0, "spine_cr_03": 1.0, "neck_cr": 1.0, "head_cr": 1.0}
+
+
+def compose_blend(made, comp, fps):
+    """뼈 무리 섞기: 위 뼈(위 척추 100%, 아래 척추 50%, 어깨·팔·손·목·머리 100%)는 upper 클립, 나머지(골반·다리)는 lower 클립. 게임 쪽 상체 덮기와 같은 규칙."""
+    lo, up = made[comp["lower"]], made[comp["upper"]]
+    n = int(round(comp["seconds"] * fps)) + 1
+    t0 = int(round(comp.get("start", 0.0) * fps))
+    out = []
+    for i in range(n):
+        b_lo = lo[i % (len(lo) - 1)]
+        j = i - t0
+        b_up = up[min(max(j, 0), len(up) - 1)] if j >= 0 else None
+        d = dict(b_lo)
+        if b_up is not None:
+            for name in b_lo:
+                w = UPPER_W.get(name)
+                if w is None and name.startswith(("shoulder_", "upper_arm_", "forearm_", "hand_", "finger_")):
+                    w = 1.0
+                if w:
+                    q0, l0 = b_lo[name]
+                    q1, l1 = b_up[name]
+                    d[name] = (q0.slerp(q1, w), l0)
+        out.append(d)
+    return out
 
 
 def preview(arm, mesh_obj, cfg, d):

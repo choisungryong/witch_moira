@@ -55,6 +55,30 @@ class ShapeTests(unittest.TestCase):
         self.assertLess(v[:, 2].min(), -0.35)           # 허리띠 아래로 늘어짐
         self.check_closed("hem_tube")
 
+    def test_torn_tapered_folded_panel_and_uv(self):
+        prm = {"hem_teeth": 5, "teeth_depth": 0.07, "fold_n": 4, "fold_amp": 0.01, "rows": 8, "cols": 13, "w_top": 0.26, "w_bot": 0.12}
+        v, t = self.check_closed("side_panel", prm)
+        v2, t2, uv = S.build_uv("side_panel", prm)
+        self.assertEqual(len(uv), len(v2))
+        self.assertTrue(((uv >= 0) & (uv <= 1)).all())
+        width = lambda z0, z1: float(np.ptp(v2[(v2[:, 2] > z0) & (v2[:, 2] < z1), 1]))
+        self.assertLess(width(-0.45, -0.3), width(0.0, 0.06))        # 아래가 좁다
+        for kind in ("fur_collar", "pauldron", "hem_tube"):
+            a, b, u = S.build_uv(kind, {})
+            self.assertEqual(len(u), len(a), kind)
+
+    def test_part_textures(self):
+        import part_textures as T
+        for spec in ({"kind": "fur"}, {"kind": "cloth"}, {"kind": "gold"}):
+            a = T.make(spec, 32)
+            self.assertEqual(a.shape, (32, 32, 3))
+            self.assertTrue(a.min() >= 0 and a.max() <= 1)
+            self.assertGreater(float(a.std()), 0.03, spec["kind"])  # 민무늬가 아니다
+        g = T.make({"kind": "gold", "glow": "#ff0000"}, 32)
+        self.assertGreater(float(g[-2:, :, 0].mean()), float(g[-2:, :, 2].mean()))   # 아래(테두리)는 붉은 쪽
+        with self.assertRaises(KeyError):
+            T.make({"kind": "nope"})
+
     def test_scale_and_mirror(self):
         v, t = S.build("pauldron", {}, scale=0.98, mirror=True)
         v0, t0 = S.build("pauldron", {})

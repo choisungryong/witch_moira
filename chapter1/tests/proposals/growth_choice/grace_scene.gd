@@ -42,10 +42,16 @@ var _pose_t := 0.0
 var _demon_file := ""
 var _fly: Control
 var _flame: Color
+var demon_rim: Control
+var fx_motion := false   ## G4 motion pack (E only): light flicker runs in _process
+var _live := false       ## a continuous capture (--strip*): motion runs although capture_mode is on
+var _shaft_gain := 1.0
 var stage: Control   ## clipped to the screen: ground, light, demon and motes that run past the edge live here
 
 # ============================================================ build
 func _build() -> void:
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--strip"): _live = true
 	el = String(contract.get("witch", {}).get("element", "frost"))
 	_flame = Kit.el_color(el).lerp(Grace.FLAME_WARM, 0.55)
 	for i in cards.size():
@@ -68,11 +74,20 @@ func _layout() -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	if capture_mode or reduce_motion: return
+	if capture_mode and not _live: return
 	_pose_t += delta
 	_motes_t += delta
+	if fx_motion: _flicker(_pose_t)
+	if reduce_motion: return   ## reduced motion: brightness only, no position change
 	demon_pose(_pose_t)
 	motes_time(_motes_t)
+
+## Irregular light-shaft strength (about 1.2 s beats, a different depth every time): sums of unrelated sines, never in step with the 2.7 s figure.
+func _flicker(t: float) -> void:
+	for i in shaft_nodes.size():
+		var f := float(i) * 1.9
+		var v := 0.62 + 0.28 * sin(t * TAU / 1.2 + f) * (0.6 + 0.4 * sin(t * 0.83 + f)) + 0.10 * sin(t * 3.7 + f * 1.3)
+		shafts_level(i, clampf(v, 0.25, 1.0))
 
 func _ground() -> void:
 	var tex: Texture2D = Grace.tex("demon_" + el)
@@ -139,7 +154,7 @@ func _demon(rect: Rect2) -> void:
 	stage.add_child(demon)
 	Grace.note_source("demon (temporary figure)", Grace.source_of(name_))
 	# rim light of the element along the figure's lit side (additive, soft)
-	Grace.glow_rect(stage, rect.position + rect.size * Vector2(0.62, 0.42), rect.size.x * 0.55, Kit.with_alpha(Kit.el_color(el), 0.10))
+	demon_rim = Grace.glow_rect(stage, rect.position + rect.size * Vector2(0.62, 0.42), rect.size.x * 0.55, Kit.with_alpha(Kit.el_color(el), 0.10))
 
 ## Small things of the element around the figure (embers / ice shards / current dots), drawn in one layer; placed once, drifted by motes_time(t).
 func _motes(zone: Rect2, count := 26) -> void:
@@ -254,6 +269,8 @@ func _jackpot_fx(r: Rect2, heat_rect: Rect2, stamp_pos: Vector2, tilt := 0.0) ->
 		if inner_r.has_point(q): continue          ## none on the card itself: its text stays clear
 		pts.append(c + (q - r.size * 0.5).rotated(tilt) + Vector2.ZERO)
 	sp.set_meta("pts", pts)
+	sp.set_meta("center", c)
+	sp.set_meta("burst", 1.0)
 	sp.modulate.a = 0.0
 	var m := CanvasItemMaterial.new()
 	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -272,7 +289,10 @@ func _paint_heat(c: Control) -> void:
 func _paint_sparks(c: Control) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 78
-	for p in c.get_meta("pts", []):
+	var ctr: Vector2 = c.get_meta("center", Vector2.ZERO)
+	var b: float = 1.0 - pow(1.0 - float(c.get_meta("burst", 1.0)), 3.0)
+	for p0 in c.get_meta("pts", []):
+		var p: Vector2 = ctr.lerp(p0, b)
 		var s := rng.randf_range(1.4, 3.6)
 		c.draw_circle(p, s, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.9))
 		c.draw_circle(p, s * 2.6, Kit.with_alpha(Grace.JACKPOT_GOLD, 0.16))
@@ -320,7 +340,7 @@ func demon_pose(t: float) -> void:
 		demon_trail.position.x = demon_rect.position.x + sin((t - TRAIL_LAG) * TAU / DEMON_PERIOD + 0.6) * 4.0
 
 func shafts_level(i: int, v: float) -> void:
-	if i < shaft_nodes.size(): shaft_nodes[i].modulate = Kit.with_alpha(Kit.el_color(el), 0.16 * v)
+	if i < shaft_nodes.size(): shaft_nodes[i].modulate = Kit.with_alpha(Kit.el_color(el), 0.16 * v * _shaft_gain)
 
 func motes_time(t: float) -> void:
 	_motes_t = t

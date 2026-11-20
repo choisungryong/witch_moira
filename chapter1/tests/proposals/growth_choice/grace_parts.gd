@@ -371,6 +371,10 @@ class GraceCard extends Control:
 		set(v):
 			leak = v
 			if _fx != null: _fx.queue_redraw()
+	var rim := -1.0:   ## G4: a light running once round the frame (0..1); a rare card's reveal
+		set(v):
+			rim = v
+			if _fx != null: _fx.queue_redraw()
 	var sweep := -1.0:
 		set(v):
 			sweep = v
@@ -583,10 +587,29 @@ class GraceCard extends Control:
 			for k in 6:
 				c.draw_rect(Rect2(Vector2.ZERO, size).grow(float(k) * 3.0 + 1.0), Kit.with_alpha(Palette.BRASS_HI, 0.26 * focus * (1.0 - float(k) / 6.0)), false, 3.0)
 			c.draw_rect(Rect2(Vector2.ZERO, size), Kit.with_alpha(Palette.BRASS_HI, focus), false, 3.0)
+		if rim >= 0.0 and rim <= 1.0:
+			var per := 2.0 * (size.x + size.y)
+			var tail := per * 0.16
+			var pts := PackedVector2Array()
+			for k in 13:
+				pts.append(_perim(c, fposmod(rim * per - tail * float(k) / 12.0, per)))
+			for k in 12:
+				c.draw_line(pts[k], pts[k + 1], Kit.with_alpha(gc.lightened(0.25), 0.9 * (1.0 - float(k) / 12.0)), 5.0 - 3.0 * float(k) / 12.0)
 		if sweep >= 0.0 and sweep <= 1.0:
 			var x := -50.0 + (size.x + 100.0) * sweep
 			var band := PackedVector2Array([Vector2(x, 0), Vector2(x + 34, 0), Vector2(x - 20, size.y), Vector2(x - 54, size.y)])
 			c.draw_colored_polygon(band, Kit.with_alpha(gc.lightened(0.3), 0.20))
+
+	func _perim(_c: Control, s: float) -> Vector2:
+		var w := size.x
+		var h := size.y
+		if s < w: return Vector2(s, 0)
+		s -= w
+		if s < h: return Vector2(w, s)
+		s -= h
+		if s < w: return Vector2(w - s, h)
+		s -= w
+		return Vector2(0, h - s)
 
 	func _paint_back_fx(c: Control) -> void:
 		if leak > 0.0:

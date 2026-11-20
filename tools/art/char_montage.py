@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 
 
-def montage(rows, height, out, gap=4, bg=(70, 70, 74), crop=None):
+def montage(rows, height, out, gap=4, bg=(70, 70, 74), crop=None, gray=False):
     """crop = (x0, y0, x1, y1) 0..1 비율. 모든 그림에 같은 비율 구간을 잘라 쓴다(같은 틀로 찍은 그림끼리 확대 비교)."""
     from PIL import Image
     imgs_rows = []
@@ -19,6 +19,8 @@ def montage(rows, height, out, gap=4, bg=(70, 70, 74), crop=None):
         for p in row:
             if p and Path(p).is_file():
                 im = Image.open(p).convert("RGB")
+                if gray:
+                    im = im.convert("L").convert("RGB")
                 if crop:
                     im = im.crop((int(crop[0] * im.width), int(crop[1] * im.height), int(crop[2] * im.width), int(crop[3] * im.height)))
                 w = int(round(im.width * height / im.height))
@@ -47,9 +49,10 @@ def main(argv=None):
     ap.add_argument("--height", type=int, default=640)
     ap.add_argument("--row", action="append", required=True)
     ap.add_argument("--crop", help="x0,y0,x1,y1 (0..1 비율)")
+    ap.add_argument("--gray", action="store_true", help="회색조로")
     a = ap.parse_args(argv)
     crop = tuple(float(v) for v in a.crop.split(",")) if a.crop else None
-    print("montage", montage([r.split(",") for r in a.row], a.height, a.out, crop=crop))
+    print("montage", montage([r.split(",") for r in a.row], a.height, a.out, crop=crop, gray=a.gray))
     return 0
 
 

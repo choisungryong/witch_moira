@@ -21,7 +21,9 @@ func _initialize() -> void:
 		if arg.begins_with("--model-glb="): glb = arg.trim_prefix("--model-glb=")
 		elif arg.begins_with("--model-texture="): texture = arg.trim_prefix("--model-texture=")
 		elif arg.begins_with("--hero-boost="): _boost = float(arg.trim_prefix("--hero-boost="))
-		elif arg.begins_with("--hero-look="): _look = ModelSwap.load_look(arg.trim_prefix("--hero-look="))
+		elif arg.begins_with("--hero-look="):
+			_look = ModelSwap.load_look(arg.trim_prefix("--hero-look="))
+			print("PLAY_LOOK ", JSON.stringify({"file": arg.trim_prefix("--hero-look="), "cells": _look.keys()}))
 	if glb.is_empty():
 		push_error("play_with_model: --model-glb is required"); quit(2); return
 	_held = ModelSwap.swap(glb, texture)

@@ -156,6 +156,9 @@ def main(argv):
                     help="game: add = 몸 텍스처에 가면을 더해(발광 근사) 렌더, only = 가면만(원소 자리 면적 재기용)")
     ap.add_argument("--emission-gain", type=float, default=0.9)
     ap.add_argument("--screen-h", type=int, default=1080, help="game: 화면 높이(1080 또는 720). 판 높이 180px가 화면의 몇 분의 몇인지 정한다(720이면 주인공이 2/3 크기)")
+    ap.add_argument("--seq", help="game: 동작 연속 렌더 clip:첫프레임:끝프레임(포함). 파일은 out/seq<tag>_NNN.png")
+    ap.add_argument("--cam", choices=["game", "side", "front"], default="game", help="game 카메라 각도: 게임(기본) / 측면 / 정면(직교, 키 맞춤)")
+    ap.add_argument("--res-mult", type=int, default=1, help="game: 같은 화면 범위를 N배 해상도로(영상용)")
     ap.add_argument("--bg", help="game: 바탕색 r,g,b (0..1). 기본 어두운 바닥 0.03,0.04,0.045")
     ap.add_argument("--silhouette", action="store_true", help="game: 단색 검정 실루엣을 밝은 바탕에(회색조 판의 실루엣 기준 판)")
     a = ap.parse_args(argv)
@@ -190,14 +193,33 @@ def main(argv):
                     ad.action_slot = act.slots[0]
         bpy.context.scene.frame_set(int(fr))
         scale_crop = 24 / a.scale * (180 / a.screen_h)
-        loc = (11, -14, 19)
         from mathutils import Vector
-        tgt = Vector((0, 0, 1.0))
-        cam.location = (loc[0], loc[1], loc[2] + 1.0)
-        cam.rotation_euler = (tgt - Vector(cam.location)).to_track_quat("-Z", "Y").to_euler()
-        cam.data.ortho_scale = scale_crop
-        w = 160 * max(2, len(a.model))
-        render(sc, out / ("game_%s%s.png" % (a.game_frame.replace(":", "_"), a.tag)), w, 180)
+        if a.cam == "game":
+            loc = (11, -14, 19)
+            tgt = Vector((0, 0, 1.0))
+            cam.location = (loc[0], loc[1], loc[2] + 1.0)
+            cam.rotation_euler = (tgt - Vector(cam.location)).to_track_quat("-Z", "Y").to_euler()
+            cam.data.ortho_scale = scale_crop
+        else:   # 측면(캐릭터 왼쪽에서)·정면 직교. 키 2.4 m 범위, 가운데 높이 1.05 m
+            if a.cam == "side":
+                cam.location, cam.rotation_euler = (10, 0, 1.05), (math.pi / 2, 0, math.pi / 2)
+            else:
+                cam.location, cam.rotation_euler = (0, -10, 1.05), (math.pi / 2, 0, 0)
+            cam.data.ortho_scale = 2.4
+        w = 160 * max(2, len(a.model)) * a.res_mult
+        hgt = 180 * a.res_mult
+        if a.seq:
+            sclip, s0, s1 = a.seq.split(":")
+            seq_act = None
+            for o in bpy.data.objects:
+                if o.type == "ARMATURE" and o.animation_data and o.animation_data.action:
+                    seq_act = o
+            for f in range(int(s0), int(s1) + 1):
+                bpy.context.scene.frame_set(f)
+                render(sc, out / ("seq%s_%03d.png" % (a.tag, f - int(s0))), w, hgt)
+            print("GAME_SEQ_OK")
+            return 0
+        render(sc, out / ("game_%s%s.png" % (a.game_frame.replace(":", "_"), a.tag)), w, hgt)
         # 배율 4배 확대본은 같은 픽셀을 키운 것(별도 렌더 아님) -> 호출하는 쪽이 만든다
         print("GAME_RENDER_OK")
         return 0

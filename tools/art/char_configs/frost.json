@@ -11,8 +11,8 @@
   },
   "mask": {"threshold": 22},
   "head_views": [{"name": "hfront", "image": "hfront-r1.png", "ref": "front", "groups": ["head"], "qual": 1.4}],
-  "flatten": {"strength": 0.8, "clusters": 12, "clamp": [0.65, 1.6]},
-  "bake": {"power": 4.0, "texture": 2048, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
+  "flatten": {"strength": 0.0, "clusters": 12, "clamp": [0.65, 1.6]},
+  "bake": {"power": 4.0, "texture": 2048, "resample": "bicubic", "depth_tol_head": 0.035, "sharpen": 0.5, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
   "torso": {
     "y0": 236, "y1": 700, "step": 12, "S": 24, "mask_from": 440, "side_from": 410, "hip_from": 500,
     "key_y": [235, 255, 270, 290, 320, 350, 380, 410, 440],
@@ -22,7 +22,7 @@
     "hip": {"y": [500, 545, 600, 650, 700], "half_width": [82, 90, 92, 92, 88], "zf": [400, 400, 400, 398, 396], "zb": [552, 554, 556, 560, 556]}
   },
   "neck": {"y": [188, 210, 232, 252, 266], "half_width": [27, 26, 26, 30, 44], "half_depth": [30, 29, 29, 34, 48], "zc": 508},
-  "head": {"top_rows": [26, 30, 36, 44, 54], "y1": 203, "step": 7, "S": 20, "x_pick": 500, "dens": 1.6,
+  "head": {"smooth": 3, "smooth_passes": 1, "top_rows": [26, 30, 36, 44, 54], "y1": 203, "step": 7, "S": 20, "x_pick": 500, "dens": 1.6,
            "taper": {"from_y": 165, "to_y": 203, "hw_end": 40, "hd_end": 44, "zc_end": 506}},
   "hair": {
     "dens": 1.0,
@@ -53,6 +53,7 @@
     ]
   },
   "texture_tag": "a7",
+  "mocap": "tools/art/rig_configs/mocap_clips.json",
   "parts": "tools/art/rig_configs/parts_frost.json",
   "paint": {
     "detect": [
@@ -63,6 +64,7 @@
   },
   "look": {"albedo_mul": 0.85, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#9ce7ef", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
-    "mesh": {"min_vertices": 10}
+    "mesh": {"min_vertices": 10},
+    "clips": {"game_hero_stride": 3.5, "run_stance_fraction": 0.38, "elem_arm": "l"}
   }
 }

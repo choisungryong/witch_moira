@@ -1,8 +1,36 @@
 {
-  "_about": "냉기 마녀 부품(A7-1): 흰 털 목도리. 가슴 위 뼈(spine_cr_03)에 단단히 묶는다. 위치는 뼈 머리 기준(키 비율 offset), 모양 변수는 미터(키 2.0 m 기준).",
-  "parts": [
-    {"name": "frost_fur_collar", "bone": "spine_cr_03", "kind": "fur_collar", "at": 0.0, "offset": [0, 0.007, 0.128], "smooth": true,
-     "params": {"a": 0.175, "b": 0.12, "z0": 0.0, "dip_side": 0.045, "dip_front": 0.03, "tube": 0.055, "lumps": 0.16, "n_major": 36, "n_minor": 10},
-     "color": "#a9b8c8"}
-  ]
+ "_about": "냉기 마녀 부품(A7-1b): 털 목도리. 가슴 위 뼈(spine_cr_03)에 묶는다. 털 가닥 결 텍스처(밝고 어두운 세로 가닥), 들쭉날쭉한 윤곽(jitter), 어깨선을 조금 키움(a 0.195, tube 0.062).",
+ "parts": [
+  {
+   "name": "frost_fur_collar",
+   "bone": "spine_cr_03",
+   "kind": "fur_collar",
+   "at": 0.0,
+   "offset": [
+    0,
+    0.007,
+    0.128
+   ],
+   "smooth": true,
+   "params": {
+    "a": 0.195,
+    "b": 0.125,
+    "z0": 0.0,
+    "dip_side": 0.045,
+    "dip_front": 0.03,
+    "tube": 0.062,
+    "lumps": 0.26,
+    "jitter": 0.14,
+    "n_major": 48,
+    "n_minor": 12
+   },
+   "texture": {
+    "kind": "fur",
+    "base": "#b0bfce",
+    "dark": "#74879c",
+    "light": "#f1f5f9"
+   },
+   "color": "#a9b8c8"
+  }
+ ]
 }

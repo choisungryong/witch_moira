@@ -212,6 +212,23 @@ class HeroMeasureTest(unittest.TestCase):
         self.assertAlmostEqual(m["ring_gap"], 230 / 255 - 60 / 255, places=3)
         self.assertEqual(sr.check_hero(m, "frost")["ring_gap"], "ok")
 
+    def test_emit_fraction_replaces_hue_check(self):
+        with tempfile.TemporaryDirectory() as t:
+            a = np.zeros((240, 240, 4), dtype=np.uint8)
+            a[100:180, 100:140, 3] = 255        # 주인공 3200 화소
+            a[100:130, 100:140, :3] = 200       # 그 가운데 위 30행(1200 화소)이 발광
+            p = os.path.join(t, "crop_t0600.emit.png")
+            Image.fromarray(a).save(p)
+            m = sr.measure_emit(p)
+            self.assertAlmostEqual(m["emit_pct"], 37.5, places=3)
+        img, mask = self.crop((60, 60, 60))
+        m = sr.measure_hero(img / 255.0, mask, "frost")
+        m["emit_pct"] = 15.0
+        res = sr.check_hero(m, "frost")
+        self.assertEqual(res["emit_pct"], "ok")
+        self.assertNotIn("element_pct", res)
+        self.assertIn("sharp", m)
+
     def test_empty_mask(self):
         m = sr.measure_hero(np.zeros((8, 8, 3)), np.zeros((8, 8), dtype=bool), "frost")
         self.assertEqual(m["hero_pixels"], 0)

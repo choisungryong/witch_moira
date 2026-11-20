@@ -30,9 +30,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rig_common as rc  # noqa: E402
 import part_shapes  # noqa: E402
+import part_textures  # noqa: E402
 
 
-def mesh_from_arrays(name, verts, tris, smooth=False):
+def mesh_from_arrays(name, verts, tris, smooth=False, uv=None):
     import bpy
     me = bpy.data.meshes.new(name)
     me.from_pydata([tuple(map(float, v)) for v in verts], [], [tuple(int(i) for i in t) for t in tris])
@@ -40,9 +41,35 @@ def mesh_from_arrays(name, verts, tris, smooth=False):
     if smooth:
         me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
         me.update()
+    if uv is not None:   # 정점별 uv(v=0이 위) -> 모서리별. Blender uv는 v가 위로 커지므로 뒤집는다
+        uvl = me.uv_layers.new(name="UVMap")
+        loops = np.array([l.vertex_index for l in me.loops])
+        arr = np.asarray(uv, np.float32)[loops].copy()
+        arr[:, 1] = 1.0 - arr[:, 1]
+        uvl.data.foreach_set("uv", arr.reshape(-1))
     obj = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(obj)
     return obj
+
+
+def textured_material(name, spec):
+    """part_textures의 무늬를 64x64 이미지로 올려 재질에 건다(이미지 이름 = 재질 이름 + _tex, 부품 이름이 마녀별로 유일해야 한다)."""
+    import bpy
+    arr = part_textures.make(spec, 64)
+    img = bpy.data.images.new(name + "_tex", 64, 64, alpha=True)
+    px = np.ones((64, 64, 4), np.float32)
+    px[..., :3] = arr[::-1]                      # Blender 이미지는 아래 행이 먼저
+    img.pixels = px.reshape(-1).tolist()
+    img.pack()
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes.get("Principled BSDF")
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = img
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.7
+    return mat
 
 
 def penetration_report(arm, body, parts, clip_names, step=3, margin=0.004, max_depth=0.05):
@@ -198,14 +225,14 @@ def add_part(spec, arm, rig, H):
             me.transform(Matrix.Translation(rig.head[b] + off))
         elif spec.get("kind") in part_shapes.SHAPES:
             c = rig.head[b] + (rig.tail[b] - rig.head[b]) * spec.get("at", 0.0) + off
-            v, t = part_shapes.build(spec["kind"], spec.get("params", {}), scale=H / 2.0, mirror=sx < 0)
-            obj = mesh_from_arrays(name + "_" + b, v + np.array([c.x, c.y, c.z]), t, spec.get("smooth", False))
+            v, t, uv = part_shapes.build_uv(spec["kind"], spec.get("params", {}), scale=H / 2.0, mirror=sx < 0)
+            obj = mesh_from_arrays(name + "_" + b, v + np.array([c.x, c.y, c.z]), t, spec.get("smooth", False), uv)
         else:
             c = rig.head[b] + (rig.tail[b] - rig.head[b]) * spec.get("at", 0.0) + off
             rad = [x * H for x in spec.get("radius", (0.04, 0.04, 0.04))]
             obj = make_ellipsoid(name + "_" + b, c, rad)
         pieces.append((obj, b))
-    mat = rc.solid_texture_material(name + "_mat", rc.hex_rgba(color))
+    mat = textured_material(name + "_mat", spec["texture"]) if spec.get("texture") else rc.solid_texture_material(name + "_mat", rc.hex_rgba(color))
     for obj, b in pieces:
         bind_rigid(obj, arm, b, mat)
     objs = [o for o, _ in pieces]

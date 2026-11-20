@@ -10,8 +10,10 @@
     "3q":    {"image": "3q-r1.png", "az": -35, "fit": true, "fit_starts": [-25, -35, -45]}
   },
   "mask": {"threshold": 22},
-  "flatten": {"strength": 0.8, "clusters": 12, "clamp": [0.65, 1.6]},
-  "bake": {"power": 4.0, "texture": 2048, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
+  "head_views": [{"name": "hfront", "image": "hfront-r1.png", "ref": "front", "groups": ["head"], "qual": 1.4,
+    "eye_rule": {"hue": [28, 48], "sat_min": 0.6, "val_min": 0.7, "open": false, "min_px": 3, "dy_ratio": 0.12}}],
+  "flatten": {"strength": 0.0, "clusters": 12, "clamp": [0.65, 1.6]},
+  "bake": {"power": 4.0, "texture": 2048, "resample": "bicubic", "depth_tol_head": 0.035, "sharpen": 0.5, "arm_occlusion_px": 9, "depth_tol": 0.012, "clamp_z": {"leg": 0.974}},
   "torso": {
     "y0": 236, "y1": 760, "step": 12, "S": 24, "mask_from": 384, "side_from": 384, "hip_from": 500,
     "key_y": [236, 256, 270, 290, 320, 350, 384],
@@ -21,7 +23,7 @@
     "hip": {"y": [500, 545, 600, 650, 700, 760], "half_width": [78, 88, 94, 96, 98, 98], "zf": [402, 400, 400, 398, 398, 398], "zb": [560, 562, 564, 566, 566, 566]}
   },
   "neck": {"y": [186, 205, 225, 245, 262], "half_width": [29, 28, 28, 33, 50], "half_depth": [31, 31, 31, 36, 52], "zc": 515},
-  "head": {"top_rows": [26, 30, 36, 44, 54], "y1": 210, "step": 7, "S": 20, "x_pick": 510, "dens": 1.6,
+  "head": {"smooth": 4, "smooth_passes": 2, "top_rows": [26, 30, 36, 44, 54], "y1": 210, "step": 7, "S": 20, "x_pick": 510, "dens": 1.6,
            "taper": {"from_y": 168, "to_y": 210, "hw_end": 40, "hd_end": 44, "zc_end": 515}},
   "hair": {
     "dens": 1.0,
@@ -48,6 +50,7 @@
     ]
   },
   "texture_tag": "a7",
+  "mocap": "tools/art/rig_configs/mocap_clips.json",
   "parts": "tools/art/rig_configs/parts_ember.json",
   "paint": {
     "fill": [
@@ -61,6 +64,7 @@
   },
   "look": {"albedo_mul": 1.0, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#ff943d", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
-    "mesh": {"min_vertices": 10}
+    "mesh": {"min_vertices": 10},
+    "clips": {"game_hero_stride": 3.5, "run_stance_fraction": 0.38, "elem_arm": "r"}
   }
 }

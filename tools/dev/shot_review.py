@@ -527,6 +527,20 @@ def dilate(mask, px):
     return np.array(im.filter(ImageFilter.MaxFilter(2 * px + 1))) > 127
 
 
+EMIT_LUM_MIN = 0.08  # 발광만 그린 그림에서 "켜진" 화소로 세는 최소 최대채널 값
+
+
+def measure_emit(path_emit):
+    """crop_tNNNN.emit.png(rig_game_probe --hero-emit): 알파 = 주인공, 켜진 화소 = 발광 가면이 화면에 나온 화소. 가면 켜진 화소의 비율 %."""
+    a = np.array(Image.open(path_emit).convert("RGBA"), dtype=np.float64) / 255.0
+    hero = a[..., 3] > 0.5
+    n = int(hero.sum())
+    if n == 0:
+        return {}
+    lit = a[..., :3].max(-1) > EMIT_LUM_MIN
+    return {"emit_pct": float((lit & hero).sum() / n * 100), "emit_hero_pixels": n}
+
+
 def measure_hero(rgb, hero_mask, element, hues=None):
     """rgb: (h,w,3) 0..1, hero_mask: (h,w) bool. 지시서 2.5절의 잰 값."""
     hues = hues or ELEMENT_HUE
@@ -537,6 +551,10 @@ def measure_hero(rgb, hero_mask, element, hues=None):
     y = luminance(rgb)
     h, s, _ = hsv(rgb)
     py = y[hero_mask]
+    # 선명도 지표: 주인공 화소 안(가면에서 1화소 안쪽)의 라플라시안 분산 x 1e4. 같은 장면·같은 틱의 설정 비교에만 뜻이 있다(밝기에도 영향을 받는다).
+    lap = -4 * y + np.roll(y, 1, 0) + np.roll(y, -1, 0) + np.roll(y, 1, 1) + np.roll(y, -1, 1)
+    inner = hero_mask & ~dilate(~hero_mask, 1)
+    out["sharp"] = float(lap[inner].var() * 1e4) if inner.any() else float("nan")
     out["white_pct"] = float((py > 0.85).mean() * 100)
     out["lum_mean"] = float(py.mean())
     out["lum_p90"] = float(np.percentile(py, 90))
@@ -568,7 +586,12 @@ def check_hero(m, element):
     lo, hi = HERO_LIMITS["lum_mean"]
     res["lum_mean"] = "ok" if lo <= m["lum_mean"] <= hi else "FAIL"
     lo, hi = HERO_LIMITS["element_pct"]
-    res["element_pct"] = "ok" if lo <= m["element_pct"] <= hi else "FAIL"
+    # 지시서의 "색상 ±25°, 채도 ≥ 0.35" 화소 비율은 게임의 냉기색(채도 0.347)이 스스로 못 맞춘다. 발광만 그린 그림이 있으면
+    # "가면 켜진 화소의 비율"(emit_pct)로 같은 범위(12~25%)를 판정하고, 색상 기준은 참고(element_pct)로만 남긴다.
+    if "emit_pct" in m:
+        res["emit_pct"] = "ok" if lo <= m["emit_pct"] <= hi else "FAIL"
+    else:
+        res["element_pct"] = "ok" if lo <= m["element_pct"] <= hi else "FAIL"
     res["other_element_pct_max"] = "ok" if m["other_element_pct_max"] <= HERO_LIMITS["other_element_pct_max"] else "FAIL"
     res["ring_gap"] = ("ok" if m["ring_gap"] >= HERO_LIMITS["ring_gap_min"] else "FAIL") if "ring_gap" in m else "n/a"
     return res
@@ -578,7 +601,7 @@ def hero_crops(folder):
     """폴더의 crop_tNNNN.png 가운데 가면이 있는 것: [(틱, 그림 경로, 가면 경로)] 틱 순."""
     out = []
     for n in sorted(os.listdir(folder)):
-        if n.startswith("crop_t") and n.endswith(".png") and not n.endswith(".mask.png"):
+        if n.startswith("crop_t") and n.endswith(".png") and not n.endswith((".mask.png", ".emit.png")):
             tick = int(n[len("crop_t"):-len(".png")])
             mask = os.path.join(folder, n[:-4] + ".mask.png")
             out.append((tick, os.path.join(folder, n), mask if os.path.isfile(mask) else None))
@@ -639,6 +662,9 @@ def run_hero(specs, out_dir, hues=None):
             else:
                 rgb, mask = load_hero(pimg, pmask)
                 row["measure"] = measure_hero(rgb, mask, name, hues)
+                emit = pimg[:-4] + ".emit.png"
+                if os.path.isfile(emit):
+                    row["measure"].update(measure_emit(emit))
                 row["check"] = check_hero(row["measure"], name)
             result["rows"].append(row)
     os.makedirs(out_dir, exist_ok=True)
@@ -654,8 +680,9 @@ def run_hero(specs, out_dir, hues=None):
             L.append("| %s | %d | - | - | - | - | - | - | - | %s |" % (r["witch"], r["tick"], r.get("note", "주인공 화소 0")))
             continue
         chk = " ".join("%s=%s" % (k, v) for k, v in r["check"].items())
-        L.append("| %s | %d | %d | %.1f | %.3f | %.1f | %.1f | %s | %s | %s |" % (
-            r["witch"], r["tick"], m["hero_pixels"], m["white_pct"], m["lum_mean"], m["element_pct"], m["other_element_pct_max"],
+        L.append("| %s | %d | %d | %.1f | %.3f | %s | %.1f | %s | %s | %s |" % (
+            r["witch"], r["tick"], m["hero_pixels"], m["white_pct"], m["lum_mean"],
+            ("%.1f (가면 %.1f)" % (m["element_pct"], m["emit_pct"])) if "emit_pct" in m else "%.1f" % m["element_pct"], m["other_element_pct_max"],
             "%.3f" % m["band_effect_lum_mean"] if "band_effect_lum_mean" in m else "-", "%.3f" % m["ring_gap"] if "ring_gap" in m else "-", chk))
     L.append("")
     with open(os.path.join(out_dir, "hero-measure.md"), "w", encoding="utf-8") as f:

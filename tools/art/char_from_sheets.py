@@ -145,27 +145,36 @@ def sole_profile(path, box, bins=12, thresh=22):
     return (widths / widths.max()).tolist(), float((along.max() - along.min()) / max(widths.max(), 1))
 
 
-def detect_eyes(im, ymax_frac=0.4):
+def detect_eyes(im, ymax_frac=0.4, rule=None):
     """밝은 하늘색 홍채 덩어리 두 개(좌우, 높이 비슷)를 찾아 [(x,y),(x,y)]를 돌려준다. 가장 위쪽의 쌍을 고른다(귀걸이·머리핀 보석은 눈보다 아래나 한쪽).
     눈 색이 하늘색인 캐릭터용. 못 찾으면 None."""
     from scipy import ndimage as ndi
     f = im.astype(int)
     H, W, _ = f.shape
-    m = ((f[..., 2] - f[..., 0]) > 40) & (f[..., 2] > 120)
+    if rule:   # 눈 색 규칙: {"hue":[lo,hi](도), "sat_min", "val_min"} - 보라·주황 눈 등
+        import char_paint as _P
+        h, sat, val = _P.rgb_to_hsv(im.astype(np.float32) / 255.0)
+        lo, hi = rule["hue"]
+        d = (h - lo) % 360.0
+        m = (d <= (hi - lo) % 360.0) & (sat >= rule.get("sat_min", 0.4)) & (val >= rule.get("val_min", 0.5))
+    else:
+        m = ((f[..., 2] - f[..., 0]) > 40) & (f[..., 2] > 120)
     m[int(H * ymax_frac):] = False
-    m = ndi.binary_opening(m, iterations=1)
+    if not rule or rule.get("open", True):
+        m = ndi.binary_opening(m, iterations=1)
     lab, n = ndi.label(m)
     blobs = []
+    min_px = (rule or {}).get("min_px", 8)
     for i in range(1, n + 1):
         ys, xs = np.where(lab == i)
-        if 8 <= len(xs) <= 6000:
+        if min_px <= len(xs) <= 6000:
             blobs.append((len(xs), float(xs.mean()), float(ys.mean())))
     best = None
     for i in range(len(blobs)):
         for j in range(i + 1, len(blobs)):
             a1, x1, y1 = blobs[i]; a2, x2, y2 = blobs[j]
             dx, dy = abs(x1 - x2), abs(y1 - y2)
-            if dx < W * 0.03 or dy > dx * 0.08:
+            if dx < W * 0.03 or dy > dx * (rule or {}).get("dy_ratio", 0.08):
                 continue
             y = (y1 + y2) / 2
             if best is None or y < best[0]:
@@ -362,7 +371,15 @@ def bilinear(im, px, py):
     return (im[y0, x0] * (1 - fx) * (1 - fy) + im[y0, x0 + 1] * fx * (1 - fy) + im[y0 + 1, x0] * (1 - fx) * fy + im[y0 + 1, x0 + 1] * fx * fy)
 
 
-def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=print, clamp_z=None, margin=0.12):
+def bicubic(im, px, py):
+    """3차 스플라인 표본(scipy). 그림을 키워 구울 때 쌍선형보다 번짐이 적다."""
+    from scipy import ndimage as ndi
+    h, w, _ = im.shape
+    c = np.stack([py, px])
+    return np.stack([ndi.map_coordinates(im[..., k], c, order=3, mode="nearest") for k in range(3)], axis=1)
+
+
+def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=print, clamp_z=None, margin=0.12, resample="bilinear", tol_head=None):
     """views: [{name, cam, img(float 0..1, 배경을 채운 그림), mask, groups(None 또는 허용 부위군), qual}].
     깊이로 가려짐 판정: 텍셀 점들을 그 시점에 찍어 가장 가까운 깊이 지도를 만들고(3x3 키움), 팔 점은 따로(arm_px 키움) 지도를 만들어
     팔이 가리는 몸통 텍셀은 그 시점 색을 안 쓴다. 가중 = (법선·카메라)^power x 보임 x 마스크 안."""
@@ -388,7 +405,8 @@ def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=prin
         if is_arm.any():
             np.maximum.at(zarm, flat[is_arm], D[is_arm].astype(np.float32))
         zarm = ndi.maximum_filter(zarm.reshape(Hh, Ww), size=int(arm_px))
-        vis = D >= zmax[iy, ix] - tol
+        tol_v = np.where(tg == "head", tol_head, tol) if tol_head else tol   # 머리는 행마다 앞뒤가 들쭉날쭉해 더 너그럽게
+        vis = D >= zmax[iy, ix] - tol_v
         occ_arm = (~is_arm) & (zarm[iy, ix] > D + tol)
         vis &= ~occ_arm
         cosv = np.clip(N @ cam.d, 0, 1)
@@ -402,9 +420,9 @@ def bake_texture(parts, tex, views, TS, power=4.0, arm_px=9, tol=0.012, log=prin
                 m = (tg == g_name) & (Pc[:, 2] > zc)
                 Pc[m, 2] = zc
             pxc, pyc, _ = cam.project(Pc)
-            col = bilinear(img, pxc, pyc)
+            col = (bicubic if resample == "bicubic" else bilinear)(img, pxc, pyc)
         else:
-            col = bilinear(img, px, py)
+            col = (bicubic if resample == "bicubic" else bilinear)(img, px, py)
         cs.append(c.astype(np.float32)); cols.append(col.astype(np.float32))
     # 시점 섞기: 가장 정면에 가까운 시점이 이긴다. 그보다 margin 이내로 모자란 시점만 섞는다(생성 그림끼리 기하가 어긋나 얼굴이 겹쳐 보이는 것을 막는다)
     cmax = np.max(cs, axis=0)
@@ -558,9 +576,9 @@ def build_views(cfg, g, flat_cfg, log=print):
     # 머리 클로즈업: 눈 두 점의 간격으로 크기를, 눈 가운데로 위치를 맞춘다(정면 눈이 정면 전신 그림의 눈과 같은 자리·같은 간격이 되도록)
     for hv in cfg.get("head_views", []):
         im = load_rgb(resolve_art(cfg, hv["image"]))
-        e_img = detect_eyes(im, 0.6)
+        e_img = detect_eyes(im, hv.get("img_ymax", 0.6), hv.get("eye_rule"))
         ref = next(v for v in views if v["name"] == hv.get("ref", "front"))
-        e_ref = detect_eyes(g["imgs"][ref["name"]], hv.get("ref_ymax", 0.14))
+        e_ref = detect_eyes(g["imgs"][ref["name"]], hv.get("ref_ymax", 0.14), hv.get("ref_eye_rule", hv.get("eye_rule")))
         if not e_img or not e_ref:
             log("head view %s: eyes not found (%s / %s) -> skipped" % (hv["name"], bool(e_img), bool(e_ref)))
             continue
@@ -598,8 +616,13 @@ def stage_bake(cfg, g, work, log=print):
     tex = texel_maps(parts, place)
     views, meta = build_views(cfg, g, cfg.get("flatten"), log)
     atlas, st = bake_texture(parts, tex, views, TS, b.get("power", 4.0), b.get("arm_occlusion_px", 9), b.get("depth_tol", 0.012), log,
-                             clamp_z=b.get("clamp_z"), margin=b.get("margin", 0.12))
+                             clamp_z=b.get("clamp_z"), margin=b.get("margin", 0.12), resample=b.get("resample", "bilinear"), tol_head=b.get("depth_tol_head"))
     import char_paint as P
+    if b.get("sharpen", 0) > 0:   # 언샤프: 큰 번짐(굽기 섞임)에서 온 흐림을 덜어 낸다. 부위 사각형 안에서만(섬 사이 빈 곳은 건드리지 않음)
+        from scipy import ndimage as ndi
+        sig = float(b.get("sharpen_sigma", 1.2)) * TS / 2048.0
+        blurred = np.stack([ndi.gaussian_filter(atlas[..., k], sig) for k in range(3)], axis=2)
+        atlas = np.clip(atlas + float(b["sharpen"]) * (atlas - blurred), 0, 1)
     rects = P.part_rects(parts, place)
     (work / "parts_uv.json").write_text(json.dumps({k: list(v) for k, v in rects.items()}, indent=1), encoding="utf-8")
     if cfg.get("paint"):
@@ -669,7 +692,12 @@ def stage_poses(cfg, work):
 
 
 def stage_rig(cfg, work, out_dir, preview=True):
-    rig_cfg = dict(cfg.get("rig", {}))
+    rig_cfg = json.loads(json.dumps(cfg.get("rig", {})))
+    if cfg.get("mocap"):   # 사람 동작 옮기기 설정(클립 목록): rig_configs/mocap_clips*.json
+        mj = Path(cfg["mocap"])
+        if not mj.is_absolute():
+            mj = REPO / mj
+        rig_cfg.setdefault("clips", {})["mocap"] = json.loads(mj.read_text(encoding="utf-8"))
     (work / "rig_config.json").write_text(json.dumps(rig_cfg, indent=1), encoding="utf-8")
     secs = {}
     _, secs["rig_build"] = run([PY, str(HERE / "rig_build.py"), "--in", str(work / "mesh.glb"), "--out-blend", str(work / "rigged.blend"),

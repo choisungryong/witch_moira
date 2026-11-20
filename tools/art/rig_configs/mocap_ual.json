@@ -1,0 +1,76 @@
+{
+ "_about": "Quaternius UAL(65뼈, 언리얼식 이름, T자 쉬는 자세) -> 우리 24뼈. rot = 월드 회전 변화량 옮기기, dir = 방향 기준(뼈 머리 -> 다음 머리 또는 :tail), legs = IK용 원본 다리 뼈, foot_dirs = 발 방향.",
+ "pelvis": [
+  "pelvis_cr",
+  "pelvis"
+ ],
+ "rot": {
+  "spine_cr_01": "spine_01",
+  "spine_cr_02": "spine_02",
+  "spine_cr_03": "spine_03",
+  "neck_cr": "neck_01",
+  "head_cr": "Head",
+  "shoulder_cr_l": "clavicle_l",
+  "shoulder_cr_r": "clavicle_r"
+ },
+ "dir": {
+  "upper_arm_cr_l": [
+   "upperarm_l",
+   "lowerarm_l"
+  ],
+  "forearm_cr_l": [
+   "lowerarm_l",
+   "hand_l"
+  ],
+  "hand_cr_l": [
+   "hand_l",
+   "hand_l:tail"
+  ],
+  "upper_arm_cr_r": [
+   "upperarm_r",
+   "lowerarm_r"
+  ],
+  "forearm_cr_r": [
+   "lowerarm_r",
+   "hand_r"
+  ],
+  "hand_cr_r": [
+   "hand_r",
+   "hand_r:tail"
+  ]
+ },
+ "legs": {
+  "l": {
+   "hip": "thigh_l",
+   "knee": "calf_l",
+   "ankle": "foot_l"
+  },
+  "r": {
+   "hip": "thigh_r",
+   "knee": "calf_r",
+   "ankle": "foot_r"
+  }
+ },
+ "foot_dirs": {
+  "l": {
+   "foot": [
+    "foot_l",
+    "ball_l"
+   ],
+   "ball": [
+    "ball_l",
+    "ball_leaf_l"
+   ]
+  },
+  "r": {
+   "foot": [
+    "foot_r",
+    "ball_r"
+   ],
+   "ball": [
+    "ball_r",
+    "ball_leaf_r"
+   ]
+  }
+ }
+}

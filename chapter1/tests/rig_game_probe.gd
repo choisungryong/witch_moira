@@ -57,6 +57,17 @@ var _mask_vp: SubViewport
 var _mask_cam: Camera3D
 var _captures: Array = []
 var _post_connected := false
+## --hero-emit: one frame after each crop, the hero is drawn with black albedo, no rim, no hero lights (the look's own cells otherwise), and the
+## hero-only view is saved as crop_tNNNN.emit.png: the lit pixels are the emission mask on screen. Needs --hero-look and --hero-mask.
+var hero_emit := false
+## --vp-exp=key=value,...: sharpness experiments on the game's own render settings, for the probe only (a product file is never touched).
+##   glow=0|1 (bloom off/on)  mip_bias=<-2..2> (texture mipmap bias of the whole viewport)  aniso=0..4 (anisotropic level: 0 off, 1 2x, 2 4x, 3 8x, 4 16x)
+##   hud=0|1 (hide the whole HUD, so the owner chevron does not sit on the hero's pixels)  msaa=0..3 (0 off, 1 2x, 2 4x, 3 8x)  contrast=<float> saturation=<float> (the game's colour adjustment)  cam=<ortho size> (the game: 19.5, smaller = bigger hero)
+var vp_exp: Dictionary = {}
+var _exp_done := false
+var _emit_arm := false
+var _emit_active := false
+var _emit_tick := 0
 
 # --foot-log state
 const FOOT_BONES := ["tarsal_cr_l", "toe_cr_l", "tarsal_cr_r", "toe_cr_r"]
@@ -84,6 +95,11 @@ func _initialize() -> void:
 		elif arg.begins_with("--until="): until_tick = int(arg.trim_prefix("--until="))
 		elif arg.begins_with("--hero-look="): look_path = arg.trim_prefix("--hero-look=")
 		elif arg == "--hero-mask": hero_mask = true
+		elif arg == "--hero-emit": hero_emit = true
+		elif arg.begins_with("--vp-exp="):
+			for part in arg.trim_prefix("--vp-exp=").split(",", false):
+				var kv := part.split("=")
+				if kv.size() == 2: vp_exp[kv[0]] = float(kv[1])
 		elif arg.begins_with("--hero-crop-ticks="):
 			for part in arg.trim_prefix("--hero-crop-ticks=").split(",", false): crop_ticks.append(int(part))
 			crop_ticks.sort()
@@ -109,7 +125,7 @@ func _initialize() -> void:
 			quit(5); return
 	super._initialize()
 	if hero_mask or not crop_ticks.is_empty() or burst_tick >= 0: _make_mask_view()
-	var pre := hero_boost >= 0.0 or not look.is_empty() or not cast_overlay or hero_mask or not foot_log_path.is_empty()
+	var pre := hero_boost >= 0.0 or not vp_exp.is_empty() or not look.is_empty() or not cast_overlay or hero_mask or not foot_log_path.is_empty()
 	if pre: RenderingServer.frame_pre_draw.connect(_probe_pre_draw)
 	if not crop_ticks.is_empty() or burst_tick >= 0:
 		RenderingServer.frame_post_draw.connect(_probe_post_draw)
@@ -121,6 +137,7 @@ func _initialize() -> void:
 ## One sentence for the first argument problem of the A7-0 options, or "".
 func _probe_args_problem() -> String:
 	var needs_shots := hero_mask or not crop_ticks.is_empty() or burst_tick >= 0
+	if hero_emit and (not hero_mask or look_path.is_empty() or crop_ticks.is_empty()): return "--hero-emit needs --hero-look, --hero-mask and --hero-crop-ticks"
 	if needs_shots and shots_dir.is_empty(): return "--hero-mask, --hero-crop-ticks and --burst save pictures: they need --shots=<dir>"
 	if needs_shots and DisplayServer.get_name() == "headless": return "--hero-mask, --hero-crop-ticks and --burst need a real renderer (no --headless)"
 	if burst_tick >= 0:
@@ -157,7 +174,8 @@ func _make_mask_view() -> void:
 
 func _tag_hero_layers(actors: Object) -> void:
 	if actors == null: return
-	for top in [actors.get("rig_model"), actors.get("_staff")]:
+	# the staff (its gem glows by design) is not part of the body that the look is measured on
+	for top in [actors.get("rig_model")]:
 		if top != null: _tag_meshes(top)
 
 func _tag_meshes(node: Node) -> void:
@@ -188,11 +206,37 @@ func _sync_mask_cam() -> void:
 func _probe_pre_draw() -> void:
 	if view == null or view.get("run") == null: return
 	var actors := _actors()
+	if not vp_exp.is_empty() and not _exp_done and int(view.run.tick) > 5: _apply_exp()
 	if hero_boost >= 0.0: ModelSwap.apply_boost(actors, hero_boost)
 	if not look.is_empty(): ModelSwap.apply_look(actors, look)
+	if _emit_arm:
+		_emit_arm = false; _emit_active = true
+		var emit_look := look.duplicate()
+		emit_look["albedo_mul"] = 0.0; emit_look["rim"] = 0.0; emit_look["light_key"] = 0.0; emit_look["light_fill"] = 0.0; emit_look["element_lean"] = 0.0
+		ModelSwap.apply_look(actors, emit_look)
 	if not cast_overlay: _cast_off_repose(actors)
 	if _mask_cam != null: _sync_mask_cam()
 	if not foot_log_path.is_empty(): _foot_frame(actors)
+
+func _apply_exp() -> void:
+	_exp_done = true
+	var env_node: WorldEnvironment = null
+	for child in view.get_children():
+		if child is WorldEnvironment: env_node = child
+	var env: Environment = env_node.environment if env_node != null else null
+	if vp_exp.has("glow") and env != null: env.glow_enabled = vp_exp.glow > 0.5
+	if vp_exp.has("contrast") and env != null: env.adjustment_contrast = vp_exp.contrast
+	if vp_exp.has("saturation") and env != null: env.adjustment_saturation = vp_exp.saturation
+	if vp_exp.has("hud"):
+		var hud_node = view.get("hud")
+		if hud_node != null and hud_node.get("root") != null: hud_node.root.visible = vp_exp.hud > .5   # the owner chevron over the head is drawn by the HUD
+	if vp_exp.has("mip_bias"): root.texture_mipmap_bias = vp_exp.mip_bias
+	if vp_exp.has("aniso"): root.anisotropic_filtering_level = int(vp_exp.aniso) as Viewport.AnisotropicFiltering
+	if vp_exp.has("msaa"): root.msaa_3d = int(vp_exp.msaa) as Viewport.MSAA
+	if vp_exp.has("cam"):
+		var world = view.get("world")
+		if world != null and world.get("camera") != null: world.camera.size = vp_exp.cam
+	print("PROBE_EXP ", JSON.stringify({"applied": vp_exp, "env_found": env != null}))
 
 ## --hero-cast-overlay=0: the product writes the cast upper-body overlay while it poses the hero (chapter_actors.gd _update_pose__rigged).
 ## It cannot be switched off from outside, so after the product pose the same run/idle pose (and the hit overlay) is sampled again without it
@@ -257,6 +301,13 @@ func _save_crop(base: String, image: Image, rect: Rect2i) -> void:
 func _probe_post_draw() -> void:
 	if view == null or view.get("run") == null or String(view.run.mode) != "playing": return
 	var tick := int(view.run.tick)
+	if _emit_active:
+		# the frame drawn with black albedo, no rim, no hero lights: what is left in the hero-only view is the emission mask itself
+		_emit_active = false
+		var main_size := Vector2i(root.get_viewport().get_texture().get_size())
+		var emit_rect := _hero_rect(main_size)
+		_mask_image(main_size).get_region(emit_rect).save_png(shots_dir.path_join("crop_t%04d.emit.png" % _emit_tick))
+		print("PROBE_EMIT ", JSON.stringify({"tick": tick, "for": _emit_tick}))
 	var want_crop := _crop_next < crop_ticks.size() and tick >= crop_ticks[_crop_next]
 	var want_burst := burst_tick >= 0 and (tick >= burst_tick or _burst_started) and _burst_done < burst_count
 	if not want_crop and not want_burst: return
@@ -271,6 +322,8 @@ func _probe_post_draw() -> void:
 		_captures.append({"kind": "crop", "wanted_tick": t, "tick": tick, "rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y], "image": [image.get_width(), image.get_height()]})
 		print("PROBE_CROP ", JSON.stringify(_captures[-1]))
 		_crop_next += 1
+		if hero_emit:
+			_emit_arm = true; _emit_tick = t
 	if want_burst:
 		_burst_started = true
 		_save_crop(shots_dir.path_join("burst_%02d_t%04d" % [_burst_done, tick]), image, rect)

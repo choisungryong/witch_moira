@@ -1,0 +1,8 @@
+{
+ "_about": "frost 4096 판(선명도 앞뒤 비교·선택 화면 확대용). 같은 설정에서 텍스처만 4096.",
+ "extends": "frost.json",
+ "texture_tag": "a7k",
+ "bake": {
+  "texture": 4096
+ }
+}

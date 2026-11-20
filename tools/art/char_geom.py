@@ -229,7 +229,9 @@ def build_head(R: Rows, c):
         cx.append((iv[0] + iv[1]) / 2); rx.append(max(8, (iv[1] - iv[0]) / 2))
         a, b = R.senvelope(y)
         zc.append((a + b) / 2); rz.append(max(8, (b - a) / 2))
-    cx, rx, zc, rz = smooth(cx, 1), smooth(rx, 1), smooth(zc, 1), smooth(rz, 1)
+    k = int(h.get("smooth", 1))   # 행 사이 폭·앞뒤 들쭉날쭉(머리카락 가닥)을 눌러 얼굴 앞면이 이웃 행에 가려지지 않게
+    for _ in range(int(h.get("smooth_passes", 1))):
+        cx, rx, zc, rz = smooth(cx, k), smooth(rx, k), smooth(zc, k), smooth(rz, k)
     tp = h.get("taper")
     if tp:   # 머리 아래 끝을 목 굵기로 좁힌다(머리카락 폭 그대로 두면 턱 밑에 넓은 판이 보인다. 늘어진 머리카락은 locks가 맡는다)
         for i, y in enumerate(hy):
