@@ -1,0 +1,20 @@
+{
+ "_about": "냉기 마녀: 기본 몸(Quaternius UBC Superhero_Female)에 원화 면별 그림을 입히는 설정. char_config = 그림·마스크·머리 클로즈업 설정(실루엣 방식 설정을 그대로 쓴다), old_bones = 실루엣 방식 모델의 뼈 위치(높이 표지용).",
+ "char_config": "tools/art/char_configs/storm.json",
+ "old_bones": "D:/Project/witch-moira-work/char3d/a8/storm/old_bones.json",
+ "texture": 2048,
+ "arm_x_scale": 1.0,
+ "arm_thin": 0.85,
+ "outside_w": 0.02,
+ "outfit_boost": {
+  "src_albedo": "D:/Project/witch-moira-work/char3d/a7/storm/albedo.png",
+  "src_uv": "D:/Project/witch-moira-work/char3d/a7/storm/parts_uv.json",
+  "parts": [
+   "head",
+   "hair_lock_*",
+   "braid*",
+   "neck"
+  ],
+  "gain": 1.45
+ }
+}

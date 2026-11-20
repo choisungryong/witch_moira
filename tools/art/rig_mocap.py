@@ -216,6 +216,11 @@ def retarget_clip(c, skin, src, mp, name, cfg_clip, fps, ground_mps_model, sink_
                 if tgt.startswith(("thigh", "shin", "tarsal", "toe")):
                     continue
                 d = V(tuple(end_point(P, b) - end_point(P, a)))
+                hold = (cfg_clip.get("hold") or {}).get(tgt[-1])
+                if hold and d.length > 1e-6:   # 지팡이 쥔 팔: 원본 방향을 고정 자세 방향 쪽으로 k만큼 끌어당긴다(달릴 때 흔들림을 줄이고 손목을 세움)
+                    key = "upper" if tgt.startswith("upper_arm") else ("fore" if tgt.startswith("forearm") else "hand")
+                    hd = V(tuple(hold[key]))
+                    d = (d.normalized() * (1 - hold["k"]) + hd.normalized() * hold["k"]).normalized()
                 if d.length < 1e-6:
                     S.place(tgt)
                     continue

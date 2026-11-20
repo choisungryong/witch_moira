@@ -10,7 +10,7 @@
  "fit": "D:/Project/witch-moira-work/char3d/a8/frost/body_fit.npz",
  "albedo": "D:/Project/witch-moira-work/char3d/a8/frost/albedo.png",
  "skirt_mesh_npz": "D:/Project/witch-moira-work/char3d/a7/frost/mesh.npz",
- "skirt_albedo": "D:/Project/witch-moira-work/char3d/a7/frost/albedo.png",
+ "skirt_albedo": "D:/Project/witch-moira-work/char3d/a8/frost/outfit_albedo.png",
  "actions": "D:/Project/witch-moira-work/downloads/quaternius-ual/x/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
  "clips": [
   {

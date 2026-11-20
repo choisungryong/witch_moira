@@ -1,0 +1,90 @@
+{
+ "_about": "냉기 마녀 기본 몸 판의 조립 설정(base_build.py). 경로는 내려받은 원본(읽기만)과 작업 폴더.",
+ "name": "ember",
+ "body": "D:/Project/witch-moira-work/downloads/quaternius-ubc/x/Universal Base Characters[Standard]/Base Characters/Godot - UE/Superhero_Female_FullBody.gltf",
+ "hair_tint": [
+  0.8,
+  0.8,
+  0.88
+ ],
+ "fit": "D:/Project/witch-moira-work/char3d/a8/ember/body_fit.npz",
+ "albedo": "D:/Project/witch-moira-work/char3d/a8/ember/albedo.png",
+ "skirt_mesh_npz": "D:/Project/witch-moira-work/char3d/a7/ember/mesh.npz",
+ "skirt_albedo": "D:/Project/witch-moira-work/char3d/a8/ember/outfit_albedo.png",
+ "actions": "D:/Project/witch-moira-work/downloads/quaternius-ual/x/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
+ "clips": [
+  {
+   "name": "run",
+   "src": "Jog_Fwd_Loop",
+   "seconds": 0.65
+  },
+  {
+   "name": "idle",
+   "src": "Idle_Loop",
+   "seconds": 2.5
+  },
+  {
+   "name": "cast",
+   "src": "Spell_Simple_Shoot",
+   "seconds": 0.6
+  },
+  {
+   "name": "hit",
+   "src": "Hit_Chest",
+   "seconds": 0.3333
+  },
+  {
+   "name": "death",
+   "src": "Death01",
+   "seconds": 2.4
+  },
+  {
+   "name": "dodge",
+   "src": "Roll",
+   "seconds": 0.5
+  },
+  {
+   "name": "walk",
+   "src": "Walk_Loop",
+   "seconds": 1.3333
+  },
+  {
+   "name": "run_natural",
+   "src": "Jog_Fwd_Loop",
+   "seconds": 0.9333
+  },
+  {
+   "name": "cast_enter",
+   "src": "Spell_Simple_Enter",
+   "seconds": 0.5333
+  },
+  {
+   "name": "cast_loop",
+   "src": "Spell_Simple_Idle_Loop",
+   "seconds": 2.1
+  },
+  {
+   "name": "cast_exit",
+   "src": "Spell_Simple_Exit",
+   "seconds": 0.4333
+  }
+ ],
+ "hair_gain": 0.85,
+ "drop_eyes": true,
+ "transplant": [
+  "skirt",
+  "neck",
+  "head",
+  "hair_lock",
+  "foot_"
+ ],
+ "drop_groups": [
+  "Head",
+  "foot_l",
+  "foot_r",
+  "ball_l",
+  "ball_r",
+  "ball_leaf_l",
+  "ball_leaf_r"
+ ]
+}

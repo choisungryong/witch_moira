@@ -232,6 +232,34 @@ def rasterize_uv(verts, normals, tris, uv, groups_v, TS, group_index):
     return dict(ix=ix.astype(np.int32), iy=iy.astype(np.int32), P=P, N=N, part=part)
 
 
+def outfit_albedo(cfgb, out):
+    """옛 모델 알베도에서 머리·머리카락·목 부위 사각형만 gain배 밝게 해 따로 낸다(게임 조명에서 머리가 어둡게 보이는 것을 텍스처로 보정).
+    cfgb.outfit_boost = {src_albedo, src_uv(parts_uv.json), parts(패턴 목록), gain}."""
+    import fnmatch
+    from PIL import Image
+    spec = cfgb["outfit_boost"]
+    im = np.asarray(Image.open(spec["src_albedo"]).convert("RGB"), np.float32) / 255.0
+    rects = json.loads(Path(spec["src_uv"]).read_text(encoding="utf-8"))
+    g = float(spec.get("gain", 1.5))
+    for name, (x0, y0, w, h, _s) in rects.items():
+        if any(fnmatch.fnmatch(name, q) for q in spec["parts"]):
+            im[y0:y0 + h, x0:x0 + w] = np.clip(im[y0:y0 + h, x0:x0 + w] * g, 0, 1)
+    Image.fromarray((im * 255 + 0.5).astype(np.uint8)).save(out / "outfit_albedo.png")
+
+
+def lava_arm(atlas, tex, names, spec, out):
+    """원소 팔(오른쪽, 용암): 그림의 어두운 현무암 바탕은 그대로 두고 밝은 주황 갈라짐을 발광 가면으로 낸다."""
+    from PIL import Image
+    ix, iy, P, part = tex["ix"], tex["iy"], tex["P"], tex["part"]
+    side = np.isin(part, [names.index("arm"), names.index("hand")]) & (P[:, 0] < -0.05)
+    col = atlas[iy[side], ix[side]]
+    w = np.clip((col[:, 0] - spec.get("r_min", 0.55)) / 0.25, 0, 1) * np.clip((col[:, 0] - col[:, 2] - 0.25) / 0.25, 0, 1)
+    em = np.zeros(atlas.shape, np.float32)
+    em[iy[side], ix[side]] = np.array(spec.get("vein_color", [1.0, 0.45, 0.1]), np.float32)[None, :] * w[:, None]
+    Image.fromarray((np.clip(em, 0, 1) * 255 + 0.5).astype(np.uint8)).save(out / "emission.png")
+    return atlas
+
+
 def ice_arm(atlas, tex, names, spec, out):
     """왼팔(원소 팔): 원화 팔 그림(서리 결과 푸른 핏줄)을 살리되 반투명한 느낌을 없앤다. 바탕은 그림 색을 얼음빛 바탕(살색보다 푸르고 어두움)과 섞고,
     채도 높은 푸른 선(핏줄)은 그림 그대로 두며 그 세기를 발광 가면(emission.png)으로 낸다. spec: color, mix(바탕 비율), vein_sat, vein_color."""
@@ -333,6 +361,10 @@ def run(cfg_path, dump_path, out_dir, log=print):
                                outside_w=float(cfgb.get("outside_w", 0.15)))
     if cfgb.get("ice_arm"):
         atlas = ice_arm(atlas, tex, names, cfgb["ice_arm"], out)
+    if cfgb.get("lava_arm"):
+        atlas = lava_arm(atlas, tex, names, cfgb["lava_arm"], out)
+    if cfgb.get("outfit_boost"):
+        outfit_albedo(cfgb, out)
     if b.get("sharpen", 0) > 0:
         from scipy import ndimage as ndi
         sig = float(b.get("sharpen_sigma", 1.2)) * TS / 2048.0

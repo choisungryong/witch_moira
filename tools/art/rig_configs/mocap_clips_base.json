@@ -10,12 +10,52 @@
    "loop": true,
    "lock": true,
    "lean_scale": 0.7,
-   "stance_thresh": 0.06
+   "stance_thresh": 0.06,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
   },
   "idle": {
    "action": "Idle_Loop",
    "seconds": 2.5,
-   "loop": true
+   "loop": true,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
   },
   "cast": {
    "action": "Spell_Simple_Shoot",
@@ -42,14 +82,54 @@
    "loop": true,
    "lock": true,
    "ground_mps_game": 1.8,
-   "lean_scale": 0.8
+   "lean_scale": 0.8,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
   },
   "run_sprint": {
    "action": "Sprint_Loop",
    "seconds": 0.65,
    "loop": true,
    "lock": true,
-   "lean_scale": 0.7
+   "lean_scale": 0.7,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
   },
   "run_jog_natural": {
    "action": "Jog_Fwd_Loop",
@@ -57,7 +137,27 @@
    "loop": true,
    "lock": true,
    "lean_scale": 0.7,
-   "stance_thresh": 0.06
+   "stance_thresh": 0.06,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
   },
   "cast_enter": {
    "action": "Spell_Simple_Enter",
