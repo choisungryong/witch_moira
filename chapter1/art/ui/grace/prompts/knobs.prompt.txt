@@ -1,0 +1,11 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1536x512 pixels.
+
+Semi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.
+
+SUBJECT: three identical round brass buttons side by side with wide even gaps, each about 400 pixels across, front view, each a thick domed tarnished brass ring with small rivets around a dark recessed centre disc, like pressable interface buttons. Centre symbols, engraved in bright brass: left button a counter-clockwise spiral turning back on itself; middle button two crossed slash marks; right button a hasp (a small latch clasp). Symbols are simple, bold and wordless.
+
+Background: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

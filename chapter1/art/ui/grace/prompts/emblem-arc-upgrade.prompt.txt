@@ -1,0 +1,11 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1024x1024 pixels.
+
+A single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.
+
+SUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: upgrade. Motif: the glowing core held above a stack of three rising chevron bands. The core is a small forked bolt of electricity. No figure, no hand.
+
+Background: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

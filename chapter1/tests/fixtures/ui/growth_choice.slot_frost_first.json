@@ -1,64 +1,17 @@
 {
  "screen": "growth_choice",
- "contract_version": 0,
+ "contract_version": 1,
  "variant": "slot_frost_first",
  "note": "slot machine direction: frost, fortune=none",
- "requested": [
-  "cards[].grade / grade_name (growth cards have no grade yet; D11 276-283 colours)",
-  "moment.beat (short/long)",
-  "moment.kind (first/last/normal/evolve)",
-  "giver.line (mother's one line; placeholder text, narrative-lead to confirm)",
-  "cards[].emblem (per-kind big emblem; needs a per-card art table)",
-  "cards[].line (one short line for the low card, <= 14 chars; headline goes to the side frame)",
-  "cards[].path / meter / terms (side panel)",
-  "reroll.left (core has reroll, no screen field)",
-  "exclude (a decision, not in core)",
-  "owned.* (the run's spells and graces for the bottom row)",
-  "odds line, pity ('보장') flag, resonance {partner,text} on a fated card, exclude / keep counts (all fake values)"
- ],
- "strings": {
-  "title": "은총",
-  "title_last": "마지막 은총",
-  "owned": "가진 주문",
-  "graces": "은총",
-  "reroll": "다시 빌기",
-  "combo": "조합",
-  "path": "진화까지",
-  "terms": "낱말",
-  "no_combo": "가진 기술과 조합 없음",
-  "hint": "1 2 3 고르기 · Enter 확인",
-  "free_slot": "빈 칸",
-  "exclude": "빼기",
-  "key_reroll": "R",
-  "key_exclude": "X",
-  "fated_banner": "기연!",
-  "pull": "당기기",
-  "keep": "남겨 두기",
-  "slot_title": "은총",
-  "lever": "당기기"
- },
- "backdrop": "_local/shots/rs1/after-frost-1080/burst-cast_shape-ring-3-t396.png",
  "witch": {
   "id": "frost",
   "element": "frost"
  },
  "giver": {
   "line": "하나만 골라. 욕심은 오래 못 가.",
-  "mute": false,
-  "line_status": "temporary text from docs/story/GRACE-GRADES-AND-TITLE-VOICES-20261120 (narrative-lead's proposal); the storm demon does not speak",
-  "thread": false,
-  "figure": {
-   "file": "",
-   "eye": [
-    0,
-    0
-   ],
-   "caption": "임시 그림 · 새 그림 대기 (냉기 인물 없음)",
-   "draft": "no painting: a code silhouette holds the place (the giant hand is another being's mark and is not used)"
-  }
+  "mute": false
  },
  "moment": {
-  "beat": "slot",
   "kind": "first",
   "index": 4,
   "total": 11,

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless smoke test of the screen proposals: builds every fixture, plays the intro, moves the focus, confirms, re-pulls, and
 ## prints SCRIPT ERRORs (nothing is drawn: this only proves the code runs). Does not replace looking at the captures.
-##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/proposal_smoke.gd -- --proposals=growth_choice/slot_fated,growth_choice/c_two_beat
+##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/proposal_smoke.gd -- --proposals=growth_choice/e_hand
 const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
 const LayoutDump = preload("res://chapter1/tests/layout_dump.gd")
 const Parts = preload("res://chapter1/tests/proposals/title/parts.gd")
@@ -12,7 +12,7 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 func _run() -> void:
-	var names: Array = ["growth_choice/slot_fated", "growth_choice/c_two_beat", "growth_choice/b_seal", "growth_choice/a_oath"]
+	var names: Array = ["growth_choice/e_hand"]
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--proposals="): names = arg.trim_prefix("--proposals=").split(",")
 		elif arg.begins_with("--dump-dir="): dump_dir = arg.trim_prefix("--dump-dir=")
@@ -28,7 +28,7 @@ func _run() -> void:
 		for f in DirAccess.get_files_at(FIXTURE_DIR):
 			if not f.begins_with("growth_choice.") or not f.ends_with(".json"): continue
 			var is_slot := f.begins_with("growth_choice.slot_")
-			if is_slot != name_.ends_with("slot_fated"): continue
+			if not is_slot: continue
 			var contract := Kit.read_json(FIXTURE_DIR + f)
 			var node: Control = script.make(contract)
 			root.add_child(node)

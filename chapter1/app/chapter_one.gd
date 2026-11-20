@@ -86,6 +86,9 @@ func _ready__chapter() -> void:
 	hud.setup(self)
 	hud.start.connect(start_run)
 	hud.choice.connect(choose)
+	hud.grace_reroll.connect(grace_reroll)
+	hud.grace_banish.connect(grace_banish)
+	hud.grace_hold.connect(grace_hold)
 	hud.equipment.connect(open_equipment)
 	hud.close_equipment.connect(close_equipment)
 	hud.equip_item.connect(equip_item)
@@ -160,6 +163,19 @@ func retry() -> void:
 func choose(token: String, card_id: String) -> void:
 	if run.choose(token,card_id):
 		hud.invalidate();audio.play_ui("equip",run.tick)
+	_consume_events()
+
+## The grace screen's tools (D13 K3a), asked of the core exactly as the pick is: the core decides, the screen is rebuilt from what it now says.
+func grace_reroll(token: String) -> void:
+	if run.reroll_offer(token):hud.invalidate()
+	_consume_events()
+
+func grace_banish(token: String, card_id: String) -> void:
+	if run.banish_offer(token,card_id):hud.invalidate()
+	_consume_events()
+
+func grace_hold(token: String, card_id: String) -> void:
+	if run.hold_offer(token,card_id):hud.invalidate()
 	_consume_events()
 
 func open_equipment() -> void:
@@ -364,14 +380,14 @@ func _apply_trial() -> void:
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
 	for part in parts:
-		if part in ["spells","rhythm","descent","pace"]:trial_switches.append(part)
-		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace), ignored"%part)
+		if part in ["spells","rhythm","descent","pace","grace"]:trial_switches.append(part)
+		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace), ignored"%part)
 	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
 	# The run opening (D15 B) is the long one unless asked otherwise: the app has no play counter yet (no schema change).
 	if "--chapter1-opening=returning" in _user_args():run.opening_first_visit=false
 	# rhythm and elites both change the one tuning document, so it is read once and handed over once.
 	# "pace" (D19 C1) is the rhythm with the first growth-pace values in the in-memory copy (level table, seal kills, guardian level, sweep bonus).
-	if "rhythm" in parts or "elites" in parts or "pace" in parts:
+	if "rhythm" in parts or "elites" in parts or "pace" in parts or "grace" in parts:
 		var tuning_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if tuning_doc is Dictionary:
 			if ("rhythm" in parts or "pace" in parts) and tuning_doc.get("rhythm") is Dictionary:
@@ -381,6 +397,10 @@ func _apply_trial() -> void:
 			# The strong elites (D13 W4-a) and the shrine / chest they guard (W5-a) go on together: a site is guarded by an elite.
 			if "elites" in parts and tuning_doc.get("elites") is Dictionary and tuning_doc.get("extras") is Dictionary:
 				tuning_doc["elites"]["enabled"]=true;tuning_doc["extras"]["enabled"]=true
+			# "grace" (A8 G6): the grace block and its grades on, so the grade faces and the jackpot order of the grace screen can be seen (the data file stays off).
+			if "grace" in parts and tuning_doc.get("grace") is Dictionary:
+				tuning_doc["grace"]["enabled"]=true
+				if tuning_doc["grace"].get("grades") is Dictionary:tuning_doc["grace"]["grades"]["enabled"]=true
 			if not run.set_tuning(tuning_doc):push_warning("trial tuning refused: "+str(run.errors))
 	if "spells" in parts:
 		var spells_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/run_spells.json"))

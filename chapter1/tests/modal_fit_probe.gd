@@ -97,28 +97,15 @@ func _in_card(node: Node, stop: Node) -> bool:
 	return false
 
 func _measure_boon() -> Dictionary:
-	var hud = view.hud
-	var button := _find_button(hud.modal,["서약 선택"])
-	var out := {"kind":"boon","tick":view.run.tick,"found":button != null}
-	if button == null: return out
-	var modal_rect: Rect2 = hud.modal.get_global_rect()
-	var most := 0
-	var low_button := 0.0
+	# the grace screen (A8 G6) is a fixed 1600 x 900 composition: every card must lie inside the canvas
+	var screen = view.hud._grace_screen
+	var out := {"kind":"boon","tick":view.run.tick,"found":screen != null}
+	if screen == null: return out
 	var inside := true
-	var stack: Array = [hud.modal]
-	while not stack.is_empty():
-		var node: Node = stack.pop_back()
-		if node is Button and String(node.text).begins_with("서약 선택"):
-			var r: Rect2 = node.get_global_rect()
-			low_button = maxf(low_button,r.end.y)
-			if not _canvas().encloses(r.grow(-1)) or not modal_rect.encloses(r.grow(-1)): inside = false
-		if node is Label and _in_card(node,hud.modal):
-			most = maxi(most,node.get_line_count())
-		stack.append_array(node.get_children())
-	out.lines = most
-	out.modal = [snappedf(modal_rect.position.x,.1),snappedf(modal_rect.position.y,.1),snappedf(modal_rect.size.x,.1),snappedf(modal_rect.size.y,.1)]
+	for card in screen.card_nodes:
+		if not _canvas().encloses((card as Control).get_global_rect().grow(-1)): inside = false
 	out.buttons_inside = inside
-	out.window_inside = _canvas().encloses(modal_rect)
+	out.window_inside = _canvas().encloses(screen.get_global_rect())
 	out.pass_ = inside and bool(out.window_inside)
 	return out
 

@@ -91,6 +91,7 @@ var profile_tag := "dump"
 var tree_shots := false
 var result_mock := false
 var choice_wait := -1
+var choice_frames := 8   ## frames between the choice window opening and its dump; --choice-frames=<n> (the grace screen's intro is 0.45 s, the long one 1.8 s)
 var notice_shots := false
 var flow_log: Array = []
 var flow_shots := ""
@@ -141,6 +142,7 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--dump="): out_path = arg.trim_prefix("--dump=")
 		elif arg.begins_with("--primary="): primary = arg.trim_prefix("--primary=")
+		elif arg.begins_with("--choice-frames="): choice_frames = int(arg.trim_prefix("--choice-frames="))
 		elif arg.begins_with("--until="): until_tick = int(arg.trim_prefix("--until="))
 		elif arg.begins_with("--wall-limit="): wall_limit_s = int(arg.trim_prefix("--wall-limit="))
 		elif arg.begins_with("--shots="): shots_dir = arg.trim_prefix("--shots=")
@@ -655,7 +657,7 @@ func _finish() -> void:
 func _choice_moment(run: RefCounted) -> void:
 	if choice_dumps >= 2: return
 	if run.mode == "choice" and choice_wait < 0:
-		choice_wait = frame+8
+		choice_wait = frame+choice_frames
 		view._pilot = false
 	elif choice_wait >= 0 and frame >= choice_wait:
 		choice_dumps += 1; _dump("choice-%d" % choice_dumps)

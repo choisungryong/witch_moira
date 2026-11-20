@@ -6,6 +6,9 @@ extends RefCounted
 ## UI consumes run state; only explicit signals request core transitions.
 signal start(primary: String)
 signal choice(token: String, card_id: String)
+signal grace_reroll(token: String)
+signal grace_banish(token: String, card_id: String)
+signal grace_hold(token: String, card_id: String)
 signal equipment
 signal close_equipment
 signal equip_item(uid: int)
@@ -141,7 +144,7 @@ func _set_text(control: Control,value: String) -> void:
 func sync__cloister(run: RefCounted, delta: float) -> void:
 	_toast_left=maxf(0,_toast_left-delta)
 	var signature: String=run.mode
-	if run.mode=="choice": signature+=str(run.get_offer().get("token",""))
+	if run.mode=="choice": signature+=_choice_signature(_frame_growth.get("offer",{}))
 	if run.mode=="inventory": signature+=str(run.equipped)+str(run.inventory.size())+str(_selected_item)
 	var mode_changed := signature!=_last_signature
 	if mode_changed:
@@ -190,29 +193,6 @@ func _build_modal__cloister(run: RefCounted) -> void:
 			box.add_child(_motion_control())
 			box.add_child(_label(menu_scope,15,Color("a69a86")))
 			if temporary_art:box.add_child(_label("캐릭터와 음향 일부는 제작 중입니다.",14,Color("a6a692")))
-		"choice":
-			var offer: Dictionary=run.get_offer()
-			box.add_child(_label("성장 선택",32,Color("e4d09b")))
-			box.add_child(_label("강화할 기술을 선택하세요. 선택하는 동안 전투가 멈춥니다.",17))
-			var cards := HBoxContainer.new();cards.add_theme_constant_override("separation",18)
-			cards.size_flags_vertical=Control.SIZE_EXPAND_FILL;box.add_child(cards)
-			for card in offer.get("cards",[]):
-				var panel := PanelContainer.new();panel.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-				panel.add_theme_stylebox_override("panel",_style(Color("2a241c"),Color("8f744b")))
-				cards.add_child(panel)
-				var column := VBoxContainer.new();column.add_theme_constant_override("separation",14);panel.add_child(column)
-				var emblem := Emblem.new()
-				emblem.custom_minimum_size=Vector2(42,42)
-				emblem.element=String(card.get("skill_id","chapter1.skill.ember")).get_slice(".",2)
-				emblem.tint={"ember":Color("e88b43"),"frost":Color("8ac8de"),"arc":Color("b5bde4")}.get(emblem.element,Color("bc9a63"))
-				column.add_child(emblem)
-				column.add_child(_label(Loc.t(String(card.title_key)),25,Color("e5d19b")))
-				column.add_child(_label({"unlock":"새 기술","rank":"기술 강화","passive":"진화 준비","evolve":"기술 진화"}.get(card.kind,""),16,Color("91bca6")))
-				column.add_child(_label(_card_description(card,run),17))
-				var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;column.add_child(space)
-				var token: String=offer.token
-				var card_id: String=card.id
-				column.add_child(_button("선택",func():choice.emit(token,card_id)))
 		"inventory": _inventory(box,run)
 		"paused":
 			box.add_child(_label("잠시 멈춤",34))
@@ -707,11 +687,7 @@ func _build_modal__q38(run: RefCounted) -> void:
 	modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	modal.offset_left=90;modal.offset_right=-90;modal.offset_top=104;modal.offset_bottom=-76
 	if overlay.visible:
-		if run.mode=="choice" and not stash_open:
-			modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-			modal.offset_left=-630;modal.offset_right=630;modal.offset_top=-340;modal.offset_bottom=340
-			_growth_cards38(run)
-		elif run.mode=="inventory" and not stash_open:
+		if run.mode=="inventory" and not stash_open:
 			modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 			modal.offset_left=-680;modal.offset_right=680;modal.offset_top=-300;modal.offset_bottom=300
 		_decorate38(modal)
@@ -719,33 +695,6 @@ func _build_modal__q38(run: RefCounted) -> void:
 	elif previous and _focus_return38!=null:
 		var owner = _focus_return38.get_ref()
 		if is_instance_valid(owner):owner.grab_focus.call_deferred()
-
-func _growth_cards38__q38(run: RefCounted) -> void:
-	# Preserve the authoritative token/card callbacks built by the inherited HUD.
-	var box := modal.get_child(0)
-	var cards := box.get_child(2)
-	var offer: Dictionary=run.get_offer()
-	box.add_theme_constant_override("separation",10)
-	for i in cards.get_child_count():
-		var panel := cards.get_child(i)
-		var card: Dictionary=offer.cards[i]
-		var element := String(card.get("skill_id","")).get_slice(".",2)
-		var tint: Color={"ember":Palette.FIRE_TEXT,"frost":Palette.FROST_TEXT,"arc":Palette.ARC_TEXT}.get(element,BRASS38)
-		var frame := _style(Palette.SURFACE_RAISED,tint.darkened(.35));frame.border_width_top=4
-		panel.add_theme_stylebox_override("panel",frame)
-		var column := panel.get_child(0)
-		column.add_theme_constant_override("separation",8)
-		var old_icon := column.get_child(0)
-		column.remove_child(old_icon);old_icon.queue_free()
-		var crest := ElementSeal38.new();crest.element=element;crest.tint=tint
-		crest.custom_minimum_size=Vector2(70,70)
-		column.add_child(crest);column.move_child(crest,0)
-		column.get_child(2).add_theme_color_override("font_color",tint)
-		column.get_child(3).add_theme_font_size_override("font_size",18)
-		var spacer := column.get_child(4)
-		spacer.size_flags_vertical=Control.SIZE_FILL;spacer.custom_minimum_size.y=4
-		var button := column.get_child(column.get_child_count()-1)
-		button.text="서약 선택"
 
 func _inventory(box: VBoxContainer,run: RefCounted) -> void:
 	_inventory__q17(box,run)
@@ -1168,31 +1117,6 @@ func _card_description(card: Dictionary,run: RefCounted) -> String:
 	if card.get("skill_id","")=="chapter1.skill.frost":text=text.replace("이동속도 -","적 이동 속도 -")
 	return text
 
-func _growth_cards38(run: RefCounted) -> void:
-	_growth_cards38__q38(run)
-	var cards := modal.get_child(0).get_child(2)
-	for panel in cards.get_children():
-		var column := panel.get_child(0) as VBoxContainer
-		# The description scrolls inside the card when the window is too short for it; the pick button stays in view
-		# (a card with 8+ lines used to grow the window past the bottom of the screen). The spacer keeps child index 4.
-		var description := column.get_child(3) as Label
-		column.remove_child(description)
-		var scroll := ScrollContainer.new();scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
-		scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.name="CardText"
-		description.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-		scroll.add_child(description);column.add_child(scroll);column.move_child(scroll,3)
-		var spacer := column.get_child(4) as Control
-		spacer.size_flags_vertical=Control.SIZE_FILL
-		spacer.custom_minimum_size.y=8
-	# A run with the spell composition on: its own card lines (name, kind, changes, interlocks). Off: nothing below runs.
-	var spell_view: Dictionary=run.run_spells_view()
-	if bool(spell_view.get("enabled",false)):
-		var cards_offered: Array=run.get_offer().get("cards",[])
-		for i in mini(cards.get_child_count(),cards_offered.size()):
-			SpellCard.dress(self,cards.get_child(i),cards_offered[i],run,spell_view)
-		# Spell cards carry more lines: the window is a little taller (still inside the 900 canvas, clear of the top bar).
-		modal.offset_top=-356;modal.offset_bottom=356
-
 func _build_modal__q45(run: RefCounted) -> void:
 	_build_modal__q41(run)
 	if not overlay.visible or stash_open:return
@@ -1296,12 +1220,57 @@ func sync__q47(run: RefCounted,delta: float) -> void:
 	# (The potion wait text belonged to the hidden dash label; the visible plates are composed in _compose_frame.)
 
 func _build_modal(run: RefCounted) -> void:
-	_build_modal__q45(run)
 	if run.mode=="choice" and not stash_open:
-		var box := modal.get_child(0) as VBoxContainer
-		if box!=null and box.get_child_count()>1 and box.get_child(1) is Label:
-			box.get_child(1).text="기술을 선택하세요. 선택 중에는 전투와 Q 회복이 멈춥니다."
+		_build_grace_screen(run);return
+	_free_grace_screen()
+	if run.mode!="paused":_grace_token_shown=""   # a pause keeps it: the same offer shown again after Esc has no second intro
+	_build_modal__q45(run)
 	_add_flow_buttons(run)
+
+# ---- the grace screen (A8 G6): the choice window is chapter1/view/hud/screens/growth_choice.gd on a contract ----
+## The host's part only (T8 3): ask the adapter for the contract when the window is rebuilt, apply it, hand the signals on. Nothing here decides anything.
+var _grace_screen: Control
+var _grace_token_shown := ""
+var _overlay_base := Color(0,0,0,-1)
+
+## Window identity: the offer token and the cards standing in it (a card taken out and refilled changes it).
+func _choice_signature(offer: Dictionary) -> String:
+	var out: String=String(offer.get("token",""))
+	for card in offer.get("cards",[]):out+="|"+String(card.id)
+	return out
+
+func _free_grace_screen() -> void:
+	if is_instance_valid(_grace_screen):_grace_screen.queue_free()
+	_grace_screen=null
+	if _overlay_base.a>=0.0:
+		overlay.color=_overlay_base;modal.visible=true;_overlay_base=Color(0,0,0,-1)
+
+func _build_grace_screen(run: RefCounted) -> void:
+	if is_instance_valid(_grace_screen):_grace_screen.queue_free()
+	_grace_screen=null
+	if _overlay_base.a<0.0:_overlay_base=overlay.color
+	# the overlay stays (it stops clicks reaching the world and other layers read it as "a window is open"); the screen draws its own dark stage
+	overlay.visible=true;overlay.color=Color(0,0,0,0);modal.visible=false
+	for child in modal.get_children():modal.remove_child(child);child.queue_free()
+	var describe:=func(card: Dictionary) -> String:return _card_description(card,run)
+	var contract: Dictionary=GraceContract.build(run,{"growth":_frame_growth,"describe":describe})
+	# The adapter may have drawn the offer just now: the window's identity is the one the next frame will read.
+	_last_signature="choice"+_choice_signature(run.growth.snapshot().get("offer",{}))
+	if contract.get("cards",[]).is_empty():return
+	var screen := GraceScreen.new()
+	screen.apply(contract)
+	screen.reduce_motion=not motion_enabled
+	var token: String=String(contract.offer_ref)
+	screen.chosen.connect(func(card_ref: String):choice.emit(token,card_ref))
+	screen.reroll.connect(func():grace_reroll.emit(token))
+	screen.exclude.connect(func(card_ref: String):grace_banish.emit(token,card_ref))
+	screen.keep.connect(func(card_ref: String):grace_hold.emit(token,card_ref))
+	root.add_child(screen)
+	_grace_screen=screen
+	# the same offer shown again (a card refilled, the pause closed): no second intro
+	if token==_grace_token_shown:screen.show_settled()
+	else:screen.play_intro()
+	_grace_token_shown=token
 
 # ---- chapter1/view/ui50/chapter_hud_quality50.gd ----
 ## Share the unchanged heading font within this HUD. No gameplay or callback changes.
@@ -1827,7 +1796,8 @@ func _add_growth_box(run: RefCounted) -> void:
 # ---- D4-U run flow (pause, result buttons, confirm windows) and D5-U refused-save notice ----
 ## Presentation only. Every button asks through a signal; chapter_one.gd decides and acts. All text here is a key (Loc.t).
 const Loc=preload("res://chapter1/view/loc.gd")
-const SpellCard=preload("res://chapter1/view/hud/spell_card.gd")
+const GraceScreen=preload("res://chapter1/view/hud/screens/growth_choice.gd")
+const GraceContract=preload("res://chapter1/view/contracts/growth_choice_contract.gd")
 const FlowDialog=preload("res://chapter1/view/hud/flow_dialog.gd")
 const CombatRecordView=preload("res://chapter1/view/hud/combat_record_view.gd")
 ## The defeat window comes up this long after the fall (the scene stays on screen). An abandoned run shows it at once.

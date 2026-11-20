@@ -41,18 +41,11 @@ GODOT_PY = HERE / 'godot.py'
 SLOT = ['slot_frost_normal', 'slot_frost_scarce', 'slot_frost_fated', 'slot_frost_first', 'slot_ember_normal', 'slot_ember_scarce',
         'slot_ember_fated', 'slot_ember_pity', 'slot_arc_normal', 'slot_arc_scarce', 'slot_arc_fated', 'slot_long']
 SLOT_STRIP = ['slot_frost_fated', 'slot_ember_fated', 'slot_arc_fated', 'slot_ember_pity', 'slot_frost_normal', 'slot_ember_normal', 'slot_arc_normal', 'slot_frost_scarce']
-OLD_FIX = ['normal', 'long', 'first', 'milestone', 'rare', 'normal_ember', 'normal_arc']
 TITLE_FIX = ['normal', 'long', 'fresh', 'profile_off', 'points_many', 'focus_ember', 'focus_storm', 'no_devil', 'devil_shade']
 RES = ['1920x1080', '1280x720']
 
 # proposal -> {prefix, fixtures for stills, fixtures for strips and input, kinds it supports}
 PROPOSALS = {
-    'growth_choice/slot_fated': {'prefix': None, 'still': SLOT, 'strip': SLOT_STRIP, 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_frost_fated'],
-                                 'kinds': ['still', 'strip', 'input', 'reduce'], 'strip_res': ['1920x1080']},
-    'growth_choice/grace_parts_sheet': {'prefix': None, 'still': ['slot_ember_normal', 'slot_frost_normal', 'slot_arc_normal', 'slot_long'], 'strip': [], 'input': ['slot_ember_normal'], 'reduce': [],
-                                        'kinds': ['still', 'input'], 'strip_res': ['1920x1080']},
-    'growth_choice/d_table': {'prefix': None, 'still': SLOT, 'strip': ['slot_ember_fated', 'slot_frost_normal'], 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_ember_fated'],
-                              'kinds': ['still', 'strip-intro', 'strip-confirm', 'input', 'reduce'], 'strip_res': ['1920x1080']},
     'growth_choice/e_hand': {'prefix': None, 'still': SLOT, 'strip': ['slot_ember_fated', 'slot_frost_fated', 'slot_arc_fated', 'slot_frost_normal', 'slot_long'], 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_ember_fated'],
                              'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'input', 'reduce'], 'strip_res': ['1920x1080']},
     'title/a': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
@@ -60,11 +53,7 @@ PROPOSALS = {
     'title/c': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
                 'kinds': ['still', 'still-title', 'strip-title', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'input'], 'strip_res': ['1920x1080']},
 }
-OLD = {
-    'growth_choice/c_two_beat': {'prefix': None, 'still': OLD_FIX, 'strip': ['normal', 'milestone', 'rare', 'first', 'long'], 'input': [], 'reduce': [], 'kinds': ['still', 'strip'], 'strip_res': ['1920x1080']},
-    'growth_choice/b_seal': {'prefix': None, 'still': OLD_FIX, 'strip': ['rare', 'milestone'], 'input': [], 'reduce': [], 'kinds': ['still', 'strip'], 'strip_res': ['1920x1080']},
-    'growth_choice/a_oath': {'prefix': None, 'still': OLD_FIX, 'strip': [], 'input': [], 'reduce': [], 'kinds': ['still'], 'strip_res': []},
-}
+OLD = {}
 ALL_KINDS = ['still', 'still-title', 'strip', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'strip-title', 'input', 'reduce']
 
 

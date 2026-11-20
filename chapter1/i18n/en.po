@@ -1197,3 +1197,157 @@ msgid "descent.kills"
 msgid_plural "descent.kills"
 msgstr[0] "{n} kill"
 msgstr[1] "{n} kills"
+
+#. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
+
+#. Title plate of the grace screen
+msgid "grace.screen.title"
+msgstr "Grace"
+
+#. Title plate of the last offer of a run
+msgid "grace.screen.title_last"
+msgstr "Last grace"
+
+#. Band along the bottom: the spells owned
+msgid "grace.screen.owned"
+msgstr "Spells"
+
+#. Band along the bottom: the grace slots
+msgid "grace.screen.graces"
+msgstr "Graces"
+
+#. Card row: the pair this card forms
+msgid "grace.screen.combo"
+msgstr "Combo"
+
+#. Knob name: throw the standing offer away for a new one
+msgid "grace.screen.reroll"
+msgstr "Reroll"
+
+#. Knob name: take the focused card out of this run's pool
+msgid "grace.screen.exclude"
+msgstr "Banish"
+
+#. Knob name: set the focused card aside for the next offer
+msgid "grace.screen.keep"
+msgstr "Hold"
+
+#. The stamped word on a jackpot card
+msgid "grace.screen.banner"
+msgstr "Jackpot!"
+
+#. Under the title plate. {n}: the level being chosen
+msgid "grace.screen.moment"
+msgstr "Level {n}"
+
+#. Odds line (grades on only). {jackpot}, {rare}: percent, {n}: offers until the guarantee
+msgid "grace.screen.odds"
+msgstr "Jackpot {jackpot}% · Rare {rare}% · Sure in {n}"
+
+#. Card header of an ordinary card
+msgid "grace.screen.header.oath"
+msgstr "Oath"
+
+#. Card header of a borrowed spell. {demon}: the demon's name
+msgid "grace.screen.header.trade"
+msgstr "Trade · {demon}"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.ember"
+msgstr "Demon of Flame"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.frost"
+msgstr "Demon of Frost"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.arc"
+msgstr "Demon of Storm"
+
+#. Card kind line
+msgid "grace.screen.kind.new"
+msgstr "New spell"
+
+#. Card kind line
+msgid "grace.screen.kind.upgrade"
+msgstr "Upgrade"
+
+#. Card kind line
+msgid "grace.screen.kind.prep"
+msgstr "Evolution prep"
+
+#. Card kind line
+msgid "grace.screen.kind.evolve"
+msgstr "Evolution"
+
+#. Grade name on a rare card
+msgid "grace.screen.grade.rare"
+msgstr "Rare"
+
+#. Grade name on a jackpot card
+msgid "grace.screen.grade.jackpot"
+msgstr "Jackpot"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.damage"
+msgstr "Damage"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.interval"
+msgstr "Interval"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.radius"
+msgstr "Radius"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.projectiles"
+msgstr "Shots"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.pierce"
+msgstr "Pierce"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.targets"
+msgstr "Targets"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.blast"
+msgstr "Blast"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.branches"
+msgstr "Branches"
+
+#. Side note: how far the spell is from evolving
+msgid "grace.screen.path.label"
+msgstr "To evolution"
+
+#. Side note: the passive an evolution needs
+msgid "grace.screen.path.passive"
+msgstr "Rune"
+
+#. Side note: the partner spell an evolution needs
+msgid "grace.screen.path.partner"
+msgstr "Partner"
+
+#. The flame demon's line on an ordinary offer
+msgid "grace.screen.giver.ember.normal"
+msgstr "Pick. There is plenty left to burn."
+
+#. The flame demon's line when a jackpot card is offered
+msgid "grace.screen.giver.ember.jackpot"
+msgstr "Big, isn't it? Don't waste it."
+
+#. The frost demon's line on an ordinary offer
+msgid "grace.screen.giver.frost.normal"
+msgstr "Take only what you need."
+
+#. The frost demon's line on the first offer of a run
+msgid "grace.screen.giver.frost.first"
+msgstr "Choose one. Greed does not last."
+
+#. The frost demon's line when a jackpot card is offered
+msgid "grace.screen.giver.frost.jackpot"
+msgstr "It fell into the place I set. That is enough."

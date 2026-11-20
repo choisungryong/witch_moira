@@ -38,7 +38,7 @@ func _find_buttons(node: Node, prefix: String, out: Array) -> void:
 	if node is Button and String(node.text).begins_with(prefix): out.append(node)
 	for child in node.get_children(): _find_buttons(child,prefix,out)
 
-func _click(button: Button) -> void:
+func _click(button: Control) -> void:
 	var centre: Vector2 = view.get_window().get_final_transform()*button.get_global_rect().get_center()
 	for pressed in [true,false]:
 		var event := InputEventMouseButton.new()
@@ -99,18 +99,17 @@ func _process(_delta: float) -> bool:
 				return true
 		2:
 			if frame >= wait_until:
-				var cards: Array = []
-				_find_buttons(hud.modal,"서약 선택",cards)
+				# the grace screen (A8 G6): cards are GraceCard nodes of hud._grace_screen; Enter takes the lit card, a click takes the one under the pointer
+				var screen = hud._grace_screen
+				var cards: Array = screen.card_nodes if screen != null else []
 				if cards.size() < 2:
-					_record(current,false,{"why":"card buttons not found","count":cards.size()})
+					_record(current,false,{"why":"grace cards not found","count":cards.size()})
 					view._pilot = true; step = 1
 					return false
 				if current == "boon_mouse":
 					_click(cards[1])
 				else:
-					var owner := root.gui_get_focus_owner()
-					results["focus_owner_text"] = String(owner.text) if owner is Button else "(none)"
-					if not (owner is Button): cards[0].grab_focus()
+					results["focus_owner_text"] = "grace card %d lit" % screen.focus_index
 					_key(KEY_ENTER)
 				wait_until = frame+12
 				step = 4

@@ -1,0 +1,9 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1024x1536 pixels.
+
+A vertical card background texture, 2:3 portrait, for a dark gothic fantasy action game: aged parchment pressed over dark leather, nearly black at the edges and slightly lighter in a soft oval at the centre, a very faint amber-gold #efac59 wash in the centre, subtle worn creases. Grade jackpot: a faint radiating burst pattern behind the centre and warmer light. No figure, no symbol in the middle (the card art is placed there), no border.
+
+Full-bleed picture, no transparency and no frame around it.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

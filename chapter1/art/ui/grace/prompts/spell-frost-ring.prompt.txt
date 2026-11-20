@@ -1,0 +1,11 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1024x1024 pixels.
+
+A single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights, a bright rim along the right edge. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour, no white-hot core. Centred, filling about 85 percent of the canvas with an even margin; one or two focal details only, no fine filigree.
+
+SUBJECT: five narrow ice shards circling an empty centre: each is a pointed crystal splinter lying along its path of travel and turning on its own axis, each trails a short faint curved frost mist, with a few glittering frost specks. Viewed from a high three-quarter angle with the heads spread evenly around a circle, the middle of the circle empty and dark. No wall, no ring outline, no posts, no fence, no stone base, no figure.
+
+Background: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

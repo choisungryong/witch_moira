@@ -2894,6 +2894,774 @@
       "notes": "원본 기록(v01, SOURCE.json)이 저장소에 없어 CC0 근거를 확인할 수 없다."
     },
     {
+      "path": "ui/grace/candle.png",
+      "sha256": "eb552005a93698f53f5b2c6d5d9965595d8f02243176a574969ab6ce81614026",
+      "size": 331463,
+      "kind": "image",
+      "width": 512,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grace-candle-a1 (queue id queue-grace-candle-a1, 은총 화면 촛대(불꽃 없음))",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 512x1024 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: a tall standing candlestick, front view, 1:2 portrait: a forged blackened-iron stem on a heavy round base with brass bands, a shallow drip dish at the top holding one thick pillar candle of cream wax with melted wax running down its sides. The wick is unlit: NO flame, no glow, no smoke. No figure.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/candle.prompt.txt",
+          "sha256": "4e7cbe504c3d4d23bf56770eacb372d12bf070d2d557fdd4ff719f153561f2ca"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/demon-arc.png",
+      "sha256": "0c84dcb59292f19b9bc964bba82d8ff7ad9695096ece3107fa50c325f4594b63",
+      "size": 2004370,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture pledge-arc-full-a2 (queue id queue-pledge-arc-full-a2, 서약의 악마의 겉 · arc)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nFull-length character concept art of one glamorous ADULT demoness in her thirties, an alluring and playful dealer of power and luck who toys with the one she serves. Semi-realistic painterly dark-fantasy style, high finish, strong rim light, muted dark palette with ONE accent colour used sparingly. Vertical 2:3 portrait. She STANDS (no throne, no seat, no crown, no tiara): the whole figure is visible from the top of her horns to the soles of her boots, about 90 percent of the image height, nothing cropped, both feet on the ground. She reads as a woman, not a creature: natural human-toned skin, human eyes with pupils, flawless; short dark claws on the fingertips only. She holds NOTHING out to the viewer and carries no object in her raised hand; one hand is raised to shoulder height with the palm down and the fingers loose, as if about to set a spinning reel turning. The look is confident, teasing and tempting about power and luck only: no sexual posing, no suggestive pose, no reaching toward the viewer. Her clothing is fully opaque: thick, structured bodice and hip piece, long skirt or long coat, boots, nothing more revealing than a closed bodice with a moderate neckline and bare forearms; no sheer cloth over the body, no nudity. BACKGROUND: a flat, plain, very dark near-black charcoal (#121316) with a faint vignette, no architecture, no scenery, no ground effects, so the figure can be cut out easily; only a thin dark floor line under her feet. Her face must be a distinct individual face, not a copy of anyone else. Storm's side, and she does not speak: her lips are closed; everything is said by her eyes and posture, a slow half-lidded knowing look with one brow lifted. Face: an oval face with a high forehead and wide-set eyes with pale grey-violet irises. Hair: deep plum-black, wet and swept to one side, falling past the shoulder (NOT navy, NOT platinum, not lifted by static). A single thin, old, pale, fern-like lightning-branch scar runs naturally across the skin of her neck, an old healed mark that is only slightly lighter than her skin, with no stitches, no suture marks, no dotted line, no ladder pattern and no thread across it, and not wrapped around the neck like a band. Horns: a pair of smooth horns curving forward like a ram's, NOT forked, no crown. Outfit: a high-collared fitted jacket-bodice and long skirt in dark slate and violet with silver filigree, tall boots, fully opaque. Raindrops hang motionless in the air around her. No bell, no thread, no rope. She stands with a loose, relaxed lean and the raised hand slowly tracing a small circle in the air. Accent colour periwinkle #b9caff.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "none; copied as is (TEMPORARY figure)",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/demon-arc.prompt.txt",
+          "sha256": "c4cea35545126def9a97195e4608d196efc6892eea45ed1b7a8faa3e04c07dc3"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다 · 임시 인물"
+    },
+    {
+      "path": "ui/grace/demon-ember.png",
+      "sha256": "89085c4231d096720486574893a925ec9da21f168d985a45d7bbe2fad435a23e",
+      "size": 1798995,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture pledge-ember-full-a1 (queue id queue-pledge-ember-full-a1, 서약의 악마의 겉 · ember)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nFull-length character concept art of one glamorous ADULT demoness in her thirties, an alluring and playful dealer of power and luck who toys with the one she serves. Semi-realistic painterly dark-fantasy style, high finish, strong rim light, muted dark palette with ONE accent colour used sparingly. Vertical 2:3 portrait. She STANDS (no throne, no seat, no crown, no tiara): the whole figure is visible from the top of her horns to the soles of her boots, about 90 percent of the image height, nothing cropped, both feet on the ground. She reads as a woman, not a creature: natural human-toned skin, human eyes with pupils, flawless; short dark claws on the fingertips only. She holds NOTHING out to the viewer and carries no object in her raised hand; one hand is raised to shoulder height with the palm down and the fingers loose, as if about to set a spinning reel turning. The look is confident, teasing and tempting about power and luck only: no sexual posing, no suggestive pose, no reaching toward the viewer. Her clothing is fully opaque: thick, structured bodice and hip piece, long skirt or long coat, boots, nothing more revealing than a closed bodice with a moderate neckline and bare forearms; no sheer cloth over the body, no nudity. BACKGROUND: a flat, plain, very dark near-black charcoal (#121316) with a faint vignette, no architecture, no scenery, no ground effects, so the figure can be cut out easily; only a thin dark floor line under her feet. Her face must be a distinct individual face, not a copy of anyone else. Fire's side. Face: heart-shaped with a pointed chin, feline almond eyes with dark brown irises, straight dark brows, a wide confident mouth with a knowing curl. Hair: glossy jet black, worn in a long high ponytail with a few ember-orange strands, one shorter side-swept lock (NOT wine red, NOT chestnut brown). Horns: a short pair of smooth curved black horns that stand free, with no crown or band joining them. Outfit: close-fitting dress and short cropped jacket in charcoal black and burnt orange, thigh-length boots; a small worn leather herb pouch hangs from her belt at the hip, the only sign of an ordinary life. Embers drift in the air but no fire touches or circles her feet and nothing burns upright around her. Stands tall with her weight on one leg, free hand on the hip. Accent colour molten orange #ff943d.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "none; copied as is (TEMPORARY figure)",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/demon-ember.prompt.txt",
+          "sha256": "6ba251db854af76e37f950daf4ea45c9159fae4fc11512fa8786a166ce78c470"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다 · 임시 인물"
+    },
+    {
+      "path": "ui/grace/demon-frost.png",
+      "sha256": "d9cdab107abfe8c4427184964c1c0a0b58107b8b595f525a1571afdb37db9016",
+      "size": 2045394,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture pledge-frost-full-c-a1 (queue id queue-pledge-frost-full-c-a1, 서약의 악마의 겉 · frost 후보 c (지침 확정 뒤 다시))",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nFull-length character concept art of one glamorous ADULT demoness in her thirties, an alluring and playful dealer of power and luck who toys with the one she serves. Semi-realistic painterly dark-fantasy style, high finish, strong rim light, muted dark palette with ONE accent colour used sparingly. Vertical 2:3 portrait. She STANDS (no throne, no seat, no crown, no tiara): the whole figure is visible from the top of her horns to the soles of her boots, about 90 percent of the image height, nothing cropped, both feet on the ground. She reads as a woman, not a creature: natural human-toned skin, human eyes with pupils, flawless; short dark claws on the fingertips only. She holds NOTHING out to the viewer and carries no object in her raised hand; one hand is raised to shoulder height with the palm down and the fingers loose, as if about to set a spinning reel turning. The look is confident, teasing and tempting about power and luck only: no sexual posing, no suggestive pose, no reaching toward the viewer. Her clothing is fully opaque: thick, structured bodice and hip piece, long skirt or long coat, boots, nothing more revealing than a closed bodice with a moderate neckline and bare forearms; no sheer cloth over the body, no nudity. BACKGROUND: a flat, plain, very dark near-black charcoal (#121316) with a faint vignette, no architecture, no scenery, no ground effects, so the figure can be cut out easily; only a thin dark floor line under her feet. Her face must be a distinct individual face, not a copy of anyone else. Frost's side. Face: a round chin, thick dark brows, a clearly shaped mouth with a faint cold smile, pale natural skin tone (NOT blue or grey skin), luminous pale-cyan irises, looking straight at the viewer. Hair: deep blue-green fading to white frozen tips, gathered high on the head with part of it left hanging, no tiara (NOT blue-black, NOT silver-grey, not worn loose to the waist). Horns: one pair of long ice horns sweeping back from the temples, not joined to any crown. Outfit: flowing layered gown, a fully opaque fitted underdress in dark teal with silver ornaments and thin translucent icy outer cloth drifting over the skirt only; one small mended patch of different cloth stitched at the cuff of one sleeve, the only sign of an ordinary life. The cold stays on her hands and hem: a little frost on the hem, snow falling straight down; no vertical bars or grid-like frost. Her free hand gathers up the skirt. Walking-stand pose, one foot slightly ahead. Accent colour icy cyan #9ce7ef. Variation: a longer, narrower silhouette in a long coat-like gown with a high collar of ice crystals; the horns are shorter and more curved.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "none; copied as is (TEMPORARY figure)",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/demon-frost.prompt.txt",
+          "sha256": "31b44917fbe896d6717a66af78ea988b44a2244c0fd0bacacea3cd3780e1d549"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다 · 임시 인물"
+    },
+    {
+      "path": "ui/grace/emblem-arc-deal.png",
+      "sha256": "2a8aab72b83c287455f495d29095c6b6264d1549fbbf27625dddcc3b757f6f43",
+      "size": 1278397,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-arc-deal-a1 (queue id queue-emblem-arc-deal-a1, 성장 카드 문양 · arc · trade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: trade. Motif: the glowing core set in the middle of a round seal disc of dark plain metal with the element's mark raised on it. The core is a small forked bolt of electricity. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-arc-deal.prompt.txt",
+          "sha256": "a34ca21b69cde137b20aeb4577cefe050ee2257dfedc66fb3268f989775d8bcd"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-arc-evolve.png",
+      "sha256": "b48d439de78d8a766d15633db01cad7919fd83b3654ff5162b573d6cb61c5af5",
+      "size": 1137059,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-arc-evolve-a1 (queue id queue-emblem-arc-evolve-a1, 성장 카드 문양 · arc · evolution)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: evolution. Motif: the glowing core surrounded by a crown of short rays and a second larger thin ring around it. The core is a small forked bolt of electricity. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-arc-evolve.prompt.txt",
+          "sha256": "c2880e0156451cd4e92716103e402e3e936ef585fcba553b991e0b72892e01a2"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-arc-new.png",
+      "sha256": "6a903c954c4f936efdb95af137f1e50a64a5c45756e1e33ce643af60b05e2337",
+      "size": 1216796,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-arc-new-a2 (queue id queue-emblem-arc-new-a2, 성장 카드 문양 · arc · new skill)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: new skill. Motif: a small glowing core floating above an open pointed lancet arch. The core is a small forked bolt of electricity. No figure, no hand.\n\n\nRevision for this attempt: the open lancet arch must not show the background through it. Fill the inside of the arch with dark basalt stone, a recessed dark doorway of solid stone texture. Not one pixel of magenta may appear inside the medallion; the flat magenta is only outside the round rim.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-arc-new.prompt.txt",
+          "sha256": "20fee3fa3a750da96c717ddd975974a982a30c0e7f75b8b775d694ca22d7acd3"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-arc-upgrade.png",
+      "sha256": "1e3c3a1bab3a2c1c9f1c613c09f5ff22accebb25a342102ca4a2367f6ecef96b",
+      "size": 1184091,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-arc-upgrade-a1 (queue id queue-emblem-arc-upgrade-a1, 성장 카드 문양 · arc · upgrade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: upgrade. Motif: the glowing core held above a stack of three rising chevron bands. The core is a small forked bolt of electricity. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-arc-upgrade.prompt.txt",
+          "sha256": "8e4b3bcef343135314bebf7ef545202c5c8c415a6ee53ce0e354a4ec84ff207d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-ember-deal.png",
+      "sha256": "5636c72b5df122cf497c3d180f4b1300f11fd871be22bc019bd3b56d2454be70",
+      "size": 1279675,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-ember-deal-a1 (queue id queue-emblem-ember-deal-a1, 성장 카드 문양 · ember · trade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #ff943d (molten orange), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: trade. Motif: the glowing core set in the middle of a round seal disc of dark plain metal with the element's mark raised on it. The core is a glowing ember sphere with cracked crust. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-ember-deal.prompt.txt",
+          "sha256": "44113aab72917a1c2cc6e4fe1e396e9ae61d9a783ef6ef3adefc44eabad08197"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-ember-evolve.png",
+      "sha256": "31b1dfbb2622dc4c09a4c3f65b621f18302b765bda7848165648ac4cae084183",
+      "size": 1253281,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-ember-evolve-a1 (queue id queue-emblem-ember-evolve-a1, 성장 카드 문양 · ember · evolution)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #ff943d (molten orange), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: evolution. Motif: the glowing core surrounded by a crown of short rays and a second larger thin ring around it. The core is a glowing ember sphere with cracked crust. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-ember-evolve.prompt.txt",
+          "sha256": "6be5614f226c31a7f1a88e8b1dfcc19379d9055c367b66c7689a756d5faf4beb"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-ember-upgrade.png",
+      "sha256": "cd5cc8e2619497652be3b1aee52e91153947f58bb1aac86d63abf3278a0ef629",
+      "size": 1292464,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-ember-upgrade-a1 (queue id queue-emblem-ember-upgrade-a1, 성장 카드 문양 · ember · upgrade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #ff943d (molten orange), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: upgrade. Motif: the glowing core held above a stack of three rising chevron bands. The core is a glowing ember sphere with cracked crust. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-ember-upgrade.prompt.txt",
+          "sha256": "ed29b5e4909ee6b9a4a4965447ec4ca7a99a92c8dbd841b08d7dd5169f0705bb"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-frost-deal.png",
+      "sha256": "ce5cf0069501f7d3d8e6ecdddd8c9abbe31c8333970ca1220c7eb06dc4db6781",
+      "size": 1382754,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-frost-deal-a1 (queue id queue-emblem-frost-deal-a1, 성장 카드 문양 · frost · trade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: trade. Motif: the glowing core set in the middle of a round seal disc of dark plain metal with the element's mark raised on it. The core is a faceted ice crystal. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-frost-deal.prompt.txt",
+          "sha256": "145a7a0282d3b48e9384ef94f493f3fc5901d8eacd50ba9278ac557615443224"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-frost-evolve.png",
+      "sha256": "34aca4e36891f38299e75f1d7a9e069eab95286d1f7a867b0b1df3394d11599e",
+      "size": 1224881,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-frost-evolve-a1 (queue id queue-emblem-frost-evolve-a1, 성장 카드 문양 · frost · evolution)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: evolution. Motif: the glowing core surrounded by a crown of short rays and a second larger thin ring around it. The core is a faceted ice crystal. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-frost-evolve.prompt.txt",
+          "sha256": "209a5dc2bfc76efd1f00208a975eadebb98b12aaf61bc59df04bfba6a0bcb180"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-frost-new.png",
+      "sha256": "9b1140286770c108c5c68bce099106ea8475a35a532d0fcf56f44047f2f572f0",
+      "size": 1081969,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-frost-new-a1 (queue id queue-emblem-frost-new-a1, 성장 카드 문양 · frost · new skill)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: new skill. Motif: a small glowing core floating above an open pointed lancet arch. The core is a faceted ice crystal. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-frost-new.prompt.txt",
+          "sha256": "e263905f6d468cd89c7642ded9e8302ce22d9bf2f1d1aee9f08305a3cd770812"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/emblem-frost-upgrade.png",
+      "sha256": "5e26ff7adfcd92fcea9ca2e00b964389bcb910fc8a6a0dc624fcc6520575c5b6",
+      "size": 1120454,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture emblem-frost-upgrade-a1 (queue id queue-emblem-frost-upgrade-a1, 성장 카드 문양 · frost · upgrade)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single large round medallion emblem for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a round medallion of dark iron and basalt, front view, symmetrical. Card kind: upgrade. Motif: the glowing core held above a stack of three rising chevron bands. The core is a faceted ice crystal. No figure, no hand.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/emblem-frost-upgrade.prompt.txt",
+          "sha256": "aa57531552175302c11b8131ee130746218f257a585f94551b3046b2b0829cdd"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/frame-common.png",
+      "sha256": "aa1b9eefcd38bab155b7502dec74be6ce5947928fef037d336c680b8f7f5c88a",
+      "size": 648654,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-frame-common-a1 (queue id queue-grade-frame-common-a1, 은총 카드 테 · common)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nAn empty ornate vertical card frame for a dark gothic fantasy action game's level-up cards, 2:3 portrait, front view, symmetrical. ONLY the border exists: a band about 8 percent of the width all around; the whole inner window and everything outside the border are flat magenta so they can be cut out. Semi-realistic painterly metalwork with a bright rim light along the right and top edges, deep dark planes, readable as a shape at small size. Grade: common. Dark iron band with plain rivets and simple corner brackets, one thin inlaid enamel line in cool steel blue #91bbd4 running around the band. Modest and plain; no glow.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/frame-common.prompt.txt",
+          "sha256": "8bce1c177f3635be2e3484da1c28495943c512042c9b552fffbf29c87feb01c3"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/frame-jackpot.png",
+      "sha256": "496e9e49d4492c6c11cab2be6f05fe75e3c3317151c48af80e2bf18ba98fc320",
+      "size": 1199320,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-frame-jackpot-a1 (queue id queue-grade-frame-jackpot-a1, 은총 카드 테 · jackpot)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nAn empty ornate vertical card frame for a dark gothic fantasy action game's level-up cards, 2:3 portrait, front view, symmetrical. ONLY the border exists: a band about 8 percent of the width all around; the whole inner window and everything outside the border are flat magenta so they can be cut out. Semi-realistic painterly metalwork with a bright rim light along the right and top edges, deep dark planes, readable as a shape at small size. Grade: jackpot, the most precious. Blackened-silver band with a rich amber-gold #efac59 inlay and thin gaps of glowing amber light along the inner edge; a crown of small sharp points at the top centre and short rays of light leaking outward at the corners. Clearly more precious than the rare frame yet built the same way. No gems, no figure.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/frame-jackpot.prompt.txt",
+          "sha256": "adbfda0217e5b79557ef7fcef5c73dc1831dbd4805aa8c864ea29f7a5c10b5fb"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/frame-rare.png",
+      "sha256": "9dd45f5febd9733cdfc5e9e0f0f89736883d2963b513080b0a9aa4592118382f",
+      "size": 924301,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-frame-rare-a1 (queue id queue-grade-frame-rare-a1, 은총 카드 테 · rare)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nAn empty ornate vertical card frame for a dark gothic fantasy action game's level-up cards, 2:3 portrait, front view, symmetrical. ONLY the border exists: a band about 8 percent of the width all around; the whole inner window and everything outside the border are flat magenta so they can be cut out. Semi-realistic painterly metalwork with a bright rim light along the right and top edges, deep dark planes, readable as a shape at small size. Grade: rare. Tarnished brass band with pointed lancet-arch ornaments at the four corners and thin inlaid lines of pale gold #e0c47e around the band. Richer than the common frame, only a faint warm glow.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/frame-rare.prompt.txt",
+          "sha256": "1699fc3014535c706cf473b4706ef428ac76519564840a15c0d2f72b97683df4"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/ground-common.png",
+      "sha256": "c285dfbf2416a7be6dccb8f6820080faa34c81977e6d5af4573b2425eee48585",
+      "size": 2099606,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-bg-common-a1 (queue id queue-grade-bg-common-a1, 은총 카드 바탕 · common)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nA vertical card background texture, 2:3 portrait, for a dark gothic fantasy action game: aged parchment pressed over dark leather, nearly black at the edges and slightly lighter in a soft oval at the centre, a very faint cool steel blue #91bbd4 wash in the centre, subtle worn creases. Grade common: plain, quiet, no extra marks. No figure, no symbol in the middle (the card art is placed there), no border.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/ground-common.prompt.txt",
+          "sha256": "03d824500c7edd3331bac823e9b395881ab8cff473869b3e8a1eb10c0048fdb8"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/ground-jackpot.png",
+      "sha256": "e347ada61e888cdc1a70193e5526531e31319d4542ddba36c1dc25cb67f1223c",
+      "size": 2783882,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-bg-jackpot-a1 (queue id queue-grade-bg-jackpot-a1, 은총 카드 바탕 · jackpot)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nA vertical card background texture, 2:3 portrait, for a dark gothic fantasy action game: aged parchment pressed over dark leather, nearly black at the edges and slightly lighter in a soft oval at the centre, a very faint amber-gold #efac59 wash in the centre, subtle worn creases. Grade jackpot: a faint radiating burst pattern behind the centre and warmer light. No figure, no symbol in the middle (the card art is placed there), no border.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/ground-jackpot.prompt.txt",
+          "sha256": "657976d24e2d413d3fe9c278c4a4dd5da76c1af1faf2994d95c112114ac1e9a3"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/ground-rare.png",
+      "sha256": "fb6978d54e0f0a04bb4bffe33e5e49dc6d15cf8fff0a5c2f122c2dae813fae9a",
+      "size": 2683378,
+      "kind": "image",
+      "width": 1024,
+      "height": 1536,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grade-bg-rare-a1 (queue id queue-grade-bg-rare-a1, 은총 카드 바탕 · rare)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1536 pixels.\n\nA vertical card background texture, 2:3 portrait, for a dark gothic fantasy action game: aged parchment pressed over dark leather, nearly black at the edges and slightly lighter in a soft oval at the centre, a very faint pale gold #e0c47e wash in the centre, subtle worn creases. Grade rare: a faint ring of tiny engraved arch marks near the border. No figure, no symbol in the middle (the card art is placed there), no border.\n\nFull-bleed picture, no transparency and no frame around it.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/ground-rare.prompt.txt",
+          "sha256": "ea3ef689b96ba47bf7da8ed7239447ddebe3d5391c2af09f4d881fde614a3e7d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/jackpot-plaque.png",
+      "sha256": "f3d9f40ece00be16764e7b58906c0a2f4b7b5711d65de9e7b251139967cd7ef4",
+      "size": 438736,
+      "kind": "image",
+      "width": 1024,
+      "height": 512,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grace-jackpot-plaque-a1 (queue id queue-grace-jackpot-plaque-a1, 은총 화면 기연 판)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x512 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: a wide horizontal cast-metal plaque, front view, 2:1: blackened silver with inlaid amber gold #efac59 lines running along the rim and a few short thorn-like points along the top edge and at both ends. The centre field is empty, dark and smooth, ready for a title. A faint warm amber glow only along the inlaid lines. No engraving, no symbol, no gem.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/jackpot-plaque.prompt.txt",
+          "sha256": "7e59acd641b3417ddb1882e07a35159b415bf28c30c9cefbb790de0dda4da13b"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/knobs.png",
+      "sha256": "de21d7b7735c4e97e9b87755f24c9c51d444251d2e02704d08a22e8511511af6",
+      "size": 1102374,
+      "kind": "image",
+      "width": 1536,
+      "height": 512,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grace-knobs-a1 (queue id queue-grace-knobs-a1, 은총 화면 손잡이 단추 셋)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x512 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: three identical round brass buttons side by side with wide even gaps, each about 400 pixels across, front view, each a thick domed tarnished brass ring with small rivets around a dark recessed centre disc, like pressable interface buttons. Centre symbols, engraved in bright brass: left button a counter-clockwise spiral turning back on itself; middle button two crossed slash marks; right button a hasp (a small latch clasp). Symbols are simple, bold and wordless.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/knobs.prompt.txt",
+          "sha256": "fb3c2bf99fae4a58f138c9904de6a9167131649f44d1b162877f4c859cce397b"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/parchment.png",
+      "sha256": "c83ee735aa883aa300b00f1d321c01cdf405ced8ae5ea7fd678d861c9bac5a1a",
+      "size": 1191849,
+      "kind": "image",
+      "width": 768,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grace-parchment-a1 (queue id queue-grace-parchment-a1, 은총 화면 양피지 쪽지)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 768x1024 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: aged parchment, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: a single sheet of old parchment, front view, 3:4 portrait, slightly scorched along the edges with a darker brown burnt border and softly irregular edges, hung from a small tarnished brass clip at the top centre. The whole middle is an even, calm, light warm tan with only faint mottling and no stains or marks, so dark ink text can be laid over it. No writing, no drawing.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/parchment.prompt.txt",
+          "sha256": "4bf4583db798797cf40d31ace0653ec28d91b0d5ce28689654b3c082724cbc2a"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/sigil.png",
+      "sha256": "8b0d3b069ed24a7ebae93a6c602986e58207fb97eefea3ca3c68096c34b0a0d8",
+      "size": 819412,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture jackpot-light-sigil-a1 (queue id queue-jackpot-light-sigil-a1, 기연 빛·문양)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA radial burst of amber-gold light #efac59 made only of light, centred and perfectly symmetrical: a bright white-gold core, twelve thin rays of uneven length, and a thin circular sigil of three concentric rings with small pointed lancet-arch notches and an eight-point star between the inner rings. Soft falloff to pure black at the edges. No figure, no object, no hard shadows; only light.\n\nBackground: pure flat black #000000 everywhere outside the light itself; the picture is made only of light and will be composited with additive blending, so nothing dark may carry detail.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/sigil.prompt.txt",
+          "sha256": "15fce81f9a60a6eac0a2a9824f11ce69e79fac82b47cb1fb46ac88759f1c5bc0"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-arc-ring.png",
+      "sha256": "1aebe43900755a43c020d5b27fd85e8b1cf4ce25d32352743fe188951d68c7c4",
+      "size": 507826,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-arc-ring-v2-a1 (queue id queue-spell-arc-ring-v2-a1, 울타리 아이콘 다시 · arc)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights, a bright rim along the right edge. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour, no white-hot core. Centred, filling about 85 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: three small glowing electric orbs circling an empty centre: each orb is a bright ball of light with a jagged lightning tail that bends along the circle, with a short side spark off one of them. Viewed from a high three-quarter angle with the heads spread evenly around a circle, the middle of the circle empty and dark. No wall, no ring outline, no posts, no fence, no stone base, no figure.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-arc-ring.prompt.txt",
+          "sha256": "e8146c277cdf87f7b35bc62232433d770128294f31dc724f939883bb1e5d774d"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-arc.png",
+      "sha256": "c59b75a46f6b19b036b902bc66a0d4647a1ee8a156d031af08060bcce64e31b5",
+      "size": 423235,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-arc-a1 (queue id queue-spell-arc-a1, basic spell: Chain Current)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #b9caff (pale periwinkle blue), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a forked bolt of electricity that jumps in a chain across three small blackened-iron ring nodes, branching once between them, with a bright periwinkle core and thin side arcs. Nothing else.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-arc.prompt.txt",
+          "sha256": "3c4ec788c9ad4f2532c70b29cc7cf4246e7e80bfdb706839f5f40e806d2dde3c"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-ember-ring.png",
+      "sha256": "80cd4f01dc9e0ee4b09034a4b704b2ef9f3c79132129e2604f1a3cd5298c1c3d",
+      "size": 485233,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-ember-ring-v2-a1 (queue id queue-spell-ember-ring-v2-a1, 울타리 아이콘 다시 · ember)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights, a bright rim along the right edge. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #ff943d (warm orange), which is the glowing element; no second saturated colour, no white-hot core. Centred, filling about 85 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: three small ember comets circling an empty centre: each has a charcoal-dark core about the size of a fist and a few flame tongues, each trails a curved, narrowing tail along the circle that cools from orange to dull red, with a couple of drifting sparks. Viewed from a high three-quarter angle with the heads spread evenly around a circle, the middle of the circle empty and dark. No wall, no ring outline, no posts, no fence, no stone base, no figure.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-ember-ring.prompt.txt",
+          "sha256": "41345e647d1a65c2c182782ef88d40740097495f8ded04b703c7334e893c5757"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-ember.png",
+      "sha256": "3fbd941ad98484fcc6e80e9480744cf31fce932c49295e74355bf999d0a1d10d",
+      "size": 755039,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-ember-a1 (queue id queue-spell-ember-a1, basic spell: Ember Shot)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #ff943d (molten orange), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: a single fist-sized ball of glowing ember flying toward the upper right, its crust cracked like cooling lava over a dark iron-black core, trailing a short comet tail of a few sparks. Nothing else.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-ember.prompt.txt",
+          "sha256": "544d120f217c120b146f7d6a462740bb026e08894e3c74504e31b4e418efda24"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-frost-ring.png",
+      "sha256": "161611b856138529ce0deccf627ab47f2267c23fd673c7d9b6e5b086bc24072a",
+      "size": 388645,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-frost-ring-v2-a1 (queue id queue-spell-frost-ring-v2-a1, 울타리 아이콘 다시 · frost)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights, a bright rim along the right edge. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour, no white-hot core. Centred, filling about 85 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: five narrow ice shards circling an empty centre: each is a pointed crystal splinter lying along its path of travel and turning on its own axis, each trails a short faint curved frost mist, with a few glittering frost specks. Viewed from a high three-quarter angle with the heads spread evenly around a circle, the middle of the circle empty and dark. No wall, no ring outline, no posts, no fence, no stone base, no figure.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-frost-ring.prompt.txt",
+          "sha256": "cb8e40bb27cdcb914f8e009c3d2b28713cb21ab45e7681de2fbdae2354604db1"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/spell-frost.png",
+      "sha256": "d5459cbbc98424a2279392599f000cda53614b7f9860413224cbde65898fcd0a",
+      "size": 354853,
+      "kind": "image",
+      "width": 1024,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture spell-frost-a1 (queue id queue-spell-frost-a1, basic spell: Frost Lance)",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1024x1024 pixels.\n\nA single game icon for a dark gothic fantasy action game, square 1:1. Semi-realistic painterly illustration simplified into a few large, clear shapes: a bold silhouette that stays readable when shrunk to 40 pixels, strong value contrast with deep dark planes, clean bright highlights on worn metal and stone edges, a bright rim along the right edge. Materials are dark iron, blackened silver, tarnished brass, basalt and aged leather. Colour: everything is dark and near-neutral except exactly ONE saturated accent, #9ce7ef (pale ice cyan), which is the glowing element; no second saturated colour. Centred, filling about 80 percent of the canvas with an even margin; one or two focal details only, no fine filigree.\n\nSUBJECT: one slanted lance of pale ice pointing toward the upper right: a long faceted spear-shaped icicle with a blackened-iron collar band near the tail and a few rime crystals along its edge. Nothing else.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/spell-frost.prompt.txt",
+          "sha256": "9de04fdaa64e897e7d3b798cd0cabb9ecd0977f489e52fa9cbba17f678566115"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
+      "path": "ui/grace/title-plaque.png",
+      "sha256": "0f76b9f0d5643c853710ccace26e8f9c399d64f5b7da8919b20f7b4aadcd4bcc",
+      "size": 827910,
+      "kind": "image",
+      "width": 1536,
+      "height": 512,
+      "source_type": "ai_generated",
+      "origin": "Codex queue picture grace-title-plaque-a1 (queue id queue-grace-title-plaque-a1, 은총 화면 제목 판(황동))",
+      "license": "미확인: 생성 도구 약관 확인 전(출시 전에 확인)",
+      "model": "gpt-5.6-sol (Codex CLI, built-in image generation)",
+      "prompt": "Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.\n\nCanvas: 1536x512 pixels.\n\nSemi-realistic painterly illustration of dark gothic fantasy game interface material, simplified into a few large, clear shapes, readable at small size, strong value contrast with deep dark planes, clean bright highlights on worn metal and stitching, a bright rim light from the upper right. Same hand and materials as an existing interface kit: black pebbled leather with double rows of thin gold stitching, tarnished brass corner caps with domed rivets, brass buckles and round brass rings, small cast-metal details. Dark and near-neutral everywhere except warm brass and gold; no glowing colour.\n\nSUBJECT: a wide horizontal name plaque, front view, 3:1: a tarnished brass plate with a raised rim and a shallow empty recessed centre field of dark patinated brass, two leather straps wrapping each end of the plate and fastened with small brass buckles, a few domed rivets on the rim. The centre field is completely blank and calm. No engraving, no symbol.\n\nBackground: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.\n\nNo text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.\n",
+      "terms_checked": false,
+      "date": "2026-11-20",
+      "postprocess": "Ground (flat magenta) keyed to alpha with despill by tools/art/matte_kit.py (A8 G1); no repainting",
+      "record_files": [
+        {
+          "path": "ui/grace/prompts/title-plaque.prompt.txt",
+          "sha256": "4c7b9fbd457831eaa0f29e194b7e15a5ce1ff2e350ec9d7deff3b4a7c1685bd9"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A8 G6 제품 화면에 쓴다"
+    },
+    {
       "path": "ui/kit/button_disabled_64x40.png",
       "sha256": "50810df154d1f726f9f6579aa3dfca03dbb2a9ca0c849254ff8479414394032c",
       "size": 2472,

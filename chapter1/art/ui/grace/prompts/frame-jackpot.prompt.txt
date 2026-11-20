@@ -1,0 +1,9 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1024x1536 pixels.
+
+An empty ornate vertical card frame for a dark gothic fantasy action game's level-up cards, 2:3 portrait, front view, symmetrical. ONLY the border exists: a band about 8 percent of the width all around; the whole inner window and everything outside the border are flat magenta so they can be cut out. Semi-realistic painterly metalwork with a bright rim light along the right and top edges, deep dark planes, readable as a shape at small size. Grade: jackpot, the most precious. Blackened-silver band with a rich amber-gold #efac59 inlay and thin gaps of glowing amber light along the inner edge; a crown of small sharp points at the top centre and short rays of light leaking outward at the corners. Clearly more precious than the rare frame yet built the same way. No gems, no figure.
+
+Background: one perfectly flat, solid magenta #FF00FF filling every pixel that is not the subject (no gradient, no vignette, no cast shadow or glow on the background, no magenta or pink inside the subject) so the background can be keyed out later.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

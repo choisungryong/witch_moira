@@ -763,6 +763,294 @@
         "square": true,
         "alpha": true
       }
+    },
+    "ui.grace.frame.common": {
+      "kind": "texture",
+      "file": "ui/grace/frame-common.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-frame-common-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.ground.common": {
+      "kind": "texture",
+      "file": "ui/grace/ground-common.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-bg-common-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.frame.rare": {
+      "kind": "texture",
+      "file": "ui/grace/frame-rare.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-frame-rare-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.ground.rare": {
+      "kind": "texture",
+      "file": "ui/grace/ground-rare.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-bg-rare-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.frame.jackpot": {
+      "kind": "texture",
+      "file": "ui/grace/frame-jackpot.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-frame-jackpot-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.ground.jackpot": {
+      "kind": "texture",
+      "file": "ui/grace/ground-jackpot.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grade-bg-jackpot-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.sigil": {
+      "kind": "texture",
+      "file": "ui/grace/sigil.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture jackpot-light-sigil-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.ember.upgrade": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-ember-upgrade.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-ember-upgrade-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.ember.evolve": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-ember-evolve.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-ember-evolve-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.ember.deal": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-ember-deal.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-ember-deal-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.frost.new": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-frost-new.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-frost-new-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.frost.upgrade": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-frost-upgrade.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-frost-upgrade-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.frost.evolve": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-frost-evolve.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-frost-evolve-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.frost.deal": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-frost-deal.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-frost-deal-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.arc.new": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-arc-new.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-arc-new-a2.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.arc.upgrade": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-arc-upgrade.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-arc-upgrade-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.arc.evolve": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-arc-evolve.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-arc-evolve-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.emblem.arc.deal": {
+      "kind": "texture",
+      "file": "ui/grace/emblem-arc-deal.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture emblem-arc-deal-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.ember": {
+      "kind": "texture",
+      "file": "ui/grace/spell-ember.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-ember-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.ember.ring": {
+      "kind": "texture",
+      "file": "ui/grace/spell-ember-ring.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-ember-ring-v2-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.frost": {
+      "kind": "texture",
+      "file": "ui/grace/spell-frost.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-frost-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.frost.ring": {
+      "kind": "texture",
+      "file": "ui/grace/spell-frost-ring.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-frost-ring-v2-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.arc": {
+      "kind": "texture",
+      "file": "ui/grace/spell-arc.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-arc-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.spell.arc.ring": {
+      "kind": "texture",
+      "file": "ui/grace/spell-arc-ring.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture spell-arc-ring-v2-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.title_plaque": {
+      "kind": "texture",
+      "file": "ui/grace/title-plaque.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grace-title-plaque-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.jackpot_plaque": {
+      "kind": "texture",
+      "file": "ui/grace/jackpot-plaque.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grace-jackpot-plaque-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.parchment": {
+      "kind": "texture",
+      "file": "ui/grace/parchment.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grace-parchment-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.candle": {
+      "kind": "texture",
+      "file": "ui/grace/candle.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grace-candle-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.knobs": {
+      "kind": "texture",
+      "file": "ui/grace/knobs.png",
+      "used": "yes",
+      "source": "A8 G6: grace screen (chapter1/view/hud/screens/growth_choice.gd) via grace_parts.gd; made from the Codex queue picture grace-knobs-a1.png by tools/art/matte_kit.py (ground keyed to alpha)",
+      "contract": {
+        "alpha": true
+      }
+    },
+    "ui.grace.demon.ember": {
+      "kind": "texture",
+      "file": "ui/grace/demon-ember.png",
+      "used": "yes",
+      "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-ember-full-a1.png, copied as is; replace when the figure is chosen",
+      "contract": {
+        "alpha": false
+      }
+    },
+    "ui.grace.demon.frost": {
+      "kind": "texture",
+      "file": "ui/grace/demon-frost.png",
+      "used": "yes",
+      "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-frost-full-c-a1.png, copied as is; replace when the figure is chosen",
+      "contract": {
+        "alpha": false
+      }
+    },
+    "ui.grace.demon.arc": {
+      "kind": "texture",
+      "file": "ui/grace/demon-arc.png",
+      "used": "yes",
+      "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-arc-full-a2.png, copied as is; replace when the figure is chosen",
+      "contract": {
+        "alpha": false
+      }
     }
   }
 }

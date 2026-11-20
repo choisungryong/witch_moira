@@ -1,662 +1,503 @@
 {
- "screen": "growth_choice",
- "contract_version": 0,
- "_note": "0판(시안 단계): 시안 픽스처에서 뽑은 꼴. 1판으로 닫을 때 S1이 고친다. 필드 이름은 시안 픽스처 그대로(card.id, 코어 제안 토큰 offer_ref 는 아직 어느 픽스처에도 없어 선택으로 둠). 요청 = 시스템이 아직 못 주는 필드(어댑터는 비워 둠, 픽스처에는 가짜 값). 코어의 원료: growth.card_contract(card), run_spells_view().offer, grace_tools(). 줄 이름은 docs/reviews/S0B 보고서의 \"시스템에 요청\" 표(G1~G12).",
- "fields": {
-  "variant": {
-   "type": "string",
-   "max_len": 40,
-   "optional": true,
-   "_note": "시안 전용(픽스처 이름). 어댑터 출력에는 없다."
-  },
-  "note": {
-   "type": "string",
-   "max_len": 80,
-   "optional": true,
-   "_note": "시안 전용(이 픽스처가 무엇인지 한 줄)."
-  },
-  "requested": {
-   "type": "array",
-   "item": {
-    "type": "string",
-    "max_len": 160
-   },
-   "min": 0,
-   "max": 20,
-   "optional": true,
-   "_note": "시안 전용(이 픽스처가 가짜 값으로 채운 필드 목록)."
-  },
-  "backdrop": {
-   "type": "string",
-   "max_len": 160,
-   "optional": true,
-   "_note": "시안 전용: 전투 장면 캡처 경로(시안이 뒤에 깐다). 제품 계약에는 없다."
-  },
-  "offer_ref": {
-   "type": "string",
-   "max_len": 80,
-   "optional": true,
-   "_note": "코어 제안 토큰(growth offer.token). 화면은 풀지 않고 신호에 그대로 싣는다. 아직 픽스처에 없다: 1판에서 필수."
-  },
-  "strings": {
-   "type": "object",
-   "fields": {
-    "title": {
-     "type": "string",
-     "max_len": 12
+  "screen": "growth_choice",
+  "contract_version": 1,
+  "_note": "1판(A8 G6, 안 E의 본체 화면): 화면이 읽는 꼴. 고정 문구(제목·손잡이 이름 등)는 화면이 번역 키로 가진다(T8 2.1)라서 strings가 없다. 등급 말은 코어의 셋(common·rare·jackpot). 손잡이(reroll·exclude·keep)는 코어가 주는 것만 있고 없으면 화면이 숨긴다. odds는 등급이 켜졌을 때만. 어댑터: chapter1/view/contracts/growth_choice_contract.gd, 화면: chapter1/view/hud/screens/growth_choice.gd.",
+  "fields": {
+    "variant": {
+      "type": "string",
+      "max_len": 40,
+      "optional": true,
+      "_note": "시안 전용(픽스처 이름). 어댑터 출력에는 없다."
     },
-    "title_last": {
-     "type": "string",
-     "max_len": 12
-    },
-    "owned": {
-     "type": "string",
-     "max_len": 12
-    },
-    "graces": {
-     "type": "string",
-     "max_len": 8
-    },
-    "reroll": {
-     "type": "string",
-     "max_len": 10
-    },
-    "combo": {
-     "type": "string",
-     "max_len": 8
-    },
-    "path": {
-     "type": "string",
-     "max_len": 10
-    },
-    "terms": {
-     "type": "string",
-     "max_len": 8
-    },
-    "no_combo": {
-     "type": "string",
-     "max_len": 24
-    },
-    "hint": {
-     "type": "string",
-     "max_len": 32
-    },
-    "free_slot": {
-     "type": "string",
-     "max_len": 8
-    },
-    "exclude": {
-     "type": "string",
-     "max_len": 8
-    },
-    "key_reroll": {
-     "type": "string",
-     "max_len": 2
-    },
-    "key_exclude": {
-     "type": "string",
-     "max_len": 2
-    },
-    "fated_banner": {
-     "type": "string",
-     "max_len": 8,
-     "optional": true
-    },
-    "pull": {
-     "type": "string",
-     "max_len": 8,
-     "optional": true
-    },
-    "keep": {
-     "type": "string",
-     "max_len": 10,
-     "optional": true
-    },
-    "slot_title": {
-     "type": "string",
-     "max_len": 8,
-     "optional": true
-    },
-    "lever": {
-     "type": "string",
-     "max_len": 8,
-     "optional": true
-    }
-   },
-   "optional": true,
-   "_note": "0판만: 화면이 늘 같은 자리에 쓰는 고정 문구를 시안은 픽스처에서 받는다. 1판에서는 화면이 가진다(T8 2.1)."
-  },
-  "witch": {
-   "type": "object",
-   "fields": {
-    "id": {
-     "type": "enum",
-     "values": [
-      "ember",
-      "frost",
-      "arc"
-     ]
-    },
-    "element": {
-     "type": "enum",
-     "values": [
-      "ember",
-      "frost",
-      "arc"
-     ]
-    }
-   }
-  },
-  "giver": {
-   "type": "object",
-   "fields": {
-    "line": {
-     "type": "string",
-     "max_len": 30,
-     "nullable": true,
-     "requested": "G3 서약 상대의 한 줄(narrative-lead)"
-    },
-    "thread": {
-     "type": "bool"
-    },
-    "figure": {
-     "type": "object",
-     "fields": {
-      "caption": {
-       "type": "string",
-       "max_len": 60
-      },
-      "draft": {
-       "type": "string",
-       "max_len": 120
-      },
-      "eye": {
-       "type": "array",
-       "item": {
-        "type": "int",
-        "min": 0,
-        "max": 4000
-       },
-       "min": 2,
-       "max": 2
-      },
-      "file": {
-       "type": "string",
-       "max_len": 160
-      }
-     },
-     "optional": true,
-     "_note": "시안 전용: 임시 그림. 인물 그림이 정해지면 자리표로 바뀐다."
-    },
-    "line_status": {
-     "type": "string",
-     "max_len": 160,
-     "optional": true,
-     "_note": "시안 전용(글이 잠정이라는 표시)"
-    },
-    "mute": {
-     "type": "bool",
-     "optional": true,
-     "_note": "시안 전용: 번개의 악마는 말이 없다"
-    }
-   },
-   "requested": "G3 서약 상대(giver): 코어에 없음"
-  },
-  "moment": {
-   "type": "object",
-   "fields": {
-    "beat": {
-     "type": "enum",
-     "values": [
-      "short",
-      "long",
-      "slot"
-     ],
-     "requested": "G2 등장 길이 종류(첫 은총·고비 긴 등장)"
-    },
-    "kind": {
-     "type": "enum",
-     "values": [
-      "first",
-      "normal",
-      "evolve",
-      "last"
-     ],
-     "requested": "G2 순간 종류(첫/마지막/진화)"
-    },
-    "index": {
-     "type": "int",
-     "min": 1,
-     "max": 20
-    },
-    "total": {
-     "type": "int",
-     "min": 1,
-     "max": 20
-    },
-    "label": {
-     "type": "string",
-     "max_len": 10
-    }
-   }
-  },
-  "cards": {
-   "type": "array",
-   "item": {
-    "type": "object",
-    "fields": {
-     "id": {
+    "note": {
       "type": "string",
       "max_len": 80,
-      "_note": "코어 카드 id(제안 카드의 id). 1판에서 ref 로 바뀔 수 있다."
-     },
-     "element": {
-      "type": "enum",
-      "values": [
-       "ember",
-       "frost",
-       "arc",
-       "none"
-      ]
-     },
-     "kind": {
-      "type": "enum",
-      "values": [
-       "new",
-       "upgrade",
-       "trade",
-       "prep",
-       "evolve"
-      ],
-      "_note": "코어 kind(unlock/rank/axis/passive/evolve)를 어댑터가 옮긴 말. trade(악마 거래)는 코어에 없다: G4"
-     },
-     "kind_label": {
-      "type": "string",
-      "max_len": 14
-     },
-     "header": {
-      "type": "string",
-      "max_len": 20,
-      "requested": "G4 카드 머리글(서약 / 거래 · 악마 이름)"
-     },
-     "name": {
-      "type": "string",
-      "max_len": 12
-     },
-     "tier": {
-      "type": "string",
-      "max_len": 4
-     },
-     "headline": {
-      "type": "string",
-      "max_len": 40
-     },
-     "delta": {
-      "type": "object",
-      "fields": {
-       "label": {
-        "type": "string",
-        "max_len": 8
-       },
-       "before": {
-        "type": "string",
-        "max_len": 10
-       },
-       "after": {
-        "type": "string",
-        "max_len": 10
-       }
-      },
-      "nullable": true
-     },
-     "meter": {
-      "type": "object",
-      "fields": {
-       "label": {
-        "type": "string",
-        "max_len": 8
-       },
-       "filled": {
-        "type": "int",
-        "min": 0,
-        "max": 8
-       },
-       "total": {
-        "type": "int",
-        "min": 1,
-        "max": 8
-       }
-      },
-      "nullable": true,
-      "requested": "G5 축 단계 막대(코어 axis_levels 에서 어댑터가 만들 수 있으나 라벨 정의가 없음)"
-     },
-     "stats": {
-      "type": "array",
-      "item": {
-       "type": "string",
-       "max_len": 40
-      },
-      "min": 0,
-      "max": 3
-     },
-     "details": {
-      "type": "array",
-      "item": {
-       "type": "string",
-       "max_len": 40
-      },
-      "min": 0,
-      "max": 4
-     },
-     "line": {
-      "type": "string",
-      "max_len": 20,
-      "requested": "G6 카드 한 줄(짧은 글, 14자 안 권고)"
-     },
-     "combo": {
-      "type": "array",
-      "item": {
-       "type": "object",
-       "fields": {
-        "from": {
-         "type": "string",
-         "max_len": 12
-        },
-        "from_element": {
-         "type": "enum",
-         "values": [
-          "ember",
-          "frost",
-          "arc",
-          "none"
-         ]
-        },
-        "to": {
-         "type": "string",
-         "max_len": 12
-        },
-        "to_element": {
-         "type": "enum",
-         "values": [
-          "ember",
-          "frost",
-          "arc",
-          "none"
-         ]
-        },
-        "text": {
-         "type": "string",
-         "max_len": 40
-        }
-       }
-      },
-      "min": 0,
-      "max": 4
-     },
-     "path": {
-      "type": "object",
-      "fields": {
-       "label": {
-        "type": "string",
-        "max_len": 10
-       },
-       "filled": {
-        "type": "int",
-        "min": 0,
-        "max": 8
-       },
-       "total": {
-        "type": "int",
-        "min": 1,
-        "max": 8
-       },
-       "keys": {
-        "type": "array",
-        "item": {
-         "type": "object",
-         "fields": {
-          "label": {
-           "type": "string",
-           "max_len": 8
-          },
-          "done": {
-           "type": "bool"
-          },
-          "value": {
-           "type": "string",
-           "max_len": 8,
-           "optional": true
-          }
-         }
-        },
-        "min": 1,
-        "max": 4
-       }
-      },
-      "nullable": true,
-      "requested": "G5 진화까지(코어 evolve_progress 의 꼴을 그린 결과로 바꾸는 일)"
-     },
-     "terms": {
-      "type": "array",
-      "item": {
-       "type": "object",
-       "fields": {
-        "word": {
-         "type": "string",
-         "max_len": 8
-        },
-        "gloss": {
-         "type": "string",
-         "max_len": 36
-        }
-       }
-      },
-      "min": 0,
-      "max": 3,
-      "requested": "G7 낱말 풀이(데이터 없음)"
-     },
-     "action": {
-      "type": "string",
-      "max_len": 8,
-      "requested": "G4 단추 글(서약 받아들이기 / 거래하기)"
-     },
-     "emblem": {
-      "type": "string",
-      "max_len": 12,
-      "requested": "G8 카드 문장 이름(그림 표 필요)"
-     },
-     "pair": {
-      "type": "object",
-      "fields": {
-       "emblem": {
-        "type": "string",
-        "max_len": 12
-       },
-       "name": {
-        "type": "string",
-        "max_len": 12
-       }
-      },
-      "nullable": true
-     },
-     "grade": {
-      "type": "enum",
-      "values": [
-       "common",
-       "magic",
-       "rare",
-       "legendary",
-       "scarce",
-       "fated"
-      ],
-      "requested": "G1 등급(코어 grade_fields 는 common|rare|jackpot, 시안은 6말: 어휘를 맞춰야 함)"
-     },
-     "grade_name": {
-      "type": "string",
-      "max_len": 10,
-      "requested": "G1 등급 이름(일반은 빈 글)"
-     },
-     "resonance": {
-      "type": "object",
-      "fields": {
-       "partner": {
-        "type": "string",
-        "max_len": 12
-       },
-       "text": {
-        "type": "string",
-        "max_len": 40
-       }
-      },
       "optional": true,
-      "_requested": "G9 조합 기연(코어 jackpot.resonance 가 원료)"
-     }
-    }
-   },
-   "min": 1,
-   "max": 4
-  },
-  "owned": {
-   "type": "object",
-   "fields": {
-    "grace_slots": {
-     "type": "int",
-     "min": 0,
-     "max": 6
-    },
-    "graces": {
-     "type": "array",
-     "item": {
-      "type": "object",
-      "fields": {
-       "name": {
-        "type": "string",
-        "max_len": 10
-       },
-       "owned": {
-        "type": "bool"
-       }
-      }
-     },
-     "min": 0,
-     "max": 6
-    },
-    "slots": {
-     "type": "int",
-     "min": 0,
-     "max": 6
-    },
-    "spells": {
-     "type": "array",
-     "item": {
-      "type": "object",
-      "fields": {
-       "name": {
-        "type": "string",
-        "max_len": 12
-       },
-       "emblem": {
-        "type": "string",
-        "max_len": 12
-       },
-       "element": {
-        "type": "enum",
-        "values": [
-         "ember",
-         "frost",
-         "arc",
-         "none"
-        ]
-       },
-       "level": {
-        "type": "string",
-        "max_len": 4
-       }
-      }
-     },
-     "min": 0,
-     "max": 6
-    }
-   },
-   "requested": "G10 가진 주문·은총 줄(코어 run_spells_view().spells 가 원료)"
-  },
-  "exclude": {
-   "type": "object",
-   "fields": {
-    "left": {
-     "type": "int",
-     "min": 0,
-     "max": 9
-    },
-    "left_label": {
-     "type": "string",
-     "max_len": 4,
-     "optional": true
+      "_note": "시안 전용(이 픽스처가 무엇인지 한 줄)."
     },
     "requested": {
-     "type": "bool",
-     "optional": true,
-     "_note": "시안 전용 표지"
-    }
-   },
-   "requested": "G11 빼기(결정만 있고 코어에 없음)"
-  },
-  "reroll": {
-   "type": "object",
-   "fields": {
-    "left": {
-     "type": "int",
-     "min": 0,
-     "max": 9
+      "type": "array",
+      "item": {
+        "type": "string",
+        "max_len": 160
+      },
+      "min": 0,
+      "max": 20,
+      "optional": true,
+      "_note": "시안 전용(이 픽스처가 가짜 값으로 채운 필드 목록)."
     },
-    "left_label": {
-     "type": "string",
-     "max_len": 4
+    "offer_ref": {
+      "type": "string",
+      "max_len": 80,
+      "optional": true,
+      "_note": "코어 제안 토큰(growth offer.token). 화면은 풀지 않고 선택 신호에 카드 id와 함께 호스트가 쓴다."
+    },
+    "witch": {
+      "type": "object",
+      "fields": {
+        "id": {
+          "type": "enum",
+          "values": [
+            "ember",
+            "frost",
+            "arc"
+          ]
+        },
+        "element": {
+          "type": "enum",
+          "values": [
+            "ember",
+            "frost",
+            "arc"
+          ]
+        }
+      }
+    },
+    "giver": {
+      "type": "object",
+      "fields": {
+        "line": {
+          "type": "string",
+          "max_len": 60,
+          "nullable": true
+        },
+        "mute": {
+          "type": "bool",
+          "optional": true,
+          "_note": "시안 전용: 번개의 악마는 말이 없다"
+        }
+      }
+    },
+    "moment": {
+      "type": "object",
+      "fields": {
+        "kind": {
+          "type": "enum",
+          "values": [
+            "first",
+            "normal",
+            "evolve",
+            "last"
+          ]
+        },
+        "index": {
+          "type": "int",
+          "min": 1,
+          "max": 20
+        },
+        "total": {
+          "type": "int",
+          "min": 1,
+          "max": 20
+        },
+        "label": {
+          "type": "string",
+          "max_len": 14
+        }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "item": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "string",
+            "max_len": 80,
+            "_note": "코어 카드 id(제안 카드의 id). 1판에서 ref 로 바뀔 수 있다."
+          },
+          "element": {
+            "type": "enum",
+            "values": [
+              "ember",
+              "frost",
+              "arc",
+              "none"
+            ]
+          },
+          "kind": {
+            "type": "enum",
+            "values": [
+              "new",
+              "upgrade",
+              "trade",
+              "prep",
+              "evolve"
+            ],
+            "_note": "코어 kind(unlock/rank/axis/passive/evolve)를 어댑터가 옮긴 말. trade(악마 거래)는 코어에 없다: G4"
+          },
+          "kind_label": {
+            "type": "string",
+            "max_len": 24
+          },
+          "header": {
+            "type": "string",
+            "max_len": 24
+          },
+          "name": {
+            "type": "string",
+            "max_len": 24
+          },
+          "tier": {
+            "type": "string",
+            "max_len": 4
+          },
+          "headline": {
+            "type": "string",
+            "max_len": 120
+          },
+          "delta": {
+            "type": "object",
+            "fields": {
+              "label": {
+                "type": "string",
+                "max_len": 8
+              },
+              "before": {
+                "type": "string",
+                "max_len": 10
+              },
+              "after": {
+                "type": "string",
+                "max_len": 10
+              }
+            },
+            "nullable": true
+          },
+          "meter": {
+            "type": "object",
+            "fields": {
+              "label": {
+                "type": "string",
+                "max_len": 8
+              },
+              "filled": {
+                "type": "int",
+                "min": 0,
+                "max": 8
+              },
+              "total": {
+                "type": "int",
+                "min": 1,
+                "max": 8
+              }
+            },
+            "nullable": true
+          },
+          "stats": {
+            "type": "array",
+            "item": {
+              "type": "string",
+              "max_len": 40
+            },
+            "min": 0,
+            "max": 3,
+            "optional": true
+          },
+          "details": {
+            "type": "array",
+            "item": {
+              "type": "string",
+              "max_len": 40
+            },
+            "min": 0,
+            "max": 6,
+            "optional": true
+          },
+          "line": {
+            "type": "string",
+            "max_len": 120
+          },
+          "combo": {
+            "type": "array",
+            "item": {
+              "type": "object",
+              "fields": {
+                "from": {
+                  "type": "string",
+                  "max_len": 12
+                },
+                "from_element": {
+                  "type": "enum",
+                  "values": [
+                    "ember",
+                    "frost",
+                    "arc",
+                    "none"
+                  ]
+                },
+                "to": {
+                  "type": "string",
+                  "max_len": 12
+                },
+                "to_element": {
+                  "type": "enum",
+                  "values": [
+                    "ember",
+                    "frost",
+                    "arc",
+                    "none"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "max_len": 80
+                }
+              }
+            },
+            "min": 0,
+            "max": 4
+          },
+          "path": {
+            "type": "object",
+            "fields": {
+              "label": {
+                "type": "string",
+                "max_len": 10
+              },
+              "filled": {
+                "type": "int",
+                "min": 0,
+                "max": 8
+              },
+              "total": {
+                "type": "int",
+                "min": 1,
+                "max": 8
+              },
+              "keys": {
+                "type": "array",
+                "item": {
+                  "type": "object",
+                  "fields": {
+                    "label": {
+                      "type": "string",
+                      "max_len": 8
+                    },
+                    "done": {
+                      "type": "bool"
+                    },
+                    "value": {
+                      "type": "string",
+                      "max_len": 8,
+                      "optional": true
+                    }
+                  }
+                },
+                "min": 1,
+                "max": 4
+              }
+            },
+            "nullable": true
+          },
+          "terms": {
+            "type": "array",
+            "item": {
+              "type": "object",
+              "fields": {
+                "word": {
+                  "type": "string",
+                  "max_len": 8
+                },
+                "gloss": {
+                  "type": "string",
+                  "max_len": 36
+                }
+              }
+            },
+            "min": 0,
+            "max": 3,
+            "optional": true
+          },
+          "action": {
+            "type": "string",
+            "max_len": 8,
+            "optional": true
+          },
+          "emblem": {
+            "type": "string",
+            "max_len": 12
+          },
+          "pair": {
+            "type": "object",
+            "fields": {
+              "emblem": {
+                "type": "string",
+                "max_len": 12
+              },
+              "name": {
+                "type": "string",
+                "max_len": 12
+              }
+            },
+            "nullable": true,
+            "optional": true
+          },
+          "grade": {
+            "type": "enum",
+            "values": [
+              "common",
+              "rare",
+              "jackpot"
+            ]
+          },
+          "grade_name": {
+            "type": "string",
+            "max_len": 10
+          },
+          "resonance": {
+            "type": "object",
+            "fields": {
+              "partner": {
+                "type": "string",
+                "max_len": 12
+              },
+              "text": {
+                "type": "string",
+                "max_len": 40
+              }
+            },
+            "optional": true,
+            "_requested": "G9 조합 기연(코어 jackpot.resonance 가 원료)"
+          }
+        }
+      },
+      "min": 1,
+      "max": 4
+    },
+    "owned": {
+      "type": "object",
+      "fields": {
+        "grace_slots": {
+          "type": "int",
+          "min": 0,
+          "max": 6
+        },
+        "graces": {
+          "type": "array",
+          "item": {
+            "type": "object",
+            "fields": {
+              "name": {
+                "type": "string",
+                "max_len": 10
+              },
+              "owned": {
+                "type": "bool"
+              }
+            }
+          },
+          "min": 0,
+          "max": 6
+        },
+        "slots": {
+          "type": "int",
+          "min": 0,
+          "max": 6
+        },
+        "spells": {
+          "type": "array",
+          "item": {
+            "type": "object",
+            "fields": {
+              "name": {
+                "type": "string",
+                "max_len": 12
+              },
+              "emblem": {
+                "type": "string",
+                "max_len": 12
+              },
+              "element": {
+                "type": "enum",
+                "values": [
+                  "ember",
+                  "frost",
+                  "arc",
+                  "none"
+                ]
+              },
+              "level": {
+                "type": "string",
+                "max_len": 4
+              }
+            }
+          },
+          "min": 0,
+          "max": 6
+        }
+      }
+    },
+    "exclude": {
+      "type": "object",
+      "fields": {
+        "left": {
+          "type": "int",
+          "min": 0,
+          "max": 9
+        },
+        "left_label": {
+          "type": "string",
+          "max_len": 4,
+          "optional": true
+        }
+      },
+      "optional": true
+    },
+    "reroll": {
+      "type": "object",
+      "fields": {
+        "left": {
+          "type": "int",
+          "min": 0,
+          "max": 9
+        },
+        "left_label": {
+          "type": "string",
+          "max_len": 4
+        }
+      },
+      "_note": "코어 grace_tools().rerolls_left 가 원료",
+      "optional": true
+    },
+    "keep": {
+      "type": "object",
+      "fields": {
+        "left_label": {
+          "type": "string",
+          "max_len": 4
+        }
+      },
+      "optional": true,
+      "_requested": "G11 남겨 두기(코어 holds_left 가 원료)"
+    },
+    "odds": {
+      "type": "string",
+      "max_len": 40,
+      "optional": true,
+      "_requested": "G12 확률 줄(코어 grace_tools().odds 가 원료, 글 만들기는 어댑터)",
+      "_note": "기연·희귀 확률과 보장까지의 판 수. 등급이 켜졌을 때만 있다."
     }
-   },
-   "_note": "코어 grace_tools().rerolls_left 가 원료"
   },
-  "keep": {
-   "type": "object",
-   "fields": {
-    "left_label": {
-     "type": "string",
-     "max_len": 4
-    }
-   },
-   "optional": true,
-   "_requested": "G11 남겨 두기(코어 holds_left 가 원료)"
-  },
-  "odds": {
-   "type": "string",
-   "max_len": 30,
-   "optional": true,
-   "_requested": "G12 확률 줄(코어 grace_tools().odds 가 원료, 글 만들기는 어댑터)"
-  }
- },
- "variants": [
-  "first",
-  "long",
-  "milestone",
-  "normal",
-  "normal_arc",
-  "normal_ember",
-  "rare",
-  "slot_arc_fated",
-  "slot_arc_normal",
-  "slot_arc_scarce",
-  "slot_ember_fated",
-  "slot_ember_normal",
-  "slot_ember_pity",
-  "slot_ember_scarce",
-  "slot_frost_fated",
-  "slot_frost_first",
-  "slot_frost_normal",
-  "slot_frost_scarce",
-  "slot_long"
- ],
- "signals": [
-  "chosen(card_ref)",
-  "reroll()"
- ]
+  "variants": [
+    "slot_arc_fated",
+    "slot_arc_normal",
+    "slot_arc_scarce",
+    "slot_ember_fated",
+    "slot_ember_normal",
+    "slot_ember_pity",
+    "slot_ember_scarce",
+    "slot_frost_fated",
+    "slot_frost_first",
+    "slot_frost_normal",
+    "slot_frost_scarce",
+    "slot_long"
+  ],
+  "signals": [
+    "chosen(card_ref)",
+    "reroll()",
+    "exclude(card_ref)",
+    "keep(card_ref)",
+    "ready_for_pick()"
+  ]
 }

@@ -1,16 +1,15 @@
 {
   "note": "Hangul string literal sites per product file. Growth fails i18n_scan.py. Lower with --update.",
   "files": {
-    "chapter1/app/chapter_one.gd": 39,
+    "chapter1/app/chapter_one.gd": 38,
     "chapter1/core/chapter_items.gd": 32,
     "chapter1/core/combat_core.gd": 8,
     "chapter1/core/combat_run.gd": 8,
     "chapter1/core/loot.gd": 1,
     "chapter1/core/skill_tree.gd": 22,
-    "chapter1/view/fx/chapter_effects.gd": 1,
-    "chapter1/view/hud/chapter_hud.gd": 273,
-    "chapter1/view/hud/skill_tree_panel.gd": 90,
-    "chapter1/view/loc.gd": 35,
+    "chapter1/view/hud/chapter_hud.gd": 239,
+    "chapter1/view/hud/skill_tree_panel.gd": 87,
+    "chapter1/view/loc.gd": 33,
     "chapter1/view/ui51/chapter_route51.gd": 4,
     "chapter1/view/world/chapter_world.gd": 5
   },

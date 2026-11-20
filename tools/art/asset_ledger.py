@@ -524,6 +524,13 @@ SEED_RULES = [
         license=UNKNOWN + ": 생성 도구 약관 확인 전", date="2026-11-17",
         postprocess="코드 가공(내용은 기록에 없음, build_kit.py 참조)",
         records=["ui/kit/ATTRIBUTION.ko.md"])),
+    ("ui/grace/*", dict(
+        source_type="ai_generated", creator="프로젝트(Codex 생성 그림, 바탕을 알파로 뗌)",
+        origin="Codex 대기열 그림(2026-11-20, A8 G1·G6): 은총 카드 테·바탕·상징, 제목 판·기연 판·양피지·촛대·손잡이, 주문 아이콘, 악마 전신(임시)",
+        model="gpt-5.6-sol (Codex CLI, 내장 이미지 생성)", prompt="프롬프트 전문은 ui/grace/prompts/<파일 이름>.prompt.txt",
+        license=UNKNOWN + ": 생성 도구 약관 확인 전", date="2026-11-20",
+        postprocess="마젠타 바탕을 알파로 뗌(tools/art/matte_kit.py), 악마 전신 세 장은 가공 없음(임시)",
+        records=["ui/grace/ATTRIBUTION.ko.md"])),
     ("actors/*", dict(
         AI_UNKNOWN, creator=UNKNOWN + ": 기록 없음",
         origin="README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",

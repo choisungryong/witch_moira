@@ -1,0 +1,9 @@
+Use your built-in image generation tool to create exactly one image and save it in the current directory as result.png. Do not write any code. Create no file other than result.png. Do not read, modify or delete any other file in this directory or elsewhere. When done, reply with the saved file name, its pixel size and whether it has an alpha channel.
+
+Canvas: 1024x1024 pixels.
+
+A radial burst of amber-gold light #efac59 made only of light, centred and perfectly symmetrical: a bright white-gold core, twelve thin rays of uneven length, and a thin circular sigil of three concentric rings with small pointed lancet-arch notches and an eight-point star between the inner rings. Soft falloff to pure black at the edges. No figure, no object, no hard shadows; only light.
+
+Background: pure flat black #000000 everywhere outside the light itself; the picture is made only of light and will be composited with additive blending, so nothing dark may carry detail.
+
+No text, no letters, no numbers, no logo, no watermark, no signature. No modern objects. Nobody is recognisable as a real person and nothing copies another game, film or artist.

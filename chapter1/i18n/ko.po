@@ -1201,3 +1201,157 @@ msgstr "{name|으로} 시작"
 msgid "descent.kills"
 msgid_plural "descent.kills"
 msgstr[0] "{n}마리 처치"
+
+#. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
+
+#. Title plate of the grace screen
+msgid "grace.screen.title"
+msgstr "은총"
+
+#. Title plate of the last offer of a run
+msgid "grace.screen.title_last"
+msgstr "마지막 은총"
+
+#. Band along the bottom: the spells owned
+msgid "grace.screen.owned"
+msgstr "가진 주문"
+
+#. Band along the bottom: the grace slots
+msgid "grace.screen.graces"
+msgstr "은총"
+
+#. Card row: the pair this card forms
+msgid "grace.screen.combo"
+msgstr "조합"
+
+#. Knob name: throw the standing offer away for a new one
+msgid "grace.screen.reroll"
+msgstr "다시 빌기"
+
+#. Knob name: take the focused card out of this run's pool
+msgid "grace.screen.exclude"
+msgstr "빼기"
+
+#. Knob name: set the focused card aside for the next offer
+msgid "grace.screen.keep"
+msgstr "남겨 두기"
+
+#. The stamped word on a jackpot card
+msgid "grace.screen.banner"
+msgstr "기연!"
+
+#. Under the title plate. {n}: the level being chosen
+msgid "grace.screen.moment"
+msgstr "레벨 {n}"
+
+#. Odds line (grades on only). {jackpot}, {rare}: percent, {n}: offers until the guarantee
+msgid "grace.screen.odds"
+msgstr "기연 {jackpot}% · 희귀 {rare}% · 보장까지 {n}"
+
+#. Card header of an ordinary card
+msgid "grace.screen.header.oath"
+msgstr "서약"
+
+#. Card header of a borrowed spell. {demon}: the demon's name
+msgid "grace.screen.header.trade"
+msgstr "거래 · {demon}"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.ember"
+msgstr "화염의 악마"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.frost"
+msgstr "냉기의 악마"
+
+#. Name of the demon who gives the grace
+msgid "grace.screen.demon.arc"
+msgstr "번개의 악마"
+
+#. Card kind line
+msgid "grace.screen.kind.new"
+msgstr "새 기술"
+
+#. Card kind line
+msgid "grace.screen.kind.upgrade"
+msgstr "기술 강화"
+
+#. Card kind line
+msgid "grace.screen.kind.prep"
+msgstr "진화 준비"
+
+#. Card kind line
+msgid "grace.screen.kind.evolve"
+msgstr "기술 진화"
+
+#. Grade name on a rare card
+msgid "grace.screen.grade.rare"
+msgstr "희귀"
+
+#. Grade name on a jackpot card
+msgid "grace.screen.grade.jackpot"
+msgstr "기연"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.damage"
+msgstr "피해"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.interval"
+msgstr "주기"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.radius"
+msgstr "반경"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.projectiles"
+msgstr "발사체"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.pierce"
+msgstr "관통"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.targets"
+msgstr "대상"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.blast"
+msgstr "폭발"
+
+#. Short name of the changing effect on a card
+msgid "grace.screen.axis.branches"
+msgstr "갈래"
+
+#. Side note: how far the spell is from evolving
+msgid "grace.screen.path.label"
+msgstr "진화까지"
+
+#. Side note: the passive an evolution needs
+msgid "grace.screen.path.passive"
+msgstr "룬"
+
+#. Side note: the partner spell an evolution needs
+msgid "grace.screen.path.partner"
+msgstr "짝 기술"
+
+#. The flame demon's line on an ordinary offer
+msgid "grace.screen.giver.ember.normal"
+msgstr "골라. 태울 건 아직 많아."
+
+#. The flame demon's line when a jackpot card is offered
+msgid "grace.screen.giver.ember.jackpot"
+msgstr "어때, 크지? 아깝게 쓰지 마."
+
+#. The frost demon's line on an ordinary offer
+msgid "grace.screen.giver.frost.normal"
+msgstr "필요한 만큼만 가져가."
+
+#. The frost demon's line on the first offer of a run
+msgid "grace.screen.giver.frost.first"
+msgstr "하나만 골라. 욕심은 오래 못 가."
+
+#. The frost demon's line when a jackpot card is offered
+msgid "grace.screen.giver.frost.jackpot"
+msgstr "맞춰 둔 자리에 들어갔어. 그거면 돼."
