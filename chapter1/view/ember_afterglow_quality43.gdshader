@@ -24,7 +24,8 @@ void fragment(){
  float body=support*dome;
  // One early cream-hot center resolves into separate, low red embers.
  // All motion uses the inherited paid instance age, including pause/resume.
- float ignition=(1.-smoothstep(.03,.24,age))*exp(-dot(p-vec2(0,.27),p-vec2(0,.27))*15.);
+ // custom.y = 1 for a meteor landing: its landing centre is the disc's, so the cream centre is dropped there (it clipped to yellow).
+ float ignition=(1.-smoothstep(.03,.24,age))*exp(-dot(p-vec2(0,.27),p-vec2(0,.27))*15.)*(1.-.85*ember_data.y);
  float flame=body*tongue*pow(1.-age,2.)*mix(.45,1.,detail);
  float erosion=smoothstep(.38+age*.34,.64+age*.25,detail);
  float embers=body*erosion*smoothstep(.10,.32,age)*(1.-smoothstep(.58,.98,age));

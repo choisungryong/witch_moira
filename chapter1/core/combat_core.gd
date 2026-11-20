@@ -92,6 +92,12 @@ var _primary_id := ""
 var tuning: Dictionary = {}
 ## Child projectiles born during a projectile step; they join the list once the step ends.
 var _pending_children: Array[Dictionary] = []
+## D20: falls of the evolved ember (Meteor) that are booked and have not landed yet: {id, position, land_tick, cast_id}. Empty (and absent
+## from snapshot()) while no such fall is in the air; a run whose tuning has no "meteor" block never books one.
+var _meteors: Array[Dictionary] = []
+var _meteor_sequence := 0
+## Safety cap on booked falls at once (a cast books at most 16; the cooldown is long). Not a balance number.
+const MAX_METEORS := 64
 var _friendly_count := 0
 var _friendly_tick := -1
 ## Tick of the last full-strength heavy hit on the hero (-1 = none); see tuning.heavy_hit. Not part of the snapshot.
@@ -161,6 +167,8 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_alive = 0
 	_primary_id = primary
 	_pending_children.clear()
+	_meteors.clear()
+	_meteor_sequence = 0
 	_ring_pending.clear()
 	_hostile_src.clear()
 	_friendly_tick = -1
@@ -871,6 +879,11 @@ func _auto_casts() -> void:
 			aim = String(aimed.how)
 		var direction: Vector2 = (target.position-hero.position).normalized()
 		var effects: Dictionary = skill.effects.duplicate(true)
+		# D20: the evolved ember books falls instead of shooting (tuning.meteor); damage and radius get the block's multipliers.
+		var meteor: bool = id_ == "chapter1.skill.ember" and bool(skill.evolved) and tuning.has("meteor")
+		if meteor:
+			effects.damage_raw = int(effects.damage_raw)*int(tuning.meteor.damage_bps)/10000
+			effects.radius_cm = int(effects.radius_cm)*int(tuning.meteor.radius_bps)/10000
 		_cast_sequence += 1
 		var context := {"uid":_cast_sequence,"skill_id":id_,"effects":effects,"remaining_hits":int(effects.hit_budget),"hit_ids":[],"evolved":skill.evolved}
 		if aim == "kind":
@@ -891,6 +904,9 @@ func _auto_casts() -> void:
 			if aim == "kind": shot_details.prefer = "kind"
 			_emit("cast",hero.position,shot_details)
 			var count: int = effects.projectiles
+			if meteor:
+				_book_meteors(target,effects,context)
+				continue
 			# Angle between neighbouring shots of one cast (tuning.hero_shot.spread_mrad, default 160 = .16 rad).
 			var spread_step := float(int(tuning.get("hero_shot",{}).get("spread_mrad",160)))/1000.0
 			for i in count:
@@ -900,6 +916,49 @@ func _auto_casts() -> void:
 				projectiles.append({"uid":_projectile_sequence,"position":hero.position,"previous":hero.position,"direction":direction.rotated(spread),
 					"speed":14.0 if id_ == "chapter1.skill.ember" else 16.0,"radius":.24 if skill.evolved else .16,"skill_id":id_,"hostile":false,
 					"damage_raw":int(effects.damage_raw),"expires":tick+100,"cast_id":int(context.uid),"pierce_left":int(effects.pierce),"hit_ids":[]})
+
+## D20: where an enemy will be after `ticks` if it keeps walking (zero when it stands, is frozen, stunned, or in an attack).
+func _enemy_velocity(e: Dictionary) -> Vector2:
+	if e.state != "move" or tick < int(e.frozen_until) or tick < int(e.get("stunned_until",0)) or tick < int(e.get("staggered_until",0)): return Vector2.ZERO
+	var speed := float(ENEMY_DEFS[e.kind].speed)
+	if tick < int(e.slow_until): speed *= float(10000-int(e.slow_bps))/10000.0
+	return e.direction*speed
+
+## D20: book the falls of one cast. The first lands on the aimed enemy's place (led by tuning.meteor.lead_bps of its walk over
+## fall_ticks), the others are scattered round it by a fixed spiral (no random number): angle from the cast uid, radius up to scatter_cm.
+func _book_meteors(target: Dictionary, effects: Dictionary, context: Dictionary) -> void:
+	var rule: Dictionary = tuning.meteor
+	var fall := int(rule.fall_ticks)
+	var lead := float(int(rule.lead_bps))/10000.0
+	var spot := _clamp_point(target.position+_enemy_velocity(target)*float(fall)*STEP*lead)
+	var count := int(effects.projectiles)
+	var scatter := float(int(rule.scatter_cm))/100.0
+	var start_angle := deg_to_rad(float((int(context.uid)*37)%360))
+	for i in count:
+		if _meteors.size() >= MAX_METEORS: break
+		var offset := Vector2.ZERO
+		if i > 0 and scatter > 0.0: offset = Vector2.from_angle(start_angle+float(i)*2.3999632)*scatter*sqrt(float(i)/float(maxi(1,count-1)))
+		_meteor_sequence += 1
+		var item := {"id":_meteor_sequence,"position":_clamp_point(spot+offset),"land_tick":tick+fall,"cast_id":int(context.uid)}
+		_meteors.append(item)
+		_emit("meteor_cast",item.position,{"id":item.id,"land_tick":item.land_tick,"radius_cm":int(effects.radius_cm),"cast_uid":int(context.uid),"origin":hero.position})
+
+## D20: the falls that are due land: the explosion event (with the fall's id), then every enemy in the radius takes the cast's damage
+## through the normal path (budget, death burst chain and sparks as before).
+func _step_meteors() -> void:
+	if _meteors.is_empty(): return
+	var waiting: Array[Dictionary] = []
+	var due: Array[Dictionary] = []
+	for m in _meteors:
+		if tick >= int(m.land_tick): due.append(m)
+		else: waiting.append(m)
+	_meteors = waiting
+	for m in due:
+		if not _terminal_mode.is_empty(): break
+		if not _contexts.has(m.cast_id): continue
+		var context: Dictionary = _contexts[m.cast_id]
+		_emit("explosion",m.position,{"skill_id":context.skill_id,"radius_cm":int(context.effects.radius_cm),"cast_uid":context.uid,"evolved":context.evolved,"meteor":int(m.id)})
+		_area_hit(m.position,float(int(context.effects.radius_cm))/100.0,context,-1,0)
 
 func _is_ring(id_: String) -> bool:
 	return not spells.is_empty() and String(spells.spells.get(id_,{}).get("role","")) == "ring"
@@ -1091,6 +1150,7 @@ func _queue_children(e: Dictionary, context: Dictionary) -> void:
 
 func _step_projectiles() -> void:
 	_friendly_tick = -1
+	_step_meteors()
 	var remaining: Array[Dictionary] = []
 	for p in projectiles:
 		if not _terminal_mode.is_empty(): break
@@ -1137,6 +1197,7 @@ func _step_projectiles() -> void:
 	var active: Dictionary = {}
 	for p in projectiles:
 		if not p.hostile: active[p.cast_id] = true
+	for m in _meteors: active[m.cast_id] = true
 	for uid in _contexts.keys():
 		if not active.has(uid): _contexts.erase(uid)
 
@@ -1331,8 +1392,11 @@ func _emit(type: String, position: Vector2, details: Dictionary = {}) -> void:
 	events.append(event)
 
 func snapshot() -> Dictionary:
-	return {"mode":mode,"tick":tick,"kills":kills,"hero":hero.duplicate(true),"enemies":enemies.duplicate(true),
+	var result := {"mode":mode,"tick":tick,"kills":kills,"hero":hero.duplicate(true),"enemies":enemies.duplicate(true),
 		"projectiles":projectiles.duplicate(true),"orbs":orbs.duplicate(true),"items":items.duplicate(true),
 		"inventory":inventory.duplicate(true),"equipped":equipped.duplicate(true),"growth":growth.snapshot(),
 		"metrics":metrics.duplicate(true),"elite_spawned":_elite_spawned,"elite_killed":_elite_killed,
 		"next_dash_tick":_next_dash,"epoch":_epoch,"elite_reward_uid":_elite_reward_uid}
+	# D20: the booked falls, only while one is in the air.
+	if not _meteors.is_empty(): result.meteors = _meteors.duplicate(true)
+	return result

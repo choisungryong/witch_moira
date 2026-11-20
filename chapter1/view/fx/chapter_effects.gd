@@ -34,9 +34,8 @@ const MAX_PARTICLES := 400
 const MAX_STROKES := 96
 const MAX_IMPACTS := 48
 const MAX_HIT_ACCENTS_PER_CONSUME := 12
-## U-57: fire projectile quad scale (ball about .58 m across; evolved about .8 m).
+## U-57: fire projectile quad scale (ball about .58 m across). The evolved ember no longer shoots (D20): meteor_fx draws its fall.
 const FIREBALL_SCALE := 1.45
-const FIREBALL_SCALE_EVOLVED := 2.0
 const COLORS={"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Color("9ce7ef"),"chapter1.skill.arc":Color("b9caff")}
 ## Enemy threat colour (art plan 2.1): every enemy telegraph and floor hazard uses it, never the fire orange.
 const THREAT_COLOR := Color(1.0,.18,.31)
@@ -66,6 +65,9 @@ var _cue_mm: MultiMesh
 ## A6-RS RS1: the ring spell's own presenter (composition) and the run's spell document (read-only, set every sync).
 const RingSpellFx := preload("res://chapter1/view/fx/ring_spell_fx.gd")
 var _ring_fx := RingSpellFx.new()
+## D20: the evolved ember's falling fire ball (events meteor_cast / explosion{meteor}).
+const MeteorFx := preload("res://chapter1/view/fx/meteor_fx.gd")
+var _meteor_fx := MeteorFx.new()
 var _spells_doc: Dictionary={}
 var _flash_blank := false
 var _flash_blank_color: Variant=null
@@ -233,6 +235,13 @@ func move_marker(at: Vector2) -> void:
 func consume__cloister(events: Array) -> void:
 	var impact_budget := 8
 	var hit_budget := MAX_HIT_ACCENTS_PER_CONSUME
+	# D20: a meteor landing hits a whole crowd in one tick; the landing is the disc's job, so the per-hit sparks and accents are few.
+	var meteor_tick := false
+	for landing in events:
+		if landing.type=="explosion" and landing.has("meteor"):
+			meteor_tick=true
+			hit_budget=mini(hit_budget,2)
+			break
 	for event in events:
 		if int(event.seq)<=_last_event: continue
 		_last_event=int(event.seq)
@@ -240,18 +249,28 @@ func consume__cloister(events: Array) -> void:
 		var color: Color=Palette.spell_color(String(event.get("skill_id","")),_spells_doc,Color("e0c69d"))
 		match String(event.type):
 			"hit":
-				burst(event.position,color,3 if not event.get("shatter",false) else 14)
+				burst(event.position,color,(1 if meteor_tick else 3) if not event.get("shatter",false) else 14)
 				if hit_budget>0 and strokes.size()<MAX_STROKES and not event.has("vs_cc"):
 					hit_budget-=1
 					# A small .1s accent at the paid hit, never a screen-wide flash.
 					strokes.append({"type":"hit","at":event.position,"life":.10,"duration":.10,"element":_element(event.get("skill_id","")),"color":color})
 			"explosion","shatter":
-				burst(event.position,color,16 if event.type=="explosion" else 30,1.35)
+				burst(event.position,color,(6 if event.has("meteor") else 16) if event.type=="explosion" else 30,1.35)
 				if impact_budget>0 and strokes.size()<MAX_STROKES:
 					impact_budget-=1
 					strokes.append({"type":"impact","at":event.position,"radius":float(event.radius_cm)/100.0,"life":.48,"duration":.48,"element":_element(event.skill_id),"color":color})
+					# D20: a volley lands in one lump (up to 16 discs on one spot): each disc is dimmed so the sum stays under the .85 ceiling.
+					if event.has("meteor"):
+						var lump := 0
+						for other in events:
+							if other.type=="explosion" and other.has("meteor") and other.get("cast_uid",-1)==event.get("cast_uid",-2):lump+=1
+						strokes.back().gain=clampf(.34/(.95*float(maxi(1,lump))),.10,.34)						# One flame plume per volley; the rest of the lump is the disc only.
+						for other in events:
+							if other.type=="explosion" and other.has("meteor") and other.get("cast_uid",-1)==event.get("cast_uid",-2):
+								strokes.back().no_plume=int(other.meteor)!=int(event.meteor)
+								break
 					if float(strokes.back().element)<.25:strokes.back().life=.30;strokes.back().duration=.30 # U-57: the fireball burst is quick
-				if event.get("evolved",false):_kick(.15,int(event.tick))
+				if event.get("evolved",false) and not event.has("meteor"):_kick(.15,int(event.tick))   # a meteor landing kicks harder in meteor_fx
 			"death": burst(event.position,color,7,1.2)
 			"hero_hit":
 				# graze = a big hit the core softened (rapid-fire guard): a weaker reaction.
@@ -407,7 +426,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var size_ := .68 if p.hostile else (CHILD_SIZE if child else (1.28 if evolved else 1.0))
 		var element_code := .5 if p.skill_id=="chapter1.skill.frost" else (1.0 if p.hostile else (.15 if p.skill_id=="chapter1.skill.arc" else 0.0))
 		# U-57: the fireball is a ball, not a pin. Presentation scale only (the core's radius is untouched).
-		if element_code==0.0 and not p.hostile and not child:size_=FIREBALL_SCALE_EVOLVED if evolved else FIREBALL_SCALE
+		if element_code==0.0 and not p.hostile and not child:size_=FIREBALL_SCALE
 		var xf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size_),Vector3(p.position.x,.75,p.position.y))
 		var custom := Color((angle+PI)/TAU,element_code,-1.0 if child else (1.0 if evolved else .20),float(int(p.uid)%17)/17.0)
 		# Frost bolts (element code .5) go to the replacement batch; their original keeps a zero-scaled twin.
@@ -420,7 +439,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		_wx(pbuf,po,xf);_wc(pbuf,po+MM_COLOR,color);_wc(pbuf,po+MM_CUSTOM,custom)
 		if glow_mm!=null and element_code==0.0 and not p.hostile and not child:
 			# U-57: an orange light patch on the floor under the ball (no real light, one quad per fireball).
-			var gs := 2.6 if evolved else 1.7
+			var gs := 1.7
 			_wx(glow_buf,glow_n*MM_STRIDE,Transform3D(Basis.IDENTITY.scaled(Vector3(gs,1,gs)),Vector3(p.position.x,.07,p.position.y)))
 			glow_n+=1
 		index+=1
@@ -488,7 +507,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 				var ixf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*float(stroke.radius)),Vector3(stroke.at.x,.10,stroke.at.y))
 				var age := 1.0-float(stroke.life)/float(stroke.duration)
 				var is_ring: bool=stroke.get("ring",false)
-				var icustom := Color(age,stroke.element,1.0 if is_ring else 0.0,1)
+				var icustom := Color(age,stroke.element,1.0 if is_ring else 0.0,float(stroke.get("gain",1.0)))
 				if float(stroke.element)>.3 and float(stroke.element)<.8:
 					var fio := _routed_i*MM_STRIDE
 					_wx(fibuf,fio,ixf);_wc(fibuf,fio+MM_CUSTOM,icustom);_wc(fibuf,fio+MM_COLOR,stroke.color)
@@ -496,7 +515,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					ixf.basis=ixf.basis.scaled(Vector3.ZERO)
 				var io := impact_count*MM_STRIDE
 				_wx(ibuf,io,ixf);_wc(ibuf,io+MM_COLOR,stroke.color);_wc(ibuf,io+MM_CUSTOM,icustom)
-				if float(stroke.element)<.25 and not is_ring and plume_count<MAX_IMPACTS:
+				if float(stroke.element)<.25 and not is_ring and not stroke.get("no_plume",false) and plume_count<MAX_IMPACTS:
 					var scale_ := float(stroke.radius)*.70
 					# The fire-bloom squash (.85/.52/.85, origin.y*.52) is applied here, in the one write.
 					var plume_basis := Basis.IDENTITY.scaled(Vector3.ONE*scale_)
@@ -505,7 +524,7 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 					plume_at.y*=.52
 					var plo := plume_count*MM_STRIDE
 					_wx(plbuf,plo,Transform3D(plume_basis,plume_at))
-					_wc(plbuf,plo+MM_CUSTOM,Color(age,0,0,float(impact_count%7)/7.0))
+					_wc(plbuf,plo+MM_CUSTOM,Color(age,1.0 if stroke.has("gain") else 0.0,0,float(impact_count%7)/7.0))
 					plume_count+=1
 				impact_count+=1
 		else:
@@ -1223,6 +1242,7 @@ func consume(events: Array) -> void:
 		strokes.append({"type":"frost39_cast","at":event.position+direction*.42,"life":.10,"duration":.10,"color":COLORS["chapter1.skill.frost"]})
 	consume__q36(events)
 	_ring_fx.consume(events,self)
+	_meteor_fx.consume(events,self)
 
 func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	if color.is_equal_approx(COLORS["chapter1.skill.frost"]):
@@ -1275,6 +1295,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	var ring_actors: Variant=view.get("actors")
 	if ring_actors!=null:ring_hero=ring_actors.hero.position
 	_ring_fx.sync(run,delta,ring_hero)
+	_meteor_fx.sync(run,delta,self)
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
@@ -1285,6 +1306,7 @@ func _sync_fragments(run: RefCounted,delta: float) -> void:
 func reset() -> void:
 	reset__q36()
 	_ring_fx.reset()
+	_meteor_fx.reset()
 	_flash_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
@@ -1330,3 +1352,4 @@ func setup(owner_view: Node3D) -> void:
 	contact_batch.material_override=contact
 	_read_fx_switches()
 	_ring_fx.setup(view)
+	_meteor_fx.setup(self)

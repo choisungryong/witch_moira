@@ -24,7 +24,9 @@ const PACE_KEYS := ["soft_after_ticks","ramp_bps_per_s","max_bps"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
 ## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
-const OPTIONAL_ROOT := ["rhythm","grace","elites","extras"]
+const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor"]
+## D20: the evolved ember falls from the sky instead of flying. Absent block = it flies as before.
+const METEOR_KEYS := ["fall_ticks","lead_bps","scatter_cm","radius_bps","damage_bps"]
 const ELITES_KEYS := ["enabled","balance_status","per_zone","at_seal_bps","kinds","hp","damage_bps","speed_bps","radius_bps","xp","affixes_per_zone","affixes"]
 const EXTRAS_KEYS := ["enabled","balance_status","guarded","shrines","chests"]
 const EXTRAS_LATER := ["unguarded","rituals","grade"]
@@ -105,9 +107,21 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	if v.has("rhythm"):
 		# The per-beat alive_cap is bounded by the document's own alive_cap, so that one has to be sound first.
 		issues.append_array(_rhythm_issues(v.rhythm,int(v.alive_cap) if integer(v.alive_cap,1,100000) else 1))
+	if v.has("meteor"): issues.append_array(_meteor_issues(v.meteor))
 	if v.has("grace"): issues.append_array(_grace_issues(v.grace))
 	if v.has("elites"): issues.append_array(_elites_issues(v.elites))
 	if v.has("extras"): issues.append_array(_extras_issues(v.extras))
+	return issues
+
+## D20 ranges: fall 0.1 to 2 s, lead 0 to 1, scatter up to 6 m, radius and damage multipliers 0.3x to 3x.
+static func _meteor_issues(m: Variant) -> Array[String]:
+	if not m is Dictionary or not GrowthCatalog.keys_match(m,METEOR_KEYS): return ["meteor keys"]
+	var issues: Array[String] = []
+	if not integer(m.fall_ticks,6,120): issues.append("meteor fall_ticks")
+	if not integer(m.lead_bps,0,10000): issues.append("meteor lead_bps")
+	if not integer(m.scatter_cm,0,600): issues.append("meteor scatter_cm")
+	if not integer(m.radius_bps,3000,30000): issues.append("meteor radius_bps")
+	if not integer(m.damage_bps,3000,30000): issues.append("meteor damage_bps")
 	return issues
 
 static func _bps(v: Variant, high: int = 10000) -> bool:

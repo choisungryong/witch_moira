@@ -90,6 +90,9 @@
     {"id": "vfx-feel", "label": "이펙트(vfx-feel)", "about": "효과의 비용과 모양 확인.", "tools": [
       {"path": "chapter1/tests/hud_dump.gd", "use": "정해진 순간의 캡처와 3D 노드 덤프(--scene)"},
       {"path": "chapter1/tests/frame_probe.gd", "use": "효과 켜고 끈 프레임 시간"},
+      {"path": "tools/dev/fx_strip.py", "use": "효과 캡처 여러 장을 불꽃 색 중심으로 잘라 확대해 한 장의 띠로 잇기"},
+      {"path": "chapter1/tests/fx_stress_probe.gd", "use": "가짜 투사체 N개를 그려 보며 실제 장면의 프레임 시간 재기"},
+      {"path": "chapter1/tests/meteor_fx_probe.gd", "use": "메테오 표현에 가짜 이벤트를 넣어 한 발·8발·16발·일시정지·초기화·흔들림 끔을 확인"},
       {"path": "chapter1/tests/vat_preview.gd", "use": "뼈 애니메이션과 구운 군중 나란히 보기"},
       {"path": "chapter1/tests/bake_vat.gd", "use": "정점 애니메이션 텍스처 굽기와 검증"}
     ]},

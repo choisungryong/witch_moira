@@ -48,8 +48,8 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 # --only accepts check names and these groups.
 ALIASES = {
     'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'app-guard', 'app-loadout'],
-    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx'],
-    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
+    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx'],
+    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
     'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest', 'screen-contract'],
@@ -130,6 +130,8 @@ def checks():
         godot_check('rhythm', 'res://chapter1/tests/test_rhythm.gd', 'CHAPTER1_RHYTHM_TEST_RESULT', timeout=600),
         # D19 C1 growth-pace keys (level table, seal kills, guardian level, orb multipliers, sweep bonus, pace); off equals today.
         godot_check('growth-pace', 'res://chapter1/tests/test_growth_pace.gd', 'CHAPTER1_GROWTH_PACE_RESULT', timeout=300),
+        # D20: the evolved ember (Meteor) falls from the sky: booking, landing, chain, data ranges, determinism.
+        godot_check('meteor', 'res://chapter1/tests/test_meteor.gd', 'CHAPTER1_METEOR_RESULT', timeout=300),
         godot_check('grace', 'res://chapter1/tests/test_grace.gd', 'CHAPTER1_GRACE_RESULT', timeout=600),
         godot_check('descent', 'res://chapter1/tests/test_descent.gd', 'CHAPTER1_DESCENT_TEST_RESULT', timeout=600),
         godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),

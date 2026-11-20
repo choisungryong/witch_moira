@@ -147,6 +147,11 @@ const SPELL_LIFT_PER_ENERGY := .22
 var _lift := PackedVector4Array()
 var _lift_dirty := false
 var _lift_world: RefCounted
+const GLOW_BASE := .95
+const GLOW_DIP_DEPTH := .70
+const GLOW_DIP_SECONDS := .45
+var _look_env: Environment
+var _glow_dip := 0.0
 var _light_active := PackedInt32Array()
 var _light_next := 0
 var _flash_at := PackedVector2Array()
@@ -289,7 +294,8 @@ func apply_look(world: RefCounted) -> void:
 	if environment_node == null or environment_node.environment == null: return
 	var environment: Environment = environment_node.environment
 	environment.glow_enabled = true
-	environment.glow_intensity = .95
+	environment.glow_intensity = GLOW_BASE
+	_look_env = environment
 	environment.glow_bloom = .12
 	environment.glow_strength = 1.0
 	environment.glow_hdr_threshold = .9
@@ -315,6 +321,14 @@ func consume(events: Array) -> void:
 	var sparks := SPARKS_PER_FRAME
 	var bursts := BURSTS_PER_FRAME
 	var lights := LIGHTS_PER_FRAME
+	# D20: a meteor landing hits a whole crowd in one tick; 20 stacked flashes would clip the floor to yellow, so a few remain.
+	for landing in events:
+		if landing.type == "explosion" and landing.has("meteor"):
+			sparks = mini(sparks,2)
+			bursts = mini(bursts,2)
+			_glow_dip = GLOW_DIP_SECONDS
+			if _look_env != null: _look_env.glow_intensity = GLOW_BASE-GLOW_DIP_DEPTH
+			break
 	# Ring-spell hits of normal enemies in one pulse (cast_uid) share one number: {uid: {sum, at (sum of positions), n, color}}.
 	var ring_sums := {}
 	var ring_cast := {}
@@ -363,8 +377,8 @@ func consume(events: Array) -> void:
 					# A6-2: the disc shader owns the hot centre, so the soft flash is a smaller, deeper orange
 					# and the light is weaker; one bright layer per spot (A6 3.3 L3), three lights at most.
 					if ember_boom: pulse_color = Color("e8801f"); pulse_scale = .65
-					_spark(at,pulse_color,radius*pulse_scale,.2)
-					if lights > 0 and _light_active.size() < MINOR_LIGHT_LIMIT:
+					if not event.has("meteor"): _spark(at,pulse_color,radius*pulse_scale,.2)   # D20: a meteor landing is the disc's job (volleys stack)
+					if not event.has("meteor") and lights > 0 and _light_active.size() < MINOR_LIGHT_LIMIT:
 						lights -= 1; _light(at,color,1.8 if ember_boom else 2.5,maxf(5.0,radius*2.6),.26)
 					_mark(at,String(event.get("skill_id","")),radius*.6,ember_boom and radius >= 2.2)
 			"shatter":
@@ -557,6 +571,10 @@ func sync(run: RefCounted, delta: float) -> void:
 	if not playing or delta <= 0.0: return
 	_clock += delta
 	_mark_material.set_shader_parameter("clock",_clock)
+	if _glow_dip > 0.0:
+		# D20: the bloom turns a crowd lit by a meteor landing to yellow; it is pulled down for the first moments and eased back.
+		_glow_dip = maxf(0.0,_glow_dip-delta)
+		if _look_env != null: _look_env.glow_intensity = GLOW_BASE-GLOW_DIP_DEPTH*clampf(_glow_dip/GLOW_DIP_SECONDS,0.0,1.0)
 	var at := 0
 	while at < _number_active.size():
 		var index := _number_active[at]
@@ -634,6 +652,8 @@ func sync(run: RefCounted, delta: float) -> void:
 func reset() -> void:
 	_last_seq = -1
 	_clock = 0.0
+	_glow_dip = 0.0
+	if _look_env != null: _look_env.glow_intensity = GLOW_BASE
 	_mark_material.set_shader_parameter("clock",0.0)
 	_number_active.clear(); _spark_active.clear(); _light_active.clear()
 	_flash_time.fill(-10.0); _flash_next = 0; _mark_expiry.fill(0.0)

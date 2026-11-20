@@ -60,6 +60,7 @@
   "heavy_hit": {"heavy_bps": 2000, "gap_ticks": 120, "iframe_ticks": 45, "graze_bps": 1000, "ward_gap_ticks": 60},
   "final_level_on_boss_spawn": true,
   "hero_shot": {"spread_mrad": 160},
+  "meteor": {"fall_ticks": 24, "lead_bps": 5000, "scatter_cm": 150, "radius_bps": 10000, "damage_bps": 10000},
   "rhythm": {
     "enabled": false,
     "initial_pack": 0,
