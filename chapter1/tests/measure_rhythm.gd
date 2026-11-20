@@ -3,12 +3,17 @@ extends SceneTree
 ## It never calls anything that draws random numbers or mutates the core besides the normal step(); it does not load
 ## chapter_profile.gd. Output goes to stdout (tables) and --out (JSON, only under _local/).
 ##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_rhythm.gd -- --seeds=11,12,13 --primaries=ember,frost,arc --out=_local/w0/rhythm.json --bin=30
+## D19 V0 (read-only; with none of these the printed output is unchanged): --thirds (a table per third of the run + sweep counts: casts, kills per cast, 0.5 s windows with
+## >= 10 kills, screen clears, one-shot share of walkers, lifetimes by kind, big enemies appear -> death), --tuning=_local/x.json (a tuning copy, see tools/dev/tuning_copy.py),
+## --descent-doc=_local/y.json, --policy=synergy|random|... (the grace pick of sim_builds.gd). Example with a copy and the synergy pick:
+##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_rhythm.gd -- --thirds --tuning=_local/d19/v0/wd_1.json --policy=synergy --out=_local/d19/v0/x.json
 ## Grouping: fixed-size time bins (--bin seconds), D11 A2 beats, and zones. Beats are grouped by `beat_started` core
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
 const DescentPolicy = preload("res://chapter1/tests/descent_policy.gd")
 const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
+const GracePolicies = preload("res://chapter1/tests/support/grace_policies.gd")
 
 ## D11 A2 targets [hypothesis]. from/to are the time boundaries used when the core has no beat_started event.
 ## The guardian windows in the A2 table overlap the neighbouring beats; they are folded into those beats here.
@@ -40,6 +45,22 @@ var spells_on := false
 ## site within 20 m when the run is in a lull (or has no rhythm), or while its guard is already fighting; it stands still next to the guard.
 var extras_on := false
 var pilot_extras := false
+## D19 V0 (all read-only; none of them changes what the default output prints):
+## --tuning=_local/x.json     a tuning copy (a whole combat_tuning.json) read instead of the shipped one (make it with a tool, never edit data/).
+## --descent-doc=_local/y.json  the same for descent.json (used with --descent=...; "enabled" is set true in memory).
+## --policy=NAME              the grace pick of sim_builds.gd (support/grace_policies.gd; "synergy" = synergy_now). Not given: the pilot's own pick.
+## --thirds                   print the thirds table (each run cut in three by its length), the sweep counts and the big enemies.
+var tuning_path := ""
+var descent_doc_path := ""
+var policy_name := ""
+var thirds_on := false
+## The sweep counts are always collected into the JSON ("sweep" per run); they are printed only with --thirds.
+const SWEEP_WINDOW_TICKS := 30        ## "0.5 s" window
+const SWEEP_MIN_KILLS := 10
+const CLEAR_HIGH_SHARE := 0.5         ## screen clear (D19 5.2): alive >= 50% of the beat's cap ...
+const CLEAR_LOW_SHARE := 0.15         ## ... then <= 15% of it ...
+const CLEAR_WITHIN_TICKS := 360       ## ... within 6 s.
+const ORDINARY := ["walker", "ranged", "charger"]
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -65,6 +86,16 @@ func execute() -> void:
 				push_error("measure_rhythm: --descent must be one of %s" % str(DescentPolicy.POLICIES))
 				quit(1)
 				return
+		elif arg.begins_with("--tuning="): tuning_path = arg.trim_prefix("--tuning=")
+		elif arg.begins_with("--descent-doc="): descent_doc_path = arg.trim_prefix("--descent-doc=")
+		elif arg.begins_with("--policy="):
+			policy_name = arg.trim_prefix("--policy=")
+			if policy_name == "synergy": policy_name = "synergy_now"
+			if not policy_name in GracePolicies.ALL_POLICIES:
+				push_error("measure_rhythm: --policy must be one of %s (or synergy)" % str(GracePolicies.ALL_POLICIES))
+				quit(1)
+				return
+		elif arg == "--thirds": thirds_on = true
 		elif arg == "--spells-on": spells_on = true
 		elif arg == "--extras-on": extras_on = true
 		elif arg == "--pilot-extras": pilot_extras = true
@@ -73,18 +104,41 @@ func execute() -> void:
 		push_error("measure_rhythm: --out must be a relative path under _local/ (got %s)" % out)
 		quit(1)
 		return
+	for p in [tuning_path, descent_doc_path]:
+		if p != "" and (not String(p).begins_with("_local/") or String(p).contains("..") or String(p).contains(":")):
+			push_error("measure_rhythm: --tuning / --descent-doc must be a relative path under _local/ (got %s)" % p)
+			quit(1)
+			return
+	var tuning_doc: Dictionary = {}
+	if tuning_path != "":
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(ProjectSettings.globalize_path("res://" + tuning_path)))
+		if not parsed is Dictionary:
+			push_error("measure_rhythm: cannot read the tuning copy %s" % tuning_path)
+			quit(1)
+			return
+		tuning_doc = parsed
+	var descent_doc: Dictionary = {}
+	if descent_doc_path != "":
+		var parsed2 = JSON.parse_string(FileAccess.get_file_as_string(ProjectSettings.globalize_path("res://" + descent_doc_path)))
+		if not parsed2 is Dictionary:
+			push_error("measure_rhythm: cannot read the descent copy %s" % descent_doc_path)
+			quit(1)
+			return
+		descent_doc = parsed2
 	var runs: Array = []
 	for prim in prims:
 		for s in seeds:
-			var r := play(int(s), String(prim))
+			var r := play(int(s), String(prim), tuning_doc, descent_doc)
 			if r.is_empty():
 				quit(2)
 				return
 			runs.append(r)
 			print_run(r)
+			if thirds_on: print_sweep_run(r)
 	var cross := cross_summary(runs)
 	print_cross(cross)
-	var result := {"bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
+	if thirds_on: print_thirds(runs)
+	var result := {"tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
 	DirAccess.make_dir_recursive_absolute(abs_path.get_base_dir())
@@ -140,13 +194,13 @@ func beat_name_by_time(sec: float) -> String:
 	return String(BEATS[BEATS.size() - 1].name)
 
 # ---------- one run ----------
-func play(seed_: int, prim: String) -> Dictionary:
+func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: Dictionary = {}) -> Dictionary:
 	var run = Core.new()
 	var pilot = Pilot.new()
 	pilot.run = run
 	run.first_boss_kill = true
-	if rhythm_on or extras_on:
-		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
+	if rhythm_on or extras_on or not tuning_copy.is_empty():
+		var doc = tuning_copy.duplicate(true) if not tuning_copy.is_empty() else JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if rhythm_on:
 			doc.rhythm.enabled = true
 			doc.rhythm.trial.enabled = true
@@ -164,13 +218,23 @@ func play(seed_: int, prim: String) -> Dictionary:
 			push_error("measure_rhythm: " + spells_problem)
 			return {}
 	if descent_policy != "":
-		var descent_problem := TrialDocs.enable_descent_problem(run)
-		if not descent_problem.is_empty():
-			push_error("measure_rhythm: " + descent_problem)
-			return {}
+		if descent_copy.is_empty():
+			var descent_problem := TrialDocs.enable_descent_problem(run)
+			if not descent_problem.is_empty():
+				push_error("measure_rhythm: " + descent_problem)
+				return {}
+		else:
+			var ddoc: Dictionary = descent_copy.duplicate(true)
+			ddoc["enabled"] = true
+			if not run.set_descent(ddoc):
+				push_error("measure_rhythm: descent copy refused " + str(run.errors))
+				return {}
 	if not run.start(seed_, prim):
 		push_error("measure_rhythm: start failed %s" % str(run.errors))
 		return {}
+	var policy_rng := RandomNumberGenerator.new()
+	policy_rng.seed = (seed_ * 2654435761) ^ (GracePolicies.ALL_POLICIES.find(policy_name) * 40503 + 977)
+	var sw := new_sweep(run)
 	var bins: Dictionary = {}
 	var beats: Dictionary = {}
 	var beat_order: Array = []
@@ -188,6 +252,18 @@ func play(seed_: int, prim: String) -> Dictionary:
 	var descent_ends: Array = []
 	var ex := {"born": {}, "engaged": {}, "walk_in_s": [], "guard_fight_s": [], "guard_placed_s": [], "guard_unlocked_s": [], "taken_s": [], "chest_s": [], "expired": 0, "locked_expired": 0}
 	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
+		if policy_name != "" and policy_name != "pilot":
+			# The same place as sim_builds.gd: the pick is made while the core waits in "choice", before the pilot sees it.
+			var g2 := 0
+			while run.mode == "choice" and g2 < 64:
+				g2 += 1
+				var offer: Dictionary = run.get_offer()
+				var cards: Array = offer.cards
+				var chosen: Dictionary = cards[GracePolicies.pick(policy_name, cards, run.growth.snapshot(), policy_rng)]
+				pilot.selections.append({"tick": run.tick, "id": chosen.id, "kind": chosen.kind})
+				if not run.choose(offer.token, chosen.id):
+					push_error("measure_rhythm: choice rejected %s" % str(run.errors))
+					return {}
 		var mv: Vector2 = pilot.decide()
 		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
@@ -203,6 +279,7 @@ func play(seed_: int, prim: String) -> Dictionary:
 			last_seq = int(ev.seq)
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
 			var esec: float = float(ev.tick) / 60.0
+			sweep_event(sw, ev, run, prim)
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
@@ -241,11 +318,13 @@ func play(seed_: int, prim: String) -> Dictionary:
 			a.alive_max = maxi(int(a.alive_max), n)
 			if adv > 0 and int(run.tick) % 6 == 0: a.alive.append(n)
 		last_dropped = dropped_now
+		if adv > 0 and int(run.tick) % 6 == 0: sweep_sample(sw, run)
 		while seen_sel < pilot.selections.size():
 			var sel: Dictionary = pilot.selections[seen_sel]
 			seen_sel += 1
 			var ssec: float = float(int(sel.tick)) / 60.0
 			var gbn := cur_beat if event_beats else beat_name_by_time(ssec)
+			sw.graces.append([snappedf(ssec, 0.1), gbn])
 			for a in [bin_acc(bins, ssec), get_beat(beats, beat_order, gbn, ssec), get_acc(zones, zname, zname, ssec)]:
 				a.grace += 1
 				a.grace_times.append(snappedf(ssec, 0.1))
@@ -288,7 +367,173 @@ func play(seed_: int, prim: String) -> Dictionary:
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "view": run.descent_view()},
 		"elites": extras_summary(run, ex),
-		"bins": bin_list, "beats": beat_list, "zones": zone_list}
+		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim)}
+
+# ---------- D19 V0: sweep counts (read-only; they only read events and run.alive_count()) ----------
+func new_sweep(run) -> Dictionary:
+	return {"cap": int(run.tuning.alive_cap), "alive_cap": int(run.tuning.alive_cap), "beats": run.tuning.get("rhythm", {}).get("beats", []),
+		"trial_cap": int(run.tuning.get("rhythm", {}).get("trial", {}).get("alive_cap", run.tuning.alive_cap)),
+		"s": {"kills": [], "okills": [], "pk": [], "dmg": [], "hh": [], "alive": [], "an": [], "casts": [], "sweeps": [], "clears": [], "clears_d": [], "walk": [], "one": []},
+		"casts_by_skill": {}, "kills_by_skill": {}, "window": [], "last_high": -1, "desc_tick": -1, "born": {}, "hitn": {}, "lives": [], "big_open": {}, "big": [], "graces": []}
+
+func bump(a: Array, i: int, v: float = 1.0) -> void:
+	while a.size() <= i: a.append(0.0)
+	a[i] += v
+
+func sweep_event(sw: Dictionary, ev: Dictionary, run, prim: String) -> void:
+	var sec := int(int(ev.tick) / 60)
+	var s: Dictionary = sw.s
+	match String(ev.type):
+		"beat_started":
+			var id := String(ev.get("id", ""))
+			var cap := int(sw.alive_cap)
+			if id == "trial": cap = int(sw.trial_cap)
+			for b in sw.beats:
+				if String(b.get("id", "")) == id: cap = int(b.get("alive_cap", cap))
+			sw.cap = mini(cap, int(sw.alive_cap))
+		"descent_called", "descent_end": sw.desc_tick = int(ev.tick)
+		"cast":
+			if not ev.has("pulse"):
+				bump(s.casts, sec)
+				var sid := String(ev.get("skill_id", ""))
+				sw.casts_by_skill[sid] = int(sw.casts_by_skill.get(sid, 0)) + 1
+		"hero_hit":
+			bump(s.hh, sec)
+			bump(s.dmg, sec, float(ev.get("damage_raw", 0)) / maxf(1.0, float(run.hero.max_hp_raw)))
+		"spawn":
+			if String(ev.kind) in ORDINARY and not bool(ev.get("elite", false)): sw.born[int(ev.target_id)] = [int(ev.tick), String(ev.kind)]
+		"chapter_champion":
+			var cid := int(ev.target_id)
+			sw.born.erase(cid)
+			sw.hitn.erase(cid)
+			sw.big_open[cid] = {"kind": "guardian%d" % (int(ev.zone) + 1), "spawn_s": snappedf(float(ev.tick) / 60.0, 0.1)}
+		"elite_spawned":
+			var eid := int(ev.target_id)
+			sw.born.erase(eid)
+			sw.big_open[eid] = {"kind": "elite" if int(ev.get("guard_uid", 0)) == 0 else "elite_guard", "spawn_s": snappedf(float(ev.tick) / 60.0, 0.1)}
+		"hit":
+			var tid := int(ev.target_id)
+			sw.hitn[tid] = int(sw.hitn.get(tid, 0)) + 1
+			if String(ev.get("skill_id", "")) == prim: bump(s.pk, sec)
+		"death":
+			var did := int(ev.target_id)
+			bump(s.kills, sec)
+			var dsk := String(ev.get("skill_id", ""))
+			sw.kills_by_skill[dsk] = int(sw.kills_by_skill.get(dsk, 0)) + 1
+			if sw.big_open.has(did):
+				var o: Dictionary = sw.big_open[did]
+				o["death_s"] = snappedf(float(ev.tick) / 60.0, 0.1)
+				o["lived_s"] = snappedf(float(o.death_s) - float(o.spawn_s), 0.1)
+				sw.big.append(o)
+				sw.big_open.erase(did)
+				sw.hitn.erase(did)
+				return
+			var hits_taken := int(sw.hitn.get(did, 0))
+			sw.hitn.erase(did)
+			if String(ev.kind) in ORDINARY and not bool(ev.get("elite", false)):
+				bump(s.okills, sec)
+				if String(ev.kind) == "walker":
+					bump(s.walk, sec)
+					if hits_taken == 1: bump(s.one, sec)
+				if sw.born.has(did):
+					var b: Array = sw.born[did]
+					sw.lives.append([snappedf(float(b[0]) / 60.0, 0.1), snappedf(float(int(ev.tick) - int(b[0])) / 60.0, 0.1), ORDINARY.find(String(b[1]))])
+					sw.born.erase(did)
+				# A sweep moment: >= SWEEP_MIN_KILLS ordinary deaths within the last SWEEP_WINDOW_TICKS; the window empties after one is counted.
+				var w: Array = sw.window
+				w.append(int(ev.tick))
+				while w.size() > 0 and int(w[0]) <= int(ev.tick) - SWEEP_WINDOW_TICKS: w.pop_front()
+				if w.size() >= SWEEP_MIN_KILLS:
+					bump(s.sweeps, sec)
+					w.clear()
+
+func sweep_sample(sw: Dictionary, run) -> void:
+	var tick := int(run.tick)
+	var sec := int(tick / 60)
+	var n: int = run.alive_count()
+	var cap := float(sw.cap)
+	bump(sw.s.alive, sec, float(n))
+	bump(sw.s.an, sec)
+	if float(n) >= CLEAR_HIGH_SHARE * cap:
+		sw.last_high = tick
+	elif float(n) <= CLEAR_LOW_SHARE * cap and int(sw.last_high) >= 0 and tick - int(sw.last_high) <= CLEAR_WITHIN_TICKS:
+		bump(sw.s.clears, sec)
+		if int(sw.desc_tick) >= int(sw.last_high): bump(sw.s.clears_d, sec)
+		sw.last_high = -1
+
+func finish_sweep(sw: Dictionary, secs: float, end_tick: int, prim: String) -> Dictionary:
+	var unres: Array = []
+	for id in sw.born:
+		var b: Array = sw.born[id]
+		unres.append([snappedf(float(b[0]) / 60.0, 0.1), snappedf(float(end_tick - int(b[0])) / 60.0, 0.1), ORDINARY.find(String(b[1]))])
+	var big: Array = sw.big.duplicate(true)
+	for id in sw.big_open:
+		var o: Dictionary = sw.big_open[id].duplicate()
+		o["death_s"] = -1.0
+		o["lived_s"] = snappedf(secs - float(o.spawn_s), 0.1)
+		big.append(o)
+	var out := {"s": sw.s, "casts_by_skill": sw.casts_by_skill, "kills_by_skill": sw.kills_by_skill, "lives": sw.lives, "unresolved": unres, "big": big,
+		"graces": sw.graces, "defs": {"sweep": "%d ordinary deaths in %d ticks" % [SWEEP_MIN_KILLS, SWEEP_WINDOW_TICKS],
+			"clear": "alive >= %.0f%% of the beat cap, then <= %.0f%% within %d ticks" % [CLEAR_HIGH_SHARE * 100.0, CLEAR_LOW_SHARE * 100.0, CLEAR_WITHIN_TICKS],
+			"lives": "[born_s, life_s, kind index of %s]; unresolved = still alive at the run end (life_s so far)" % str(ORDINARY)}}
+	out["thirds"] = thirds_of(out, secs)
+	return out
+
+func slice_sum(a: Array, lo: float, hi: float) -> float:
+	var t := 0.0
+	for i in a.size():
+		var c := float(i) + 0.5
+		if c >= lo and c < hi: t += float(a[i])
+	return t
+
+func thirds_of(sw: Dictionary, secs: float) -> Array:
+	var out: Array = []
+	var s: Dictionary = sw.s
+	var gr: Array = sw.graces
+	for k in 3:
+		var lo := secs * float(k) / 3.0
+		var hi := secs * float(k + 1) / 3.0 if k < 2 else secs + 1.0
+		var dur := secs / 3.0
+		var gaps: Array = []
+		var n_gr := 0
+		var prev := 0.0
+		for g in gr:
+			var t := float(g[0])
+			if t >= lo and t < hi:
+				n_gr += 1
+				gaps.append(t - prev)
+			prev = t
+		var kills := slice_sum(s.kills, lo, hi)
+		var alive := slice_sum(s.alive, lo, hi) / maxf(1.0, slice_sum(s.an, lo, hi))
+		var kps := kills / dur
+		var okills := slice_sum(s.okills, lo, hi)
+		var casts := slice_sum(s.casts, lo, hi)
+		var lives_dead: Array = []
+		var lives_all: Array = []
+		for l in sw.lives:
+			if float(l[0]) >= lo and float(l[0]) < hi:
+				lives_dead.append(float(l[1]))
+				lives_all.append(float(l[1]))
+		var unres_n := 0
+		for l in sw.unresolved:
+			if float(l[0]) >= lo and float(l[0]) < hi:
+				unres_n += 1
+				lives_all.append(float(l[1]))
+		var gmax := 0.0
+		var gsum := 0.0
+		for gp in gaps:
+			gmax = maxf(gmax, float(gp))
+			gsum += float(gp)
+		var walk := slice_sum(s.walk, lo, hi)
+		out.append({"from_s": snappedf(lo, 0.1), "to_s": snappedf(minf(hi, secs), 0.1), "grace_n": n_gr, "gap_mean": snappedf(gsum / float(gaps.size()), 0.1) if gaps.size() > 0 else -1.0, "gap_max": snappedf(gmax, 0.1) if gaps.size() > 0 else -1.0,
+			"kps": snappedf(kps, 0.01), "alive": snappedf(alive, 0.1), "life_little": snappedf(alive / kps, 0.1) if kps > 0.0 else -1.0,
+			"life_med": snappedf(median(lives_dead), 0.1), "life_med_all": snappedf(median(lives_all), 0.1), "dead_n": lives_dead.size(), "unresolved_n": unres_n,
+			"hits_per_kill": snappedf(slice_sum(s.pk, lo, hi) / maxf(1.0, kills), 0.01), "dmg30": snappedf(slice_sum(s.dmg, lo, hi) / dur * 30.0, 0.001), "dmg": snappedf(slice_sum(s.dmg, lo, hi), 0.001),
+			"hits_taken_pm": snappedf(slice_sum(s.hh, lo, hi) / dur * 60.0, 0.1), "casts": int(casts), "kills_per_cast": snappedf(okills / maxf(1.0, casts), 0.01),
+			"sweeps": int(slice_sum(s.sweeps, lo, hi)), "sweeps_pm": snappedf(slice_sum(s.sweeps, lo, hi) / dur * 60.0, 0.01),
+			"clears": int(slice_sum(s.clears, lo, hi)), "clears_descent": int(slice_sum(s.clears_d, lo, hi)),
+			"one_shot_share": snappedf(slice_sum(s.one, lo, hi) / walk, 0.01) if walk > 0.0 else -1.0, "walker_deaths": int(walk)})
+	return out
 
 ## --pilot-extras: where the bot walks (see the header of this file). Reads the core's read-only views; the core is moved only by step().
 func extras_move(run, mv: Vector2) -> Vector2:
@@ -478,6 +723,83 @@ func print_run(r: Dictionary) -> void:
 			for k in METRICS: parts.append("%s=%s" % [k, b.check[k].verdict])
 			v = " ".join(PackedStringArray(parts))
 		print("  %-9s | %5.1f %5.0f | %5.1f %4.0f %3d | %5.1f   %4.2f | %s" % [b.label, b.secs, b.kpm, b.alive_avg, b.alive_p90, b.alive_max, b.hits_pm, (b.check.dmg30.value if not b.check.is_empty() else b.dmg30), v])
+
+const THIRD_COLS := [["grace_n", "은총 수", "%.0f"], ["gap_mean", "간격 평균(초)", "%.1f"], ["gap_max", "간격 최장(초)", "%.1f"], ["kps", "초당 처치", "%.2f"],
+	["alive", "살아 있는 적", "%.1f"], ["life_little", "살아 있는 시간(리틀, 초)", "%.1f"], ["life_med", "죽은 보통 적의 수명 중앙(초)", "%.1f"], ["life_med_all", "수명 중앙(안 죽은 것 포함)", "%.1f"],
+	["unresolved_n", "끝까지 산 보통 적", "%.0f"], ["hits_per_kill", "처치당 주력 명중", "%.2f"], ["dmg30", "30초 받은 피해(최대 생명 비)", "%.3f"], ["hits_taken_pm", "분당 피격", "%.1f"],
+	["casts", "시전 수", "%.0f"], ["kills_per_cast", "시전당 보통 처치", "%.2f"], ["sweeps_pm", "분당 쓸기(0.5초 10처치)", "%.2f"], ["clears", "화면 비움", "%.0f"], ["clears_descent", "그중 강림", "%.0f"],
+	["one_shot_share", "보행자 한 발 몫", "%.2f"]]
+
+func print_sweep_run(r: Dictionary) -> void:
+	var sw: Dictionary = r.sweep
+	print("  THIRDS %s seed=%d (secs=%.1f mode=%s)" % [r.primary, r.seed, r.secs, r.mode])
+	var line := "    third | "
+	for t in 3: line += "%d(%s-%ss) " % [t + 1, str(sw.thirds[t].from_s), str(sw.thirds[t].to_s)]
+	print(line)
+	for col in THIRD_COLS:
+		var row := "    %-30s" % col[1]
+		for t in 3: row += " %8s" % (col[2] % float(sw.thirds[t][col[0]]))
+		print(row)
+	print("    casts by skill: %s | kills by skill: %s" % [str(sw.casts_by_skill), str(sw.kills_by_skill)])
+	var bigs: Array = []
+	for b in sw.big: bigs.append("%s spawn %.1fs %s" % [b.kind, float(b.spawn_s), ("died after %.1fs" % float(b.lived_s)) if float(b.death_s) >= 0.0 else ("alive at end, %.1fs" % float(b.lived_s))])
+	print("    big enemies: %s" % (", ".join(PackedStringArray(bigs)) if bigs.size() > 0 else "-"))
+
+func fmt_med(vals: Array, f: String) -> String:
+	var v: Array = vals.filter(func(x): return float(x) >= 0.0)
+	if v.is_empty(): return "-"
+	return (f + " (" + f + "~" + f + ")") % [median(v), float(v.min()), float(v.max())]
+
+func print_thirds(runs: Array) -> void:
+	print("THIRDS across %d runs (median (min~max); a run enters a cell only when it has a value there; '-' = none)" % runs.size())
+	print("  %-34s | %-26s | %-26s | %-26s" % ["", "앞 1/3", "가운데 1/3", "뒤 1/3"])
+	for col in THIRD_COLS:
+		var cells: Array = []
+		for t in 3:
+			var vals: Array = []
+			for r in runs: vals.append(r.sweep.thirds[t][col[0]])
+			cells.append(fmt_med(vals, col[2]))
+		print("  %-34s | %-26s | %-26s | %-26s" % [col[1], cells[0], cells[1], cells[2]])
+	# ratios the director's targets are written in
+	var ratio: Array = []
+	var gaps_last: Array = []
+	for r in runs:
+		var g1: float = float(r.sweep.thirds[1].gap_mean)
+		var g2: float = float(r.sweep.thirds[2].gap_mean)
+		if g1 > 0.0 and g2 > 0.0: ratio.append(g2 / g1)
+		gaps_last.append(float(r.summary.grace_longest_gap_s))
+	print("  뒤/가운데 은총 간격 평균 비: %s | 판 안의 가장 긴 간격(초): %s | 은총 수: %s | 판 길이(초): %s" % [fmt_med(ratio, "%.2f"), fmt_med(gaps_last, "%.1f"),
+		fmt_med(runs.map(func(r): return float(r.summary.grace_count)), "%.1f"), fmt_med(runs.map(func(r): return float(r.secs)), "%.0f")])
+	var modes := {}
+	for r in runs: modes[String(r.mode)] = int(modes.get(String(r.mode), 0)) + 1
+	var dmg_all: Array = []
+	for r in runs:
+		var d := 0.0
+		for t in 3: d += float(r.sweep.thirds[t].dmg)
+		dmg_all.append(d)
+	print("  끝 상태: %s | 판 전체 받은 피해(최대 생명 비 합): %s" % [str(modes), fmt_med(dmg_all, "%.2f")])
+	# grace gap per beat (the gap ending at a grace taken in that beat)
+	var by_beat: Dictionary = {}
+	for r in runs:
+		var prev := 0.0
+		for g in r.sweep.graces:
+			var b := String(g[1])
+			if not by_beat.has(b): by_beat[b] = []
+			by_beat[b].append(float(g[0]) - prev)
+			prev = float(g[0])
+	var parts: Array = []
+	for b in by_beat: parts.append("%s %s(n=%d)" % [b, fmt_med(by_beat[b], "%.1f"), by_beat[b].size()])
+	print("  마디별 은총 간격(초): " + " / ".join(PackedStringArray(parts)))
+	var guard_times: Dictionary = {}
+	for r in runs:
+		for b in r.sweep.big:
+			var k := String(b.kind)
+			if not guard_times.has(k): guard_times[k] = {"died": [], "alive": []}
+			if float(b.death_s) >= 0.0: guard_times[k].died.append(float(b.lived_s))
+			else: guard_times[k].alive.append(float(b.lived_s))
+	var gparts: Array = []
+	for k in guard_times: gparts.append("%s 잡음 %d판 %s / 못 잡고 끝 %d판 %s" % [k, guard_times[k].died.size(), fmt_med(guard_times[k].died, "%.1f"), guard_times[k].alive.size(), fmt_med(guard_times[k].alive, "%.1f")])
+	print("  큰 적 등장 → 죽음(초): " + " | ".join(PackedStringArray(gparts)))
 
 func print_cross(c: Dictionary) -> void:
 	print("CROSS beats (target vs value across runs that reached the beat; inside/low/high counts)")

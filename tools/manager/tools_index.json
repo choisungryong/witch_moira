@@ -37,7 +37,8 @@
     {"id": "design-lead", "label": "기획 관리(design-lead)", "about": "목표 대비 수치 판정에 쓰는 측정과 시뮬레이터.", "tools": [
       {"path": "tools/dev/balance_sim.py", "use": "코어를 돌리지 않는 흐름 모델로 스킬 구성의 서열을 몇 초에 본다"},
       {"path": "chapter1/tests/measure_combat.gd", "use": "실제 코어 한 판의 전투 압박 지표(약 3분)"},
-      {"path": "chapter1/tests/measure_rhythm.gd", "use": "난이도 리듬 측정"},
+      {"path": "chapter1/tests/measure_rhythm.gd", "use": "난이도 리듬 측정. 인수: --thirds(판을 셋으로 자른 은총 간격·쓸기·큰 적 표) --tuning=/--descent-doc=(튜닝 복사본) --policy=synergy(은총 정책)"},
+      {"path": "tools/dev/tuning_copy.py", "use": "데이터 문서의 복사본에 키 몇 개만 바꿔 _local/에 쓴다(measure_rhythm --tuning=의 입력)"},
       {"path": "chapter1/tests/sim_loot.gd", "use": "한 판 드랍 양을 많이 굴려 목표와 대조"},
       {"path": "chapter1/tests/sim_builds.gd", "use": "성장 선택 정책별 구성의 벌어짐"},
       {"path": "chapter1/tests/sim_progression.gd", "use": "영구 성장 속도"},

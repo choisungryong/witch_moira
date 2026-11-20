@@ -20,7 +20,9 @@ var started_us := -1
 var last_us := -1
 var t_us := PackedInt64Array()
 var dt_us := PackedInt64Array()
+var spells_pick := false ## A9: --probe-spells-pick takes growth cards with tests/spells_pick.gd (ring unlock first) so the fence is really on
 var modes := PackedStringArray()
+var ring_on := PackedInt32Array() ## A9: 1 when the ring spell is owned and drawn on that frame (the fence only exists with --chapter1-trial=spells)
 var ticks := PackedInt32Array()
 var enemies := PackedInt32Array()
 var draw_calls := PackedInt32Array()
@@ -33,6 +35,7 @@ func _initialize() -> void:
 		if arg.begins_with("--probe-out="): out_path = arg.trim_prefix("--probe-out=")
 		elif arg.begins_with("--probe-seconds="): seconds = float(arg.trim_prefix("--probe-seconds="))
 		elif arg == "--probe-vsync=on": vsync_on = true
+		elif arg == "--probe-spells-pick": spells_pick = true
 		elif arg == "--probe-no-glow": no_glow = true
 		elif arg.begins_with("--probe-env="): env_overrides = arg.trim_prefix("--probe-env=")
 		elif arg.begins_with("--probe-scale3d="): scale3d = float(arg.trim_prefix("--probe-scale3d="))
@@ -71,6 +74,7 @@ func _find_env(node: Node) -> WorldEnvironment:
 func _process(_delta: float) -> bool:
 	if view == null or not view.is_inside_tree(): return true
 	var run: RefCounted = view.run
+	if spells_pick and run.mode == "choice": preload("res://chapter1/tests/spells_pick.gd").pick(run,"frame_probe")
 	var now := Time.get_ticks_usec()
 	if started_us < 0:
 		if run.mode != "playing": return false
@@ -78,6 +82,8 @@ func _process(_delta: float) -> bool:
 	if last_us >= 0:
 		t_us.append(now-started_us); dt_us.append(now-last_us)
 		modes.append(run.mode); ticks.append(run.tick); enemies.append(run.enemies.size())
+		var ring_fx: Variant = view.effects.get("_ring_fx") if view.get("effects") != null else null
+		ring_on.append(1 if ring_fx != null and String(ring_fx.ring_id) != "" else 0)
 		draw_calls.append(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 		proc_ms.append(float(Performance.get_monitor(Performance.TIME_PROCESS))*1000.0)
 		if not root.has_focus(): unfocused += 1
@@ -104,7 +110,7 @@ func _finish() -> void:
 		"final_mode": view.run.mode, "final_tick": view.run.tick, "kills": view.run.kills,
 	}
 	var data := {"info": info, "t_us": Array(t_us), "dt_us": Array(dt_us), "modes": Array(modes), "ticks": Array(ticks),
-		"enemies": Array(enemies), "draw_calls": Array(draw_calls), "proc_ms": Array(proc_ms)}
+		"enemies": Array(enemies), "ring_on": Array(ring_on), "draw_calls": Array(draw_calls), "proc_ms": Array(proc_ms)}
 	var file := FileAccess.open(out_path, FileAccess.WRITE)
 	if file == null:
 		push_error("cannot write "+out_path)

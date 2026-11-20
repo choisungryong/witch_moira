@@ -1217,7 +1217,9 @@ func part_f() -> void:
 			if policy == "synergy":
 				check(r.picks.any(func(p): return String(p).contains("unlock:" + primary.replace("chapter1.skill.", "") + "_ring")), "F %s synergy picked her ring" % primary)
 	# A whole chapter to its end for each witch (boosted base damage): zones, guardians, boss, victory or defeat.
-	var strong := boosted_doc(arg_value("--boost", 20))
+	# x30 since 2026-11-20 (D19 W-D moved the shipped mid-run level thresholds up; the arc witch, who kills one body at a time,
+	# stayed in zone 1 at 36000 ticks with x20). Measured: all three end with x30.
+	var strong := boosted_doc(arg_value("--boost", 30))
 	for primary in [EMBER, FROST, ARC]:
 		var r := play(strong, 11, primary, "synergy", 36000, {}, "boosted")
 		# An arc witch kills one body at a time and can need longer than the cap to bring the last guardian down: ending or

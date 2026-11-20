@@ -16,17 +16,17 @@
     "ranged":  {"hp": [20, 28, 36], "damage": [5, 8, 12], "speed": [2.0, 2.15, 2.3]},
     "charger": {"hp": [36, 48, 60], "damage": [8, 14, 22], "speed": [2.7, 2.85, 3.0]}
   },
-  "hp_time_bps_per_s": 160,
+  "hp_time_bps_per_s": 65,
   "hp_time_from_s": 30,
   "champions": [
-    {"hp": 1400, "damage": 55, "windup": 54, "recover": 96, "xp": 20},
-    {"hp": 2200, "damage": 70, "windup": 48, "recover": 84, "xp": 30},
+    {"hp": 1400, "damage": 55, "windup": 54, "recover": 96, "xp": 400},
+    {"hp": 2200, "damage": 70, "windup": 48, "recover": 84, "xp": 500},
     {"hp": 4500, "damage": 85, "windup": 54, "recover": 90, "xp": 60}
   ],
   "boss_ward": {"damage": 65},
   "potion": {"drop_one_in": 420, "seal_drops": 2, "start": 3, "carry_max": 5, "heal_bps": 3500, "cooldown_ticks": 240},
   "orbs": {"overflow": "nearest", "vacuum_on_seal": true},
-  "xp_thresholds": [0, 10, 23, 71, 186, 444, 740, 1167, 1772, 2552, 3898, 12000],
+  "xp_thresholds": [0, 10, 25, 60, 165, 390, 780, 1700, 2500, 3500, 5400, 12000],
   "primary_bonus": {
     "chapter1.skill.ember": {
       "r1": {"add": {"projectiles": 1, "hit_budget": 1}, "cooldown_bps": 6700, "mul_bps": {"damage_raw": 8000}},

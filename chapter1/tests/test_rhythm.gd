@@ -361,10 +361,12 @@ func hp_factor_check() -> void:
 	off.enemies.clear()
 	off._alive = 0
 	off._spawn("walker", Vector2(6, 0))
-	check(off.enemies[off._enemy_sequence].max_hp_raw == 14 * (10000 + 160 * 31) / 10000 * 256, "A with the rhythm off the factor is not read")
-	# W1b: rhythm on, clock factor left at its shipped value (160): the clock must not multiply on top of the beat's factor.
+	# The clock factor is read from the shipped data (160 until 2026-11-20, 65 since D19 W-D), not written here.
+	var clock := int(shipped().hp_time_bps_per_s)
+	check(clock > 0 and off.enemies[off._enemy_sequence].max_hp_raw == 14 * (10000 + clock * 31) / 10000 * 256, "A with the rhythm off the factor is not read")
+	# W1b: rhythm on, clock factor left at its shipped value: the clock must not multiply on top of the beat's factor.
 	var on = make_run(document(false))
-	check(int(on.tuning.hp_time_bps_per_s) == 160, "W1b the shipped clock factor is still 160 in the enabled document")
+	check(int(on.tuning.hp_time_bps_per_s) == clock, "W1b the shipped clock factor is unchanged in the enabled document")
 	on.enemies.clear()
 	on._alive = 0
 	on.tick = 300 * 60
