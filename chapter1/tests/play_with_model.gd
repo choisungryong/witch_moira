@@ -13,6 +13,9 @@ var _held: Array = []
 var _view: Node
 var _boost := 0.0
 var _look: Dictionary = {}
+## --cam-size=<m>: the orthographic camera's size (the game ships 19.5). Smaller = closer: the hero covers more pixels, less of the field shows.
+## Forced every frame, so the game's own camera size effects (if any) are overridden while it is set.
+var _cam_size := 0.0
 
 func _initialize() -> void:
 	var glb := ""
@@ -21,6 +24,7 @@ func _initialize() -> void:
 		if arg.begins_with("--model-glb="): glb = arg.trim_prefix("--model-glb=")
 		elif arg.begins_with("--model-texture="): texture = arg.trim_prefix("--model-texture=")
 		elif arg.begins_with("--hero-boost="): _boost = float(arg.trim_prefix("--hero-boost="))
+		elif arg.begins_with("--cam-size="): _cam_size = float(arg.trim_prefix("--cam-size="))
 		elif arg.begins_with("--hero-look="):
 			_look = ModelSwap.load_look(arg.trim_prefix("--hero-look="))
 			print("PLAY_LOOK ", JSON.stringify({"file": arg.trim_prefix("--hero-look="), "cells": _look.keys()}))
@@ -38,3 +42,6 @@ func _apply() -> void:
 	if _view == null or not is_instance_valid(_view): return
 	ModelSwap.apply_boost(_view.get("actors"), _boost)
 	ModelSwap.apply_look(_view.get("actors"), _look)
+	if _cam_size > 0.0:
+		var world = _view.get("world")
+		if world != null and world.get("camera") != null: world.camera.size = _cam_size
