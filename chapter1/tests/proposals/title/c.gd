@@ -51,6 +51,7 @@ var _intro_stamp := -12345.0
 var _last_rect: Array = [Rect2(), Rect2(), Rect2()]
 var _pm: Array = [-1.0, -1.0, -1.0]
 var _pfx: Array = [false, false, false]
+var _pi: Array = [-1.0, -1.0, -1.0]
 
 static func make(c: Dictionary) -> Control:
 	var s = load("res://chapter1/tests/proposals/title/c.gd").new()
@@ -229,6 +230,7 @@ func _build() -> void:
 		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var half := 512.0 * float(SCALE[i]) * Parts.K
 		var xc := Parts.px(float(AXIS_X[i]))
+		edge.z_index = 9  ## above the portrait entrance veil (z 7), so the veil never shows a hard-edged box
 		edge.material = Parts.edge_cover_material(xc - half - cover.position.x, xc + half - cover.position.x, Parts.px(120.0), cover.size.x)
 		content.add_child(edge)
 		# rim light: it cannot sit BEHIND the figure (the portrait draws background and figure in one node), so it lies over both, low
@@ -244,6 +246,7 @@ func _build() -> void:
 		rim.position = Vector2(xc - rim.size.x * 0.5, Parts.px(450.0) - rim.size.y * 0.5)
 		content.add_child(rim)
 		Parts.hgrad(content, Rect2(0, 0, Parts.px(760.0), size.y), Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.75), Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.0))
+		Parts.vgrad(content, Rect2(0, size.y * 0.5, size.x, size.y * 0.5), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.55))
 		var d := Parts.Devil.new()
 		var area: Rect2 = DEVIL_AREA[i]
 		var def: Dictionary = cards[i].get("devil", {})
@@ -251,12 +254,17 @@ func _build() -> void:
 		d.position = Vector2(Parts.px(area.position.x), Parts.px(area.position.y))
 		d.pivot_offset = d.size * 0.5
 		content.add_child(d)
-		worlds.append({"reveal": reveal, "content": content, "devil": d})
+		var rise := Parts.Rise.new()  ## entrance darkness over the whole world (the portrait's own veil only covers its picture box)
+		rise.z_index = 9
+		rise.size = size
+		content.add_child(rise)
+		worlds.append({"reveal": reveal, "content": content, "devil": d, "rise": rise})
 	sweep_band = Parts.hband(world_stage, Rect2(0, 0, Parts.px(240.0), size.y), Color(1, 1, 1, 1), true)
 	sweep_band.visible = false
 	sweep_band.z_index = 6
 	burst = Parts.Burst.new()
 	burst.size = size
+	burst.unit = 1.7
 	world_stage.add_child(burst)
 	# the leather strip
 	strip = Strip.new()
@@ -338,6 +346,10 @@ func _build() -> void:
 	rise = Parts.Rise.new()
 	rise.size = size
 	add_child(rise)
+	for k in range(1, get_child_count()):  ## everything above the stage sits over the edge covers (z 9)
+		var ch := get_child(k)
+		if ch != world_stage and ch is CanvasItem and (ch as CanvasItem).z_index == 0:
+			(ch as CanvasItem).z_index = 10
 	_update()
 
 var _menu_actions: Array = []
@@ -352,11 +364,14 @@ func _saved_text() -> String:
 
 func _medal_texture(i: int, id: String) -> Texture2D:
 	var path := ProjectSettings.globalize_path("res://chapter1/art/portraits/%s/layers/L4_head.png" % id)
-	var f: Vector2 = Parts.FACE[i]
-	var half := 120
-	var region := Rect2i(int(f.x) - half, int(f.y) - half, half * 2, half * 2)
-	var tex: Texture2D = Kit.image_texture(path, region)
-	return tex
+	var img := Image.load_from_file(path)
+	if img == null or img.is_empty():
+		return null
+	var used := img.get_used_rect()  ## the head layer is only the head (about 200 px tall): a square around exactly what is drawn
+	var side := int(maxi(used.size.x, used.size.y)) + 8
+	var region := Rect2i(used.position.x + used.size.x / 2 - side / 2, used.position.y - 4, side, side)
+	region = region.intersection(Rect2i(Vector2i.ZERO, img.get_size()))
+	return ImageTexture.create_from_image(img.get_region(region))
 
 # ---------------------------------------------------------------- time
 
@@ -494,6 +509,10 @@ func _update() -> void:
 			if not intro_skipped and not reduce_motion:
 				(portraits[focus_index] as Node2D).call("advance_to", clock + shift_bonus)
 				(portraits[focus_index] as Node2D).call("play_intro")
+				var veil: Variant = (portraits[focus_index] as Node2D).get("_veil")
+				if veil != null:
+					(veil as CanvasItem).modulate.a = 0.0
+				_pi[focus_index] = clock + shift_bonus
 				mark_once("portrait_intro_%d" % focus_index)
 	if state == "idle":
 		_intro_stamp = -12345.0
@@ -522,6 +541,10 @@ func _update() -> void:
 			else:
 				content.position.x = Parts.px(60.0) * p if motion_on else 0.0
 				content.modulate.a = 1.0 - p
+		var ra := 0.0
+		if float(_pi[i]) >= 0.0:
+			ra = (1.0 if prev_focus < 0 else 0.7) * (1.0 - Parts.smooth(Parts.ramp(clock + shift_bonus - float(_pi[i]), 0.0, 1.1 if prev_focus < 0 else 0.8)))
+		w.rise.set("amount", ra)
 		var g := _geom(i)
 		var s_code := float(g.scale) * Parts.K
 		var rect := Parts.portrait_rect(s_code, Vector2(512, 0), Vector2(Parts.px(float(g.axis_x)), Parts.px(TOP_Y)))
@@ -531,7 +554,7 @@ func _update() -> void:
 	sweep_band.visible = sweeping and motion_on and focus_index >= 0
 	if sweep_band.visible:
 		var bc := Parts.el_color(focus_index)
-		sweep_band.modulate = Color(bc.r, bc.g, bc.b, 0.9 * (1.0 - Parts.ramp(fe, SWEEP * 0.7, SWEEP)))
+		sweep_band.modulate = Color(bc.r, bc.g, bc.b, 0.55 * (1.0 - Parts.ramp(fe, SWEEP * 0.7, SWEEP)))
 		sweep_band.position.x = band_x - sweep_band.size.x * 0.5
 	# portrait motion and effects: only the world in front moves
 	for i in 3:
@@ -558,7 +581,7 @@ func _update() -> void:
 		strip_x = lerpf(Parts.px(BAND.position.x), Parts.px(-BAND.size.x - 16.0), Parts.ramp(ce, 0.0, 0.2))
 	strip.position = Vector2(strip_x, Parts.px(BAND.position.y))
 	strip.visible = strip_x > -Parts.px(BAND.size.x)
-	var menu_a := (1.0 - Parts.ramp(sf, 0.0, 0.6)) * chrome
+	var menu_a := (1.0 - Parts.ramp(sf, 0.0, 0.6)) * chrome * (Parts.ramp(e, 0.6, 1.1) if state == "intro" else 1.0)
 	for k in menu_items.size():
 		var mi: Control = menu_items[k]
 		mi.visible = menu_a > 0.01 and state != "idle"
@@ -622,7 +645,7 @@ func _update() -> void:
 			burst.set("t", ce - 0.30 if ce >= 0.30 else -1.0)
 			if ce >= 0.30:
 				mark_once("burst_start")
-				var fa := 0.45 * Parts.ramp(ce, 0.30, 0.36) if ce < 0.36 else 0.45 * (1.0 - Parts.ramp(ce, 0.36, 0.60))
+				var fa := 0.34 * Parts.ramp(ce, 0.30, 0.36) if ce < 0.36 else 0.34 * (1.0 - Parts.ramp(ce, 0.36, 0.56))
 				var fc := Parts.el_color(focus_index)
 				flash.color = Color(fc.r * fa, fc.g * fa, fc.b * fa, 1.0)
 			if devil_mode != "none":

@@ -32,6 +32,7 @@ var state := "idle"       ## idle, intro, ready, confirm, done
 var clock := 0.0
 var events: Array = []
 var reduce_motion := false
+var capture_mode := false  ## set by the capture tool: the real mouse pointer must not move the focus while a picture is taken
 var motion := 1.0
 var manual := false
 var intro_len := 2.5
@@ -339,6 +340,8 @@ func _unhandled_key_input(e: InputEvent) -> void:
 
 func _gui_input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion:
+		if capture_mode:
+			return
 		var idx := _hover_at((e as InputEventMouseMotion).position)
 		if idx != hover_idx:
 			hover_idx = idx

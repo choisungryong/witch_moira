@@ -9,7 +9,7 @@ extends "res://chapter1/tests/proposals/title/base.gd"
 ## _local at run time), the word-mark (a title-font text), the front layer of the door seams (a dark gradient here).
 
 const AXIS := [0.36, 0.70, 0.68]            ## where the figure's vertical axis stands inside the focused door (BRIEF 3.2.1)
-const TEXT_X := [556.0, 544.0, 1024.0]      ## x of the text bundle when witch j has the focus (px)
+const TEXT_X := [540.0, 520.0, 1000.0]      ## x of the text bundle when witch j has the focus (px)
 const TEXT_SIDE := [1, -1, -1]              ## +1: the text is on the right of the door (shade comes from its right edge)
 const S_FOCUS := 0.74
 const S_DIM := 0.66
@@ -33,6 +33,7 @@ var iris: Control
 var logo: Label
 var logo_font: FontVariation
 var top_shade: Control
+var right_shade_node: Control
 var hint: Label
 var saved: Label
 var _dx: Array = [0.0, 0.0, 0.0]
@@ -41,6 +42,7 @@ var _portrait_started := false
 var _last_rect: Array = [Rect2(), Rect2(), Rect2()]
 var _pm: Array = [-1.0, -1.0, -1.0]
 var _pfx: Array = [false, false, false]
+var _pi: Array = [-1.0, -1.0, -1.0]   ## portrait-clock time at which each portrait's entrance began
 
 static func make(c: Dictionary) -> Control:
 	var s = load("res://chapter1/tests/proposals/title/a.gd").new()
@@ -87,6 +89,7 @@ func _build() -> void:
 		edge.stretch_mode = TextureRect.STRETCH_SCALE
 		edge.modulate = Color(0.45, 0.45, 0.45, 1.0)
 		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		edge.z_index = 9  ## above the portrait entrance veil (z 7), so the veil never shows a hard-edged box
 		edge.material = Parts.edge_cover_material(0.0, 100.0, 10.0, 100.0)
 		content.add_child(edge)
 		var glow := TextureRect.new()
@@ -96,11 +99,16 @@ func _build() -> void:
 		glow.material = Parts.additive()
 		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		content.add_child(glow)
+		var ground := Parts.vgrad(content, Rect2(0, size.y * 0.45, 4.0, size.y * 0.55), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.62))
+		ground.name = "Ground"
 		var gray := ColorRect.new()
 		gray.color = Color(0.2, 0.21, 0.23, 0.0)
 		gray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		door.add_child(gray)
-		doors.append({"door": door, "content": content, "far": far, "edge": edge, "glow": glow, "gray": gray})
+		var rise := Parts.Rise.new()  ## the entrance darkness over the whole door (the portrait's own veil only covers its picture box)
+		rise.z_index = 9
+		content.add_child(rise)
+		doors.append({"door": door, "content": content, "far": far, "edge": edge, "glow": glow, "gray": gray, "ground": ground, "rise": rise})
 	for k in 2:
 		seams.append(Parts.hband(stage, Rect2(0, 0, Parts.px(48.0), size.y), Color(0.0, 0.0, 0.0, 0.85)))
 	var devil_mode := String(contract.get("devil_mode", "face"))
@@ -117,15 +125,16 @@ func _build() -> void:
 		devils.append(d)
 	burst = Parts.Burst.new()
 	burst.size = size
+	burst.unit = 1.7
 	stage.add_child(burst)
 	# text side shade, one per witch (BRIEF 3.2.1: 520 px wide, SURFACE .78 -> 0)
 	for i in 3:
 		var side := int(TEXT_SIDE[i])
 		var edge_x := 960.0 if i == 0 else (480.0 if i == 1 else 960.0)
-		var x0 := edge_x - 520.0 if side > 0 else edge_x
-		var c0 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.0 if side > 0 else 0.78)
-		var c1 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.78 if side > 0 else 0.0)
-		var sh := Parts.hgrad(self, Rect2(Parts.px(x0), 0, Parts.px(520.0), size.y), c0, c1)
+		var x0 := edge_x - 620.0 if side > 0 else edge_x
+		var c0 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.0 if side > 0 else 0.86)
+		var c1 := Color(Palette.SURFACE.r, Palette.SURFACE.g, Palette.SURFACE.b, 0.86 if side > 0 else 0.0)
+		var sh := Parts.hgrad(self, Rect2(Parts.px(x0), 0, Parts.px(620.0), size.y), c0, c1)
 		sh.modulate.a = 0.0
 		shades.append(sh)
 	for i in 3:
@@ -135,6 +144,9 @@ func _build() -> void:
 		tags.append(_make_tag(i))
 	_wire_blocks()
 	top_shade = Parts.vgrad(self, Rect2(0, 0, Parts.px(700.0), Parts.px(150.0)), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.0))
+	var right_shade := Parts.vgrad(self, Rect2(size.x - Parts.px(900.0), 0, Parts.px(900.0), Parts.px(150.0)), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.0))
+	right_shade.name = "TopRightShade"
+	right_shade_node = right_shade
 	logo_font = FontVariation.new()
 	logo_font.base_font = Kit.Loc.font("heading")
 	logo = Label.new()
@@ -178,6 +190,10 @@ func _build() -> void:
 	iris = Parts.Iris.new()
 	iris.size = size
 	add_child(iris)
+	for k in range(1, get_child_count()):  ## everything above the stage sits over the edge covers (z 9)
+		var ch := get_child(k)
+		if ch != stage and ch is CanvasItem and (ch as CanvasItem).z_index == 0:
+			(ch as CanvasItem).z_index = 10
 	_update()
 
 func _saved_text() -> String:
@@ -296,6 +312,10 @@ func _update() -> void:
 		if not intro_skipped and not reduce_motion:
 			(portraits[focus_index] as Node2D).call("advance_to", clock + shift_bonus)
 			(portraits[focus_index] as Node2D).call("play_intro")
+			var veil: Variant = (portraits[focus_index] as Node2D).get("_veil")
+			if veil != null:
+				(veil as CanvasItem).modulate.a = 0.0  ## hidden: the door's own Rise does the same darkness over the whole door
+			_pi[focus_index] = clock + shift_bonus
 			mark_once("portrait_intro")
 	if state == "idle":
 		_portrait_started = false
@@ -346,9 +366,18 @@ func _update() -> void:
 		edge.size = cover.size
 		var half := 512.0 * float(g.scale) * Parts.K
 		Parts.set_edge(edge.material, Parts.px(local_x) - half - cover.position.x, Parts.px(local_x) + half - cover.position.x, Parts.px(120.0), cover.size.x)
+		var far_k := 1.0 - 0.5 * c if i == focus_index else 1.0  ## the opened door darkens its far layer so the burst and the demon carry it
+		far.modulate = Color(0.45, 0.45, 0.45, 1.0) * far_k
+		edge.modulate = far.modulate
 		var br := lerpf(0.30, 1.0, float(fv[i]))
 		(d.content as Control).modulate = Color(br, br, br, 1.0)
+		var ra := 0.0
+		if float(_pi[i]) >= 0.0 and state != "idle":
+			ra = 1.0 - Parts.smooth(Parts.ramp(clock + shift_bonus - float(_pi[i]), 0.0, 1.1))
+		(d.rise as Control).size = door.size
+		(d.rise as Control).set("amount", ra)
 		(d.gray as ColorRect).size = door.size
+		(d.ground as Control).size.x = door.size.x
 		(d.gray as ColorRect).color = Color(0.2, 0.21, 0.23, 0.55 * (1.0 - float(fv[i])))
 		var glow_a := 0.0
 		var fe := clock - focus_t0
@@ -413,7 +442,7 @@ func _update() -> void:
 		var sb: Control = blocks[focus_index].start
 		sb.set("flash", (1.0 - Parts.ramp(ce, 0.0, 0.06)) if in_confirm else 0.0)
 	_logo(e, ce)
-	for c2 in [hint, saved, corner_settings, corner_quit, top_shade]:
+	for c2 in [hint, saved, corner_settings, corner_quit, top_shade, right_shade_node]:
 		(c2 as Control).modulate.a = chrome
 	# effects of the confirm
 	flash.color = Color(0, 0, 0, 0)
@@ -440,15 +469,15 @@ func _update() -> void:
 				mark_once("burst_start")
 				var fa := 0.0
 				if ce < 0.36:
-					fa = 0.45 * Parts.ramp(ce, 0.30, 0.36)
+					fa = 0.34 * Parts.ramp(ce, 0.30, 0.36)
 				else:
-					fa = 0.45 * (1.0 - Parts.ramp(ce, 0.36, 0.60))
+					fa = 0.34 * (1.0 - Parts.ramp(ce, 0.36, 0.56))
 				var fc := Parts.el_color(focus_index)
 				flash.color = Color(fc.r * fa, fc.g * fa, fc.b * fa, 1.0)
 			var dv := String(contract.get("devil_mode", "face"))
 			if dv != "none":
 				var dev: Control = devils[focus_index]
-				var amt := 0.55 * Parts.ramp(ce, 0.30, 0.40) * (1.0 - Parts.ramp(ce, 0.60, 0.80))
+				var amt := 0.85 * Parts.ramp(ce, 0.30, 0.40) * (1.0 - Parts.ramp(ce, 0.60, 0.80))
 				dev.set("amount", amt)
 				var dsc := 1.0 + 0.04 * Parts.ramp(ce, 0.40, 0.70)
 				dev.scale = Vector2(dsc, dsc)

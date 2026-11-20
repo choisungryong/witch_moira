@@ -426,12 +426,12 @@ func _build() -> void:
 	if String(contract.get("odds", "")) != "":
 		Kit.lbl(self, String(contract.odds), Vector2(RX0, 862), 330, 14, Palette.INK_DIM, "body", HORIZONTAL_ALIGNMENT_LEFT, false)
 	var remove_h := Kit.Handle.new()
-	remove_h.build(String(ui.key_exclude), String(ui.exclude), String(contract.exclude.left_label), 156.0, 46.0)
-	remove_h.position = Vector2(1096, 800)
+	remove_h.build(String(ui.key_exclude), String(ui.exclude), String(contract.exclude.left_label), 190.0, 46.0)
+	remove_h.position = Vector2(944, 800)
 	add_child(remove_h)
 	var keep_h := Kit.Handle.new()
-	keep_h.build("V", String(ui.keep), String(contract.keep.left_label), 156.0, 46.0)
-	keep_h.position = Vector2(1262, 800)
+	keep_h.build("V", String(ui.keep), String(contract.keep.left_label), 190.0, 46.0)
+	keep_h.position = Vector2(1144, 800)
 	add_child(keep_h)
 	if String(fig.get("caption", "")) != "":
 		Kit.lbl(self, String(fig.caption), Vector2(24, 862), 420, 14, Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_LEFT, false)

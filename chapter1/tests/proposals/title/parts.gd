@@ -16,7 +16,7 @@ const K := 1.0 / 1.2
 const IDS := ["ember", "frost", "storm"]
 const ELEM := ["ember", "frost", "arc"]
 ## Anchor points in the 1024x1536 paintings the game's layers came from (BRIEF 0.2). SYMBOL = where the element's emblem effect sits.
-const FACE := [Vector2(565, 160), Vector2(440, 140), Vector2(505, 255)]
+const FACE := [Vector2(559, 130), Vector2(478, 120), Vector2(525, 150)]  ## from the L4_head layers' drawn boxes (the brief's eyeballed values were 160/140/255 high)
 const PELVIS := [Vector2(540, 560), Vector2(470, 620), Vector2(540, 600)]
 const SYMBOL := [Vector2(150, 450), Vector2(800, 120), Vector2(535, 385)]
 const FOOT_Y := 1500.0
@@ -96,6 +96,20 @@ static func edge_cover_material(x0: float, x1: float, f: float, w: float) -> Sha
 	var m := ShaderMaterial.new()
 	m.shader = _edge_shader
 	set_edge(m, x0, x1, f, w)
+	return m
+
+static var _feather_t: Shader
+
+## Like Kit.feather_material but keeps the node's modulate (the kit one overwrites COLOR, so modulate and alpha had no effect).
+static func feather_tinted(fx: float, fb: float, ft: float) -> ShaderMaterial:
+	if _feather_t == null:
+		_feather_t = Shader.new()
+		_feather_t.code = "shader_type canvas_item;\nuniform float fx = 0.15;\nuniform float fb = 0.3;\nuniform float ft = 0.0;\nvoid fragment(){ vec4 c = texture(TEXTURE, UV) * COLOR; float ax = smoothstep(0.0, fx, UV.x) * smoothstep(0.0, fx, 1.0 - UV.x); float ab = smoothstep(0.0, max(fb, 0.001), 1.0 - UV.y); float at = ft > 0.0 ? smoothstep(0.0, ft, UV.y) : 1.0; COLOR = vec4(c.rgb, c.a * ax * ab * at); }\n"
+	var m := ShaderMaterial.new()
+	m.shader = _feather_t
+	m.set_shader_parameter("fx", fx)
+	m.set_shader_parameter("fb", fb)
+	m.set_shader_parameter("ft", ft)
 	return m
 
 static func set_edge(m: ShaderMaterial, x0: float, x1: float, f: float, w: float) -> void:
@@ -555,18 +569,19 @@ class Burst extends Control:
 				var rng := RandomNumberGenerator.new()
 				rng.seed = 11
 				var grow2 := clampf(t / 0.25, 0.0, 1.0)
-				for k in 3:
-					var x0 := center.x + (float(k) - 1.0) * 70.0 * u
+				var offs := [-2.2, -1.0, 1.0, 2.2]
+				for k in 4:
+					var x0 := center.x + float(offs[k]) * 60.0 * u   ## strikes land beside the face, never across it
 					var pts := PackedVector2Array()
 					var steps := 9
 					for s in steps + 1:
 						var f := float(s) / float(steps)
 						var yy := lerpf(-20.0, center.y, f * grow2)
-						var jig := rng.randf_range(-26.0, 26.0) * u * (1.0 - f * 0.4)
-						pts.append(Vector2(lerpf(center.x + (x0 - center.x) * 2.0, center.x, f) + jig, yy))
-					draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * fade), (14.0 - 3.0 * float(k)) * u, true)
-					draw_polyline(pts, Color(1, 1, 1, 0.9 * fade), 3.0 * u, true)
-				draw_arc(center, 220.0 * u * ease_out_s(t / 0.5), 0, TAU, 64, Color(col.r, col.g, col.b, 0.8 * fade), 8.0, true)
+						var jig := rng.randf_range(-12.0, 12.0) * u * (1.0 - f * 0.3)
+						pts.append(Vector2(x0 + jig, yy))
+					draw_polyline(pts, Color(col.r, col.g, col.b, 0.9 * fade), (6.0 - 1.0 * float(k % 2)) * u, true)
+					draw_polyline(pts, Color(1, 1, 1, 0.9 * fade), 1.6 * u, true)
+				draw_arc(center, 220.0 * u * ease_out_s(t / 0.5), 0, TAU, 64, Color(col.r, col.g, col.b, 0.8 * fade), 4.0, true)
 	static func ease_out_s(x: float) -> float:
 		var tt := clampf(x, 0.0, 1.0)
 		return 1.0 - pow(1.0 - tt, 3.0)
@@ -620,7 +635,7 @@ class Rise extends Control:
 	func _draw() -> void:
 		var soft := size.y * 0.35
 		var y0 := lerpf(size.y, -soft, amount)
-		var steps := 24
+		var steps := 96
 		for k in steps:
 			var f0 := float(k) / float(steps)
 			var f1 := float(k + 1) / float(steps)
@@ -669,15 +684,15 @@ class Devil extends Control:
 				pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				pic.stretch_mode = TextureRect.STRETCH_SCALE
 				pic.size = area
-				pic.modulate = Color(0.34, 0.33, 0.36, 1.0)
-				pic.material = kit.feather_material(0.22, 0.38, 0.12)
+				pic.modulate = Color(0.4, 0.4, 0.44, 1.0)
+				pic.material = load("res://chapter1/tests/proposals/title/parts.gd").feather_tinted(0.22, 0.38, 0.12)
 				pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				add_child(pic)
 			if shade:
 				var sh: Control = load("res://chapter1/tests/proposals/title/parts.gd").vgrad(self, Rect2(0, 0, area.x, area.y * 0.62), Color(0.01, 0.012, 0.02, 0.97), Color(0.01, 0.012, 0.02, 0.0))
 				sh.name = "FaceShade"
 			for e in eyes:
-				var g: TextureRect = kit.add_glow(self, Vector2(float(e[0]) * area.x, float(e[1]) * area.y), area.x * 0.04, kit.el_color(el), true)
+				var g: TextureRect = kit.add_glow(self, Vector2(float(e[0]), float(e[1])) * (area.x / 1024.0), area.x * 0.022, kit.el_color(el), true)
 				glows.append(g)
 		caption = kit.lbl(self, note, Vector2(area.x * 0.5 - 60.0, area.y - 26.0), 120.0, 14, kit.Palette.INK_FAINT, "body", HORIZONTAL_ALIGNMENT_CENTER, false)
 	func _draw() -> void:
@@ -685,14 +700,14 @@ class Devil extends Control:
 			return
 		var kit = load("res://chapter1/tests/proposals/growth_choice/kit.gd")
 		var col: Color = kit.el_color(element)
-		var dark := Color(0.2, 0.22, 0.26, 1.0)
+		var dark := Color(0.30, 0.34, 0.40, 1.0)
 		var top := -size.y * 0.1 + hand_drop
 		var palm := Vector2(size.x * 0.55, top)
 		for f in 5:
-			var a := PI * (0.58 + 0.07 * float(f))
+			var a := PI * (0.56 + 0.035 * float(f))
 			var dir := Vector2(cos(a), sin(a))
 			var side := Vector2(-dir.y, dir.x)
-			var len_ := size.y * (0.55 + 0.1 * (2.0 - absf(float(f) - 2.0)))
+			var len_ := size.y * (0.95 + 0.07 * (2.0 - absf(float(f) - 2.0)))
 			var p := palm + side * (float(f) - 2.0) * 22.0
 			var pts := PackedVector2Array()
 			var joints := 4

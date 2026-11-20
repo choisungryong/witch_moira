@@ -6,7 +6,7 @@
   "witches[].confirm_line (narrative-lead 7.4 recommended text)",
   "witches[].traits (design-lead; 7.3 one-line character used as the summary, traits are my stand-ins)",
   "witches[].costume {owned,total,worn_id} (T5 schema 4)",
-  "witches[].devil {image,kind,eyes} (proposal-only: draft paintings read from _local/art/drafts at run time; frost has no figure = code hand)",
+  "witches[].devil {image,kind,eyes (px in the 1024-wide painting)} (proposal-only: draft paintings read from _local/art/drafts at run time; frost has no figure = code hand)",
   "devil_mode: none | face | shade (BRIEF 3.5.4; narrative-lead decides whether the contract demon may be shown here)",
   "title_autoswap, confirm_line_on (proposal switches, director decides)",
   "last_played (profile field, not in the save yet)",
@@ -71,12 +71,12 @@
     "kind": "figure",
     "eyes": [
      [
-      0.575,
-      0.25
+      620,
+      165
      ],
      [
-      0.625,
-      0.25
+      668,
+      165
      ]
     ]
    }
@@ -150,12 +150,12 @@
     "kind": "figure",
     "eyes": [
      [
-      0.51,
-      0.3
+      512,
+      287
      ],
      [
-      0.56,
-      0.3
+      558,
+      287
      ]
     ]
    }
