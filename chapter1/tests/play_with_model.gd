@@ -1,0 +1,33 @@
+extends SceneTree
+## The user plays the game with a trial glb in the hero's place (no pilot, no capture). Product files are untouched.
+##
+##   $env:MOIRA_GODOT_TIMEOUT_S='0'
+##   python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/play_with_model.gd -- \
+##       --model-glb=<absolute.glb> [--model-texture=<absolute.png>] [--hero-boost=0..1] \
+##       --chapter1-profile-off [--chapter1-start --chapter1-primary=chapter1.skill.frost] [--chapter1-trial=spells,rhythm,descent]
+##
+## --hero-boost (default 0): how much of the game's hero material boost stays (see model_swap.gd). The game's arguments pass through.
+const ModelSwap := preload("res://chapter1/tests/model_swap.gd")
+var _held: Array = []
+var _view: Node
+var _boost := 0.0
+
+func _initialize() -> void:
+	var glb := ""
+	var texture := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--model-glb="): glb = arg.trim_prefix("--model-glb=")
+		elif arg.begins_with("--model-texture="): texture = arg.trim_prefix("--model-texture=")
+		elif arg.begins_with("--hero-boost="): _boost = float(arg.trim_prefix("--hero-boost="))
+	if glb.is_empty():
+		push_error("play_with_model: --model-glb is required"); quit(2); return
+	_held = ModelSwap.swap(glb, texture)
+	if _held.is_empty():
+		quit(5); return
+	var scene: PackedScene = load("res://chapter1/ChapterOne.tscn")
+	_view = scene.instantiate()
+	root.add_child(_view)
+	RenderingServer.frame_pre_draw.connect(_apply)
+
+func _apply() -> void:
+	if _view != null and is_instance_valid(_view): ModelSwap.apply_boost(_view.get("actors"), _boost)
