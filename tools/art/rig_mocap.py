@@ -259,6 +259,15 @@ def retarget_clip(c, skin, src, mp, name, cfg_clip, fps, ground_mps_model, sink_
     if abs(shift) > 1e-6:
         reach.clear()
         frames = build(shift)
+    if cfg_clip.get("dump"):   # 원본과 우리 뼈대의 관절 위치를 프레임마다 적는다(막대 그림 비교용, tools/art/limb_stick.py)
+        import json as _json
+        keys_src = ["pelvis", "spine_03", "Head", "upperarm_l", "lowerarm_l", "hand_l", "upperarm_r", "lowerarm_r", "hand_r", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r", "calf_r", "foot_r", "ball_r"]
+        keys_our = ["pelvis_cr", "spine_cr_03", "head_cr", "upper_arm_cr_l", "forearm_cr_l", "hand_cr_l", "upper_arm_cr_r", "forearm_cr_r", "hand_cr_r", "thigh_cr_l", "shin_cr_l", "tarsal_cr_l", "toe_cr_l", "thigh_cr_r", "shin_cr_r", "tarsal_cr_r", "toe_cr_r"]
+        dump = {"src": [{k: [round(float(x), 4) for x in f[k][0]] for k in keys_src} for f in frames_src],
+                "ours": [{k: [round(float(x), 4) for x in F.P[k].translation] for k in keys_our} for F in frames],
+                }
+        Path_ = __import__("pathlib").Path
+        Path_(cfg_clip["dump"]).write_text(_json.dumps(dump), encoding="utf-8")
     # 디딤 미끄러짐: 디딤 구간 안 연속 프레임의 발목 앞뒤 속도와 땅 속도의 차(m/s, 우리 크기). 고정을 켠 클립만
     slide = None
     if lock:

@@ -77,7 +77,9 @@ def apply_emission(new_images, mask_path, mode, gain):
     buf = np.empty(w * h * 4, np.float32)
     img.pixels.foreach_get(buf)
     px = buf.reshape(h, w, 4)
-    if mode == "add":
+    if mode == "replace":
+        px[..., :3] = np.clip(mk, 0, 1)
+    elif mode == "add":
         px[..., :3] = np.clip(px[..., :3] + mk, 0, 1)
     else:
         px[..., :3] = np.clip(mk / max(gain, 1e-6), 0, 1)
@@ -155,6 +157,7 @@ def main(argv):
     ap.add_argument("--emission-mode", choices=["off", "add", "only"], default="off",
                     help="game: add = 몸 텍스처에 가면을 더해(발광 근사) 렌더, only = 가면만(원소 자리 면적 재기용)")
     ap.add_argument("--emission-gain", type=float, default=0.9)
+    ap.add_argument("--albedo-override", action="append", help="game: 모델과 같은 순서로 몸 텍스처를 이 png로 바꿔 찍는다(재질과 형상을 가르는 시험, 없으면 none)")
     ap.add_argument("--screen-h", type=int, default=1080, help="game: 화면 높이(1080 또는 720). 판 높이 180px가 화면의 몇 분의 몇인지 정한다(720이면 주인공이 2/3 크기)")
     ap.add_argument("--seq", help="game: 동작 연속 렌더 clip:첫프레임:끝프레임(포함). 파일은 out/seq<tag>_NNN.png")
     ap.add_argument("--cam", choices=["game", "side", "front"], default="game", help="game 카메라 각도: 게임(기본) / 측면 / 정면(직교, 키 맞춤)")
@@ -177,6 +180,8 @@ def main(argv):
             acts_before = set(bpy.data.actions)
             imgs_before = set(bpy.data.images)
             objs = load_model(path)
+            if a.albedo_override and mi < len(a.albedo_override) and a.albedo_override[mi] != "none":
+                apply_emission([i for i in bpy.data.images if i not in imgs_before], a.albedo_override[mi], "replace", 1.0)
             if a.emission_mode != "off" and a.emission and mi < len(a.emission) and a.emission[mi] != "none":
                 apply_emission([i for i in bpy.data.images if i not in imgs_before], a.emission[mi], a.emission_mode, a.emission_gain)
             for o in objs:

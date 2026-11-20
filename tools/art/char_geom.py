@@ -334,6 +334,7 @@ def build_arms(R: Rows, c):
         allc, rr_p = arm_centerline(R, c, side_name, sgn)
         zs = np.interp(allc[:, 1], a["depth_y"], a["depth_z"])
         centers = np.array([[R.X(x), R.Yw(z), R.Z(y)] for (x, y), z in zip(allc, zs)])
+        rr_p = rr_p * float(a.get("r_scale", 1.0))   # 팔 굵기 보정(그림 팔이 사람 보통보다 약 25% 가늘어 호스처럼 보이는 것을 덜어 냄)
         rb = rr_p * R.sf
         ra = np.maximum(rr_p * a.get("flat", 0.85), 7) * R.ss
         h = a.get("hand")

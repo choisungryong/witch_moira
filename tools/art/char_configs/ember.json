@@ -36,7 +36,7 @@
       {"x": 556, "y_top": 140, "y_end": 242, "r": 28, "sway": 6, "waves": 2.0, "rings": 10, "z_off": 10}
     ]
   },
-  "arm": {"y0": 392, "y1": 805, "min_dx": 110, "top_extrap": [296, 330, 362], "top_r": [34, 34, 33],
+  "arm": {"r_scale": 1.2, "y0": 392, "y1": 805, "min_dx": 110, "top_extrap": [296, 330, 362], "top_r": [34, 34, 33],
           "depth_y": [300, 800], "depth_z": [540, 500], "hand_rings": 6, "flat": 0.85,
           "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105}},
   "leg": {"y0": 835, "y1": 1400, "step": 14, "min_dx": 20, "extend_up": [700, 740, 790], "depth_k": 0.96},
@@ -65,6 +65,7 @@
   "look": {"albedo_mul": 1.0, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#ff943d", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
     "mesh": {"min_vertices": 10},
+    "weights": {"joint_frac": 0.2},
     "clips": {"game_hero_stride": 3.5, "run_stance_fraction": 0.38, "elem_arm": "r"}
   }
 }

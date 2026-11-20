@@ -38,7 +38,7 @@
        "radius": [30, 33, 34, 32, 26, 16], "rings": 16}
     ]
   },
-  "arm": {"y0": 380, "y1": 756, "min_dx": 110, "top_extrap": [300, 330, 356], "top_r": [34, 34, 33],
+  "arm": {"r_scale": 1.2, "y0": 380, "y1": 756, "min_dx": 110, "top_extrap": [300, 330, 356], "top_r": [34, 34, 33],
           "depth_y": [300, 740], "depth_z": [560, 500], "hand_rings": 6, "flat": 0.85,
           "hand": {"trim": 0.035, "palm_len": 0.095, "overlap": 0.012, "wrist_half": 0.026, "palm_half": 0.040, "thick_half": 0.0105,
                    "finger_len": {"index": 0.80, "middle": 0.88, "ring": 0.82, "pinky": 0.64, "thumb": 0.62}}},
@@ -57,7 +57,7 @@
   "parts": "tools/art/rig_configs/parts_frost.json",
   "paint": {
     "detect": [
-      {"name": "ice_base", "parts": ["arm_l", "hand_l_*"], "hue": [185, 225], "sat_min": 0.10, "val_min": 0.45, "mode": "texel", "gain": 0.55, "grow": 0, "blur": 1},
+      {"name": "ice_base", "parts": ["arm_l", "hand_l_*"], "hue": [185, 225], "sat_min": 0.10, "val_min": 0.45, "mode": "texel", "gain": 0.3, "grow": 0, "blur": 1},
       {"name": "ice_lines", "parts": ["arm_l", "hand_l_*"], "hue": [180, 215], "sat_min": 0.38, "val_min": 0.50, "mode": "texel", "gain": 1.7, "grow": 1, "blur": 1},
       {"name": "gems", "parts": ["torso", "neck", "skirt*", "arm_r", "hand_r_*"], "hue": [178, 215], "sat_min": 0.50, "val_min": 0.55, "mode": "texel", "gain": 1.7, "grow": 1, "blur": 1}
     ]
@@ -65,6 +65,7 @@
   "look": {"albedo_mul": 0.85, "element_lean": 0.0, "emission_mode": "mask", "emission_energy": 1.0, "rim": 0.25, "rim_tint": 0.15, "rim_color": "#9ce7ef", "light_key": 1.0, "light_fill": 0.5},
   "rig": {
     "mesh": {"min_vertices": 10},
+    "weights": {"joint_frac": 0.2},
     "clips": {"game_hero_stride": 3.5, "run_stance_fraction": 0.38, "elem_arm": "l"}
   }
 }

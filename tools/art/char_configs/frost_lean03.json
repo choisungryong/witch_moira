@@ -1,0 +1,5 @@
+{
+ "_about": "냉기, 달리기 몸 앞 기울기를 원본의 0.3배로(기본은 0.6배) 세운 비교판. 동작만 다르다.",
+ "extends": "frost.json",
+ "mocap": "tools/art/rig_configs/mocap_clips_lean03.json"
+}

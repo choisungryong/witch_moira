@@ -187,6 +187,37 @@ def compute_weights(P, edges, pos, cfg, kd_neighbors):
         c2 = np.bincount(s2, minlength=len(Pu)).astype(float)
         for _ in range(wc["space_smooth"]):
             W = smooth(W, s2, d2, c2, wc["space_smooth_alpha"])
+    jf = float(wc.get("joint_frac", 0.0))
+    if jf > 0:   # 관절 조이기: 팔·다리 사슬에서 사슬 뼈들이 나눠 가진 가중치 합은 그대로 두고, 뼈 축 위치에 따라 관절 둘레(양쪽 뼈 짧은 쪽 길이의 jf배 폭)에서만 넘어가게 다시 나눈다
+        for side in "lr":
+            for chain in (("upper_arm_cr_", "forearm_cr_", "hand_cr_"), ("thigh_cr_", "shin_cr_", "tarsal_cr_")):
+                bones = [c + side for c in chain]
+                if any(b not in names for b in bones):
+                    continue
+                ci = [names.index(b) for b in bones]
+                pts = [seg[bones[0]][0]] + [seg[b][1] for b in bones]
+                lens = [float(np.linalg.norm(pts[i + 1] - pts[i])) for i in range(3)]
+                cum = np.concatenate([[0.0], np.cumsum(lens)])
+                best = np.full(len(Pu), 1e9)
+                tpos = np.zeros(len(Pu))
+                for i in range(3):
+                    d = (pts[i + 1] - pts[i]) / max(lens[i], 1e-9)
+                    tt = np.clip((Pu - pts[i]) @ d, 0, lens[i])
+                    dist = np.linalg.norm(Pu - (pts[i] + np.outer(tt, d)), axis=1)
+                    upd = dist < best
+                    best = np.where(upd, dist, best)
+                    tpos = np.where(upd, cum[i] + tt, tpos)
+                S = W[:, ci].sum(axis=1)
+
+                def step(t, j):
+                    h = 0.5 * jf * min(lens[j], lens[j + 1])
+                    x = np.clip((t - (cum[j + 1] - h)) / max(2 * h, 1e-9), 0, 1)
+                    return x * x * (3 - 2 * x)
+                u0, u1 = step(tpos, 0), step(tpos, 1)
+                new = np.stack([1 - u0, u0 - u1, u1], axis=1)
+                keep_other = S > 0.05
+                for k in range(3):
+                    W[keep_other, ci[k]] = S[keep_other] * new[keep_other, k]
     # 정점당 최대 4개, 정규화
     order = np.argsort(-W, axis=1)[:, :4]
     top = np.take_along_axis(W, order, axis=1)
