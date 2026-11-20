@@ -335,6 +335,10 @@ def retarget_clip(c, skin, src, mp, name, cfg_clip, fps, ground_mps_model, sink_
             if loop:
                 dl[s][-1] = dl[s][0]
             segs_info[s] = [(int(a), int(b)) for a, b in segs]
+    from mathutils import Matrix
+    tp = float(cfg_clip.get("trunk_pitch_deg", 0.0))      # 윗몸 전체에 더할 앞기울임(도). 척추 셋에 1/3씩 쌓고 어깨는 전부
+    pitch_w = {"spine_cr_01": tp / 3, "spine_cr_02": 2 * tp / 3, "spine_cr_03": tp, "shoulder_cr_l": tp, "shoulder_cr_r": tp} if tp else {}
+
     def build(shift):
         out = []
         for i in range(nf):
@@ -348,6 +352,8 @@ def retarget_clip(c, skin, src, mp, name, cfg_clip, fps, ground_mps_model, sink_
             S.place("pelvis_cr", absd=R_p @ rig.rest_rot["pelvis_cr"], trans=pel_world)
             for tgt, sname in mp["rot"].items():
                 Rd = P[sname][2] @ src.rest_rot[sname].inverted()
+                if tgt in pitch_w:   # 윗몸 앞기울임 덧붙이기(머리는 원본 그대로라 시선은 그대로): 월드 X축 회전, +가 앞(-Y)으로 숙임
+                    Rd = Matrix.Rotation(math.radians(pitch_w[tgt]), 3, "X") @ Rd
                 S.place(tgt, absd=Rd @ rig.rest_rot[tgt])
             for tgt, (a, b) in mp["dir"].items():
                 if tgt.startswith(("thigh", "shin", "tarsal", "toe")):
@@ -357,12 +363,15 @@ def retarget_clip(c, skin, src, mp, name, cfg_clip, fps, ground_mps_model, sink_
                 if hold and d.length > 1e-6:   # 지팡이 쥔 팔: 원본 방향을 고정 자세 방향 쪽으로 k만큼 끌어당긴다(달릴 때 흔들림을 줄이고 손목을 세움)
                     key = "upper" if tgt.startswith("upper_arm") else ("fore" if tgt.startswith("forearm") else "hand")
                     hd = V(tuple(hold[key]))
-                    d = (d.normalized() * (1 - hold["k"]) + hd.normalized() * hold["k"]).normalized()
+                    kk = float(hold.get("k_" + key, hold["k"]))   # 마디별 세기(k_upper·k_fore·k_hand)가 있으면 그것을 쓴다: 달리기에서 팔 흔들림은 살리고 손목만 쥔 꼴로 세운다
+                    d = (d.normalized() * (1 - kk) + hd.normalized() * kk).normalized()
                 if d.length < 1e-6:
                     S.place(tgt)
                     continue
                 S.place(tgt, absd=rc.delta_between(rig.rest_dir[tgt], d) @ rig.rest_rot[tgt])
-            S.place("finger_middle.01.r")
+            hands = {**rc.DEFAULT_HANDS, **(cfg_clip.get("hands") or {})}   # 손 모양: 지팡이 쥔 오른손 grip, 왼손 relaxed(클립 설정 hands로 덮음)
+            for s_ in "lr":
+                rc.place_hand(S, rig, s_, hands[s_])
             for s in "lr":
                 lg = legs[s]
                 hip = S.head_pos("thigh_cr_" + s)

@@ -443,3 +443,71 @@ def render_sheet(arm_obj, mesh_objs, frames: list[float], out_png: str, view: st
         bpy.ops.render.render(write_still=True)
         paths.append(p)
     return paths
+
+
+# ------------------------------------------------------------------ 손가락 자세(A7-6)
+
+# 손 모양: 마디마다 굽힘 각(도). 손가락 셋 마디(.01 .02 .03)와 엄지 셋 마디. 쥔 손 = 지팡이 쥔 오른손, 가볍게 쥔 손 = 나머지.
+HAND_POSES = {
+    "open": {"finger": [0, 0, 0], "thumb": [0, 0, 0]},
+    "relaxed": {"finger": [30, 42, 30], "thumb": [10, 12, 8]},
+    "grip": {"finger": [50, 68, 48], "thumb": [22, 26, 16]},
+}
+FINGER_SCALE = {"index": 0.85, "middle": 1.0, "ring": 1.1, "pinky": 1.2}
+DEFAULT_HANDS = {"l": "relaxed", "r": "grip"}
+
+
+def finger_bone_names(side):
+    """[(뼈 이름, 마디 번호 0~2, 손가락 이름)] 손가락 넷과 엄지."""
+    out = []
+    for f in ("index", "middle", "ring", "pinky"):
+        for k in range(3):
+            out.append(("finger_%s.%02d.%s" % (f, k + 1, side), k, f))
+    for k in range(3):
+        out.append(("thumb.%02d.%s" % (k + 1, side), k, "thumb"))
+    return out
+
+
+def curl_signs(rig, side):
+    """뼈마다 굽힘 방향 부호(뼈 로컬 X축 회전의 +/-). 쉬는 자세가 T자·손바닥 아래이므로 손가락은 끝이 아래(-Z)로, 엄지는 끝이 검지 둘째 마디 쪽으로 가는 방향."""
+    import mathutils
+    cache = getattr(rig, "_curl_sign", None)
+    if cache is None:
+        cache = rig._curl_sign = {}
+    if side in cache:
+        return cache[side]
+    sg = {}
+    tgt_name = "finger_index.02." + side
+    for name, k, f in finger_bone_names(side):
+        if name not in rig.head:
+            continue
+        a = rig.rest_rot[name].col[0].copy()
+        d = rig.rest_dir[name]
+        if f == "thumb" and tgt_name in rig.head:
+            tgt = rig.head[tgt_name]
+            best, bs = None, 1.0
+            for s in (1.0, -1.0):
+                R = mathutils.Matrix.Rotation(s * 0.3, 3, a)
+                tip = rig.head[name] + (R @ d) * rig.length[name]
+                dist = (tip - tgt).length
+                if best is None or dist < best:
+                    best, bs = dist, s
+            sg[name] = bs
+        else:
+            sg[name] = -1.0 if a.cross(d).z > 0 else 1.0
+    cache[side] = sg
+    return sg
+
+
+def place_hand(S, rig, side, mode="relaxed", scale=1.0):
+    """손가락 뼈를 mode 모양으로 놓는다(부모부터 하나씩). 손 뼈가 먼저 놓여 있어야 한다. 손가락 뼈가 없으면 아무것도 안 한다.
+    finger_middle.01.<쪽>은 게임이 지팡이 자리 계산에 쓰는 뼈지만 머리 위치는 안 움직이므로(자기 관절 둘레 회전) 지팡이 위치는 그대로다."""
+    pose = HAND_POSES.get(mode, HAND_POSES["relaxed"])
+    sg = curl_signs(rig, side)
+    for name, k, f in finger_bone_names(side):
+        if name not in rig.head:
+            continue
+        deg = (pose["thumb"] if f == "thumb" else pose["finger"])[k] * (1.0 if f == "thumb" else FINGER_SCALE[f]) * scale
+        base = S.inherited(name)
+        R = base.to_3x3() @ rot("X", sg[name] * deg)
+        S.place(name, absd=R)

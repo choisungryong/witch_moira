@@ -1,5 +1,5 @@
 {
- "_about": "A7-4: Mixamo(사용자 내려받음) 동작으로 달리기·대기·구르기·피격·시전을 바꾼다. 죽음과 나머지는 UAL 그대로. seconds=null은 원본 길이(자연 박자), 'auto'는 자연 박자에서 게임 속도(5.8m/s) 발 미끄러짐 0이 되는 배속(0.85~1.25 안일 때만).",
+ "_about": "A7-5: 달리기(run·run_c06)의 hold는 마디별 k_upper·k_fore·k_hand(손목만 쥔 꼴, 팔 흔들림은 원본 가깝게), trunk_pitch_deg는 윗몸 앞기울임 덧붙임. A7-4: Mixamo(사용자 내려받음) 동작으로 달리기·대기·구르기·피격·시전을 바꾼다. 죽음과 나머지는 UAL 그대로. seconds=null은 원본 길이(자연 박자), 'auto'는 자연 박자에서 게임 속도(5.8m/s) 발 미끄러짐 0이 되는 배속(0.85~1.25 안일 때만).",
  "sources": {
   "ual": {
    "type": "glb",
@@ -23,6 +23,7 @@
    "seconds": "auto",
    "loop": true,
    "lock": true,
+   "trunk_pitch_deg": 6,
    "stance_thresh": 0.06,
    "scale_range": [
     0.85,
@@ -31,6 +32,9 @@
    "hold": {
     "r": {
      "k": 0.7,
+     "k_upper": 0.1,
+     "k_fore": 0.1,
+     "k_hand": 0.6,
      "upper": [
       -0.12,
       -0.25,
@@ -57,10 +61,14 @@
    "seconds": 0.6,
    "loop": true,
    "lock": true,
+   "trunk_pitch_deg": 6,
    "stance_thresh": 0.06,
    "hold": {
     "r": {
      "k": 0.7,
+     "k_upper": 0.1,
+     "k_fore": 0.1,
+     "k_hand": 0.6,
      "upper": [
       -0.12,
       -0.25,

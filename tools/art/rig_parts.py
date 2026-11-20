@@ -182,11 +182,21 @@ def import_part_mesh(path, name, min_vertices=0):
     return obj
 
 
-def bind_rigid(obj, arm, bone, mat):
+def bind_rigid(obj, arm, bone, mat, bone2=None, follow=0.0, z_top=None, z_bot=None, clamp=0.0):
+    """부품을 bone에 단단히 묶는다. bone2가 있으면 높이(z)가 z_top 아래로 내려갈수록 bone2 몫이 follow까지 smoothstep으로 늘어난다(자락이 넓적다리 움직임을 조금 따르게)."""
     import bpy
     obj.vertex_groups.clear()
     vg = obj.vertex_groups.new(name=bone)
-    vg.add(list(range(len(obj.data.vertices))), 1.0, "REPLACE")
+    n_v = len(obj.data.vertices)
+    if bone2 and follow > 0 and z_top is not None and z_bot is not None:
+        vg2 = obj.vertex_groups.new(name=bone2)
+        for v in obj.data.vertices:
+            u = min(max((z_top - max(v.co.z, z_bot + clamp)) / max(z_top - z_bot, 1e-6), 0.0), 1.0)   # clamp: 가장 낮은 clamp(m) 안의 정점(아랫단 이빨)은 그 위 줄과 같은 몫
+            s = follow * u * u * (3 - 2 * u)
+            vg.add([v.index], 1.0 - s, "REPLACE")
+            vg2.add([v.index], s, "REPLACE")
+    else:
+        vg.add(list(range(n_v)), 1.0, "REPLACE")
     for m in list(obj.modifiers):
         obj.modifiers.remove(m)
     obj.parent = arm
@@ -234,7 +244,11 @@ def add_part(spec, arm, rig, H):
         pieces.append((obj, b))
     mat = textured_material(name + "_mat", spec["texture"]) if spec.get("texture") else rc.solid_texture_material(name + "_mat", rc.hex_rgba(color))
     for obj, b in pieces:
-        bind_rigid(obj, arm, b, mat)
+        if spec.get("bone2") and b == bone:      # 아랫부분이 bone2(예: 넓적다리)를 follow 비율까지 따른다. z_top~z_bot는 키 대비 비율이 아니라 뼈대 공간 z(m)
+            zs = [v.co.z for v in obj.data.vertices]
+            bind_rigid(obj, arm, b, mat, spec["bone2"], float(spec.get("follow", 0.5)), max(zs) - float(spec.get("follow_start", 0.0)), min(zs), float(spec.get("follow_clamp", 0.0)))
+        else:
+            bind_rigid(obj, arm, b, mat)
     objs = [o for o, _ in pieces]
     if len(objs) > 1:
         bpy.ops.object.select_all(action="DESELECT")

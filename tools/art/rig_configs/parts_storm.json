@@ -4,6 +4,9 @@
   {
    "name": "storm_hip_panel",
    "bone": "pelvis_cr",
+   "bone2": "thigh_cr_l",
+   "follow": 0.7,
+   "follow_clamp": 0.08,
    "kind": "side_panel",
    "at": 0.0,
    "offset": [
@@ -42,6 +45,9 @@
   {
    "name": "storm_hip_rim",
    "bone": "pelvis_cr",
+   "bone2": "thigh_cr_l",
+   "follow": 0.7,
+   "follow_clamp": 0.08,
    "kind": "hem_tube",
    "at": 0.0,
    "offset": [

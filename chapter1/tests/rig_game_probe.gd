@@ -50,7 +50,8 @@ var _burst_done := 0
 var _burst_started := false
 var foot_log_path := ""
 var cast_overlay := true
-const CROP_SIZE := 240
+## --hero-crop-size=<px>: side of the hero crop (default 240). The A7-8 captures use 480 so arms and the staff can be read.
+var CROP_SIZE := 240
 const MASK_LAYER_BIT := 1 << 19
 var _mask_tagged := false
 var _mask_vp: SubViewport
@@ -109,6 +110,7 @@ func _initialize() -> void:
 		elif arg == "--burst-full": burst_full = true
 		elif arg.begins_with("--foot-log="): foot_log_path = arg.trim_prefix("--foot-log=")
 		elif arg.begins_with("--hero-cast-overlay="): cast_overlay = arg.trim_prefix("--hero-cast-overlay=") != "0"
+		elif arg.begins_with("--hero-crop-size="): CROP_SIZE = clampi(int(arg.trim_prefix("--hero-crop-size=")), 64, 960)
 	var problem := _probe_args_problem()
 	if not problem.is_empty():
 		push_error("rig_game_probe: " + problem)

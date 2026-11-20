@@ -140,7 +140,8 @@ class Ctx:
             S.place("upper_arm_cr_" + s, absd=Rup @ rig.rest_rot["upper_arm_cr_" + s])
             S.place("forearm_cr_" + s, absd=Rfo @ rig.rest_rot["forearm_cr_" + s])
             S.place("hand_cr_" + s, absd=Rfo @ rig.rest_rot["hand_cr_" + s])
-        S.place("finger_middle.01.r")
+        for s_ in "lr":
+            rc.place_hand(S, rig, s_, rc.DEFAULT_HANDS[s_])
         feet = spec.get("feet", {})
         for s in "lr":
             hip = S.head_pos("thigh_cr_" + s)

@@ -69,6 +69,10 @@
    "seconds": 0.4333
   }
  ],
+ "skirt_ornament": {"z_cut": 1.20, "squash": 0.15, "follow": 0.6, "x": [0.10, 0.25], "y": [-0.05, 0.03]},
+ "albedo_fix": [{"groups": ["upperarm_r", "lowerarm_r"], "sigma": 14, "mode": "skin"}],
+ "arm_shade": {"sides": ["l"], "strength": 1.0},
+ "head_cap": {"knee": 0.6, "slope": 0.4},
  "hair_gain": 0.85,
  "drop_eyes": true,
  "transplant": [
