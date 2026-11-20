@@ -49,6 +49,8 @@ RES = ['1920x1080', '1280x720']
 PROPOSALS = {
     'growth_choice/slot_fated': {'prefix': None, 'still': SLOT, 'strip': SLOT_STRIP, 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_frost_fated'],
                                  'kinds': ['still', 'strip', 'input', 'reduce'], 'strip_res': ['1920x1080']},
+    'growth_choice/grace_parts_sheet': {'prefix': None, 'still': ['slot_ember_normal', 'slot_frost_normal', 'slot_arc_normal', 'slot_long'], 'strip': [], 'input': ['slot_ember_normal'], 'reduce': [],
+                                        'kinds': ['still', 'input'], 'strip_res': ['1920x1080']},
     'title/a': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
                 'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'input'], 'strip_res': ['1920x1080']},
     'title/c': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
