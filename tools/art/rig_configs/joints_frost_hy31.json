@@ -1,0 +1,25 @@
+{
+ "_about": "Tencent HY 3D V3.1로 만든 냉기 마녀(gen3d_prepare 15k, 키 1.681m, A자세)의 관절 비율. gen3d_rig.py --overlay 그림을 보고 손으로 잡았다(2026-11-20). 번개·화염은 이 파일을 복사해 어깨·엉덩·무릎 높이를 그림에 맞춘다.",
+ "proportions": {
+  "pelvis_z": 0.565,
+  "spine_z": [
+   0.63,
+   0.7,
+   0.77
+  ],
+  "neck_top_z": 0.865,
+  "head_top_z": 0.965,
+  "shoulder_z": 0.775,
+  "shoulder_x": 0.095,
+  "clavicle_x": 0.025,
+  "clavicle_z": 0.79,
+  "hip_z": 0.53,
+  "knee_z": 0.3,
+  "ankle_z": 0.054,
+  "elbow_t": 0.4,
+  "wrist_t": 0.72
+ },
+ "weights": {
+  "joint_frac": 0.25
+ }
+}
