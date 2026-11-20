@@ -549,21 +549,32 @@ def make_all(arm, mesh_obj, rig, skin, cfg, out_glb, preview_dir, only=None, ret
         report["clips"][name] = rep
     if mocap_cfg:
         import rig_mocap
-        src = rig_mocap.Source(mocap_cfg["source"])
-        mpath = Path(mocap_cfg["map"])
-        if not mpath.is_absolute():
-            mpath = Path(__file__).resolve().parents[2] / mpath
-        mp = rc.read_json(mpath)
+        def _map(pth):
+            mpath = Path(pth)
+            if not mpath.is_absolute():
+                mpath = Path(__file__).resolve().parents[2] / mpath
+            return rc.read_json(mpath)
+        srcs = {}   # 이름 -> (원본, 짝 표). 단일 원본(source/map)이거나, 여러 원본(sources: {이름: {type: glb|fbx_dir, path, map, files}})
+        if "sources" in mocap_cfg:
+            for sn, sd in mocap_cfg["sources"].items():
+                if sd.get("type") == "fbx_dir":
+                    srcs[sn] = (rig_mocap.FbxSource(sd["path"], sd.get("files"), sd.get("src_fps", 30.0)), _map(sd["map"]))
+                else:
+                    srcs[sn] = (rig_mocap.Source(sd["path"]), _map(sd["map"]))
+        else:
+            srcs["default"] = (rig_mocap.Source(mocap_cfg["source"]), _map(mocap_cfg["map"]))
+        src, mp = srcs.get("default", (None, None))
         vg = float(mocap_cfg.get("ground_mps_game", 5.8)) * H / cfg["clips"]["game_target_height"]
-        report["mocap"] = {"source": str(mocap_cfg["source"]), "ground_mps_model": vg}
+        report["mocap"] = {"source": str(mocap_cfg.get("source") or mocap_cfg.get("sources")), "ground_mps_model": vg}
         made = {}
         for name, cclip in mocap_cfg["clips"].items():
             if only and name not in only:
                 continue
             vgc = float(cclip.get("ground_mps_game", mocap_cfg.get("ground_mps_game", 5.8))) * H / cfg["clips"]["game_target_height"]
-            frames, mrep = rig_mocap.retarget_clip(c, skin, src, mp, name, cclip, fps, vgc)
-            T = float(cclip["seconds"])
-            _bl, rep = bake_clip(c, skin, name, T, fps, cfg, frames_basis=frames, expect_speed=(vgc if cclip.get("lock") else 0.0))
+            src_c, mp_c = srcs[cclip.get("src", "default")]
+            frames, mrep = rig_mocap.retarget_clip(c, skin, src_c, mp_c, name, cclip, fps, vgc)
+            T = (len(frames) - 1) / float(fps)
+            _bl, rep = bake_clip(c, skin, name, T, fps, cfg, frames_basis=frames, expect_speed=(mrep["ground_mps_model"] if cclip.get("lock") else 0.0))
             rep["method"] = "mocap"
             rep["mocap"] = mrep
             rep["leg_reach_max_ratio"] = mrep["leg_reach_max"]
@@ -575,7 +586,8 @@ def make_all(arm, mesh_obj, rig, skin, cfg, out_glb, preview_dir, only=None, ret
             bl = compose_blend(made, comp, fps)
             write_action(arm, rig, comp["name"], bl, fps)
             report["clips"][comp["name"]] = {"method": "composite", "seconds": comp["seconds"], "frames": len(bl), "parts": comp}
-        src.cleanup()
+        for sc_, _mp in srcs.values():
+            sc_.cleanup()
     for pb in arm.pose.bones:
         pb.rotation_quaternion = (1, 0, 0, 0)
         pb.location = (0, 0, 0)

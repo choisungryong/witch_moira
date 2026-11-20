@@ -1,0 +1,36 @@
+{
+ "_about": "Mixamo(mixamorig:, 65뼈, T자 쉬는 자세, 사용자 내려받은 FBX) -> 우리 24뼈. 접두사 mixamorig:는 읽을 때 뗀다. rot = 월드 회전 변화량 옮기기, dir = 방향 기준(뼈 머리 -> 다음 뼈 머리), legs = IK용 원본 다리 뼈, foot_dirs = 발 방향. dump_src = 막대 그림용 별칭(UAL 이름 -> Mixamo 뼈).",
+ "pelvis": ["pelvis_cr", "Hips"],
+ "rot": {
+  "spine_cr_01": "Spine",
+  "spine_cr_02": "Spine1",
+  "spine_cr_03": "Spine2",
+  "neck_cr": "Neck",
+  "head_cr": "Head",
+  "shoulder_cr_l": "LeftShoulder",
+  "shoulder_cr_r": "RightShoulder"
+ },
+ "dir": {
+  "upper_arm_cr_l": ["LeftArm", "LeftForeArm"],
+  "forearm_cr_l": ["LeftForeArm", "LeftHand"],
+  "hand_cr_l": ["LeftHand", "LeftHandMiddle1"],
+  "upper_arm_cr_r": ["RightArm", "RightForeArm"],
+  "forearm_cr_r": ["RightForeArm", "RightHand"],
+  "hand_cr_r": ["RightHand", "RightHandMiddle1"]
+ },
+ "legs": {
+  "l": {"hip": "LeftUpLeg", "knee": "LeftLeg", "ankle": "LeftFoot"},
+  "r": {"hip": "RightUpLeg", "knee": "RightLeg", "ankle": "RightFoot"}
+ },
+ "foot_dirs": {
+  "l": {"foot": ["LeftFoot", "LeftToeBase"], "ball": ["LeftToeBase", "LeftToe_End"]},
+  "r": {"foot": ["RightFoot", "RightToeBase"], "ball": ["RightToeBase", "RightToe_End"]}
+ },
+ "dump_src": {
+  "pelvis": "Hips", "spine_03": "Spine2", "Head": "Head",
+  "upperarm_l": "LeftArm", "lowerarm_l": "LeftForeArm", "hand_l": "LeftHand",
+  "upperarm_r": "RightArm", "lowerarm_r": "RightForeArm", "hand_r": "RightHand",
+  "thigh_l": "LeftUpLeg", "calf_l": "LeftLeg", "foot_l": "LeftFoot", "ball_l": "LeftToeBase",
+  "thigh_r": "RightUpLeg", "calf_r": "RightLeg", "foot_r": "RightFoot", "ball_r": "RightToeBase"
+ }
+}

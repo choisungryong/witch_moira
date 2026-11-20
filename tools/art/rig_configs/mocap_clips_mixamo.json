@@ -1,0 +1,323 @@
+{
+ "_about": "A7-4: Mixamo(사용자 내려받음) 동작으로 달리기·대기·구르기·피격·시전을 바꾼다. 죽음과 나머지는 UAL 그대로. seconds=null은 원본 길이(자연 박자), 'auto'는 자연 박자에서 게임 속도(5.8m/s) 발 미끄러짐 0이 되는 배속(0.85~1.25 안일 때만).",
+ "sources": {
+  "ual": {
+   "type": "glb",
+   "path": "D:/Project/witch-moira-work/downloads/quaternius-ual/x/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
+   "map": "tools/art/rig_configs/mocap_ual.json"
+  },
+  "mix": {
+   "type": "fbx_dir",
+   "path": "D:/Project/witch-moira-work/downloads/mixamo",
+   "src_fps": 30.0,
+   "map": "tools/art/rig_configs/mocap_mixamo.json"
+  }
+ },
+ "ground_mps_game": 5.8,
+ "clips": {
+  "run": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Running",
+   "seconds": "auto",
+   "loop": true,
+   "lock": true,
+   "stance_thresh": 0.06,
+   "scale_range": [
+    0.85,
+    1.25
+   ],
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
+  },
+  "run_c06": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Running",
+   "seconds": 0.6,
+   "loop": true,
+   "lock": true,
+   "stance_thresh": 0.06,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
+  },
+  "idle": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Idle",
+   "seconds": null,
+   "loop": true,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   }
+  },
+  "dodge": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Dodging",
+   "seconds": null
+  },
+  "dodge_side": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Dodging Right",
+   "seconds": null
+  },
+  "hit": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Hit Reaction",
+   "seconds": null
+  },
+  "hit_b": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Reaction",
+   "seconds": null
+  },
+  "cast": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Magic Spell Casting",
+   "seconds": null
+  },
+  "cast_area": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Magic Heal",
+   "seconds": null
+  },
+  "cast_shot": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Magic Spell Casting",
+   "seconds": null,
+   "range_s": [
+    1.6,
+    3.4
+   ]
+  },
+  "hit_quick": {
+   "src": "mix",
+   "k_mode": "leg",
+   "ik_hip": true,
+   "action": "Hit Reaction",
+   "seconds": null,
+   "range_s": [
+    0.27,
+    1.47
+   ]
+  },
+  "run_ual": {
+   "action": "Jog_Fwd_Loop",
+   "seconds": 0.65,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7,
+   "stance_thresh": 0.06,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   },
+   "src": "ual"
+  },
+  "death": {
+   "action": "Death01",
+   "seconds": 2.4,
+   "ground": "lift",
+   "src": "ual"
+  },
+  "walk": {
+   "action": "Walk_Loop",
+   "seconds": 1.3333,
+   "loop": true,
+   "lock": true,
+   "ground_mps_game": 1.8,
+   "lean_scale": 0.8,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   },
+   "src": "ual"
+  },
+  "run_sprint": {
+   "action": "Sprint_Loop",
+   "seconds": 0.65,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   },
+   "src": "ual"
+  },
+  "run_jog_natural": {
+   "action": "Jog_Fwd_Loop",
+   "seconds": 0.9333,
+   "loop": true,
+   "lock": true,
+   "lean_scale": 0.7,
+   "stance_thresh": 0.06,
+   "hold": {
+    "r": {
+     "k": 0.7,
+     "upper": [
+      -0.12,
+      -0.25,
+      -0.96
+     ],
+     "fore": [
+      -0.05,
+      -0.8,
+      -0.6
+     ],
+     "hand": [
+      -0.05,
+      -0.8,
+      -0.6
+     ]
+    }
+   },
+   "src": "ual"
+  },
+  "cast_enter": {
+   "action": "Spell_Simple_Enter",
+   "seconds": 0.5333,
+   "src": "ual"
+  },
+  "cast_loop": {
+   "action": "Spell_Simple_Idle_Loop",
+   "seconds": 2.1,
+   "loop": true,
+   "src": "ual"
+  },
+  "cast_exit": {
+   "action": "Spell_Simple_Exit",
+   "seconds": 0.4333,
+   "src": "ual"
+  },
+  "swing": {
+   "action": "Sword_Attack",
+   "seconds": 1.5333,
+   "src": "ual"
+  },
+  "interact": {
+   "action": "Interact",
+   "seconds": 2.0,
+   "src": "ual"
+  }
+ },
+ "composites": []
+}
