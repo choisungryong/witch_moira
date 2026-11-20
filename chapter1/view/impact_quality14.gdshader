@@ -18,20 +18,31 @@ void fragment(){
   vec3 c=mix(vec3(.80,.09,.006),vec3(1.,.34,.03),ring);
   ALBEDO=c;ALPHA=clamp(ring*fade*.85,0.,1.);
  }else if(!cold && !arc){
-  // A6-2 fire, layer 3 (hit): a filled disc swells in .08 s, holds .08 s, then cools to dark red over ~.3 s.
-  // Only the middle 20% is hot (display luminance about .85 or less); the outer body stays orange to red.
-  float swell=1.-pow(1.-clamp(age/.17,0.,1.),2.);
-  float edge=swell*(.90+(n-.5)*.16);
-  float body=1.-smoothstep(edge-.30,edge,r);
-  float cool=smoothstep(.38,1.,age);
-  float level=mix(1.,.22,cool)*(1.-smoothstep(.82,1.,age));
-  float hot=exp(-pow(r/max(.20*swell+.05,.05),2.))*(1.-smoothstep(.12,.55,age));
-  float shock=exp(-pow((r-edge)*13.,2.))*(1.-smoothstep(.10,.30,age))*.34;
-  vec3 c_hot=vec3(1.,.40,.06);vec3 c_mid=vec3(.95,.16,.012);vec3 c_dark=vec3(.34,.025,.003);
-  vec3 col=mix(mix(c_hot,c_mid,smoothstep(.10,.42,age)),c_dark,smoothstep(.40,.92,age));
-  float shape=(body*(.15+n*.20)+shock)*level*(1.-smoothstep(.88,1.,r));
-  ALBEDO=col*shape+vec3(1.,.62,.22)*hot*.30;
-  ALPHA=clamp(shape+hot*.30,0.,1.);
+  // Fireball burst (U-57): a round fire swells in .1 s (age .33 of a .3 s life), holds, shrinks and cools to dark red by .25 s,
+  // while sparks fly outward. Edge 1.0 is the core's explosion radius; the body never passes .9 of it.
+  float ang=atan(p.y,p.x);
+  float swell=1.-pow(1.-clamp(age/.33,0.,1.),3.);
+  float shrink=1.-.30*smoothstep(.50,1.,age);
+  float lobes=noise(vec2(cos(ang),sin(ang))*2.6+vec2(age*4.,3.))*.5+n*.5;
+  float edge=swell*shrink*(.70+.20*lobes);
+  float rn=r/max(edge,.001);
+  float body=1.-smoothstep(.80,1.06,rn+(n-.5)*.18);
+  float cool=smoothstep(.30,.85,age);
+  float level=(1.-smoothstep(.62,1.,age))*mix(1.,.55,cool);
+  vec3 c_core=vec3(.95,.58,.14);vec3 c_body=vec3(1.,.38,.04);vec3 c_rim=vec3(.55,.07,.008);
+  vec3 col=mix(c_core,c_body,smoothstep(.0,.40,rn+cool*.35));
+  col=mix(col,c_rim,smoothstep(.55,1.,rn+cool*.30));
+  float fill=body*(.34+.16*n+.14*(1.-smoothstep(.0,.8,rn)))*level;
+  // Sparks: 14 radial dashes thrown out past the fire edge, each with its own speed and length.
+  float cells=14.;
+  float cid=floor((ang/6.2831853+.5)*cells);
+  float h1=hash(vec2(cid,5.3));float h2=hash(vec2(cid,9.1));
+  float acen=((cid+.5)/cells-.5)*6.2831853+(h2-.5)*.10;
+  float da=abs(atan(sin(ang-acen),cos(ang-acen)))*r;
+  float sr=mix(.30,.94,pow(clamp(age*1.5,0.,1.),.6)*(.62+.38*h1));
+  float spark=(1.-smoothstep(.012,.030,da))*(1.-smoothstep(.0,.075+.05*h2,abs(r-sr)))*(1.-smoothstep(.45,.95,age))*step(.35,h1);
+  ALBEDO=col*fill+vec3(.95,.62,.20)*spark*.75;
+  ALPHA=clamp(fill+spark,0.,1.)*(1.-smoothstep(.88,1.,r));
  }else{
   float front=smoothstep(.08,.72,age)*(.85+n*.12);
   float heat=(1.-smoothstep(front-.26,front+.15,r))*(1.-age);

@@ -15,6 +15,7 @@ const OFF_BY_DEFAULT := ["beat_started","wave_crest","trial_started","detonate",
 ## with hud_dump --run-spells=on (spells_on) a miss is a real miss and is not listed as expected. Names are matched by prefix.
 const SPELLS_ONLY := ["detonate","cast:shape=ring","cast:ring","cast:prefer=","stagger","hit:vs_cc=","hit:detonate"]
 var spells_on := false
+var step_ticks := STEP_TICKS   # --burst-step=<ticks> in hud_dump (default 6)
 
 var names: Array[String] = []
 var frames_wanted := 8
@@ -117,7 +118,7 @@ func process(run: RefCounted, frame: int, grab: Callable) -> void:
 			# While the core holds for the descent's cut-in the tick does not move and the picture is the event: take a frame every
 			# STEP_TICKS render frames (0.1 s) from the start instead of waiting out the end-screen slack.
 			var slack := 0 if String(run.mode) == "descent" else SLACK_FRAMES
-			var due: bool = int(run.tick)-int(entry.tick0) >= k*STEP_TICKS or frame-int(entry.frame0) >= k*STEP_TICKS+slack
+			var due: bool = int(run.tick)-int(entry.tick0) >= k*step_ticks or frame-int(entry.frame0) >= k*step_ticks+slack
 			if not due: break
 			if _queue.is_empty(): RenderingServer.frame_post_draw.connect(_on_post_draw,CONNECT_ONE_SHOT)
 			_queue.append({"entry":entry,"k":k,"tick":int(run.tick),"tick_after_event":int(run.tick)-int(entry.tick0),"mode":String(run.mode)})

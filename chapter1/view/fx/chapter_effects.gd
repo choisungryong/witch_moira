@@ -34,6 +34,9 @@ const MAX_PARTICLES := 400
 const MAX_STROKES := 96
 const MAX_IMPACTS := 48
 const MAX_HIT_ACCENTS_PER_CONSUME := 12
+## U-57: fire projectile quad scale (ball about .58 m across; evolved about .8 m).
+const FIREBALL_SCALE := 1.45
+const FIREBALL_SCALE_EVOLVED := 2.0
 const COLORS={"chapter1.skill.ember":Color("ff943d"),"chapter1.skill.frost":Color("9ce7ef"),"chapter1.skill.arc":Color("b9caff")}
 ## Enemy threat colour (art plan 2.1): every enemy telegraph and floor hazard uses it, never the fire orange.
 const THREAT_COLOR := Color(1.0,.18,.31)
@@ -228,6 +231,7 @@ func consume__cloister(events: Array) -> void:
 				if impact_budget>0 and strokes.size()<MAX_STROKES:
 					impact_budget-=1
 					strokes.append({"type":"impact","at":event.position,"radius":float(event.radius_cm)/100.0,"life":.48,"duration":.48,"element":_element(event.skill_id),"color":color})
+					if float(strokes.back().element)<.25:strokes.back().life=.30;strokes.back().duration=.30 # U-57: the fireball burst is quick
 				if event.get("evolved",false):_kick(.15,int(event.tick))
 			"death": burst(event.position,color,7,1.2)
 			"hero_hit":
@@ -352,6 +356,9 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 	var right := Vector2(_cam_basis.x.x,_cam_basis.x.z).normalized()
 	var forward := Vector2(-_cam_basis.z.x,-_cam_basis.z.z).normalized()
 	var proj_cap := mm.instance_count
+	var glow_mm: MultiMesh=_fire_glow.multimesh if _fire_glow!=null else null
+	var glow_buf := _mmbuf(glow_mm) if glow_mm!=null else PackedFloat32Array()
+	var glow_n := 0
 	for p in run.projectiles:
 		if index>=proj_cap: break
 		var color: Color=HOSTILE_BOLT_COLOR if p.hostile else COLORS.get(p.skill_id,Color.WHITE)
@@ -363,6 +370,8 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 		var child: bool=not p.hostile and bool(p.get("child",false))
 		var size_ := .68 if p.hostile else (CHILD_SIZE if child else (1.28 if evolved else 1.0))
 		var element_code := .5 if p.skill_id=="chapter1.skill.frost" else (1.0 if p.hostile else (.15 if p.skill_id=="chapter1.skill.arc" else 0.0))
+		# U-57: the fireball is a ball, not a pin. Presentation scale only (the core's radius is untouched).
+		if element_code==0.0 and not p.hostile and not child:size_=FIREBALL_SCALE_EVOLVED if evolved else FIREBALL_SCALE
 		var xf := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*size_),Vector3(p.position.x,.75,p.position.y))
 		var custom := Color((angle+PI)/TAU,element_code,-1.0 if child else (1.0 if evolved else .20),float(int(p.uid)%17)/17.0)
 		# Frost bolts (element code .5) go to the replacement batch; their original keeps a zero-scaled twin.
@@ -373,8 +382,14 @@ func sync__cloister(run: RefCounted, delta: float) -> void:
 			xf.basis=xf.basis.scaled(Vector3.ZERO)
 		var po := index*MM_STRIDE
 		_wx(pbuf,po,xf);_wc(pbuf,po+MM_COLOR,color);_wc(pbuf,po+MM_CUSTOM,custom)
+		if glow_mm!=null and element_code==0.0 and not p.hostile and not child:
+			# U-57: an orange light patch on the floor under the ball (no real light, one quad per fireball).
+			var gs := 2.6 if evolved else 1.7
+			_wx(glow_buf,glow_n*MM_STRIDE,Transform3D(Basis.IDENTITY.scaled(Vector3(gs,1,gs)),Vector3(p.position.x,.07,p.position.y)))
+			glow_n+=1
 		index+=1
 	_mmflush(mm,pbuf,index)
+	if glow_mm!=null:_mmflush(glow_mm,glow_buf,glow_n)
 	_mmflush(mfp,fpbuf,_routed_p)
 	_mm_show(projectiles,index)
 	_mm_show(_frost39_projectiles,_routed_p)
@@ -1242,14 +1257,21 @@ func reset() -> void:
 	frost39_impact_count=0
 	frost39_contact_count=0
 	frost39_cast_count=0
-	for batch in [_frost39_projectiles,_frost39_impacts,_frost39_contacts,_frost39_casts]:
+	for batch in [_frost39_projectiles,_frost39_impacts,_frost39_contacts,_frost39_casts,_fire_glow]:
 		if is_instance_valid(batch):batch.multimesh.visible_instance_count=0
 
 # ---- chapter1/view/chapter_elements_quality43.gd ----
 ## Unconnected fire presentation candidate. Same paid geometry, pools and ages.
 ## Shader replacements only: no events, damage, RNG, particles or timing added.
+var _fire_glow: MultiMeshInstance3D
 func setup__q43(owner_view: Node3D) -> void:
 	setup__q39(owner_view)
+	var glow_plane := PlaneMesh.new();glow_plane.size=Vector2(1,1)
+	_fire_glow=_batch(glow_plane,projectiles.multimesh.instance_count)
+	_fire_glow.name="FireballGlow"
+	var glow_mat := ShaderMaterial.new()
+	glow_mat.shader=preload("res://chapter1/view/fire_glow.gdshader")
+	_fire_glow.material_override=glow_mat
 	var bolt := ShaderMaterial.new()
 	bolt.shader=preload("res://chapter1/view/ember_core_quality43.gdshader")
 	projectiles.material_override=bolt

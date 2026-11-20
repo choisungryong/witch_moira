@@ -101,6 +101,7 @@ var asset_usage_path := ""
 var usage: RefCounted = null
 var burst_arg := ""
 var burst_frames := 8
+var burst_step := 6
 var burst_frames_given := false
 var run_spells_arg := ""
 var spells_pick := ""
@@ -157,6 +158,7 @@ func _initialize() -> void:
 		elif arg.begins_with("--asset-usage="): asset_usage_path = arg.trim_prefix("--asset-usage=")
 		# "--burst=<tick>,<frames>" (two integers) is the hero capture of rig_game_probe.gd, not an event-name burst.
 		elif arg.begins_with("--burst=") and not _is_tick_burst(arg.trim_prefix("--burst=")): burst_arg = arg.trim_prefix("--burst=")
+		elif arg.begins_with("--burst-step="): burst_step = maxi(1,int(arg.trim_prefix("--burst-step=")))
 		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
@@ -201,6 +203,7 @@ func _initialize() -> void:
 		for part in burst_arg.split(",",false): wanted.append(part.strip_edges())
 		burst = BurstCapture.new()
 		burst.setup(wanted,burst_frames,shots_dir)
+		burst.step_ticks = burst_step
 		# Events live one tick in run.events: read them at every physics frame (before the view steps the core again).
 		burst.spells_on = run_spells_arg == "on"
 	if burst != null or not spells_pick.is_empty():
