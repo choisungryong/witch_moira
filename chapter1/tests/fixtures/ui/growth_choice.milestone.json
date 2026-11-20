@@ -56,9 +56,9 @@
    "kind": "evolve",
    "kind_label": "기술 진화",
    "header": "서약",
-   "name": "파쇄 물결",
+   "name": "파쇄 서리창",
    "tier": "",
-   "headline": "서리창이 파쇄 물결로 바뀐다.",
+   "headline": "서리창이 파쇄 서리창로 바뀐다.",
    "delta": null,
    "meter": null,
    "stats": [
@@ -66,7 +66,7 @@
     "진화하면 이 조합의 터뜨림이 ×1.5"
    ],
    "details": [
-    "파쇄 물결: 얼어붙은 적이 쪼개지며 파편이 퍼진다.",
+    "파쇄 서리창: 얼어붙은 적이 쪼개지며 파편이 퍼진다.",
     "짝 기술: 서리 울타리"
    ],
    "line": "서리창이 바뀐다.",
@@ -85,7 +85,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "결정",
+      "label": "서리창 씨앗",
       "done": true
      },
      {
@@ -214,11 +214,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "결정",
+    "name": "서리창 씨앗",
     "owned": true
    },
    {
-    "name": "잔불",
+    "name": "잿불탄 씨앗",
     "owned": false
    }
   ],

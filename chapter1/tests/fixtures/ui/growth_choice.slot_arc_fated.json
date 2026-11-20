@@ -144,7 +144,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "도체",
+      "label": "연쇄 전류 씨앗",
       "done": false
      },
      {
@@ -199,7 +199,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "도체",
+      "label": "연쇄 전류 씨앗",
       "done": false
      },
      {
@@ -232,7 +232,7 @@
   "slots": 3,
   "graces": [
    {
-    "name": "도체",
+    "name": "연쇄 전류 씨앗",
     "owned": false
    }
   ],

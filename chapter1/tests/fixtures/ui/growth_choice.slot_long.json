@@ -173,9 +173,9 @@
    "kind": "prep",
    "kind_label": "진화 준비",
    "header": "서약",
-   "name": "도체",
+   "name": "연쇄 전류 씨앗",
    "tier": "",
-   "headline": "연쇄 전류 진화 조건: 강화 5번 · 이 은총 · 짝 기술 강화 2번",
+   "headline": "연쇄 전류 진화 조건: 강화 5번 · 이 씨앗 · 짝 기술 강화 2번",
    "delta": null,
    "meter": null,
    "stats": [
@@ -192,7 +192,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "도체",
+      "label": "연쇄 전류 씨앗",
       "done": true
      },
      {
@@ -205,7 +205,7 @@
    "terms": [
     {
      "word": "진화",
-     "gloss": "연쇄 전류가 세 갈래 폭풍으로 바뀐다."
+     "gloss": "연쇄 전류가 갈래 연쇄 전류으로 바뀐다."
     }
    ],
    "action": "받아들이기",
@@ -237,11 +237,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "도체",
+    "name": "연쇄 전류 씨앗",
     "owned": false
    },
    {
-    "name": "결정",
+    "name": "서리창 씨앗",
     "owned": true
    }
   ],

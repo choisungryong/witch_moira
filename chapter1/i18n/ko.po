@@ -270,7 +270,7 @@ msgstr "잿불탄"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.ember.evolved_name"
-msgstr "연쇄 화염구"
+msgstr "연쇄 잿불탄"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.frost.name"
@@ -278,7 +278,7 @@ msgstr "서리창"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.frost.evolved_name"
-msgstr "파쇄 물결"
+msgstr "파쇄 서리창"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.arc.name"
@@ -286,19 +286,19 @@ msgstr "연쇄 전류"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.arc.evolved_name"
-msgstr "세 갈래 폭풍"
+msgstr "갈래 연쇄 전류"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.embers.name"
-msgstr "잔불"
+msgstr "잿불탄 씨앗"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.crystal.name"
-msgstr "결정"
+msgstr "서리창 씨앗"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.conductor.name"
-msgstr "도체"
+msgstr "연쇄 전류 씨앗"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.pierce_add"
@@ -386,7 +386,7 @@ msgstr "서리창 랭크 {rank}으로 시작"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "결정 은총 없이 진화"
+msgstr "서리창 씨앗 없이 진화"
 
 #. Save refusal text
 msgid "profile.error.preview_only"
@@ -1051,7 +1051,7 @@ msgstr "{d} {dd} · {r} {rd}"
 
 #. Passive card text of a run with spell composition
 msgid "hud.spell.passive.body"
-msgstr "진화 조건: 강화 {axis}번 · 이 은총 · 짝 기술 강화 {partner}번"
+msgstr "진화 조건: 강화 {axis}번 · 이 씨앗 · 짝 기술 강화 {partner}번"
 
 #. Evolution progress line. {parts}: pieces joined by dots
 msgid "hud.spell.evo.line"
@@ -1067,11 +1067,11 @@ msgstr "강화 {have} → {next}/{need}"
 
 #. Evolution progress piece. {mark}: check or cross
 msgid "hud.spell.evo.passive"
-msgstr "은총 {mark}"
+msgstr "씨앗 {mark}"
 
 #. Evolution progress piece shown on the passive card
 msgid "hud.spell.evo.passive_to"
-msgstr "은총 ✗ → ✓"
+msgstr "씨앗 ✗ → ✓"
 
 #. Evolution progress piece: axis total of the partner spell
 msgid "hud.spell.evo.partner"

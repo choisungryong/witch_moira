@@ -150,7 +150,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "결정",
+      "label": "서리창 씨앗",
       "done": false
      },
      {
@@ -205,7 +205,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "결정",
+      "label": "서리창 씨앗",
       "done": false
      },
      {
@@ -248,11 +248,11 @@
   "slots": 3,
   "graces": [
    {
-    "name": "결정",
+    "name": "서리창 씨앗",
     "owned": false
    },
    {
-    "name": "잔불",
+    "name": "잿불탄 씨앗",
     "owned": false
    }
   ],

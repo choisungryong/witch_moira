@@ -129,7 +129,7 @@
     "total": 5,
     "keys": [
      {
-      "label": "잔불",
+      "label": "잿불탄 씨앗",
       "done": false
      },
      {
@@ -202,7 +202,7 @@
   "slots": 3,
   "graces": [
    {
-    "name": "잔불",
+    "name": "잿불탄 씨앗",
     "owned": false
    }
   ],

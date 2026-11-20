@@ -43,6 +43,7 @@
       "chapter1/data/growth*.json": {
         "skills[].name": "skill.<id>.name",
         "skills[].evolved_name": "skill.<id>.evolved_name",
+        "skills[].evolution_name": "skill.<id>.evolved_name",
         "passives[].name": "grace.passive.<id>.name"
       }
     },
@@ -78,7 +79,7 @@
     "game_text": {
       "include": ["chapter1/i18n/*.po", "chapter1/data/*.json", "chapter1/**/*.gd", "project.godot"],
       "exclude": ["chapter1/tests/**", "chapter1/core/chapter_items.gd", "chapter1/core/combat_run.gd", "chapter1/i18n/README.ko.md", "**/*.uid"],
-      "json_fields": ["name", "evolved_name", "title", "description", "lore", "slot_names"],
+      "json_fields": ["name", "evolved_name", "evolution_name", "title", "description", "lore", "slot_names"],
       "note": "범위는 WR 3.1절과 같다. chapter_items.gd(장비 v1)는 옛 저장 검증용이라 바꾸지 않는다(IN 2.7, TP 7.3). combat_run.gd는 옛 실행 경로다(CLAUDE.md)"
     },
     "docs": {
@@ -186,6 +187,11 @@
     {"id": "F9", "desc": "부정 관형어 이름('꺼지지 않는 ○○', '이름 없는 ○○')", "pattern": "^[가-힣]+(지 않는|지 않은|없는)\\s", "grade": "warn", "rule": "WR 1.4 F9", "applies_to": ["@names"], "note": "하는 일로 짓는다('불씨 지키기'). R6로 원문 제목의 예외도 없어졌다(DP 2.12)"},
     {"id": "F10", "desc": "lore의 비유('마치 ~처럼', '~듯한')", "pattern": "처럼|듯한|듯이|(^|\\s)마치\\s", "grade": "warn", "rule": "WR 1.4 F10", "applies_to": ["@lore"], "note": "lore에는 쓰지 않는다. 다른 화면은 한 화면에 하나 이하(기계로 세지 않음)"},
     {"id": "W5-2", "desc": "판 안 알림의 쉼표 둘 이상", "pattern": ",.*,", "grade": "warn", "rule": "WR 5.2, TP 0.2", "applies_to": ["notify.*", "hud.notify.*"], "note": "한 문장에 한 가지, 쉼표 하나 이하"},
+    {"id": "SK-1", "desc": "주문·진화 이름에 꼴 낱말이 없음(꼴 낱말 하나가 닿는 모양을 말한다)", "pattern": "^(?!.*(탄|창|화살|덫|울타리|지대|연쇄)).+$", "grade": "warn", "rule": "D18 3.2·7.3 (R1·R2)", "applies_to": ["skill.*.name", "skill.*.evolved_name"], "note": "꼴 낱말 닫힌 목록: 창(꿰뚫기) 탄(터짐) 연쇄(번짐) 울타리 지대 덫(묶기, 예약) 화살(한 발, 예약. '살'은 몸의 살로 읽혀 G1로 뺐다). 구·물결·폭풍·영역·바늘·입김·고리·사슬·결계·방벽은 쓰지 않는다"},
+    {"id": "SK-2", "desc": "진화 열쇠(진화 준비 은총) 이름이 '씨앗'으로 끝나지 않음", "pattern": "^(?!.*\\s씨앗$).+$", "grade": "warn", "rule": "D18 3.1 R5 (U-C 가)", "applies_to": ["grace.passive.*.name"], "note": "이름 = 진화할 기술 이름 + ' 씨앗'. 판 안 진화 열쇠에만 쓴다"},
+    {"id": "SK-3", "desc": "주문·은총 이름에 숫자", "pattern": "\\d|(^|\\s)(한|두|세|네|다섯)\\s?(갈래|발|겹|줄)", "grade": "warn", "rule": "D18 3.1 R6 (WR 5.5)", "applies_to": ["@names"], "note": "수는 카드 수치 줄이 말한다. 값이 바뀌면 이름이 거짓말이 된다"},
+    {"id": "SK-4", "desc": "씨앗 이름표 곁의 자람·봄 낱말", "pattern": "싹|움트|꽃|(^|\\s)봄", "grade": "warn", "rule": "검수 D18-NAMING 3.1 조건 2", "applies_to": ["skill.*.name", "skill.*.evolved_name", "grace.passive.*.name", "hud.spell.evo.*", "hud.spell.passive.*", "record.pick.*", "notify.*", "hud.notify.*"], "note": "씨앗 하나만 둔다. 싹·새싹·움트다·꽃·피다·봄을 함께 쓰지 않는다(어머니의 '봄' 선, FM)"},
+    {"id": "SK-5", "desc": "'씨앗'을 이름표 밖에 씀(진화 알림·판 안 알림·기술 이름)", "pattern": "씨앗", "grade": "warn", "rule": "검수 D18-NAMING 3.1 조건 1", "applies_to": ["skill.*", "notify.*", "hud.notify.*", "record.pick.evolve"], "note": "씨앗은 진화 열쇠 이름표와 진화까지 조각(hud.spell.evo.*)·카드 조건 줄(hud.spell.passive.*)에서만. 어머니의 말·은총 한 줄·진화 알림에는 넣지 않는다"},
     {"id": "EN-F1", "desc": "영어 이름의 'X of Y' 꼴", "pattern": "\\b[A-Z][A-Za-z'-]*\\s+of\\s+(the\\s+)?[A-Z]", "grade": "warn", "lang": "en", "rule": "WR 6.1(마녀 칭호 비고), WR 4.2(Sanctum of Ash로 옮기지 않는다), WR 1.5", "applies_to": ["@names"], "note": "'Witch of Embers'가 아니라 'Ember Witch'. 한국어 F1을 영어에서 되살리지 않는다"}
   ],
 
@@ -241,7 +247,7 @@
       {"ko": "드러내기", "en": "Identify", "status": "잠정(N54)", "rule": "WR 4.5·6.1"},
       {"ko": "꾸러미", "en": "Bundle", "status": "잠정(N44)", "rule": "WR 6.1"},
       {"ko": "재", "en": "Ash", "status": "잠정(N45 '재' 유지는 채택, 영어는 잠정)", "rule": "WR 6.1·6.2", "applies_to": ["*essence*"], "note": "'재'는 한 글자라 화폐를 가리키는 키(내부 id essence)에서만 본다"},
-      {"ko": "잿불탄", "en": "Ember Shot", "status": "잠정(지금 데이터)", "rule": "WR 6.1"},
+      {"ko": "잿불탄", "en": "Ember Burst", "status": "잠정(D18, 2026-11-20 검수 반영)", "rule": "WR 6.1, D18 3.6"},
       {"ko": "서리창", "en": "Frost Lance", "status": "잠정(지금 데이터)", "rule": "WR 6.1"},
       {"ko": "연쇄 전류", "en": "Chain Current", "status": "잠정(지금 데이터)", "rule": "WR 6.1"},
       {"ko": "잿불의 마녀", "en": "Ember Witch", "status": "잠정", "rule": "WR 6.1"},
@@ -273,7 +279,6 @@
     {"file": "chapter1/i18n/en.po", "key_or_text": "zone.2.name", "text": "Sanctum of Cinders", "word": "EN-F1", "decision": "N55", "why": "같음"},
     {"file": "chapter1/i18n/en.po", "key_or_text": "enemy.champion.0.name", "text": "Gatekeeper of Embers", "word": "EN-F1", "decision": "N55", "why": "수호자 이름 교체(안 1 'Gatekeeper's Husk')는 R9로 '나중에'"},
     {"file": "chapter1/i18n/en.po", "key_or_text": "enemy.champion.2.name", "text": "Warden-King of the Corridor", "word": "EN-F1", "decision": "N55", "why": "우두머리 이름 교체(안 1 'The Unbound Beast')는 R9로 '나중에'"},
-    {"file": "chapter1/i18n/en.po", "key_or_text": "skill.chapter1.skill.arc.name", "text": "Chain Lightning", "word": "연쇄 전류=Chain Current", "decision": "N52(용어집 6.1 잠정)", "why": "en.po 초벌과 용어집이 다르다. 어느 쪽으로 맞출지 디렉터 판단"},
     {"file": "chapter1/i18n/en.po", "key_or_text": "tree.effect.start_rank", "text": "Start the lance at rank {rank}", "word": "서리창=Frost Lance", "decision": "N52(용어집 6.1 잠정)", "why": "같음"},
     {"file": "chapter1/i18n/en.po", "key_or_text": "hud.champion.short", "text": "Guardian", "word": "수호자=Warden", "decision": "N52(용어집 6.1·6.2 잠정)", "why": "같음"},
     {"file": "chapter1/i18n/en.po", "key_or_text": "hud.champion.fallback", "text": "Seal guardian", "word": "수호자=Warden", "decision": "N52(용어집 6.1·6.2 잠정)", "why": "같음"},

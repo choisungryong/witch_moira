@@ -261,11 +261,11 @@ msgstr "Kills around the seal {done} / {total}"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
-msgstr "Ember Shot"
+msgstr "Ember Burst"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.ember.evolved_name"
-msgstr "Chain Fireball"
+msgstr "Chain Ember Burst"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.frost.name"
@@ -273,27 +273,27 @@ msgstr "Frost Lance"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.frost.evolved_name"
-msgstr "Shatter Wave"
+msgstr "Shattering Frost Lance"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.arc.name"
-msgstr "Chain Lightning"
+msgstr "Chain Current"
 
 #. Skill name after evolution (source: growth data)
 msgid "skill.chapter1.skill.arc.evolved_name"
-msgstr "Three-Fork Storm"
+msgstr "Forked Chain Current"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.embers.name"
-msgstr "Embers"
+msgstr "Ember Burst Seed"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.crystal.name"
-msgstr "Crystal"
+msgstr "Frost Lance Seed"
 
 #. Grace passive name (source: growth data)
 msgid "grace.passive.chapter1.passive.conductor.name"
-msgstr "Conductor"
+msgstr "Chain Current Seed"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.pierce_add"
@@ -381,7 +381,7 @@ msgstr "Start the lance at rank {rank}"
 
 #. Skill tree effect line.
 msgid "tree.effect.evolve_free"
-msgstr "Evolve without the crystal grace"
+msgstr "Evolve without the Frost Lance Seed"
 
 #. Save refusal text
 msgid "profile.error.preview_only"
@@ -1046,7 +1046,7 @@ msgstr "{d} {dd} · {r} {rd}"
 
 #. Passive card text of a run with spell composition
 msgid "hud.spell.passive.body"
-msgstr "Evolution needs: {axis} upgrades · this grace · {partner} upgrades on the partner skill"
+msgstr "Evolution needs: {axis} upgrades · this Seed · {partner} upgrades on the partner skill"
 
 #. Evolution progress line. {parts}: pieces joined by dots
 msgid "hud.spell.evo.line"
@@ -1062,11 +1062,11 @@ msgstr "upgrades {have} → {next}/{need}"
 
 #. Evolution progress piece. {mark}: check or cross
 msgid "hud.spell.evo.passive"
-msgstr "grace {mark}"
+msgstr "Seed {mark}"
 
 #. Evolution progress piece shown on the passive card
 msgid "hud.spell.evo.passive_to"
-msgstr "grace ✗ → ✓"
+msgstr "Seed ✗ → ✓"
 
 #. Evolution progress piece: axis total of the partner spell
 msgid "hud.spell.evo.partner"
