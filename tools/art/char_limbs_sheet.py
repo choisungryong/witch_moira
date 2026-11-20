@@ -17,18 +17,20 @@ def main(argv=None):
     ap.add_argument("--names", required=True)
     ap.add_argument("--frames", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--clip", default="run", help="파일 이름의 동작 이름(game_<clip>_<f>_...)")
+    ap.add_argument("--cams", default="side,game")
     a = ap.parse_args(argv)
     names = a.names.split(",")
     frames = [int(f) for f in a.frames.split(",")]
     d = Path(a.dir)
     spec = {"side": ((200, 0, 760, 540), (280, 270)), "game": ((330, 60, 630, 540), (170, 270))}
     rows = []
-    for cam in ("side", "game"):
+    for cam in a.cams.split(","):
         box, sz = spec[cam]
         for n in names:
             row = Image.new("RGB", (sz[0] * len(frames), sz[1]), (60, 62, 64))
             for k, f in enumerate(frames):
-                im = Image.open(d / ("game_run_%d_%s_%s_%d.png" % (f, n, cam, f))).convert("RGB").crop(box).resize(sz)
+                im = Image.open(d / ("game_%s_%d_%s_%s_%d.png" % (a.clip, f, n, cam, f))).convert("RGB").crop(box).resize(sz)
                 row.paste(im, (k * sz[0], 0))
             ImageDraw.Draw(row).text((4, 4), "%s / %s" % (cam, n), fill=(255, 255, 255))
             rows.append(row)

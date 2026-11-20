@@ -23,6 +23,7 @@ def main(argv=None):
     ap.add_argument("--work", required=True)
     ap.add_argument("--model", action="append", required=True, help="라벨=glb 경로")
     ap.add_argument("--az", type=float, default=0.0)
+    ap.add_argument("--pose", help="렌더 전 자세 clip:frame (예: idle:0)")
     a = ap.parse_args(argv)
     from PIL import Image, ImageDraw
     work = Path(a.work)
@@ -33,7 +34,7 @@ def main(argv=None):
     for lab_path in a.model:
         label, path = lab_path.split("=", 1)
         r = subprocess.run([sys.executable, str(HERE / "char_render.py"), "views", "--model", path, "--views", str(work / "views.json"),
-                            "--out", str(work / label)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+                            "--out", str(work / label)] + (["--pose", a.pose] if a.pose else []), capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             raise SystemExit("렌더 실패 %s: %s" % (label, r.stdout[-400:]))
         cols.append((label, [Image.open(work / label / (v["name"] + ".png")).convert("RGB") for v in views]))

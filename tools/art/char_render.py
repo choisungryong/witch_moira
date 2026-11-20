@@ -162,6 +162,7 @@ def main(argv):
     ap.add_argument("--seq", help="game: 동작 연속 렌더 clip:첫프레임:끝프레임(포함). 파일은 out/seq<tag>_NNN.png")
     ap.add_argument("--cam", choices=["game", "side", "front"], default="game", help="game 카메라 각도: 게임(기본) / 측면 / 정면(직교, 키 맞춤)")
     ap.add_argument("--res-mult", type=int, default=1, help="game: 같은 화면 범위를 N배 해상도로(영상용)")
+    ap.add_argument("--pose", help="views: 렌더 전에 clip:frame 자세를 잡는다(쉬는 자세가 T자인 몸에 idle 등)")
     ap.add_argument("--bg", help="game: 바탕색 r,g,b (0..1). 기본 어두운 바닥 0.03,0.04,0.045")
     ap.add_argument("--silhouette", action="store_true", help="game: 단색 검정 실루엣을 밝은 바탕에(회색조 판의 실루엣 기준 판)")
     a = ap.parse_args(argv)
@@ -233,6 +234,9 @@ def main(argv):
     objs = load_model(a.model[0])
     sc, cam = setup_scene()
     if a.mode == "views":
+        if a.pose:
+            pc, pf = a.pose.split(":")
+            pose_to(pc, int(pf))
         for v in json.loads(Path(a.views).read_text(encoding="utf-8")):
             view_cam(cam, v["az"], v["s"], v["cx"], v["cy"], v["w"], v["h"])
             render(sc, out / ("%s%s.png" % (v["name"], a.tag)), v["w"], v["h"])
