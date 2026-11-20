@@ -28,6 +28,7 @@ class FitTests(unittest.TestCase):
     def test_group_of(self):
         self.assertEqual(B.group_of("Head"), "head")
         self.assertEqual(B.group_of("upperarm_l"), "arm")
+        self.assertEqual(B.group_of("clavicle_l"), "body")
         self.assertEqual(B.group_of("index_02_r"), "hand")
         self.assertEqual(B.group_of("calf_r"), "leg_r")
         self.assertEqual(B.group_of("spine_02"), "body")

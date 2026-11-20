@@ -22,7 +22,7 @@ sys.path.insert(0, str(HERE))
 import char_from_sheets as C  # noqa: E402
 import char_geom as G  # noqa: E402
 
-ARM_BONES = ("clavicle", "upperarm", "lowerarm")
+ARM_BONES = ("upperarm", "lowerarm")      # 쇄골은 몸통 부위(어깨 이음에 얼음색이 번지지 않게)
 HAND_BONES = ("hand", "index", "middle", "ring", "pinky", "thumb")
 
 
@@ -134,21 +134,58 @@ def apply_fit(P, groups, fz, zc, fit, arm_sx):
     return Q
 
 
+def arm_axis(P, groups, sg):
+    m = np.isin(groups, ("arm", "hand")) & (np.sign(P[:, 0]) == sg) & (np.abs(P[:, 0]) > 0.12)
+    if m.sum() < 10:
+        return m, None, None
+    pts = P[m]
+    c = pts.mean(0)
+    ax = np.linalg.svd(pts - c, full_matrices=False)[2][0]
+    if ax[0] * sg < 0:
+        ax = -ax
+    return m, c, ax
+
+
 def thin_arms(P, groups, factor):
-    """팔·손 정점을 팔 축(왼·오른쪽마다 주성분 축을 지나는 선)에 수직으로 factor배 줄인다(원화 팔이 가늘어 기본 몸 팔이 그림 마스크 밖으로 나가는 것을 막는다)."""
+    """팔·손 정점을 팔 축(왼·오른쪽마다 주성분 축을 지나는 선)에 수직으로 줄인다. 어깨 쪽(|x| 0.10~0.22)은 서서히 줄여 어깨에 각진 조각이 생기지 않게 한다."""
     Q = P.copy()
     for sg in (1.0, -1.0):
-        m = np.isin(groups, ("arm", "hand")) & (np.sign(P[:, 0]) == sg) & (np.abs(P[:, 0]) > 0.12)
-        if m.sum() < 10:
+        m, c, ax = arm_axis(P, groups, sg)
+        if c is None:
             continue
-        pts = P[m]
-        c = pts.mean(0)
-        u, s_, vt = np.linalg.svd(pts - c, full_matrices=False)
-        ax = vt[0]
-        rel = pts - c
+        sel = np.isin(groups, ("arm", "hand")) & (np.sign(P[:, 0]) == sg)
+        rel = P[sel] - c
         along = (rel @ ax)[:, None] * ax[None, :]
-        Q[m] = c + along + (rel - along) * factor
+        ramp = np.clip((np.abs(P[sel, 0]) - 0.10) / 0.12, 0, 1)
+        ramp = ramp * ramp * (3 - 2 * ramp)
+        f = 1 - (1 - factor) * ramp
+        Q[sel] = c + along + (rel - along) * f[:, None]
     return Q
+
+
+def stretch_arms(P, groups, k):
+    """투영용: 팔 정점을 팔 축 방향으로 어깨 쪽 끝을 기준 k배(원화 팔 길이에 손 위치를 맞춰 팔찌 그림이 손에 묻지 않게)."""
+    Q = P.copy()
+    for sg in (1.0, -1.0):
+        m, c, ax = arm_axis(P, groups, sg)
+        if c is None:
+            continue
+        sel = np.isin(groups, ("arm", "hand")) & (np.sign(P[:, 0]) == sg)
+        t = (P[sel] - c) @ ax
+        t0 = t.min()
+        Q[sel] = P[sel] + np.outer((t - t0) * (k - 1.0), ax)
+    return Q
+
+
+def old_arm_length(old_parts):
+    pts = [v for n, v in old_parts.items() if n == "arm_l" or n.startswith("hand_l")]
+    if not pts:
+        return None
+    P = np.concatenate(pts)
+    c = P.mean(0)
+    ax = np.linalg.svd(P - c, full_matrices=False)[2][0]
+    t = (P - c) @ ax
+    return float(t.max() - t.min())
 
 
 # ------------------------------------------------------------------ 래스터
@@ -196,19 +233,21 @@ def rasterize_uv(verts, normals, tris, uv, groups_v, TS, group_index):
 
 
 def ice_arm(atlas, tex, names, spec, out):
-    """왼팔(원소 팔)을 반투명 하늘색 대신 불투명한 얼음빛 피부로 바꾸고, 그림의 푸른 선(채도 높은 텍셀)은 살려 발광 가면(emission.png)으로 낸다.
-    spec: {"color": [r,g,b], "vein_hue_sat": 0.22, "vein_color": [r,g,b]}."""
+    """왼팔(원소 팔): 원화 팔 그림(서리 결과 푸른 핏줄)을 살리되 반투명한 느낌을 없앤다. 바탕은 그림 색을 얼음빛 바탕(살색보다 푸르고 어두움)과 섞고,
+    채도 높은 푸른 선(핏줄)은 그림 그대로 두며 그 세기를 발광 가면(emission.png)으로 낸다. spec: color, mix(바탕 비율), vein_sat, vein_color."""
     from PIL import Image
     ix, iy, P, part = tex["ix"], tex["iy"], tex["P"], tex["part"]
     side = np.isin(part, [names.index("arm"), names.index("hand")]) & (P[:, 0] > 0.05)
     col = atlas[iy[side], ix[side]]
     mx, mn = col.max(1), col.min(1)
     sat = (mx - mn) / np.maximum(mx, 1e-4)
-    w = np.clip((sat - spec.get("vein_hue_sat", 0.22)) / 0.25, 0, 1)
-    lum = col.mean(1)
-    shade = np.clip(lum / max(float(lum.mean()), 1e-4), 0.75, 1.15)
-    base = np.array(spec.get("color", [0.62, 0.78, 0.92]), np.float32)[None, :] * shade[:, None]
-    new = base * (1 - w[:, None]) + np.clip(col * 1.05, 0, 1) * w[:, None]
+    w = np.clip((sat - spec.get("vein_sat", 0.30)) / 0.25, 0, 1)
+    base = np.array(spec.get("color", [0.50, 0.66, 0.82]), np.float32)[None, :]
+    mix = float(spec.get("mix", 0.5))
+    lum = col.mean(1, keepdims=True)
+    detail = np.clip(col * 0.85, 0, 1)
+    new = base * mix + detail * (1 - mix)
+    new = new * (1 - w[:, None]) + np.clip(col * 1.0, 0, 1) * w[:, None]
     atlas = atlas.copy()
     atlas[iy[side], ix[side]] = new
     em = np.zeros(atlas.shape, np.float32)
@@ -268,12 +307,22 @@ def run(cfg_path, dump_path, out_dir, log=print):
     bt_p = apply_fit(np.array([tails[n] for n in bnames]), bg, fz, zc, fit, arm_sx)
     np.savez_compressed(out / "body_fit.npz", rest_fit=rest_f, apose_fit=apose_f, bones=np.array(bnames), bones_head=bh_p, bones_tail=bt_p,
                         landmarks_base=np.array(base_lm), landmarks_old=np.array(old_lm))
-    # 굽기
+    # 굽기: 팔 길이를 원화에 맞춘(투영용) A자세 좌표로 래스터한다
+    proj = apose_f
+    if cfgb.get("arm_len_fit", True):
+        art_len = old_arm_length(old_parts)
+        m_, c_, ax_ = arm_axis(apose_f, groups, 1.0)
+        if art_len and c_ is not None:
+            t_ = (apose_f[m_] - c_) @ ax_
+            base_len = float(t_.max() - t_.min())
+            k_ = float(np.clip(art_len / base_len, 0.6, 1.3))
+            log("arm length art %.3f base %.3f -> projection stretch %.3f" % (art_len, base_len, k_))
+            proj = stretch_arms(apose_f, groups, k_)
     TS = int(cfgb.get("texture", 2048))
-    nrm = G.vertex_normals(apose_f, tris)
+    nrm = G.vertex_normals(proj, tris)
     names = ["body", "head", "arm", "hand", "leg_l", "leg_r"]
     gi = {n: i for i, n in enumerate(names)}
-    tex = rasterize_uv(apose_f, nrm, tris, uv, groups, TS, gi)
+    tex = rasterize_uv(proj, nrm, tris, uv, groups, TS, gi)
     log("texels %d (%.1f%% of atlas)" % (len(tex["ix"]), 100 * len(tex["ix"]) / TS / TS))
     bake_groups = {"body": "body", "head": "head", "arm": "arm", "hand": "hand", "leg_l": "leg", "leg_r": "leg"}
     parts = [dict(group=bake_groups[n]) for n in names]
