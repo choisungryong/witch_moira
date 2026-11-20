@@ -21,6 +21,21 @@ var force_dir := ""
 var _fi := -1
 var _armed := false
 var _waiting_shot := false
+var _held: Array = []
+## --hero-boost=<0..1>: scales the game's hero material boost (albedo x1.35 and the albedo-textured emission, tuned for the dark mage).
+## 0 = the model's own colours, 1 = the game as is. Presentation of the probe only; the product file is untouched. -1 = leave alone.
+var hero_boost := -1.0
+
+func _apply_boost() -> void:
+	var actors := _actors()
+	if actors == null: return
+	var mats = actors.get("_hero_materials")
+	if mats == null: return
+	for m in mats:
+		var mat := m as StandardMaterial3D
+		if mat == null: continue
+		mat.albedo_color = Color(1, 1, 1).lerp(Color(1.35, 1.25, 1.18), hero_boost)
+		mat.emission_energy_multiplier = 0.45 * hero_boost
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -31,8 +46,10 @@ func _initialize() -> void:
 			for part in arg.trim_prefix("--force-times=").split(",", false): force_times.append(float(part))
 		elif arg.begins_with("--force-start="): force_start = int(arg.trim_prefix("--force-start="))
 		elif arg.begins_with("--force-shots="): force_dir = arg.trim_prefix("--force-shots=")
+		elif arg.begins_with("--hero-boost="): hero_boost = float(arg.trim_prefix("--hero-boost="))
 	if not model_glb.is_empty(): _swap_model()
 	super._initialize()
+	if hero_boost >= 0.0: RenderingServer.frame_pre_draw.connect(_apply_boost)
 	if not force_clip.is_empty():
 		RenderingServer.frame_pre_draw.connect(_force_pose)
 		RenderingServer.frame_post_draw.connect(_force_shot)
@@ -52,6 +69,7 @@ func _swap_model() -> void:
 	var packed := PackedScene.new()
 	packed.pack(node)
 	packed.take_over_path(MODEL_PATH)
+	_held.append(packed)  # the cache holds no reference: without this the swap is dropped when this function returns
 	# 임포트 변환 경로: .import 파일의 path= 값
 	var import_text := FileAccess.get_file_as_string(MODEL_PATH + ".import")
 	for line in import_text.split("\n"):
@@ -59,6 +77,7 @@ func _swap_model() -> void:
 			var imported := line.trim_prefix("path=").strip_edges().trim_prefix("\"").trim_suffix("\"")
 			var packed2 := packed.duplicate()
 			packed2.take_over_path(imported)
+			_held.append(packed2)
 	print("PROBE_MODEL ", JSON.stringify({"glb": model_glb, "texture": model_texture}))
 
 func _own(root_node: Node, node: Node) -> void:
