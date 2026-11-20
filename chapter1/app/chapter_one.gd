@@ -15,6 +15,14 @@ var effects
 const CombatJuice=preload("res://chapter1/view/fx/combat_juice.gd")
 ## Hit feedback, spell lights and the overall look. Off with --chapter1-no-juice.
 var juice: RefCounted
+## The descent's screen (D15 U-2): edge aura, cut-in, sweep. Makes no node until a run with the descent on asks for one.
+const DescentFx=preload("res://chapter1/view/fx/descent_fx.gd")
+var descent_fx=DescentFx.new()
+## The cut-in hold in wall seconds (the core stands still in mode "descent"): the app lets go after this even if the picture never does.
+const DESCENT_HOLD_LIMIT := 2.5
+var _descent_wait := 0.0
+## Gamepad: no pad input exists in this app yet (D15 A2.3, recommended Y); the button is named here for when it does.
+const DESCENT_PAD_BUTTON := JOY_BUTTON_Y
 var hud
 var audio=Audio.new()
 ## Core event -> sound request (the same mapping the request recorder uses). Its only state is the ring pulse habituation.
@@ -65,6 +73,15 @@ func _ready__chapter() -> void:
 	effects.setup(self)
 	if not "--chapter1-no-juice" in _user_args():
 		juice=CombatJuice.new();juice.setup(self);juice.apply_look(world)
+	descent_fx.setup(self)
+	for arg in _user_args():
+		if arg=="--chapter1-descent-cutin=short":descent_fx.cutin_short=true
+		elif arg=="--chapter1-descent-motion=reduced":descent_fx.reduced_motion=true
+		elif arg=="--chapter1-descent-flash=off":descent_fx.flash_scale=0.0
+		elif arg=="--chapter1-descent-flash=weak":descent_fx.flash_scale=0.5
+		elif arg=="--chapter1-descent-shake=off":descent_fx.shake_scale=0.0
+		elif arg=="--chapter1-descent-shake=weak":descent_fx.shake_scale=0.5
+		elif arg=="--chapter1-descent-numbers=off":descent_fx.numbers_on=false
 	hud.temporary_art=actors.temporary_art
 	hud.setup(self)
 	hud.start.connect(start_run)
@@ -81,7 +98,7 @@ func _ready__chapter() -> void:
 	hud.profile_play_without_save.connect(play_without_save)
 	hud.profile_start_fresh.connect(start_fresh_profile)
 	hud.mute_toggle.connect(toggle_mute)
-	hud.motion_toggle.connect(func(enabled: bool):world.set_reduced_motion(not enabled))
+	hud.motion_toggle.connect(func(enabled: bool):world.set_reduced_motion(not enabled);descent_fx.reduced_motion=not enabled)
 	audio.setup(self)
 	audio.set_master_volume(.80)
 	audio.set_paused(true)
@@ -129,6 +146,7 @@ func start_run__chapter(id_: String) -> void:
 	_qa_run_sequence+=1
 	actors.reset();effects.reset();hud.reset();audio.reset();audio_routes.reset()
 	if juice!=null:juice.reset()
+	descent_fx.reset();_descent_wait=0.0
 	_last_audio_event=-1;_last_result="";_captured.clear();_frame_ms.clear()
 	_has_move_target=false
 	_audio_previous=run.hero.position;_audio_step_distance=0
@@ -225,6 +243,7 @@ func _physics_process(_delta: float) -> void:
 func _consume_events__chapter() -> void:
 	effects.consume(run.events)
 	if juice!=null:juice.consume(run.events)
+	descent_fx.consume(run.events)
 	actors.consume(run.events)
 	var fresh: Array=[]
 	for event in run.events:
@@ -249,6 +268,7 @@ func _process__chapter(delta: float) -> void:
 		actors.sync(run,delta)
 		effects.sync(run,delta)
 		if juice!=null:juice.sync(run,delta)
+	descent_fx.sync(run,delta)
 	hud.sync(run,delta)
 	audio.set_paused(run.mode!="playing" or _qa_quit_sent)
 	if not _capture_dir.is_empty():
@@ -369,6 +389,9 @@ func _apply_trial() -> void:
 		var descent_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/descent.json"))
 		if descent_doc is Dictionary:
 			descent_doc["enabled"]=true
+			# QA only: a cheaper first gauge (>= 1000, the validator's floor) so a short capture run reaches a descent.
+			for arg in _user_args():
+				if arg.begins_with("--chapter1-descent-cost="):descent_doc["cost"]=[int(arg.trim_prefix("--chapter1-descent-cost="))]
 			if not run.set_descent(descent_doc):push_warning("trial descent refused: "+str(run.errors))
 func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
@@ -387,7 +410,7 @@ func _ready() -> void:
 	hud.skill_tree_commit.connect(_commit_skill_tree)
 	hud.skill_tree_respec.connect(_respec_skill_tree)
 	_ready__chapter()
-	DisplayServer.window_set_title("잿빛 회랑 · 제1장"+(" [시험: %s]"%",".join(trial_switches) if not trial_switches.is_empty() else ""))
+	DisplayServer.window_set_title("잿빛 회랑 · 제1장"+(Loc.t("app.window.trial_tag",{"list":",".join(trial_switches)}) if not trial_switches.is_empty() else ""))
 	print("FULL_CHAPTER_READY ",JSON.stringify({"scene":"chapter1/ChapterOne.tscn","three_connected_zones":true,"scope":"Full chapter implementation candidate; quality/pacing/manual/audio gates open"}))
 ## The stash window's "equip for the next run": onto the witch the title menu shows.
 func _equip_from_stash(id_: int) -> void:
@@ -664,10 +687,26 @@ func _consume_events() -> void:
 			"reward_pending":hud.notify("가방이 가득 찼습니다 · 의식 보상을 보관 대기합니다")
 func _process(delta: float) -> void:
 	_process__chapter(delta)
+	_descent_hold_check(delta)
 	world.sync(run,delta)
 	if not _capture_dir.is_empty():
 		for at in [150,210,270,330,390,450,510]:
 			if run.elapsed()>=at and not _captured.has(at):_captured[at]=true;_capture(at)
+## Call the descent (R, or the pad button). The core decides: false when it is off, not ready, or not playing. Accepted: the core
+## stands still (mode "descent") until the cut-in is over and _descent_hold_check() lets it go (D15 A4.3, A7 item 9).
+func call_descent() -> bool:
+	if not run.request_descent():return false
+	_consume_events()
+	return true
+
+## The cut-in ends in descent_fx (take_release); the hold limit is a floor under it, so a missing or broken picture can never
+## leave the core standing still. Wall time, and only while the mode really is "descent" (a pause does not count).
+func _descent_hold_check(delta: float) -> void:
+	if run.mode!="descent":_descent_wait=0.0;return
+	_descent_wait+=delta
+	if descent_fx.take_release() or _descent_wait>=DESCENT_HOLD_LIMIT:
+		_descent_wait=0.0
+		if run.release_descent():_consume_events()
 func _capture_file(filename: String) -> void:
 	var base := ProjectSettings.globalize_path("res://_local/").replace("\\","/")
 	var dest := _capture_dir.replace("\\","/").simplify_path()
@@ -708,6 +747,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			run.request_dash(_move_input())
 			get_viewport().set_input_as_handled()
 			return
+		# R in a run is the descent (the result window's R "retry" is another mode). A run without the descent: false, nothing happens.
+		if shortcut==KEY_R and call_descent():
+			get_viewport().set_input_as_handled()
+			return
 	_unhandled_key_input__chapterx(event)
 
 # ---- chapter1/chapter_one_input48.gd ----
@@ -715,6 +758,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## Keep explicit click/Enter choices and the existing R retry shortcut.
 func _input(event: InputEvent) -> void:
 	_input__chapter(event)
+	if event is InputEventJoypadButton and event.pressed and event.button_index==DESCENT_PAD_BUTTON and run.mode=="playing":
+		call_descent()
 	if not event is InputEventKey:return
 	var shortcut: int=event.keycode if event.keycode!=0 else event.physical_keycode
 	if shortcut==KEY_SPACE and run.mode in ["choice","victory","defeat"]:

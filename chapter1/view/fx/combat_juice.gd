@@ -330,7 +330,10 @@ func consume(events: Array) -> void:
 					# A6-RS RS2 I1: a basic spell hitting a held enemy (hit.vs_cc, set only in a run with the spell composition on) gets
 					# a 1.3x flash in place of the normal one; the borrowed shape is drawn by ring_spell_fx.
 					_spark(at,color,(.42 if not event.get("shatter",false) else .8)*(1.3 if event.has("vs_cc") else 1.0),.10)
-				if show_numbers and numbers > 0 and event.has("damage_raw"):
+				# A descent kills dozens in one second: its ordinary kills are not numbered one by one (descent_fx shows one merged
+				# count at the end); a strong body (champion, boss) still shows its own number.
+				var swept := String(event.get("skill_id","")).begins_with("descent.") and not _is_elite(int(event.get("target_id",-1)))
+				if show_numbers and numbers > 0 and event.has("damage_raw") and not swept:
 					var amount := int(round(float(event.damage_raw)/256.0))
 					if Palette.is_ring_spell(String(event.get("skill_id",""))) and not _is_elite(int(event.get("target_id",-1))):
 						var uid := int(event.get("cast_uid",-1))

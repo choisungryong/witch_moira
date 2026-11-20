@@ -168,7 +168,8 @@ func notify(text: String) -> void:
 
 func _build_modal__cloister(run: RefCounted) -> void:
 	for child in modal.get_children():modal.remove_child(child);child.queue_free()
-	overlay.visible=run.mode!="playing"
+	# The descent's cut-in (mode "descent") is the fx layer's picture, not a window: no modal panel for it.
+	overlay.visible=run.mode!="playing" and run.mode!="descent"
 	if not overlay.visible:return
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation",16)

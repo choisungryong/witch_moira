@@ -122,19 +122,55 @@ func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
 	_in_ward = false
 	for hazard in run.get("chapter_hazards"):
 		if run.hero.position.distance_to(hazard.position) <= float(hazard.radius): _in_ward = true; break
+	# The descent's gauge rides the medal (D15 U-2). It reads descent_view() only; a run without the descent has {"enabled":false}
+	# and nothing below changes: no redraw reason, no extra piece.
+	var descent_view: Dictionary = run.descent_view()
+	_descent_on = bool(descent_view.get("enabled",false))
+	if _descent_on:
+		_descent_ratio = float(int(descent_view.ratio_bps))/10000.0
+		_descent_state = String(descent_view.state)
+		_descent_color = Palette.element_color(String(descent_view.element),BRASS_HI)
+	else:
+		_descent_ratio = 0.0; _descent_state = ""
 	# Redraw only when something the picture is made of changed (see _draw_key). A low life pulses with time, so it redraws
-	# every frame, and so does the old look, which the key does not cover.
+	# every frame, and so does the old look, which the key does not cover. A full descent gauge breathes, so it redraws too.
 	var key := _draw_key()
-	if _life < LOW_LIFE or not UiStyle.bound() or key != _drawn_key:
+	if _life < LOW_LIFE or not UiStyle.bound() or key != _drawn_key or (_descent_on and _descent_state == "ready"):
 		_drawn_key = key
 		queue_redraw()
 
 var _drawn_key: Array = []
+var _descent_on := false
+var _descent_ratio := 0.0
+var _descent_state := ""
+var _descent_color := Palette.BRASS_HI
+
+## The gauge ring around the medal slot: a dim ring, the filled arc in the element's colour from the top, and once full a
+## breathing double ring (the same breath as the screen's edge aura). `c` is the medal's centre, `r` its ring radius.
+func _draw_descent(c: Vector2, r: float) -> void:
+	if not _descent_on: return
+	draw_arc(c,r,0,TAU,48,Color(0.02,.02,.025,.75),5.0,true)
+	draw_arc(c,r,0,TAU,48,Color(BRASS_DIM,.55),2.0,true)
+	var breathe := .5+.5*sin(_clock*5.0)
+	if _descent_state == "ready" or _descent_state == "hold" or _descent_state == "sweep":
+		var glow := .55+.45*breathe if _descent_state == "ready" else .9
+		draw_arc(c,r+4.0,0,TAU,48,Color(_descent_color,.28*glow),5.0,true)
+		draw_arc(c,r,0,TAU,48,Color(_descent_color.lerp(Color.WHITE,.25*breathe),.95),3.6,true)
+		draw_circle(c,r-5.0,Color(_descent_color,.12+.16*glow))
+	elif _descent_ratio > 0.0:
+		draw_arc(c,r,-PI*.5,-PI*.5+TAU*_descent_ratio,maxi(4,int(48.0*_descent_ratio)),Color(_descent_color,.9),3.6,true)
+	# The key tag under the medal, like Space and Q (the letter is the key itself, not a word).
+	if UiStyle.bound():
+		var kc := c+Vector2(0,47.0)
+		UiStyle.blit_centered(self,"key_tag",kc)
+		_text(kc+Vector2(0,5),"R",14,INK if _descent_state == "ready" else INK_DIM,70,3)
+	else:
+		_text(c+Vector2(0,54),"R",14,INK if _descent_state == "ready" else INK_DIM,70)
 
 ## Every value _draw_bound reads. Exact values, not rounded ones: the cooldown sweeps and the seconds follow the tick, so
 ## the bar redraws while anything is cooling down and stands still when nothing moves.
 func _draw_key() -> Array:
-	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable]
+	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable,_descent_on,_descent_ratio,_descent_state]
 	for state in _skill_state:
 		parts.append(state.rank); parts.append(state.evolved); parts.append(state.wait); parts.append(state.seconds)
 	return parts
@@ -254,6 +290,7 @@ func _draw_bound() -> void:
 		var c := Vector2(BOUND_SLOT_X[i],CY)
 		if i == 3:
 			UiStyle.blit_centered(self,"medal_cross",c)
+			_draw_descent(c,36.0)
 			continue
 		var learned := true
 		var wait := 0.0
@@ -383,6 +420,7 @@ func _draw_legacy() -> void:
 	var diamond := PackedVector2Array([c+Vector2(0,-20),c+Vector2(20,0),c+Vector2(0,20),c+Vector2(-20,0),c+Vector2(0,-20)])
 	draw_polyline(diamond,Color(BRASS,.45),2.0,true)
 	draw_circle(c,5,Color(BRASS,.35))
+	_draw_descent(c,36.0)
 	# Dash.
 	var dash: Rect2 = _rects[4]
 	var dash_ready := _dash_left <= 0.0

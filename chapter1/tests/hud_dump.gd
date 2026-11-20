@@ -104,6 +104,9 @@ var burst_frames := 8
 var burst_frames_given := false
 var run_spells_arg := ""
 var spells_pick := ""
+## --descent=now|hold|panic (D15 U-2, opt-in): the tool presses R by the same rule as chapter1/tests/descent_policy.gd. Needs
+## --chapter1-trial=descent[,..] and --chapter1-profile-off (the descent is off in the shipped data). Without it nothing changes.
+var descent_arg := ""
 var spells_picks: Array = []
 var burst: RefCounted = null
 var menu_tour := false
@@ -129,6 +132,7 @@ const SpellsPick := preload("res://chapter1/tests/spells_pick.gd")
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 const CONTRACT_MOMENTS := {"menu": "title", "choice-1": "growth_choice", "choice-2": "growth_choice"}
 var contract_dir := ""
+const DescentPolicy := preload("res://chapter1/tests/descent_policy.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
 
@@ -156,6 +160,7 @@ func _initialize() -> void:
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
 		elif arg.begins_with("--dump-contracts="): contract_dir = arg.trim_prefix("--dump-contracts=")
+		elif arg.begins_with("--descent="): descent_arg = arg.trim_prefix("--descent=")
 	var args_error := _check_args()
 	if not args_error.is_empty():
 		push_error("hud_dump: "+args_error)
@@ -210,6 +215,13 @@ func _check_args() -> String:
 		if DirAccess.make_dir_recursive_absolute(contract_dir) != OK: return "--dump-contracts folder cannot be created: " + contract_dir
 	if not run_spells_arg.is_empty() and run_spells_arg != "on":
 		return "--run-spells=%s is unknown (on)" % run_spells_arg
+	if not descent_arg.is_empty():
+		if not DescentPolicy.valid(descent_arg) or descent_arg == "off": return "--descent=%s is unknown (now, hold, panic)" % descent_arg
+		var trial := ""
+		for arg in user_args:
+			if arg.begins_with("--chapter1-trial="): trial = arg
+		if not trial.contains("descent") or not "--chapter1-profile-off" in user_args:
+			return "--descent needs --chapter1-trial=descent,.. and --chapter1-profile-off"
 	if not spells_pick.is_empty():
 		if spells_pick != "synergy": return "--spells-pick=%s is unknown (synergy)" % spells_pick
 		if run_spells_arg != "on": return "--spells-pick needs --run-spells=on"
@@ -474,6 +486,8 @@ func _process(_delta: float) -> bool:
 		quit(3)
 		return true
 	var run: RefCounted = view.run
+	# R by the policy, through the app's own door (the key does the same): the cut-in, the release and the sweep are the app's.
+	if not descent_arg.is_empty() and DescentPolicy.wants(run,descent_arg): view.call_descent()
 	if usage != null: _usage_step(run)
 	if burst != null:
 		burst.poll(run,frame)

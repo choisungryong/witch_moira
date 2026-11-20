@@ -1184,3 +1184,12 @@ msgstr "폭발 반경 {a} → {b}m"
 #. Axis card row. {a}: now, {b}: next
 msgid "hud.spell.axis.branches"
 msgstr "갈래 {a} → {b}"
+
+#. Window title suffix while trial switches are on (dev runs only). Leading space is intended. {list}: switch names
+msgid "app.window.trial_tag"
+msgstr " [시험: {list}]"
+
+#. The descent (R): the number of enemies the sweep killed, shown once as one merged number. {n}: count
+msgid "descent.kills"
+msgid_plural "descent.kills"
+msgstr[0] "{n}마리 처치"

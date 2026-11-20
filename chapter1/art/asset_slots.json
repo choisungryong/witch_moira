@@ -386,6 +386,33 @@
         ]
       }
     },
+    "illustration.cutin.descent.ember": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the ember demon. The id starts with illustration. because the table's id rule has no cutin. kind. Until a picture is chosen the cut-in draws a code silhouette (descent_fx.gd). Trial pictures: _local/art/queue/pledge-ember-cutin/, tried only through --chapter1-asset-slots",
+      "contract": {
+        "size": [1536, 1024]
+      }
+    },
+    "illustration.cutin.descent.frost": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the frost demon (fist). See illustration.cutin.descent.ember",
+      "contract": {
+        "size": [1536, 1024]
+      }
+    },
+    "illustration.cutin.descent.arc": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the lightning demon (two fingers on the back of a hand, no words). See illustration.cutin.descent.ember",
+      "contract": {
+        "size": [1536, 1024]
+      }
+    },
     "portrait.frost.cutin_evolve": {
       "kind": "texture",
       "file": "",

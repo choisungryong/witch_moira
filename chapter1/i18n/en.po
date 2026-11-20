@@ -1179,3 +1179,13 @@ msgstr "Blast radius {a} → {b} m"
 #. Axis card row. {a}: now, {b}: next
 msgid "hud.spell.axis.branches"
 msgstr "Branches {a} → {b}"
+
+#. Window title suffix while trial switches are on (dev runs only). Leading space is intended. {list}: switch names
+msgid "app.window.trial_tag"
+msgstr " [trial: {list}]"
+
+#. The descent (R): the number of enemies the sweep killed, shown once as one merged number. {n}: count
+msgid "descent.kills"
+msgid_plural "descent.kills"
+msgstr[0] "{n} kill"
+msgstr[1] "{n} kills"
