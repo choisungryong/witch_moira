@@ -110,6 +110,16 @@ var _trial_phase := ""
 var _trial_until := 0
 var _trial_clear_until := 0
 var _trial_center := Vector2.ZERO
+## D19 C1-e: ordinary kills of the last `window_ticks` that no burst has used yet, as {tick, xp, pts, pos}. Exists only while
+## rhythm.kill_burst is present (then the snapshot has rhythm.kill_burst and metrics.kill_burst; without it neither key).
+var _kb_on := false
+var _kb_list: Array = []
+## D19 C1-f: grace.pace. The level the clock was last reset at, the tick of that reset, and the carried remainder (ten-thousandths)
+## of the multiplied experience. Present in the snapshot as "pace" only while grace.pace is configured.
+var _pace_on := false
+var _pace_level := 1
+var _pace_since := 0
+var _pace_carry := 0
 ## Run opening (D15 B, rhythm.opening): the first minute of the first beat as steps (look, one, two, pack, around). It exists
 ## only while rhythm.enabled and rhythm.opening.enabled are both true; otherwise every value below stays at rest and the
 ## snapshot has no opening key. `opening_first_visit` is set by the app before start() (first_visit_only steps are skipped
@@ -217,6 +227,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	if _build_potions>0:potions=mini(int(tuning.potion.carry_max),potions+_build_potions)
 	_rhythm_on=tuning.has("rhythm") and bool(tuning.rhythm.enabled)
 	_beat_index=-1;_beat_tick=0;_wave_index=-1;_in_lull=false;_taste_done=false;_rest_until=0;_spawn_hp_bps=10000
+	_kb_on=_rhythm_on and tuning.rhythm.has("kill_burst");_kb_list.clear()
 	_trial_phase="";_trial_until=0;_trial_clear_until=0;_trial_center=Vector2.ZERO
 	_opening_on=_rhythm_on and tuning.rhythm.has("opening") and bool(tuning.rhythm.opening.enabled)
 	_op_active=false;_op_done=false;_op_list.clear();_op_step=-1;_op_step_start=0;_op_step_kills=0;_op_step_spawned=0;_op_crest_done=false
@@ -233,6 +244,8 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		if id_!=primary and _mark_owners.size()<MARK_KEYS.size():_mark_owners.append(id_)
 	var doc: Dictionary=_catalog.snapshot();doc.xp_thresholds=tuning.xp_thresholds.duplicate()
 	if not growth.configure(doc,primary,seed_ ^ 0x47524f57):errors.assign(growth.errors);return false
+	# D19 C1-a: a run with the rhythm on may have a level table of its own (its length is the level cap).
+	if _rhythm_on and tuning.rhythm.has("xp_thresholds") and not growth.set_thresholds(tuning.rhythm.xp_thresholds):errors.assign(growth.errors);return false
 	# The spell composition (if on) comes before the build's growth options: it takes the start rank out of play.
 	if not spells.is_empty():
 		if not growth.set_spells(spells,_spell_owner_skill):errors.assign(growth.errors);return false
@@ -246,6 +259,8 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		if not growth.set_options(_build_growth):errors.assign(growth.errors);return false
 		if not _field_rule.is_empty():_next_field=int(_field_rule.interval_ticks)
 	_grace_on=tuning.has("grace") and bool(tuning.grace.enabled);_grace_waited=0
+	_pace_on=_grace_on and tuning.grace.has("pace");_pace_level=1;_pace_since=0;_pace_carry=0
+	if _kb_on:metrics.kill_burst={"bursts":0,"kills":0,"xp":0,"descent_points":0}
 	if _grace_on and not growth.set_grace(tuning.grace):errors.assign(growth.errors);return false
 	_record("chapter_started")
 	return true
@@ -370,7 +385,7 @@ func _grant_progress(source: String,amount: int,index: int=-1) -> void:
 ## (xp*n/total), so the zone always pays exactly its figure whatever seal_kills is, and kills after the seal is
 ## full (the guardian has appeared) pay nothing.
 func _progress_seal() -> void:
-	var total := int(tuning.seal_kills[zone]);var n := zone_kills
+	var total := _seal_total(zone);var n := zone_kills
 	if n<1 or n>total:return
 	var list: Array=_shared_progression.sources.seal_xp
 	var xp := int(list[mini(zone,list.size()-1)])
@@ -590,7 +605,7 @@ func _spawn_wave() -> void:
 	if not _zone_entered:
 		if hero.position.distance_squared_to(ZONES[zone])>18.0*18.0:return
 		_zone_entered=true;_record("zone_entered");_emit("zone_entered",ZONES[zone],{"zone":zone})
-	if not seals[zone].champion_spawned and zone_kills>=int(tuning.seal_kills[zone]) and not _trial_holds_boss():
+	if not seals[zone].champion_spawned and zone_kills>=_seal_total(zone) and not _trial_holds_boss():
 		if _spawn("elite",_spawn_point(8,9)):
 			seals[zone].champion_spawned=true;_champion_id=_enemy_sequence
 			var e: Dictionary=enemies[_champion_id]
@@ -629,10 +644,90 @@ func _spawn_wave() -> void:
 
 # ---------------------------------------------------------------- run rhythm (D11 A)
 
+## Kills that break a zone's seal. D19 C1-b: a run with the rhythm on may carry its own figures (rhythm.seal_kills); else tuning.seal_kills.
+func _seal_total(z: int) -> int:
+	if _rhythm_on and tuning.rhythm.has("seal_kills"):return int(tuning.rhythm.seal_kills[z])
+	return int(tuning.seal_kills[z])
+
 ## Progress of the seal of the current zone, in ten-thousandths (10000 once the guardian has been called).
 func _zone_bps() -> int:
 	if seals[zone].champion_spawned:return 10000
-	return clampi(zone_kills*10000/maxi(1,int(tuning.seal_kills[zone])),0,10000)
+	return clampi(zone_kills*10000/maxi(1,_seal_total(zone)),0,10000)
+
+## D19 C1-d: the face-value multiplier (ten-thousandths) of the orbs that fall now: the trial's, else the current beat's, else 1x
+## (the guardian's and boss's own phase has none). Only a run with the rhythm on has any.
+func _xp_bps_now() -> int:
+	if not _rhythm_on:return 10000
+	var rule: Dictionary
+	if _trial_phase=="hold":rule=tuning.rhythm.trial
+	elif _beat_index<0 or (zone==2 and _champion_id>0):return 10000
+	else:rule=tuning.rhythm.beats[_beat_index]
+	return int(rule.get("xp_bps",10000))
+
+## The orb's value is the enemy's experience times the beat's multiplier (integer, rounded down, at least 1). 1x leaves it untouched.
+func _drop_orb(position: Vector2,amount: int) -> void:
+	var bps := _xp_bps_now()
+	if bps!=10000 and amount>0:amount=maxi(1,amount*bps/10000)
+	super._drop_orb(position,amount)
+
+## D19 C1-e: an ordinary enemy that the witch's own damage killed (not the descent's sweep). The kills of the last window_ticks that no
+## burst has used are kept; when there are min_kills of them they pay once: their experience x xp_bonus_bps as one orb at their
+## centre, their descent-gauge points x descent_bonus_bps, event kill_burst. The list is emptied then, so no kill is counted twice.
+func _kill_burst_note(details: Dictionary,position: Vector2) -> void:
+	if String(details.get("role","normal"))!="normal" or String(details.get("skill_id","")).begins_with("descent."):return
+	var target: Variant=enemies.get(int(details.get("target_id",0)))
+	if not target is Dictionary:return
+	var cfg: Dictionary=tuning.rhythm.kill_burst
+	var window := int(cfg.window_ticks)
+	var bps := _xp_bps_now()
+	var face := int(_enemy_definition(target).xp)
+	if bps!=10000 and face>0:face=maxi(1,face*bps/10000)
+	var gauge := _kb_gauge_open()
+	var kept: Array=[]
+	for entry in _kb_list:
+		if tick-int(entry.tick)<window:kept.append(entry)
+	kept.append({"tick":tick,"xp":face,"pts":_descent_kill_points() if gauge else 0,"pos":position})
+	_kb_list=kept
+	if _kb_list.size()<int(cfg.min_kills):return
+	var count := _kb_list.size();var xp_sum := 0;var point_sum := 0;var centre := Vector2.ZERO
+	for entry in _kb_list:
+		xp_sum+=int(entry.xp);point_sum+=int(entry.pts);centre+=entry.pos
+	centre/=float(count)
+	_kb_list=[]
+	var bonus := xp_sum*int(cfg.xp_bonus_bps)/10000
+	if bonus<=0 and xp_sum>0 and int(cfg.xp_bonus_bps)>0:bonus=1
+	if bonus>0:super._drop_orb(centre,bonus)
+	var extra := point_sum*int(cfg.descent_bonus_bps)/10000
+	if extra>0 and gauge:_descent_add(extra)
+	var tally: Dictionary=metrics.kill_burst
+	tally.bursts=int(tally.bursts)+1;tally.kills=int(tally.kills)+count;tally.xp=int(tally.xp)+bonus;tally.descent_points=int(tally.descent_points)+extra
+	_emit("kill_burst",centre,{"count":count,"xp":bonus,"descent_points":extra})
+
+## The same condition under which the gauge counts events (see _emit): a descent that is on and neither called nor sweeping.
+func _kb_gauge_open() -> bool:
+	return not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent")
+
+## D19 C1-f: grace.pace. After soft_after_ticks without a level-up, experience gained counts ramp_bps_per_s more per second, up to max_bps
+## (all in ten-thousandths of 1x). A level-up (any source) puts the clock back to 1x.
+func _pace_bps() -> int:
+	var cfg: Dictionary=tuning.grace.pace
+	var late := tick-_pace_since-int(cfg.soft_after_ticks)
+	if late<=0:return 10000
+	return mini(int(cfg.max_bps),10000+late*int(cfg.ramp_bps_per_s)/HZ)
+
+func _pace_sync() -> void:
+	var level := growth.current_level()
+	if level!=_pace_level:_pace_level=level;_pace_since=tick
+
+func _gain_xp(amount: int) -> int:
+	if _pace_on:
+		var bps := _pace_bps()
+		if bps>10000:
+			_pace_carry+=amount*bps
+			amount=_pace_carry/10000;_pace_carry%=10000
+	var gained := super._gain_xp(amount)
+	if _pace_on:_pace_sync()
+	return gained
 
 ## Beat bookkeeping, once per tick before anything spawns: the beat starts at its zone and seal progress (from_bps),
 ## or when its time limit has run out (the next beat's rules take over; the seal still opens by kills only).
@@ -913,6 +1008,7 @@ func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 	if type=="death" and _op_active and not details.get("elite",false):_op_step_kills+=1;_op_total_kills+=1
 	# The gauge counts events, and only while no descent is called or sweeping (it never fills itself).
 	if not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent"):_descent_score(type,details)
+	if type=="death" and _kb_on:_kill_burst_note(details,position)
 	if type=="death" and _zone_entered and position.distance_squared_to(ZONES[zone])<26.0*26.0:
 		zone_kills+=1;seals[zone].kills=zone_kills
 		if _build_active:_progress_seal()
@@ -932,6 +1028,8 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	if _elites_on:_elites_zone_left(zone)
 	seals[zone].cleared=true;_record("seal_cleared");_elite_killed=false;_champion_id=-1
 	if tuning.orbs.vacuum_on_seal:_vacuum_orbs()
+	# D19 C1-c: a guardian (zone 0 or 1) is worth one level when rhythm.guardian_grace is on.
+	if _rhythm_on and zone<2 and bool(tuning.rhythm.get("guardian_grace",false)):_seal_grace("guardian")
 	if zone==2:
 		chapter_hazards.clear();_boss_phase=0
 		_sweep_ground_items()
@@ -948,12 +1046,22 @@ func _on_elite_defeated(e: Dictionary) -> void:
 ## The last seal's grace (tuning.final_level_on_boss_spawn): when the final boss appears, the orbs still on
 ## the ground flow to the hero and the collected experience rises to the last level threshold.
 ## Emits seal_grace {level, amount} (amount = experience added on top of the orbs) only if it granted something.
-func _seal_grace() -> void:
+## D19 C1-c: `cause` "guardian" (a zone 0 / 1 guardian fell, rhythm.guardian_grace) fills up to the NEXT level instead and adds cause:"guardian".
+func _seal_grace(cause: String="") -> void:
 	_vacuum_orbs()
-	var last: int=int(tuning.xp_thresholds[tuning.xp_thresholds.size()-1])
-	var missing: int=last-int(growth.snapshot().xp)
+	var table: Array=growth.xp_thresholds()
+	var target: int=int(table[table.size()-1])
+	if cause=="guardian":
+		# D19 C1-c: up to the next level only; the last level stays the final boss's (it is never filled from here).
+		var level := growth.current_level()
+		if level+1>=table.size():return
+		target=int(table[level])
+	var missing: int=target-int(growth.snapshot().xp)
 	if missing<=0 or not growth.award_xp(missing):return
-	_emit("seal_grace",hero.position,{"level":int(growth.snapshot().level),"amount":missing})
+	if _pace_on:_pace_sync()
+	var details := {"level":growth.current_level(),"amount":missing}
+	if cause=="guardian":details.cause="guardian"
+	_emit("seal_grace",hero.position,details)
 
 ## The seal breaks and every orb still on the ground flows to the hero as one gain.
 func _vacuum_orbs(by: String="") -> void:
@@ -1335,7 +1443,7 @@ func run_spells_view() -> Dictionary:
 ## What the screen needs to word the goal. `kind`: "move" (walk to the next room), "seal_kills" (done/total kills around the
 ## seal) or "champion" (hp/hp_max of the seal guardian, `title_key` names it). No sentence is made here.
 func objective() -> Dictionary:
-	var seal_kills: int=int(tuning.seal_kills[zone])
+	var seal_kills: int=_seal_total(zone)
 	var destination: Vector2=ZONES[zone]
 	var result := {"zone":zone,"kind":"seal_kills","done":mini(zone_kills,seal_kills),"total":seal_kills,"hp":0,"hp_max":0,"title_key":"","destination":destination,"boss_phase":_boss_phase,"entered":_zone_entered}
 	if not _zone_entered:result.kind="move"
@@ -1450,7 +1558,7 @@ func _step_elites() -> void:
 	if _op_active or not _zone_entered or seals[zone].champion_spawned:return
 	var rules: Dictionary=tuning.elites
 	var made := int(_elite_made[zone])
-	if made>=int(rules.per_zone[zone]) or zone_kills<int(tuning.seal_kills[zone])*int(rules.at_seal_bps[made])/10000 or alive_count()>=int(tuning.alive_cap):return
+	if made>=int(rules.per_zone[zone]) or zone_kills<_seal_total(zone)*int(rules.at_seal_bps[made])/10000 or alive_count()>=int(tuning.alive_cap):return
 	var point := _extras_spawn_point(float(tuning.spawn.ring_min_m),float(tuning.spawn.ring_max_m))
 	if _spawn_elite(_elite_kind(zone),point,zone)>0:_elite_made[zone]=made+1
 
@@ -2127,6 +2235,10 @@ func snapshot() -> Dictionary:
 	if _rhythm_on:
 		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
+		if _kb_on:
+			var window_list: Array=[]
+			for entry in _kb_list:window_list.append([int(entry.tick),int(entry.xp),int(entry.pts),entry.pos])
+			result.rhythm.kill_burst=window_list
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
 	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
 	if _elites_on:result.chapter.elites={"made":_elite_made.duplicate(),"skipped":_elite_skipped}
@@ -2137,6 +2249,8 @@ func snapshot() -> Dictionary:
 			"wasted":_d_wasted,"strong_carry":_d_strong_carry,"pause_until":_d_pause_until,"burn":_d_burn.duplicate(true)}
 	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
 	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
+	# D19 C1-f: the pace clock exists only while grace.pace is configured.
+	if _pace_on:result.pace={"level":_pace_level,"since":_pace_since,"carry":_pace_carry}
 	# The grace gap's own clock exists only while the grace block is on.
 	if _grace_on:result.grace_gap={"last_choice":_choice_tick}
 	# Build keys exist only in a run that was given a build; without one the snapshot is the old one.

@@ -16,7 +16,11 @@ const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
 const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
 const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
 const OPENING_STEP_KEYS := ["id","max_ticks","kills","amount","interval_ticks","alive_cap","ring_m","heading","speed_bps","acquire_m","orb_pull_m","crest","mix","first_visit_only"]
-const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest"]
+const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest","xp_bps"]
+## D19 C1: optional keys of the rhythm block (a level table of its own, seal kills, the guardian's grace, the sweep bonus). Absent = the old rules.
+const RHYTHM_C1 := ["xp_thresholds","seal_kills","guardian_grace","kill_burst"]
+const KILL_BURST_KEYS := ["window_ticks","min_kills","xp_bonus_bps","descent_bonus_bps"]
+const PACE_KEYS := ["soft_after_ticks","ramp_bps_per_s","max_bps"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
 ## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
@@ -117,8 +121,17 @@ static func _word_list(v: Variant, allowed: Array, max_size: int) -> bool:
 
 ## D13 4.3 and 4.11.6 ranges. Every problem is one short path; an empty list means the block is usable.
 static func _grace_issues(g: Variant) -> Array[String]:
-	if not g is Dictionary or not GrowthCatalog.keys_match(g,GRACE_KEYS): return ["grace keys"]
+	if not g is Dictionary: return ["grace keys"]
+	# D19 C1-f: "pace" is the one optional key of the block.
+	var grace_base: Dictionary = g
+	if g.has("pace"):
+		grace_base = g.duplicate()
+		grace_base.erase("pace")
+	if not GrowthCatalog.keys_match(grace_base,GRACE_KEYS): return ["grace keys"]
 	var issues: Array[String] = []
+	if g.has("pace"):
+		var pace: Variant = g.pace
+		if not pace is Dictionary or not GrowthCatalog.keys_match(pace,PACE_KEYS) or not integer(pace.soft_after_ticks,60,36000) or not integer(pace.ramp_bps_per_s,0,10000) or not integer(pace.max_bps,10000,50000): issues.append("grace pace")
 	if not g.enabled is bool: issues.append("grace enabled")
 	if not g.balance_status is String: issues.append("grace balance_status")
 	if not integer(g.evolve_min_level,0,12): issues.append("grace evolve_min_level")
@@ -323,15 +336,14 @@ static func _fan_valid(entry: Variant, keys: Array) -> bool:
 ## D11 A6 ranges. Every problem is one short path; an empty list means the block is usable.
 static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 	if not r is Dictionary: return ["rhythm keys"]
-	var base_keys: Dictionary = r
-	if r.has("opening"):
-		base_keys = r.duplicate()
-		base_keys.erase("opening")
+	var base_keys: Dictionary = r.duplicate()
+	for key in ["opening"]+RHYTHM_C1: base_keys.erase(key)
 	if not GrowthCatalog.keys_match(base_keys,RHYTHM_KEYS): return ["rhythm keys"]
 	var issues: Array[String] = []
 	if not r.enabled is bool: issues.append("rhythm enabled")
 	if not integer(r.initial_pack,0,40): issues.append("rhythm initial_pack")
 	if not integer(r.gate_rest_ticks,0,3600): issues.append("rhythm gate_rest_ticks")
+	issues.append_array(_rhythm_c1_issues(r))
 	if not r.beats is Array or r.beats.size() < 1 or r.beats.size() > 8: issues.append("rhythm beats");return issues
 	var seen_ids := {}
 	var previous_zone := 0
@@ -361,6 +373,7 @@ static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 		if not _mix_valid(b.mix): issues.append(tag+"mix")
 		for key in ["ranged_from_ticks","charger_from_ticks"]:
 			if b.has(key) and not integer(b[key],0,108000): issues.append(tag+key)
+		if b.has("xp_bps") and not integer(b.xp_bps,1000,50000): issues.append(tag+"xp_bps")
 		if b.has("taste_crest") and not (_fan_valid(b.taste_crest,["at_ticks","count","arc_deg"]) and integer(b.taste_crest.at_ticks,0,108000)): issues.append(tag+"taste_crest")
 		if b.wave != null:
 			var w: Variant = b.wave
@@ -369,8 +382,13 @@ static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 			if not integer(w.lull_amount_bps,0,10000) or not integer(w.lull_cap_bps,0,10000): issues.append(tag+"wave lull bps")
 			if not _fan_valid(w.crest,["count","arc_deg"]): issues.append(tag+"wave crest")
 	var t: Variant = r.trial
-	if not t is Dictionary or not GrowthCatalog.keys_match(t,TRIAL_KEYS): issues.append("rhythm trial keys")
+	var trial_base: Variant = t
+	if t is Dictionary and t.has("xp_bps"):
+		trial_base = t.duplicate()
+		trial_base.erase("xp_bps")
+	if not t is Dictionary or not GrowthCatalog.keys_match(trial_base,TRIAL_KEYS): issues.append("rhythm trial keys")
 	else:
+		if t.has("xp_bps") and not integer(t.xp_bps,1000,50000): issues.append("rhythm trial xp_bps")
 		if not t.enabled is bool: issues.append("rhythm trial enabled")
 		if not integer(t.hold_ticks,600,5400): issues.append("rhythm trial hold_ticks")
 		if not number(t.radius_m,4.0,19.0): issues.append("rhythm trial radius_m")
@@ -387,6 +405,25 @@ static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 		var first: Variant = r.beats[0]
 		if first is Dictionary and integer(first.get("alive_cap"),1,alive_cap): first_cap = int(first.alive_cap)
 		issues.append_array(_opening_issues(r.opening,first_cap))
+	return issues
+
+## D19 C1 ranges (a, b, c, e). Absent keys are fine; a present one must be sound.
+static func _rhythm_c1_issues(r: Dictionary) -> Array[String]:
+	var issues: Array[String] = []
+	if r.has("xp_thresholds"):
+		var table: Variant = r.xp_thresholds
+		if not table is Array or table.size() < 12 or table.size() > 20: issues.append("rhythm xp_thresholds size")
+		else:
+			var previous := -1
+			for amount in table:
+				if not integer(amount,0,1000000) or amount <= previous: issues.append("rhythm xp_thresholds must strictly increase");break
+				previous = int(amount)
+			if table[0] != 0: issues.append("rhythm xp_thresholds start at zero")
+	if r.has("seal_kills") and not int_array(r.seal_kills,3,1,5000): issues.append("rhythm seal_kills")
+	if r.has("guardian_grace") and not r.guardian_grace is bool: issues.append("rhythm guardian_grace")
+	if r.has("kill_burst"):
+		var k: Variant = r.kill_burst
+		if not k is Dictionary or not GrowthCatalog.keys_match(k,KILL_BURST_KEYS) or not integer(k.window_ticks,6,120) or not integer(k.min_kills,3,40) 			or not integer(k.xp_bonus_bps,0,20000) or not integer(k.descent_bonus_bps,0,20000): issues.append("rhythm kill_burst")
 	return issues
 
 ## D15 O-1 ranges. Every problem is one short path; an empty list means the block is usable.

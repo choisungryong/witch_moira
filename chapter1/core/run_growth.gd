@@ -184,6 +184,29 @@ func effective_skill(id_: String) -> Dictionary:
 func xp_thresholds() -> Array:
 	return _doc.get("xp_thresholds",[0]).duplicate()
 
+## The level the run is at now (the same number snapshot().level carries, without copying the rest).
+func current_level() -> int:
+	return _level
+
+## C1-a (D19): a run whose rhythm is on has its own level table, 12 to 20 entries, starting at 0 and strictly rising. Only on a fresh
+## run, right after configure(); a rejected table changes nothing. The table is the level cap: is_final_level() reads its length.
+func set_thresholds(table: Array) -> bool:
+	if _doc.is_empty() or _xp != 0 or not _pending.is_empty() or not _offer.is_empty():
+		errors.assign(["Level table needs a freshly configured run"])
+		return false
+	if table.size() < 12 or table.size() > 20 or not Catalog.integer(table[0],0,0):
+		errors.assign(["Level table must have 12 to 20 entries and start at 0"])
+		return false
+	var previous := -1
+	for amount in table:
+		if not Catalog.integer(amount,0,1000000) or int(amount) <= previous:
+			errors.assign(["Level table must rise strictly"])
+			return false
+		previous = int(amount)
+	_doc.xp_thresholds = table.duplicate()
+	errors.clear()
+	return true
+
 func _eligible_cards() -> Array[Dictionary]:
 	if not _spells.is_empty(): return _spell_cards()
 	var result: Array[Dictionary] = []

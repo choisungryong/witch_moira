@@ -32,8 +32,11 @@ var both := false
 var text_check := false
 var dump_at := -1
 var dump_out := ""
-## [seed, primary] or [seed, primary, label, build fixture]. The fourth case is a fixed Lv 20 lance build.
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"]]
+## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
+## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
+## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes).
+const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -59,10 +62,14 @@ func digest(run: RefCounted,strip: bool=false) -> String:
 	if strip:snap=strip_text(snap)
 	return JSON.stringify(snap).sha256_text()
 
-func play(core_path: String,seed_: int,primary: String,build_path: String="",observe: bool=false,dump_path: String="") -> Dictionary:
+func play(core_path: String,seed_: int,primary: String,build_path: String="",observe: bool=false,dump_path: String="",setup: String="") -> Dictionary:
 	var run: RefCounted=load(core_path).new()
 	var pilot: RefCounted=load(PILOT).new()
 	pilot.run=run
+	if setup=="rhythm-c1":
+		var problem := TrialDocs.enable_rhythm_problem(run,false,true)
+		if problem.is_empty():problem=TrialDocs.enable_spells_problem(run)
+		if not problem.is_empty():return {"error":"setup rejected: "+problem}
 	if not build_path.is_empty():
 		var build: Variant=JSON.parse_string(FileAccess.get_file_as_string(build_path))
 		if not build is Dictionary or not run.configure_build(build):
@@ -188,7 +195,7 @@ func execute() -> void:
 		var entry: Array=pair[1]
 		# Only the three plain cases were ever text-checked (test_core_text.gd has no build fixture case).
 		var observe := text_check and entry.size()==2
-		results[key]=play(core_path,entry[0],entry[1],String(entry[3]) if entry.size()>3 else "",observe,dump_path_for(key,selected.size()>1) if dump_at>=0 else "")
+		results[key]=play(core_path,entry[0],entry[1],String(entry[3]) if entry.size()>3 else "",observe,dump_path_for(key,selected.size()>1) if dump_at>=0 else "",String(entry[4]) if entry.size()>4 else "")
 		var r: Dictionary=results[key]
 		var line := {"case":key,"mode":r.get("mode",""),"tick":r.get("tick",0),"kills":r.get("kills",0),"final":r.get("final",""),"error":r.get("error","")}
 		if both:line["final_textless"]=r.get("final_textless","")

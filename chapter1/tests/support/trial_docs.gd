@@ -8,9 +8,10 @@ extends RefCounted
 const Tuning := preload("res://chapter1/core/combat_tuning.gd")
 const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
 const DescentDoc := preload("res://chapter1/core/descent.gd")
+const TrialPace := preload("res://chapter1/app/trial_pace.gd")
 
 ## The names `--chapter1-trial=` knows (chapter_one.gd `_apply_trial`). Anything else is a typo that the app drops without a word.
-const TRIAL_NAMES := ["spells", "rhythm", "descent"]
+const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace"]
 ## Other arguments that change what a capture shows, listed in the switch list so a capture says it (name -> what it does).
 const SWITCH_ARGS := {"--run-spells=on": "spells (tool)", "--chapter1-opening=returning": "opening=returning", "--chapter1-no-juice": "no-juice"}
 
@@ -29,13 +30,15 @@ static func enable_spells(run: RefCounted) -> bool:
 	return enable_spells_problem(run).is_empty()
 
 ## combat_tuning.json with the rhythm and its opening on (what `--chapter1-trial=rhythm` does). `with_trial_arena` also turns the
-## rhythm's own trial block on (measure_rhythm.gd does; the app does not). "" when it worked, else one sentence.
-static func enable_rhythm_problem(run: RefCounted, with_trial_arena := false) -> String:
+## rhythm's own trial block on (measure_rhythm.gd does; the app does not). `with_pace` adds the first growth-pace values of D19 C1 (what
+## `--chapter1-trial=pace` does). "" when it worked, else one sentence.
+static func enable_rhythm_problem(run: RefCounted, with_trial_arena := false, with_pace := false) -> String:
 	var doc: Variant = _read(Tuning.DEFAULT_PATH)
 	if not doc is Dictionary or not doc.get("rhythm") is Dictionary: return "combat_tuning.json has no rhythm block"
 	doc["rhythm"]["enabled"] = true
 	if with_trial_arena and doc["rhythm"].get("trial") is Dictionary: doc["rhythm"]["trial"]["enabled"] = true
 	if doc["rhythm"].get("opening") is Dictionary: doc["rhythm"]["opening"]["enabled"] = true
+	if with_pace: TrialPace.apply(doc)
 	if not run.set_tuning(doc): return "rhythm document refused: " + str(run.errors)
 	return ""
 
