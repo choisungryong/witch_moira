@@ -536,7 +536,7 @@ func _record(type: String) -> void:
 	history.append({"type":type,"tick":tick,"zone":zone,"kills":kills,"zone_kills":zone_kills,"hp_raw":hero.get("hp_raw",0)})
 
 func _initial_pack_count() -> int:
-	return int(tuning.rhythm.initial_pack) if _rhythm_on else 12
+	return int(tuning.rhythm.initial_pack) if _rhythm_on else int(tuning.spawn.get("initial_pack",12))
 
 ## The trial keeps the hero inside its circle; everything else is the zone's walls.
 func _clamp_hero(point: Vector2) -> Vector2:

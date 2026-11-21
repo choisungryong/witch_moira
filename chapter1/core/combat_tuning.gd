@@ -519,7 +519,13 @@ static func _heavy_issues(rule: Variant) -> Array[String]:
 
 static func _spawn_issues(spawn: Variant) -> Array[String]:
 	var issues: Array[String] = []
-	if not spawn is Dictionary or not GrowthCatalog.keys_match(spawn,["ring_min_m","ring_max_m","opening","zones","boss_phase","mix"]): return ["spawn keys"]
+	if not spawn is Dictionary: return ["spawn keys"]
+	## Optional: the bodies standing at the start of a normal run (rhythm off). Absent = 12, the old start.
+	var spawn_keys: Dictionary = (spawn as Dictionary).duplicate()
+	if spawn_keys.has("initial_pack"):
+		if not (spawn_keys.initial_pack is float or spawn_keys.initial_pack is int) or float(spawn_keys.initial_pack) != floor(float(spawn_keys.initial_pack)) or float(spawn_keys.initial_pack) < 0 or float(spawn_keys.initial_pack) > 40: return ["spawn initial_pack"]
+		spawn_keys.erase("initial_pack")
+	if not GrowthCatalog.keys_match(spawn_keys,["ring_min_m","ring_max_m","opening","zones","boss_phase","mix"]): return ["spawn keys"]
 	if not number(spawn.ring_min_m,2.0,19.0) or not number(spawn.ring_max_m,2.0,19.0) or float(spawn.ring_min_m) > float(spawn.ring_max_m): issues.append("spawn ring")
 	if not spawn.opening is Array or spawn.opening.size() > 8: issues.append("spawn opening")
 	else:

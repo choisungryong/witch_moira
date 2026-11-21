@@ -5,7 +5,7 @@
   "friendly_projectile_cap": 160,
   "spawn": {
     "ring_min_m": 7.5, "ring_max_m": 10.5,
-    "opening": [{"until_s": 10, "amount": 1}, {"until_s": 30, "amount": 3}],
+    "initial_pack": 2, "opening": [{"until_s": 10, "amount": 1}, {"until_s": 20, "amount": 2}, {"until_s": 30, "amount": 4}],
     "zones": [{"amount": 9, "interval_ticks": 40}, {"amount": 12, "interval_ticks": 36}, {"amount": 14, "interval_ticks": 36}],
     "boss_phase": {"amount": 4, "interval_ticks": 60},
     "mix": {"charger_from_s": 12, "charger_roll": 94, "ranged_from_s": 10, "ranged_roll": 82, "zone_step": 3}
