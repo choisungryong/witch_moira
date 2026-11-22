@@ -163,7 +163,7 @@ func consume(events: Array) -> void:
 				var raw := int(event.get("damage_raw", 0))
 				_taken_raw += raw
 				_beat_add("taken_raw", raw)
-				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO), String(event.get("source_kind", "")), int(event.get("hp_after_raw", -1))])
+				_hero_hits.append([tick, raw, event.get("from", Vector2.ZERO), String(event.get("source_kind", "")), int(event.get("hp_after_raw", -1)), String(event.get("source_key", "")), String(event.get("attack_id", ""))])
 			"enemy_attack":
 				_attacks.append([tick, event.get("position", Vector2.ZERO), String(event.get("kind", "unknown"))])
 			"chapter_burst":
@@ -418,6 +418,7 @@ func _loss_material() -> Dictionary:
 	var big_hit := {}
 	var recent_taken := 0
 	var recent_by_kind := {}
+	var recent_keys := {}
 	var recent_from := _ticks - RECENT_HIT_SECONDS * _hz
 	var hp_low_bps := -1
 	for hit in _hero_hits:
@@ -436,13 +437,16 @@ func _loss_material() -> Dictionary:
 		window_taken += int(hit[1])
 		if kind != "unattributed":
 			attributed += 1
-		last_hit = {"ticks_before_end": _ticks - int(hit[0]), "life": int(hit[1]) / _unit, "source": kind}
+		var hit_key := String(hit[5]) if hit.size() > 5 else ""
+		var hit_attack := String(hit[6]) if hit.size() > 6 else ""
+		last_hit = {"ticks_before_end": _ticks - int(hit[0]), "life": int(hit[1]) / _unit, "source": kind, "key": hit_key, "attack": hit_attack}
 		# Biggest single blow of the window (the earlier one wins a tie), and the last RECENT_HIT_SECONDS by kind.
 		if big_hit.is_empty() or int(hit[1]) > int(big_hit.raw):
-			big_hit = {"raw": int(hit[1]), "ticks_before_end": _ticks - int(hit[0]), "source": kind}
+			big_hit = {"raw": int(hit[1]), "ticks_before_end": _ticks - int(hit[0]), "source": kind, "key": hit_key, "attack": hit_attack}
 		if int(hit[0]) >= recent_from:
 			recent_taken += int(hit[1])
 			recent_by_kind[kind] = int(recent_by_kind.get(kind, 0)) + int(hit[1])
+			if not hit_key.is_empty(): recent_keys[kind] = hit_key
 	var window_hits := 0
 	for kind in by_kind:
 		by_kind[kind].life = int(by_kind[kind].raw) / _unit
@@ -461,7 +465,7 @@ func _loss_material() -> Dictionary:
 	var recent_kinds: Array = recent_by_kind.keys()
 	recent_kinds.sort_custom(func(a, b): return int(recent_by_kind[a]) > int(recent_by_kind[b]) or (int(recent_by_kind[a]) == int(recent_by_kind[b]) and String(a) < String(b)))
 	for kind in recent_kinds.slice(0, 2):
-		recent_top.append({"source": kind, "life": int(recent_by_kind[kind]) / _unit})
+		recent_top.append({"source": kind, "life": int(recent_by_kind[kind]) / _unit, "key": String(recent_keys.get(kind, ""))})
 	return {"window_ticks": _window_ticks, "big_hit": big_hit, "recent": {"seconds": RECENT_HIT_SECONDS, "taken": recent_taken / _unit, "top": recent_top}, "taken": window_taken / _unit, "hits": window_hits, "by_source": by_kind,
 		"attributed_bps": attributed * 10000 / maxi(1, window_hits), "alive_trend": trend, "alive_peak": alive_peak, "last_hit": last_hit, "hp_low_bps": hp_low_bps}
 

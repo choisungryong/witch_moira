@@ -306,11 +306,11 @@ msgstr "봉인 주변 처치 {done} / {total}"
 
 #. Goal plate title while the hold (trial) is running. Provisional name, narrative-lead decides
 msgid "hud.objective.trial.title"
-msgstr "시련"
+msgstr "비길리아"
 
 #. Goal line of the hold. {sec}: seconds left (plain number)
 msgid "hud.objective.trial_left"
-msgstr "남은 {sec}초"
+msgstr "버틸 시간 {sec}초"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
@@ -966,6 +966,30 @@ msgstr "우두머리"
 msgid "record.source.hazard"
 msgstr "위험 지대"
 
+#. Defeat box (T15c). Name of the attack that hit, after its look on the floor. Provisional names, narrative-lead confirms
+msgid "record.attack.circle"
+msgstr "원형 내려찍기"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.fan"
+msgstr "부채꼴 휩쓸기"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.line"
+msgstr "직선 돌진"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.frost_cross"
+msgstr "서리 십자"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.floor_strike"
+msgstr "바닥 강타"
+
+#. Defeat box (T15c). A named body with the attack it used. {name}: guardian or boss name, {attack}: attack name
+msgid "record.loss.named"
+msgstr "{name} · {attack}"
+
 #. Battle record: skill pairs table title
 msgid "record.pairs.title"
 msgstr "조합"
@@ -1269,6 +1293,33 @@ msgstr "{name|으로} 시작"
 msgid "descent.kills"
 msgid_plural "descent.kills"
 msgstr[0] "{n}마리 처치"
+
+#. The descent (R): its name beside the medal when it is ready. Provisional (NAMES-AFFIX-TRIAL-DESCENT 3.1), narrative-lead keeps the table
+msgid "descent.name.ember"
+msgstr "아마겟돈"
+
+msgid "descent.name.frost"
+msgstr "앱솔루트 제로"
+
+msgid "descent.name.arc"
+msgstr "저지먼트 볼트"
+
+#. The descent (R): the line the first time it is ready in a run, beside the medal for 2 s. Lightning has none. Provisional
+msgid "descent.cue.ember"
+msgstr "부르면 간다. 때는 네가 골라라."
+
+msgid "descent.cue.frost"
+msgstr "아껴 뒀어. 급할 때 불러."
+
+#. The descent (R): one line of what it does, for a help or tooltip place (none shows it yet). Provisional
+msgid "descent.desc.ember"
+msgstr "운석이 쏟아져 화면의 적을 쓸어 낸다"
+
+msgid "descent.desc.frost"
+msgstr "화면을 모두 얼렸다가 한꺼번에 깨뜨린다"
+
+msgid "descent.desc.arc"
+msgstr "번개 줄기가 화면 곳곳에 내리꽂힌다"
 
 #. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
 

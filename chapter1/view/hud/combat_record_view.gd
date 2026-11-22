@@ -302,14 +302,24 @@ func _loss(loss: Dictionary) -> Control:
 		column.add_child(_label(Loc.t("record.loss.legend",{"from":Loc.num(int(first.hp_bps)/100),"to":Loc.num(int(last.hp_bps)/100)}),SMALL,Palette.INK_DIM))
 	var last_hit: Dictionary=loss.get("last_hit",{})
 	if not last_hit.is_empty():
-		var kind := String(last_hit.get("source",SOURCE_UNKNOWN))
-		var source := Loc.t("record.loss.unknown") if kind==SOURCE_UNKNOWN else source_name(kind)
-		column.add_child(_label(Loc.t("record.loss.last",{"source":source,"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}),BODY,Palette.INK))
+		column.add_child(_label(Loc.t("record.loss.last",{"source":_loss_name(last_hit),"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}),BODY,Palette.INK))
 	for line in death_lines(loss).slice(1):column.add_child(_wrap(line,BODY,Palette.INK))
 	return box
 
 static func _loss_source(kind: String) -> String:
 	return Loc.t("record.loss.unknown") if kind==SOURCE_UNKNOWN else source_name(kind)
+
+## T15c: the name of a source for a line. A guardian or a boss has its own name (the core's source_key); its attack gets a name too.
+## An ordinary body keeps its kind name, and its attack is not named (every walker would read "circle").
+static func _loss_name(hit: Dictionary) -> String:
+	var key := String(hit.get("key",""))
+	var kind := String(hit.get("source",SOURCE_UNKNOWN))
+	var attack := String(hit.get("attack",""))
+	var name := Loc.t(key) if not key.is_empty() else _loss_source(kind)
+	if not key.is_empty() or attack=="floor_strike" or attack=="frost_cross":
+		var attack_key := "record.attack."+attack
+		if not attack.is_empty() and Loc.t(attack_key)!=attack_key:return Loc.t("record.loss.named",{"name":name,"attack":Loc.t(attack_key)})
+	return name
 
 ## T15: the reasons of a fall as lines, from the loss material of run_record: [last blow, biggest blow (only when it is a different
 ## blow), damage of the last seconds by source]. A line is left out when its numbers are not in the material (an older record).
@@ -318,14 +328,14 @@ static func death_lines(loss: Dictionary) -> Array[String]:
 	var lines: Array[String] = []
 	var last_hit: Dictionary=loss.get("last_hit",{})
 	if last_hit.is_empty():return lines
-	lines.append(Loc.t("record.loss.last",{"source":_loss_source(String(last_hit.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}))
+	lines.append(Loc.t("record.loss.last",{"source":_loss_name(last_hit),"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}))
 	var big_hit: Dictionary=loss.get("big_hit",{})
 	if not big_hit.is_empty() and (int(big_hit.get("ticks_before_end",-1))!=int(last_hit.get("ticks_before_end",-2))):
-		lines.append(Loc.t("record.loss.big",{"source":_loss_source(String(big_hit.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(big_hit.get("life",0))),"sec":Loc.dec(float(big_hit.get("ticks_before_end",0))/float(HZ),1)}))
+		lines.append(Loc.t("record.loss.big",{"source":_loss_name(big_hit),"life":Loc.num(int(big_hit.get("life",0))),"sec":Loc.dec(float(big_hit.get("ticks_before_end",0))/float(HZ),1)}))
 	var recent: Dictionary=loss.get("recent",{})
 	if int(recent.get("taken",0))>0:
 		var names: Array=[]
-		for part in recent.get("top",[]):names.append(Loc.t("record.loss.recent_part",{"source":_loss_source(String(part.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(part.get("life",0)))}))
+		for part in recent.get("top",[]):names.append(Loc.t("record.loss.recent_part",{"source":_loss_name({"source":part.get("source",SOURCE_UNKNOWN),"key":part.get("key","")}),"life":Loc.num(int(part.get("life",0)))}))
 		lines.append(Loc.t("record.loss.recent",{"sec":Loc.num(int(recent.get("seconds",3))),"life":Loc.num(int(recent.taken)),"parts":" · ".join(names)}))
 	return lines
 

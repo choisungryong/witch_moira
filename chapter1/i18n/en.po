@@ -301,11 +301,11 @@ msgstr "Kills around the seal {done} / {total}"
 
 #. Goal plate title while the hold (trial) is running. Provisional name, narrative-lead decides
 msgid "hud.objective.trial.title"
-msgstr "Ordeal"
+msgstr "Vigilia"
 
 #. Goal line of the hold. {sec}: seconds left (plain number)
 msgid "hud.objective.trial_left"
-msgstr "{sec} s left"
+msgstr "Hold {sec}s"
 
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
@@ -961,6 +961,30 @@ msgstr "Boss"
 msgid "record.source.hazard"
 msgstr "Hazard"
 
+#. Defeat box (T15c). Name of the attack that hit, after its look on the floor. Provisional names, narrative-lead confirms
+msgid "record.attack.circle"
+msgstr "Ground slam"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.fan"
+msgstr "Fan sweep"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.line"
+msgstr "Straight charge"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.frost_cross"
+msgstr "Frost cross"
+
+#. Defeat box (T15c). Provisional name
+msgid "record.attack.floor_strike"
+msgstr "Floor strike"
+
+#. Defeat box (T15c). A named body with the attack it used. {name}: guardian or boss name, {attack}: attack name
+msgid "record.loss.named"
+msgstr "{name} · {attack}"
+
 #. Battle record: skill pairs table title
 msgid "record.pairs.title"
 msgstr "Pairs"
@@ -1265,6 +1289,33 @@ msgid "descent.kills"
 msgid_plural "descent.kills"
 msgstr[0] "{n} kill"
 msgstr[1] "{n} kills"
+
+#. The descent (R): its name beside the medal when it is ready. Provisional (NAMES-AFFIX-TRIAL-DESCENT 3.1), narrative-lead keeps the table
+msgid "descent.name.ember"
+msgstr "Armageddon"
+
+msgid "descent.name.frost"
+msgstr "Absolute Zero"
+
+msgid "descent.name.arc"
+msgstr "Judgment Bolt"
+
+#. The descent (R): the line the first time it is ready in a run, beside the medal for 2 s. Lightning has none. Provisional
+msgid "descent.cue.ember"
+msgstr "Call me and I come. The moment is yours."
+
+msgid "descent.cue.frost"
+msgstr "I kept some back. Call when it's bad."
+
+#. The descent (R): one line of what it does, for a help or tooltip place (none shows it yet). Provisional
+msgid "descent.desc.ember"
+msgstr "Meteors rain down and sweep the screen clean."
+
+msgid "descent.desc.frost"
+msgstr "Freezes the whole screen, then shatters it at once."
+
+msgid "descent.desc.arc"
+msgstr "Bolts of lightning strike all across the screen."
 
 #. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
 
