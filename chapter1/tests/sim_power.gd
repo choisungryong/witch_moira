@@ -50,9 +50,15 @@ extends SceneTree
 ## --set=a/b/c=value overrides one value of the run_spells document in memory (path with "/", spell ids keep their dots), repeatable.
 ## Args: --witches=ember,frost,arc --beat=gi|seung1|seung2|jeon_a --hp=lo|mid|hi --density=15,35,60,85 --secs=60 --warmup=6
 ##   --seeds=11,12 --single-mobs=0,10,30 --single-secs=30 --single-modes=pilot,stand --no-crowd --no-single --out=_local/...json
+## D23 T1-M (gear kits; with none of these the output is unchanged): --gear-kit=kit.d1_end,kit.d2_mid,... (or all) wears a fixed kit of tests/fixtures/gear_kits.json IN MEMORY (the bag and the equip map of the run; no data
+##   file, no save) and compares it with the bare hero (kit "none" is always measured first, same seeds): P_crowd (crowd cell, --density, default 60) and P_single (single cell, --single-mobs default 10, pilot and stand) gain %,
+##   the kit's summed damage / cooldown / life / damage-reduction stats, S ratio (a MODEL answer from life and damage reduction, not a measurement), and the fixture's budget verdicts. Default build: AR_4 (--builds= / --build= to change),
+##   default --seeds=11. --kit-without=damage_bps,cooldown_bps re-measures each kit with that stat taken off every item (which knob moves P). Needs the isolated user dir like every other mode.
 ## Last line: CHAPTER1_SIM_POWER_RESULT {...}. Writes only under _local/ (and only through --out); never reads or writes the user folder.
 const Chapter = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
+const Loot = preload("res://chapter1/core/loot.gd")
+const GearKits = preload("res://chapter1/tests/support/gear_kits.gd")
 const RunSpells = preload("res://chapter1/core/run_spells.gd")
 const SPELLS := "res://chapter1/data/run_spells.json"
 const TUNING := "res://chapter1/data/combat_tuning.json"
@@ -98,6 +104,9 @@ var created_keys: Array = []
 var unsupported: Array = []
 var speed_mult := 1.0
 var checks_failed: Array[String] = []
+## D23 T1-M: the kit worn in memory (empty = nobody wears anything, the old behaviour). gear_built = GearKits.items(), gear_map = the equip map it made.
+var gear_built := {}
+var gear_map := {}
 var doc_overrides: Array = []
 var borrow_override := ""
 var tuning_doc: Dictionary = {}
@@ -386,6 +395,7 @@ func make_run(seed_: int, primary: String, doc: Dictionary, tuning_override: Dic
 		checks_failed.append("run did not start")
 		return null
 	run.first_boss_kill = true
+	if not gear_built.is_empty(): gear_map = GearKits.install(run, gear_built)
 	return run
 
 ## Keep exactly `target` ordinary enemies alive. Placement uses a private random stream, not the core's.
@@ -420,7 +430,10 @@ func neutralize(run: RefCounted, real_max: int = 0) -> void:
 	## real_max > 0 (contact modes): the hero keeps its real maximum life (so the heavy-hit rule works) and is refilled every tick.
 	run.hero.max_hp_raw = real_max if real_max > 0 else HERO_HP
 	run.hero.hp_raw = run.hero.max_hp_raw
-	run.inventory.clear()
+	if gear_built.is_empty(): run.inventory.clear()
+	elif run.equipped != gear_map or run.inventory.size() != gear_built.items.size():
+		# A pickup the pilot wore over a kit item (or a bag the pickups filled): back to exactly the kit.
+		GearKits.install(run, gear_built)
 	run.zone_kills = inflow_kills if inflow_on else 0
 	run.seals[run.zone].kills = 0
 	if not inflow_on: run._next_spawn = FAR
@@ -1244,6 +1257,132 @@ func print_tables(results: Array, witches: Array, build_names: Array, densities:
 					line += " %9.1f" % mean_of(cells, func(c): return c.elite_dps_hp) if not cells.is_empty() else " %9s" % "-"
 			print(line)
 
+# ------------------------------------------------------------------ D23 T1-M gear kits
+
+func pct_gain(v: float, base: float) -> float:
+	return (v / base - 1.0) * 100.0 if base > 0.0001 else -1.0e9
+
+func gain_text(g: float) -> String:
+	return "%7s" % "-" if g < -1.0e8 else "%+6.0f%%" % g
+
+func range_word(v: float, rng_: Variant) -> String:
+	if not rng_ is Array: return "-"
+	if v < float(rng_[0]): return "low"
+	if v > float(rng_[1]): return "HIGH"
+	return "in"
+
+## Without --gear-kit nothing here runs. Measures the bare hero ("none") and each kit with the same builds / seeds / cells and prints the gains.
+func run_gear_kits(named: Array, witches: Array, seeds: Array, secs: float, single_secs: float, warmup: float, hp_mode: String, beat: Dictionary, beat_id: String, out_path: String) -> void:
+	var fixture := GearKits.load_fixture()
+	var loot = Loot.new()
+	if fixture.is_empty() or not loot.load_file():
+		print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "gear kit fixture or loot data unreadable"}))
+		quit(1)
+		return
+	var wanted := arg_names("--gear-kit", [])
+	var kit_names: Array = []
+	for n in wanted:
+		if String(n) == "all": kit_names.append_array(GearKits.kit_names(fixture))
+		else: kit_names.append(String(n))
+	var variants: Array = [{"label": "none", "kit": "", "built": {}, "without": ""}]
+	var without: Array = arg_names("--kit-without", [])
+	for kit in kit_names:
+		var built := GearKits.items(loot, fixture, String(kit))
+		if not bool(built.ok):
+			print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "gear kit: " + str(built.errors)}))
+			quit(1)
+			return
+		variants.append({"label": String(kit), "kit": String(kit), "built": built, "without": ""})
+		for stat in without:
+			var cut := {"ok": true, "errors": [], "needs": built.needs, "items": []}
+			for entry in built.items:
+				var copy: Dictionary = entry.duplicate(true)
+				copy.item.stats.erase(String(stat))
+				cut.items.append(copy)
+			variants.append({"label": "%s -%s" % [kit, stat], "kit": String(kit), "built": cut, "without": String(stat)})
+	var densities := arg_ints("--density", [60])
+	var mobs_list := arg_ints("--single-mobs", [10])
+	var smodes := arg_names("--single-modes", ["pilot", "stand"])
+	var doc := shipped_doc()
+	var cells: Array = []
+	for v in variants:
+		gear_built = v.built
+		gear_map = {}
+		for witch in witches:
+			for entry in named:
+				var parsed_spec := parse_spec(String(entry[1]))
+				if parsed_spec.is_empty():
+					checks_failed.append("bad spec " + String(entry[1]))
+					continue
+				for seed_ in seeds:
+					var build := resolve_build(doc, String(witch), parsed_spec, String(entry[0]))
+					for density in densities:
+						var c := arena(String(witch), build, int(density), false, false, secs, int(seed_), beat, hp_mode, warmup, "crowd")
+						if c.is_empty(): continue
+						cells.append({"kit": v.label, "witch": witch, "build": entry[0], "seed": seed_, "test": "crowd", "load": density, "mode": "pilot", "p": c.power_hp_s, "alive_mean": c.alive_mean})
+					for mobs in mobs_list:
+						for mode in smodes:
+							var c2 := arena(String(witch), build, int(mobs), true, String(mode) == "stand", single_secs, int(seed_), beat, hp_mode, 3.0, "single")
+							if c2.is_empty(): continue
+							cells.append({"kit": v.label, "witch": witch, "build": entry[0], "seed": seed_, "test": "single", "load": mobs, "mode": mode, "p": c2.get("elite_dps_hp", 0.0)})
+		print("KIT measured %s (%d cells so far)" % [v.label, cells.size()])
+	gear_built = {}
+	var table: Array = []
+	for witch in witches:
+		for entry in named:
+			print("")
+			print("== gear kits, witch %s, build %s (seeds %s, beat %s; P = mean over seeds; gains vs the bare hero; %d seed(s) per cell) ==" % [witch, entry[0], str(seeds), beat_id, seeds.size()])
+			print("%-30s %9s %8s %8s %8s | %7s %7s %7s %7s | %6s %6s | %s" % ["kit", "P_crowd", "gain", "budget", "judge", "dmg%", "cd%", "life", "DR%", "S(mod)", "S gain", "needs / note"])
+			var base_crowd := 0.0
+			var base_single := {}
+			for v in variants:
+				var cr: Array = cells.filter(func(c): return c.kit == v.label and c.witch == witch and c.build == entry[0] and c.test == "crowd" and int(c.load) == int(densities[0]))
+				var crowd := mean_of(cr, func(c): return float(c.p))
+				if v.label == "none": base_crowd = crowd
+				var sums: Dictionary = GearKits.totals(v.built) if not v.built.is_empty() else {}
+				var s_ratio := GearKits.s_ratio(sums)
+				var gain := pct_gain(crowd, base_crowd)
+				var fk: Dictionary = fixture.kits.get(v.kit, {}) if v.kit != "" else {}
+				var budget: Dictionary = fk.get("budget", {})
+				var judge: Dictionary = fk.get("judge", {})
+				var verdict := "-"
+				if v.without == "":
+					if judge.has("p_gain_pct_max"): verdict = ("<=%d: %s" % [int(judge.p_gain_pct_max), "yes" if gain <= float(judge.p_gain_pct_max) else "NO"])
+					elif budget.has("p_gain_pct"): verdict = range_word(gain, budget.p_gain_pct)
+				var single_txt := ""
+				for mode in smodes:
+					for mobs in mobs_list:
+						var sc: Array = cells.filter(func(c): return c.kit == v.label and c.witch == witch and c.build == entry[0] and c.test == "single" and String(c.mode) == String(mode) and int(c.load) == int(mobs))
+						var sp_ := mean_of(sc, func(c): return float(c.p))
+						var key := "%s+%d" % [mode, mobs]
+						if v.label == "none": base_single[key] = sp_
+						single_txt += " P_single[%s]=%.2f(%s)" % [key, sp_, gain_text(pct_gain(sp_, float(base_single.get(key, 0.0)))).strip_edges()]
+				var s_gain := (s_ratio - 1.0) * 100.0
+				var note := ""
+				if not v.built.is_empty():
+					var needs: Array = v.built.needs
+					note = ("needs " + ",".join(PackedStringArray(needs)) if not needs.is_empty() else "live grammar")
+					if int(sums.get("damage_reduction_bps", 0)) > 7500: note += "; DR sum over 7500 (cap is T1-B)"
+					else: note += "; DR cap 7500 not applied (T1-B), sum under it"
+				print("%-30s %9.1f %s %8s %8s | %7.0f %7.0f %7d %7.1f | %6.2f %s | %s%s" % [v.label, crowd, gain_text(gain), ("%d~%d%%" % [int(budget.p_gain_pct[0]), int(budget.p_gain_pct[1])] if budget.has("p_gain_pct") and v.without == "" else "-"), verdict,
+					float(sums.get("damage_bps", 0)) / 100.0, float(sums.get("cooldown_bps", 0)) / 100.0, int(sums.get("max_hp_raw", 0)) / UNIT, float(sums.get("damage_reduction_bps", 0)) / 100.0, s_ratio, gain_text(s_gain) if v.label != "none" else "      -", note, single_txt])
+				table.append({"witch": witch, "build": entry[0], "kit": v.label, "without": v.without, "p_crowd": r2(crowd), "p_crowd_gain_pct": (r1(gain) if gain > -1.0e8 else null), "budget": budget, "judge": judge, "verdict": verdict, "sums": sums,
+					"s_ratio_model": r2(s_ratio), "s_gain_pct_model": r1(s_gain), "needs": (v.built.needs if not v.built.is_empty() else []), "single": single_txt.strip_edges()})
+	print("S(mod) = model answer from the kit's life and damage reduction (contact damage x (1 - DR), same potion share); the bench does not measure standing power. Cells: seeds=%s, crowd N=%s %.0f s, single mobs=%s %.0f s." % [str(seeds), str(densities), secs, str(mobs_list), single_secs])
+	if not out_path.is_empty():
+		var abs_path := ProjectSettings.globalize_path("res://" + out_path)
+		DirAccess.make_dir_recursive_absolute(abs_path.get_base_dir())
+		var f := FileAccess.open(abs_path, FileAccess.WRITE)
+		if f == null:
+			print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "cannot write out"}))
+			quit(3)
+			return
+		f.store_string(JSON.stringify({"meta": {"gear_kit": kit_names, "kit_without": without, "seeds": seeds, "witches": witches, "beat": beat_id, "secs": secs, "single_secs": single_secs, "warmup_s": warmup, "densities": densities, "single_mobs": mobs_list, "single_modes": smodes,
+			"note": "measured with kits worn in memory; S is a model answer; bot numbers are a reference, fun not evaluated"}, "table": table, "cells": cells}, "\t"))
+		f.close()
+	print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"gear_kit": kit_names, "cells": cells.size(), "witches": witches, "beat": beat_id, "out": out_path, "problems": checks_failed}))
+	quit(0 if checks_failed.is_empty() else 1)
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "user data dir is not isolated: refusing to run"}))
@@ -1336,6 +1475,11 @@ func execute() -> void:
 				quit(1)
 				return
 			named.append([name, spec])
+	if not arg_string("--gear-kit", "").is_empty():
+		if named.is_empty() or (custom.is_empty() and (wanted.is_empty() or wanted == ["all"])):
+			named = [["AR_4", "A:d1r1+R:d1r1"]]
+		run_gear_kits(named, witches, arg_ints("--seeds", [11]), secs, single_secs, warmup, hp_mode, beat, beat_id, out_path)
+		return
 	var results: Array = []
 	var build_names: Array = []
 	for entry in named: build_names.append(String(entry[0]))

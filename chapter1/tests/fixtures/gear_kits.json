@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "note": "D12 P10 / D23 T1-M fixed gear kits for sim_power.gd --gear-kit=NAME. Items are written as base + affix lines and built by tests/support/gear_kits.gd with the grammar of loot.gd (stats = base stats + lines + legendary stats, clamped to limits). Measuring never reads or writes a data file or a save.",
+  "composition": "Hand-composed from today's live loot.json: sim_loot.gd has no wear policy (the F2 policy of D12 P10 does not exist yet), so each kit is a representative wear built by one rule: mid-range line values of the live tier that the kit's item level allows, a rare carries 2-3 lines, magic 1, no line is repeated within a group, a slot gets damage lines only on weapon / hands / ring / charm (the slots whose live rows carry them). Item levels: d1_start 3-6, d1_end 9-11, d2_mid 14. Required levels are NOT enforced by the bench (it throws experience away; the hero stays at level 1).",
+  "needs_tags": {
+    "pool": "a line whose id is only in loot.json affix_rolls.pool (not in the live `affixes`): the core's validate() refuses it until T1-A reads the pool. The bench measures it anyway because the stat key (damage_bps) is read today.",
+    "T1-B": "the damage-reduction sum cap (7500) is not in the core yet: the bench reports the sum and 'cap not applied'."
+  },
+  "kits": {
+    "kit.d1_start": {
+      "what": "depth 1, first 3-5 runs: magic mostly, 2 rares; ring2 empty",
+      "budget": {"p_gain_pct": [15, 30], "s_gain_pct": [20, 40]},
+      "items": [
+        {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 6, "affixes": [["wrath", 1300], ["haste", 800]]},
+        {"equip": "head", "slot": "head", "quality": "magic", "base": "ash_hood", "item_level": 4, "affixes": [["haste", 800]]},
+        {"equip": "body", "slot": "body", "quality": "magic", "base": "linen_robe", "item_level": 5, "affixes": [["vigor", 4500]]},
+        {"equip": "hands", "slot": "hands", "quality": "common", "base": "linen_wraps", "item_level": 3, "affixes": []},
+        {"equip": "feet", "slot": "feet", "quality": "magic", "base": "worn_sandals", "item_level": 4, "affixes": [["fleet", 500]]},
+        {"equip": "charm", "slot": "charm", "quality": "magic", "base": "winter_shard", "item_level": 5, "affixes": [["wrath", 1000]]},
+        {"equip": "ring", "slot": "ring", "quality": "rare", "base": "quick_loop", "item_level": 6, "affixes": [["wrath", 1100], ["vigor", 4000]]}
+      ]
+    },
+    "kit.d1_end": {
+      "what": "depth 1 played long: rare-heavy, 1 legendary (charm), 1 unique (ring), all 8 slots",
+      "budget": {"p_gain_pct": [40, 70], "s_gain_pct": [40, 70]},
+      "items": [
+        {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 11, "affixes": [["wrath2", 2400], ["haste2", 1600], ["binding", 1000]]},
+        {"equip": "head", "slot": "head", "quality": "rare", "base": "iron_circlet", "item_level": 10, "affixes": [["haste2", 1500], ["vigor2", 8000]]},
+        {"equip": "body", "slot": "body", "quality": "rare", "base": "iron_vest", "item_level": 11, "affixes": [["ward2", 900], ["vigor2", 9000]]},
+        {"equip": "hands", "slot": "hands", "quality": "rare", "base": "storm_gauntlets", "item_level": 10, "affixes": [["haste2", 1500], ["vigor2", 7500]]},
+        {"equip": "feet", "slot": "feet", "quality": "rare", "base": "pilgrim_boots", "item_level": 10, "affixes": [["fleet", 600], ["ward2", 800]]},
+        {"equip": "charm", "slot": "charm", "quality": "legendary", "base": "ember_lens", "item_level": 11, "legendary": "galvanic", "affixes": [["flame", 1000], ["gleaning", 900]]},
+        {"equip": "ring", "slot": "ring", "quality": "unique", "unique": "forked_covenant", "item_level": 10},
+        {"equip": "ring2", "slot": "ring", "quality": "rare", "base": "ward_ring", "item_level": 10, "affixes": [["wrath2", 2000], ["ward2", 800]]}
+      ]
+    },
+    "kit.d2_mid": {
+      "what": "depth 2, middle: rare / legendary, shape lines (skill-type) on weapon, charm, ring",
+      "budget": {"p_gain_pct": [80, 130], "s_gain_pct": [60, 100]},
+      "items": [
+        {"equip": "weapon", "slot": "weapon", "quality": "legendary", "base": "swift_wand", "item_level": 14, "legendary": "splitting", "affixes": [["wrath3", 3600], ["haste2", 1800], ["binding", 1200]]},
+        {"equip": "head", "slot": "head", "quality": "rare", "base": "seer_veil", "item_level": 14, "affixes": [["haste2", 1800], ["vigor2", 10000], ["gleaning", 1200]]},
+        {"equip": "body", "slot": "body", "quality": "rare", "base": "warden_mantle", "item_level": 14, "affixes": [["ward2", 1000], ["vigor2", 10500]]},
+        {"equip": "hands", "slot": "hands", "quality": "rare", "base": "storm_gauntlets", "item_level": 14, "affixes": [["wrath2", 2600], ["vigor2", 9000]]},
+        {"equip": "feet", "slot": "feet", "quality": "rare", "base": "ash_striders", "item_level": 14, "affixes": [["ward2", 900], ["blink", 1000]]},
+        {"equip": "charm", "slot": "charm", "quality": "rare", "base": "chain_knot", "item_level": 14, "affixes": [["conductor", 2], ["flame", 1200], ["gleaning", 1000]]},
+        {"equip": "ring", "slot": "ring", "quality": "rare", "base": "glass_ring", "item_level": 14, "affixes": [["wrath3", 3500], ["pierce", 1], ["ward2", 900]]},
+        {"equip": "ring2", "slot": "ring", "quality": "legendary", "base": "ward_ring", "item_level": 14, "legendary": "impaling", "affixes": [["wrath2", 2500], ["ward2", 1000]]}
+      ]
+    },
+    "kit.d1_end_v1": {
+      "what": "kit.d1_end with the weapon's damage line replaced by a tier V line at the TOP of the shipped range (wrath5 8000, D23 1 'da'); item level 15 (the row opens at 15)",
+      "from": "kit.d1_end",
+      "judge": {"p_gain_pct_max": 130, "against": "D12 P10 kit.d2_mid top end"},
+      "needs": ["pool"],
+      "replace": {
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 8000], ["haste2", 1600], ["binding", 1000]]}
+      }
+    },
+    "kit.d1_end_v1_narrow": {
+      "what": "the narrowed range of D23 1 'da' (6000-7000): the same weapon with wrath5 at the top of the narrowed range, 7000",
+      "from": "kit.d1_end",
+      "judge": {"p_gain_pct_max": 130, "against": "D12 P10 kit.d2_mid top end"},
+      "needs": ["pool"],
+      "replace": {
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 7000], ["haste2", 1600], ["binding", 1000]]}
+      }
+    },
+    "kit.d1_end_v1_low": {
+      "what": "the bottom of the tier V range (wrath5 6000), for the spread between the ends",
+      "from": "kit.d1_end",
+      "needs": ["pool"],
+      "replace": {
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 6000], ["haste2", 1600], ["binding", 1000]]}
+      }
+    }
+  }
+}
