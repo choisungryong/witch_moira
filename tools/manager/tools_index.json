@@ -105,7 +105,10 @@
       {"path": "tools/art/rig_parts.py", "use": "3D 4단계: 같은 뼈대에 소품 메시를 뼈에 붙여 한 glb로, 단색 텍스처(Blender)"},
       {"path": "tools/art/rig_check.py", "use": "3D 5단계: 내보낸 glb가 게임의 계약(뼈·클립·재질·삼각형·방향·크기)을 지키는지. asset_intake의 자리표 대조를 부름(Blender 필요 없음)"},
       {"path": "chapter1/tests/rig_game_probe.gd", "use": "3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행). A7-0 시험 인수: --hero-look(겉모습 값 덮기), --hero-mask·--hero-crop-ticks(주인공 가면과 240x240 원 크기 자르기), --burst=틱,수(연속 캡처), --foot-log(발 미끄러짐·걸음 박자), --hero-cast-overlay=0|1. 자르기 측정과 판 A·B는 tools/dev/shot_review.py --hero-sheet"},
-      {"path": "tools/art/rig_common.py", "use": "3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음)"}
+      {"path": "tools/art/rig_common.py", "use": "3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음)"},
+      {"path": "tools/art/motion_math.py", "use": "걸음 계약 계산(동작 배율·보폭·발 미끄러짐, 모델의 답). 관리 툴 캐릭터 화면과 적용·검증 도구가 부르는 공용 모듈(따로 돌리지 않음)"},
+      {"path": "tools/art/motion_apply.py", "use": "캐릭터 화면에서 고른 걸음 값을 자리표(asset_slots.json)의 그 칸에 글자만 바꿔 옮김. 기본은 바뀔 줄 보기, --write로 씀, --check로 자리표와 고름이 맞는지(종료 코드)"},
+      {"path": "tools/art/sheet_split.py", "use": "턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각"}
     ]},
     {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [
       {"path": "chapter1/tests/bake_vat.gd", "use": "걷는 적을 정점 애니메이션으로 굽기"},
@@ -135,6 +138,9 @@
       {"path": "tools/manager/balance_lab.py", "use": "균형 실험실의 뒷면"},
       {"path": "tools/manager/drafts.py", "use": "원화 시안 갤러리"},
       {"path": "tools/manager/playlog.py", "use": "플레이 기록"},
+      {"path": "tools/manager/characters.py", "use": "「캐릭터」 화면의 뒷면(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수(BASE_SPEED·카메라), 그림·영상 자리. 화면은 character.js, 3D는 vendor/three"},
+      {"path": "tools/manager/picks.py", "use": "사용자의 고름(이걸로/아님/보류)을 읽는다. 세션을 열면 list --open 으로 확인하고, 반영한 뒤 close <id> --ref 로 닫는다. 기록을 더하는 명령은 없다(화면에서만)"},
+      {"path": "tools/manager/ui_shot.py", "use": "관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처(--out, _local/ 아래만)와 화면이 내놓은 data-* 수치(--dump-dom)를 얻는다. --offline으로 바깥 연결을 막고 다시 확인"},
       {"path": "tools/manager/tools_index.py", "use": "이 색인"}
     ]},
     {"id": "codex-operator", "label": "Codex 운용(codex-operator)", "about": "그림 생성 뒤의 정리.", "tools": [

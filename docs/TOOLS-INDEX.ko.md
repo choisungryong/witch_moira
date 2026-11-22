@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-20 21:59:05 · 도구 141개
+생성: 2026-11-23 00:23:33 · 도구 157개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -167,6 +167,9 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/rig_check.py` | 3D 5단계: 내보낸 glb가 게임의 계약(뼈·클립·재질·삼각형·방향·크기)을 지키는지. asset_intake의 자리표 대조를 부름(Blender 필요 없음) | 내보낸 캐릭터 glb가 게임의 계약을 지키는지 검사한다(표준 라이브러리만, Blender 필요 없음). | `python tools/art/rig_check.py FILE.glb [--slot actor.hero.model] [--require-dodge] [--max-tris 15000] [--scale 1.32] [--json]` |
 | `chapter1/tests/rig_game_probe.gd` | 3D 6단계: 시험 glb를 게임의 주인공 자리에 끼워 한 판을 캡처, 회피·사망 같은 동작을 강제로 틀어 캡처(창 실행). A7-0 시험 인수: --hero-look(겉모습 값 덮기), --hero-mask·--hero-crop-ticks(주인공 가면과 240x240 원 크기 자르기), --burst=틱,수(연속 캡처), --foot-log(발 미끄러짐·걸음 박자), --hero-cast-overlay=0\|1. 자르기 측정과 판 A·B는 tools/dev/shot_review.py --hero-sheet | 시험용 glb를 게임의 주인공 모델 자리에 끼워 한 판 앞부분을 돌리고, 지정한 동작(회피·사망 등)을 강제로 틀어 캡처한다. | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/rig_game_probe.gd -- \` |
 | `tools/art/rig_common.py` | 3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음) | 3D 캐릭터 도구 묶음(rig_build / rig_clips / rig_parts)의 공용 모듈. 따로 돌리지 않는다. |  |
+| `tools/art/motion_math.py` | 걸음 계약 계산(동작 배율·보폭·발 미끄러짐, 모델의 답). 관리 툴 캐릭터 화면과 적용·검증 도구가 부르는 공용 모듈(따로 돌리지 않음) | 걸음 계약 계산(표준 라이브러리만). 관리 툴(characters.py), 적용 도구(motion_apply.py), 검증 도구가 모두 이 식을 부른다. |  |
+| `tools/art/motion_apply.py` | 캐릭터 화면에서 고른 걸음 값을 자리표(asset_slots.json)의 그 칸에 글자만 바꿔 옮김. 기본은 바뀔 줄 보기, --write로 씀, --check로 자리표와 고름이 맞는지(종료 코드) | 고름 기록(관리 툴 「캐릭터」 화면에서 저장)을 게임 자리표(chapter1/art/asset_slots.json)의 그 캐릭터 칸으로 옮긴다. | `python tools/art/motion_apply.py --pick <기록 id>`<br>`python tools/art/motion_apply.py --pick <기록 id> --write` |
+| `tools/art/sheet_split.py` | 턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각 | 턴어라운드 시트 한 장을 보기별 낱장으로 나눈다(그림→3D 서비스의 여러 면 입력용). | `python tools/art/sheet_split.py <시트.png> --out <폴더> [--names front,left,back] [--pad 0.06] [--square]` |
 
 ## 환경 아트(environment-artist)
 
@@ -216,6 +219,9 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/manager/balance_lab.py` | 균형 실험실의 뒷면 | Balance lab backend: runs tools/dev/balance_sim.py as a subprocess and reads its --out JSON (stdlib only). |  |
 | `tools/manager/drafts.py` | 원화 시안 갤러리 | Character art draft gallery: reads _local/art/drafts/index.json on every request (read-only), |  |
 | `tools/manager/playlog.py` | 플레이 기록 | Human playtest log: questions read from the docs, answers saved as _local/playtests/<date-time>.json. |  |
+| `tools/manager/characters.py` | 「캐릭터」 화면의 뒷면(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수(BASE_SPEED·카메라), 그림·영상 자리. 화면은 character.js, 3D는 vendor/three | 「캐릭터」 화면의 서버 쪽(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수, 그림·영상의 자리를 모아 준다. |  |
+| `tools/manager/picks.py` | 사용자의 고름(이걸로/아님/보류)을 읽는다. 세션을 열면 list --open 으로 확인하고, 반영한 뒤 close <id> --ref 로 닫는다. 기록을 더하는 명령은 없다(화면에서만) | 사용자의 고름(이걸로/아님/보류/말만)을 tools/manager/local-picks.json 에 모으고, 디렉터가 읽을 수 있게 한다. | `python tools/manager/picks.py list [--open] [--subject frost/] [--json]`<br>`python tools/manager/picks.py close <id> --ref "<커밋이나 지시서>"` |
+| `tools/manager/ui_shot.py` | 관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처(--out, _local/ 아래만)와 화면이 내놓은 data-* 수치(--dump-dom)를 얻는다. --offline으로 바깥 연결을 막고 다시 확인 | 관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처와 화면이 내놓은 수치(data-*)를 얻는다. 표준 라이브러리만. | `python tools/manager/ui_shot.py --port 8791 --hash "#character/frost?a=run&b=walk@1.3&v=5.8&cam=19.5" --size 1440x900` |
 | `tools/manager/tools_index.py` | 이 색인 | 도구 색인: tools/dev, tools/art, tools/manager, chapter1/tests 의 측정·검사 도구를 파일 머리 주석에서 읽어 역할별로 보여 준다. |  |
 
 ## Codex 운용(codex-operator)
@@ -245,6 +251,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/modal_fit_probe.gd` | Real-run probe for the two in-run windows: the equipment compare ("장비와 전투 선택") and the growth choice ("성장 선택"). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/modal_fit_probe.gd -- \` |
 | `chapter1/tests/modal_input_check.gd` | Input check on the real core for the two in-run windows, with real GUI routing (events pushed into the window): | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/modal_input_check.gd -- \` |
 | `chapter1/tests/model_swap.gd` | Puts a trial glb in the hero model's place without touching a product file (Resource.take_over_path on the path the game |  |
+| `chapter1/tests/pause_input_check.gd` | Input check of the pause window and its confirm window (A10 W2), on the real core with real GUI routing (events pushed into the window), keyboard and mouse: | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/pause_input_check.gd -- \` |
 | `chapter1/tests/perf_probe.gd` | Frame and tick timing probe for exported builds and the editor (QA tool, never product code). |  |
 | `chapter1/tests/perf_probe_mark.gd` | QA-only timestamp node for perf_probe.gd. Records the time its _process ran. |  |
 | `chapter1/tests/play_with_model.gd` | The user plays the game with a trial glb in the hero's place (no pilot, no capture). Product files are untouched. | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/play_with_model.gd -- \` |
@@ -278,6 +285,15 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/char_sharpness.py` | 선명도 앞뒤 판: 같은 각도·같은 크기로 전신, 상체 확대, 머리 확대를 렌더해 모델 여러 개를 가로로 나란히 놓는다(Blender 필요, 평면 조명 작업대 렌더). | `python tools/art/char_sharpness.py --out sheet.png --work DIR --model before=a.glb --model after=b.glb [--model 4k=c.glb] [--az 0]` |
 | `tools/art/gallery.py` | Draft gallery index tool (replaces organize.py / register_*.py / reg_*.py / setpick*.py). Works on | `python tools/art/gallery.py lint  [--check-manager] [--json OUT]`<br>`python tools/art/gallery.py add` |
 | `tools/art/gen.py` | Codex image-generation batch runner (replaces the per-batch batch_*.py / run_*.py / revise.py copies). | `python tools/art/gen.py CONFIG.json`<br>`python tools/art/gen.py CONFIG.json --only a-1 a-2` |
+| `tools/art/gen3d_ingame.py` | gen3d 모델을 게임 화면(rig_game_probe.gd)에 끼워 캡처하고 화소 잘림(hero_burn)을 잰다. 제품 파일은 바꾸지 않는다. 창이 필요하다. | `python tools/art/gen3d_ingame.py --glb final.glb --look look.json --out _local/art/gen3d/shots/NAME [--cam 14\|19.5] [--ticks 300,330,360] [--primary frost]`<br>`python tools/art/gen3d_ingame.py --glb final.glb --look look.json --out DIR --force-clip run --force-times 0,0.1,... [--cam 14]` |
+| `tools/art/gen3d_inspect.py` | 이미지→3D 생성 모델(glb)을 게임용으로 만들기 전에 살펴본다(Blender 5.3 명령줄). 읽기 전용. | `python tools/art/gen3d_inspect.py --in MODEL.glb [--report r.json] [--dump-tex DIR]` |
+| `tools/art/gen3d_mixamo_blender.py` | Blender 안에서 도는 몸통 일(gen3d_mixamo_pack.py가 부른다). 직접 부르지 않는다. |  |
+| `tools/art/gen3d_mixamo_pack.py` | Mixamo 뼈대 몸 + 동작 FBX들 -> 클립 이름이 논리 이름인 glb 한 개(번개·화염에도 같은 설정 꼴로 되풀이한다). | `python tools/art/gen3d_mixamo_pack.py tools/art/gen3d_mixamo_configs/frost.json [--out chapter1/art/actors/hero/frost/model.glb]` |
+| `tools/art/gen3d_prepare.py` | 이미지→3D 생성 모델(수십만 삼각형, 갈가리 찢긴 UV)을 게임용 저폴리로 줄이고 질감을 새로 굽는다(Blender 5.3 명령줄). | `python tools/art/gen3d_prepare.py --in HIGH.glb --out-glb OUT.glb --work DIR [--target 15000] [--height 1.681] [--tex 2048]` |
+| `tools/art/gen3d_rig.py` | gen3d_prepare가 만든 저폴리 glb에 뼈대와 가중치를 입히고, 뼈 자리를 메시 위에 그려 확인한다(Blender 5.3 명령줄). | `python tools/art/gen3d_rig.py --in low.glb --out-blend rigged.blend --joints joints_frost.json --overlay DIR [--report r.json]`<br>`python tools/art/gen3d_rig.py --in low.glb --joints j.json --overlay DIR --overlay-only` |
+| `tools/art/gen3d_sheet.py` | gen3d_ingame.py가 저장한 강제 동작 캡처(<동작>_NN_tTTT.png, 1920x1080)를 주인공 둘레로 잘라 2배 키워 한 장 판으로 잇는다(PIL만). | `python tools/art/gen3d_sheet.py --out sheet.png --box 300 --xy 935,455 --cols 4 --tile DIR:동작 --tile DIR:동작 ...` |
+| `tools/art/gen3d_video.py` | 프레임 PNG 묶음을 이어 붙여 구간(6초 넘게)으로 만들고 한 mp4로 잇는다(ffmpeg 필요). 한 주기 프레임을 되풀이해 길이를 채운다. | `python tools/art/gen3d_video.py --out out.mp4 --seg "이름\|fps\|최소초\|패턴1[;패턴2;...]" [--seg ...] [--height 540]` |
+| `tools/art/gen3d_views.py` | glb 몇 개를 같은 각도·같은 빛으로 렌더해 한 장 판으로 묶는다(Blender 5.3 Eevee). 줄이기 전후 비교, 뼈대 입힌 모델의 자세 확인에 쓴다. | `python tools/art/gen3d_views.py --model A.glb --label 줄이기전 --model B.glb --label 줄인뒤 --views front,q,side,back,face,hand,legs --out out.png [--size 420]` |
 | `tools/art/hero_burn.py` | 게임 안 캡처에서 주인공 영역의 밝기 잘림을 잰다(PIL·numpy). rig_game_probe.gd --hero-mask --hero-crop-ticks 의 crop_tNNNN.png + crop_tNNNN.mask.png 가 입력이다. | `python tools/art/hero_burn.py <캡처 폴더> [--out burn.json]` |
 | `tools/art/limb_audit.py` | 팔다리 점검(Blender 안): 키 대비 비율, 관절(팔꿈치·무릎)에서 가중치가 섞이는 폭, 팔다리 굵기를 잰다. 보고서 JSON과 표를 낸다. | `python tools/art/limb_audit.py --blend rigged.blend --out audit.json [--side l]` |
 | `tools/art/limb_stick.py` | 원본 동작과 우리 뼈대를 막대 그림으로 같은 프레임에 나란히 놓는다(PIL만, Blender 필요 없음). rig_mocap의 `dump` 결과를 읽는다. | `python tools/art/limb_stick.py --dump run_dump.json --out sticks.png [--frames 0,5,10,...] [--src-scale 1.216]` |

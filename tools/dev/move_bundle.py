@@ -38,6 +38,8 @@ def local_parts():
         out.append((f, 'repo-extras/_local/' + f.name, r'C:\Project\witch-moira\_local' + '\\' + f.name))
     for f in sorted(ROOT.glob('*.txt')):          # untracked notes kept at the repository root
         out.append((f, 'repo-extras/' + f.name, r'C:\Project\witch-moira' + '\\' + f.name))
+    for f in sorted((ROOT / 'tools' / 'manager').glob('local-*.json')):   # the user's own records of the manager tool (git-ignored)
+        out.append((f, 'repo-extras/tools/manager/' + f.name, r'C:\Project\witch-moira\tools\manager' + '\\' + f.name))
     return out
 
 

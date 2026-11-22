@@ -1,14 +1,14 @@
 """Loopback-only manager server: read-only catalog plus atomic management notes (stdlib only)."""
-import argparse, json, mimetypes, os, threading
+import argparse, json, mimetypes, os, re, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
-    from . import drafts, playlog, balance_lab, tools_index, audit_view
+    from . import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks
 except ImportError:
     from catalog import ROOT, generate
-    import drafts, playlog, balance_lab, tools_index, audit_view
+    import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
@@ -16,9 +16,13 @@ LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
 STATIC_SUFFIXES = {'.html', '.js', '.css'}
-STATIC_EXTRA = {'vendor/model-viewer.min.js'}
+# three.js (character screen): served by exact file name, never as a folder
+THREE_FILES = {'vendor/three/three.module.js', 'vendor/three/three.core.js', 'vendor/three/addons/loaders/GLTFLoader.js',
+               'vendor/three/addons/controls/OrbitControls.js', 'vendor/three/addons/utils/SkeletonUtils.js',
+               'vendor/three/addons/utils/BufferGeometryUtils.js'}
+STATIC_EXTRA = {'vendor/model-viewer.min.js'} | THREE_FILES
 FILE_TYPES = {'.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-              '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
+              '.mp4': 'video/mp4', '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.json': 'text/plain; charset=utf-8',
               '.md': 'text/plain; charset=utf-8', '.po': 'text/plain; charset=utf-8', '.py': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.gd': 'text/plain; charset=utf-8',
               '.gdshader': 'text/plain; charset=utf-8'}
 
@@ -142,6 +146,57 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(p.read_bytes())
 
+    def send_media(self, rest):
+        # /media/<line>/<key> ; only keys that characters.media_registry lists for that line (no path from the URL)
+        line, _, key = unquote(rest).partition('/')
+        p = characters.media_path(line, key) if line and key and '/' not in key else None
+        if p is None:
+            return self.send_json(404, {'error': 'Not a registered media file'})
+        mime = characters.MEDIA_TYPES.get(p.suffix.lower())
+        if mime is None:
+            return self.send_json(404, {'error': 'Not an allowed media type'})
+        size = p.stat().st_size
+        start, end, status = 0, size - 1, 200
+        rng = self.headers.get('Range')
+        if rng:
+            m = re.fullmatch(r'bytes=(\d*)-(\d*)', rng.strip())
+            if not m or (not m.group(1) and not m.group(2)):
+                self.send_response(416)
+                self.send_header('Content-Range', 'bytes */%d' % size)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            if m.group(1):
+                start = int(m.group(1))
+                end = min(int(m.group(2)), size - 1) if m.group(2) else size - 1
+            else:
+                start = max(0, size - int(m.group(2)))
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header('Content-Range', 'bytes */%d' % size)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            status = 206
+        self.send_response(status)
+        self.send_header('Content-Type', mime)
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Content-Length', str(end - start + 1))
+        if status == 206:
+            self.send_header('Content-Range', 'bytes %d-%d/%d' % (start, end, size))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        left = end - start + 1
+        with p.open('rb') as f:
+            f.seek(start)
+            while left > 0:
+                chunk = f.read(min(256 * 1024, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def send_draft(self, rest):
         # /drafts/<thumb|full|prompt>/<id> ; only ids present in the current index are served
         kind, _, raw_id = unquote(rest).partition('/')
@@ -191,6 +246,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, tools_index.build())
         if route == '/api/audit':
             return self.send_json(200, audit_view.latest())
+        if route == '/api/picks':
+            return self.send_json(200, picks.load())
+        if route == '/api/characters':
+            return self.send_json(200, characters.list_lines())
+        if route.startswith('/api/characters/'):
+            d = characters.detail(unquote(route[len('/api/characters/'):]))
+            return self.send_json(200, d) if d is not None else self.send_json(404, {'error': 'Unknown character line'})
+        if route.startswith('/media/'):
+            return self.send_media(route[len('/media/'):])
         if route.startswith('/drafts/'):
             return self.send_draft(route[len('/drafts/'):])
         if route.startswith('/files/'):
@@ -220,7 +284,7 @@ class Handler(BaseHTTPRequestHandler):
         if not trusted_request(self.headers.get('Host'), self.headers.get('Origin'), self.server.server_port):
             return self.send_json(403, {'error': 'Untrusted Host or Origin'})
         if self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
-                         '/api/balance/run', '/api/balance/experiments', '/api/balance/export', '/api/audit/run'):
+                         '/api/balance/run', '/api/balance/experiments', '/api/balance/export', '/api/audit/run', '/api/picks'):
             return self.send_json(404, {'error': 'Unknown route'})
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
             return self.send_json(415, {'error': 'application/json required'})
@@ -245,6 +309,8 @@ class Handler(BaseHTTPRequestHandler):
                 status, value = 200, balance_lab.export_sets(payload)
             elif self.path == '/api/audit/run':
                 status, value = 200, audit_view.run()
+            elif self.path == '/api/picks':
+                status, value = picks.update(payload)
             else:
                 status, value = update_state(payload, self.server.valid_ids)
             self.send_json(status, value)

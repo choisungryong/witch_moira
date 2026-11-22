@@ -1,0 +1,32 @@
+{
+  "_about": "Frost motion candidates (walk/run) for the manager character screen. Preview glb outside the repo; not used by the game.",
+  "body": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/frost_15k.fbx",
+  "texture_color": "D:/Project/witch-moira-work/char3d/gen3d/frost/game/frost_low15k_color.png",
+  "texture_normal": "D:/Project/witch-moira-work/char3d/gen3d/frost/game/frost_low15k_normal.png",
+  "metallic": 0.0,
+  "roughness": 0.8,
+  "fps": 30,
+  "out": "D:/Project/witch-moira-work/pipeline/frost/motions/motions.glb",
+  "clips": [
+    {
+      "name": "walk_a",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Walking.fbx",
+      "in_place": true
+    },
+    {
+      "name": "walk_std",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing Walk Forward.fbx",
+      "in_place": true
+    },
+    {
+      "name": "run_fast",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Fast Run.fbx",
+      "in_place": true
+    },
+    {
+      "name": "run_std",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/frost_rigged/Standing Run Forward.fbx",
+      "in_place": true
+    }
+  ]
+}

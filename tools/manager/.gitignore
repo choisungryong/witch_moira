@@ -3,3 +3,5 @@ local-state.tmp
 __pycache__/
 local-drafts.json
 local-drafts.tmp
+local-picks.json
+local-picks.tmp
