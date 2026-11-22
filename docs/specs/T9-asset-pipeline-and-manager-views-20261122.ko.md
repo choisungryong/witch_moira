@@ -1,6 +1,10 @@
 # T9 — 그림 교체 파이프라인 도구와 관리 툴의 보기 화면
 
 작성: tech-lead, 2026-11-22. 기준 커밋 `462c685`(main). 구현하지 않은 지시서다.
+
+> **개정 1 — tech-lead, 2026-11-23.** 사용자 결정 U-89~U-91(`docs/DIRECTIVES-LEDGER.ko.md`): 3D 생성은 **Tripo를 웹에서 손으로**(구독, API 아님), 얼굴은 `face_reproject.py`로 다시 입힐 수 있고, 뼈대·동작은 **Mixamo 웹**. 냉기는 Tripo 모델(`pipeline/frost/tripo_out/20261123_tripo_smart_v2_8k_face2.glb`)을 채택해 15k로 줄이고 Mixamo에 올릴 FBX까지 왔다(`_local/t9-mixamo/GUIDE.ko.md`, `REPORT.txt`, `REPORT-walk.txt`).
+> **장부 U-80("Tripo API로 파이프라인 점검")은 U-89로 바뀌었다**: API를 부르는 단계는 없다. Tripo 단계는 사람이 웹에서 하는 "주문" 단계다.
+> 바뀐 절: 1(B2 두 줄), 2.5(지도 전체), 3.6(허용치 확정 — T10 2.1), 6.1~6.4(공급처 층, 사람 단계, 명령), 새 6.6(화염·번개를 같은 길로), 7의 B1-d·B2-a·B2-b, 8의 마지막 줄, 10의 R11·R12와 새 R18~R20. 개정 전 문장은 git 기록에 있다. B1-a·B1-b·B1-c는 끝났으므로(커밋 `819eda1`, `a0b8813`) 고치지 않았다.
 받는 명세: `docs/OPEN-WORK-20261121.ko.md` 12절(12.1 단계 표, 12.2 보기 화면 표, 12.3 걷기), 10.1절(그림의 순서), 3절(주인공 3D의 지금 길).
 
 표시: **[봄]** 코드·파일에서 직접 확인 · **[짐작]** 확인하지 않은 추정 · **[미확인]** 확인할 길을 아직 못 찾음 · **(모델의 답)** 계산식의 결과이며 게임에서 측정한 값이 아님.
@@ -32,8 +36,8 @@
 | **B1-b** 게임 안 걸음 측정 도구 | qa-perf | 지금 계약과 덮어쓴 값으로 게임 안 동작 배율·발 미끄러짐을 숫자로 낸다. 화면 계산과 견주는 도구 | 없음(공식은 2.3절) | B1-a, B1-c와 함께 |
 | **B1-c** 동작 후보 묶음 | character-artist | 받아 둔 Mixamo 걷기·달리기 후보 4~8개가 든 미리보기 glb와 지면 속도 보고서(저장소 밖) | 없음 | B1-a, B1-b와 함께 |
 | **B1-d** 고른 값 적용과 확인 | character-artist | 사용자가 고른 값이 `asset_slots.json`에 들어가고, 게임 안 측정이 화면 계산과 맞는다 | B1-a·B1-b 병합, **사용자의 고름** | 단독(자리표 점유) |
-| **B2-a** 파이프라인 도구 | manager-tools | `tools/art/pipeline.py status/next/run/mark/confirm/adopt`, 캐릭터 화면의 단계 칸 | B1-a 병합(같은 담당, 같은 화면 파일) | B2-b와 함께 |
-| **B2-b** 일회용 스크립트를 도구로 + 세 마녀의 줄 | character-artist | A자세 생성·마무리, Mixamo 올릴 FBX 만들기가 도구가 되고, 세 마녀의 줄 정의가 생기고, 냉기의 기존 산출물이 `adopt`로 올라간다 | 도구 올리기는 없음, 줄 정의·adopt는 B2-a 뒤 | B2-a와 함께(앞 절반) |
+| **B2-a** 파이프라인 도구 (개정 1) | manager-tools | `tools/art/pipeline.py status/next/order/run/mark/confirm/adopt`, 사람 단계(Tripo·Mixamo 웹)는 주문을 찍고 받은 파일을 기다림, 캐릭터 화면의 단계 칸이 「3D 만들기(수동)」 칸과 같은 폴더를 읽음 | B1-a 병합(끝남) | B2-b와 함께 |
+| **B2-b** 일회용 스크립트를 도구로 + 세 마녀의 줄 (개정 1) | character-artist | Mixamo 올릴 FBX 만들기(`gen3d_to_fbx.py`)가 도구가 되고, 묶기 설정을 줄 정의에서 만들고, 세 마녀의 줄 정의가 생기고, 냉기의 Tripo 산출물이 `adopt`로 올라간다 | 도구 올리기는 없음, 줄 정의·adopt는 B2-a 뒤 | B2-a와 함께(앞 절반) |
 | **B3** 스킬 화면 | qa-perf(효과 영상 뜨기) + manager-tools(화면) | 5.1절 | B1-a(고름 저장) | B4와 함께 |
 | **B4** 장비 화면 | qa-perf(무작위 표본) + manager-tools(화면) | 5.2절 | B1-a | B3과 함께 |
 | **B5** 화폐·성장, 적·우두머리 | manager-tools (+ 적은 B2의 줄) | 5.3·5.4절 | B2-a, B3 | — |
@@ -99,20 +103,27 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
 - 관리 툴 화면 확인 선례: Edge 헤드리스로 캡처(`_local/manager-ui/REPORT.txt` 45줄). 도구로 올라가 있지 않다.
 - 회귀: `run_all.py`의 `manager`가 `tools/manager/test_*.py`, `tools-selftest`가 `tools/dev/test_*.py`·`tools/art/test_*.py`를 모두 돈다. 새 시험 파일은 이름만 맞으면 자동으로 들어간다.
 
-### 2.5 낱개 도구와 일회용 스크립트의 지도 [봄: 각 파일 머리]
+### 2.5 낱개 도구와 일회용 스크립트의 지도 (개정 1)
 
-| 단계(12.1) | 지금 있는 것 | 이 지시서에서의 처리 |
-|---|---|---|
-| ① 메인 이미지 | `tools/art/gen_queue.py`(Codex 그림 대기열), `tools/art/gallery.py`(시안 색인), 관리 툴 원화 시안(표시 `final`) | 그대로 부른다. ①의 "사용자 확정" = 원화 시안에서 그 캐릭터의 그림에 `final` 표시 |
-| ② A자세 | `_local/art/gen3d/run_apose.py`, `run_apose2.py`(Codex 호출, 프롬프트가 코드 안에), `post_apose.py`, `post_apose2.py`(배경 지우기·가운데 맞추기·알파·판), `batch_apose2.py`(되풀이) | **도구로 올린다**(B2-b): `tools/art/apose_gen.py` + 프롬프트 조각 파일, `tools/art/apose_finish.py`. batch는 pipeline이 대신한다 |
-| ③ 3D 생성 | HY 3D Global(웹, 사람 손) | 사람 손 단계. pipeline이 올릴 그림과 받은 파일을 둘 자리를 알린다 |
-| ④ 게임용 | `gen3d_inspect.py`, `gen3d_prepare.py` | 그대로 부른다 |
-| ⑤ 뼈대·동작 | Mixamo(웹, 사람 손), `D:/…/char3d/gen3d/to_fbx.py`(메시만 FBX로), `fbx_info.py` | `to_fbx.py`는 **도구로 올린다**(`tools/art/gen3d_to_fbx.py`). `fbx_info.py`는 `tools/art/mixamo_inspect.py`가 같은 일을 더 하므로 올리지 않는다 |
-| ⑥ 묶기 | `gen3d_mixamo_pack.py` + `gen3d_mixamo_blender.py` + `gen3d_mixamo_configs/<마녀>.json` | 그대로 부른다. 설정은 줄 정의에서 만든다 |
-| ⑦ 확인 | `gen3d_ingame.py`, `hero_burn.py`, `gen3d_sheet.py`, `gen3d_views.py`, `gen3d_video.py`, `chapter1/tests/rig_game_probe.gd` | 그대로 부른다. B1-b의 걸음 측정을 더한다 |
-| ⑧ 파생 | Dreamina CLI(`D:/Project/witch-moira-work/tools/dreamina/bin/dreamina-canvas.exe`), 저장소 안 감싸는 도구 없음 | pipeline은 작업 주문만 찍는다(비용 승인 전 실행 안 함). 감싸는 도구의 담당은 디렉터 결정(10절) |
-| (보기용) | `D:/…/gen3d/render_views.py`, `mixamo_frames.py`, `pack_frames.py` | 올리지 않는다. `gen3d_views.py`가 render_views를 대신하고, 동작 낱장 판은 캐릭터 화면과 B1-c의 후보 glb가 대신한다 |
-| (옛 길) | `gen3d_rig.py`, `mesh_reduce/rig_build/rig_clips/rig_parts/rig_check`, `docs/ART-3D-PIPELINE.ko.md` | 주인공은 Mixamo 길로 바뀌었다(3절). 문서가 옛 길만 적고 있어 낡았다. B2-b에서 "주인공은 pipeline.py" 한 단락을 문서 머리에 더한다 |
+주인공 3D는 **공급처 층** 두 겹으로 만든다: 3D 생성은 Tripo(웹, 사람), 뼈대·동작은 Mixamo(웹, 사람). 그 사이와 앞뒤는 저장소 도구가 한다. 사람이 하는 단계는 파이프라인이 "주문"(무엇을 올리고, 어떤 설정으로, 받은 파일을 어디에 둘지)을 찍고 받은 파일을 기다린다.
+
+| 단계 | 사람/도구 | 지금 있는 것 [봄] | 이 지시서에서의 처리 |
+|---|---|---|---|
+| ① 메인 이미지 | 사람 확정 | `tools/art/gen_queue.py`, `gallery.py`, 관리 툴 원화 시안(표시 `final`) | 그대로. 확정 = 원화 시안의 `final` |
+| ② 보낼 그림 | 도구 | 턴어라운드 시트를 낱장으로: `tools/art/sheet_split.py`(새, U-89). A자세 생성: `_local/art/gen3d/run_apose*.py`·`post_apose*.py`(일회용) | 출력은 `pipeline/<id>/tripo_in/`(관리 툴 「3D 만들기(수동)」의 「보낼 그림」이 읽는 곳). A자세 일회용 스크립트를 도구로 올리는 일(옛 B2-b 1·2)은 **뒤로 미룬다** — 냉기는 시트 나누기로 Tripo에 보냈고, A자세 생성이 다시 필요해질 때 올린다 |
+| ③ 3D 생성 | **사람: Tripo 웹** | 관리 툴 「3D 만들기(수동)」(보낼 그림 내려받기·경로 복사·폴더 열기, 받은 glb 넣기와 돌려 보기) [봄: `tools/manager/characters.py` 162~164, 224~225, 294행] | 주문: `tripo_in/`의 그림, 받은 glb는 `tripo_out/`. 무료 재시도·얼굴 재생성은 사람 판단. 채택한 파일 하나를 상태에 적는다 |
+| ③-b 얼굴 다시 입히기(선택) | 도구 + 사람(표지점) | `tools/art/face_reproject.py`(새, U-91. 파이썬+numpy·scipy·Pillow, 메시·UV 불변, 질감만 바꿈). 얼굴 그림은 Dreamina(비용) | 출력은 `tripo_out/<이름>_face<N>.glb`(냉기 선례). 얼굴 그림 생성은 비용 단계(`--execute --yes`) |
+| ④ 게임용 | 도구 | `gen3d_inspect.py`, `gen3d_prepare.py`(줄이기·UV·굽기, `--target 15000 --height 2.03 --face-boost 1.8`) | 출력 `pipeline/<id>/game_a/`(냉기 선례 이름). 비교용 `game_b/`·`game_c/`는 선택 |
+| ⑤-a Mixamo에 올릴 FBX | 도구 | `D:/…/char3d/gen3d/to_fbx.py`(일회용) | **도구로 올린다**(B2-b): `tools/art/gen3d_to_fbx.py`. 출력 `pipeline/<id>/mixamo_in/<id>_t15k.fbx` |
+| ⑤-b 뼈대·동작 | **사람: Mixamo 웹** | 냉기 안내서 `_local/t9-mixamo/GUIDE.ko.md`(표지점 주의, 받을 몸 1 + 동작 9, 설정, 파일 이름) | 주문의 본문은 이 안내서를 줄 정의의 동작 표로 만든 것. 받는 곳 `pipeline/<id>/mixamo_out/`. **동작은 몸마다 다시 받는다**(아래 R11) |
+| ⑤-c 받은 것 살피기 | 도구 | `tools/art/mixamo_inspect.py`(뼈 수, 길이, 제자리, 반복 이음) | 그대로 부른다. 몸과 동작의 뼈 이름·수가 다르면 멈춘다 |
+| ⑥ 묶기 | 도구 | `gen3d_mixamo_pack.py` + `gen3d_mixamo_blender.py`, 설정 `gen3d_mixamo_configs/<마녀>.json`(냉기 Tripo 몸은 작업 뿌리의 `pipeline/frost/frost.t15k.pack.json`) | 설정은 **줄 정의에서 만든다**(6.2): 파이프라인이 `pipeline/<id>/pack/pack.json`을 쓰고 그것으로 부른다. 출력은 `pipeline/<id>/pack/model.glb` + `model.pack-report.json` — **게임 자리가 아니다** |
+| ⑦ 계약 검사 | 도구 | `rig_check.py --slot actor.hero.<key>.model --require-dodge`, `gen3d_views.py`(모양 판) | 그대로. `rig_check`의 기본 뼈 목록이 옛 길의 24개라 `--slot`을 줘도 뼈 줄이 어긋나게 나온다(냉기 걷기 미리보기 보고) → 6.6의 고칠 것 |
+| ⑧ 게임에 끼워 보기 | 도구 | `gen3d_ingame.py --glb <pack/model.glb> --look <hero.json>`, `hero_burn.py`, `gen3d_sheet.py`, `rig_game_probe.gd` | 그대로. 제품 파일을 바꾸지 않는다 |
+| ⑨ 걸음 고르기 | **사람: 관리 툴 캐릭터 화면** | 캐릭터 화면(걸음 나란히 보기, 배율·속도, 미끄러짐), 고름 저장(`picks.py`) | 새 몸의 `pack/model.pack-report.json`으로 화면 값을 다시 낸다. 게임 안 측정은 `motion_verify.py --report <그 보고서>`(T10 2.1) |
+| ⑩ 적용 | 사람 확정 + 도구 | 없음(손으로 복사했음) | `pipeline.py run <id> apply --yes`: `pack/model.glb`·보고서를 자리표가 가리키는 자리로 복사, `motion_apply.py --pick`, `test_asset_slots.gd --strict`. 앞선 몸은 `pipeline/<id>/replaced/<날짜>/`로 옮겨 둔다 |
+| ⑪ 파생 | 사람 확정 + 비용 | Dreamina CLI, 감싸는 도구 없음 | 그대로(주문만 찍음) |
+| (옛 길) | — | `gen3d_rig.py`, `mesh_reduce/rig_*`, `docs/ART-3D-PIPELINE.ko.md`, HY 3D 웹 | 주인공은 Tripo + Mixamo 길. HY 3D는 줄 정의에서 공급처를 바꾸면 쓸 수 있게 남긴다(6.2 `supplier`) |
 
 ---
 
@@ -169,7 +180,7 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
 ### 3.6 본체에서 같은 결과인지
 
 - **계약 수준**(B1-a의 `motion_apply.py --check`): 적용 뒤 자리표에서 읽은 `v×L/stride`가 고름의 `rate`와 1e-3 안에서 같은가. 산술이라 틀리면 적용 도구의 결함이다.
-- **게임 수준**(B1-b의 `hero_motion_probe.gd` + `motion_verify.py`): 실제 게임 장면에서 스위치를 켜고 걸을 때, 프레임마다 클립 시각과 발끝 뼈의 세계 위치를 읽어 (가) 동작 배율 실측 (나) 디딤 미끄러짐 RMS를 낸다. 화면의 값과 견준다: 배율 차 2% 안, 미끄러짐 차 0.15 m/s 안이면 "같음". 이 허용치는 [짐작]이며, B1-b가 지금 계약(달리기)에서 화면과 게임을 먼저 견주어 실제 차를 보고한 뒤 tech-lead가 고정한다.
+- **게임 수준**(B1-b의 `hero_motion_probe.gd` + `motion_verify.py`): 실제 게임 장면에서 스위치를 켜고 걸을 때, 프레임마다 클립 시각과 발끝 뼈의 세계 위치를 읽어 (가) 동작 배율 실측 (나) 디딤 미끄러짐 RMS를 낸다. 화면의 값과 견준다: 배율 차 2% 안, 미끄러짐은 **화면이 같은 조건에서 잰 값과의 차** 0.15 m/s 안이면 "같음". (개정 1: B1-b 실측 — 달리기 +0.040, 걷기 1.3배 −0.009 — 을 보고 고정. 게임 안 측정에는 디딤 흔들림의 바닥(달리기 약 0.4, 걷기 약 0.2 m/s)이 있어 계산값과는 견주지 않는다. 화면 값이 없으면 미끄러짐은 판정하지 않고 종료 코드 3. 자세한 규칙과 지시서는 `T10-pity-save-key-and-tech-decisions-20261123.ko.md` 2.1·2.4.)
 - 적용 전에도 덮어쓴 값(`--pose-override`)으로 같은 측정을 해 둘 수 있으므로, 사용자가 고르기 전에 디렉터가 "화면 값과 게임이 맞는다"를 먼저 확인할 수 있다.
 
 ---
@@ -268,15 +279,15 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
 | 도구 | `tools/art/pipeline.py`(표준 라이브러리만, 낱개 도구는 `subprocess`로 부름) | 올림 |
 | 줄 정의(캐릭터 하나 = 파일 하나) | `tools/art/pipeline_lines/<id>.json` | 올림 |
 | 작업 뿌리 | 환경 변수 `MOIRA_WORK_ROOT`, 없으면 `D:/Project/witch-moira-work` | 밖 |
-| 줄의 작업 폴더 | `<작업 뿌리>/pipeline/<id>/<단계>/` (큰 원본: 고면 glb, blend, FBX, 영상) | 밖 |
+| 줄의 작업 폴더 | `<작업 뿌리>/pipeline/<id>/<폴더>/` — 폴더 이름은 냉기가 이미 쓰는 것을 표준으로 한다: `tripo_in`, `tripo_out`, `face`, `game_a`, `mixamo_in`, `mixamo_out`, `pack`, `motions`, `replaced` (개정 1). 관리 툴 「3D 만들기(수동)」이 `tripo_in`·`tripo_out`을 이미 읽는다 | 밖 |
 | 상태 파일 | `<작업 뿌리>/pipeline/<id>/state.json` — 원본과 같은 곳에 둔다(원본 없는 상태는 뜻이 없다). PC 이사 때 `move_bundle.py`가 `witch-moira-work`를 통째로 옮긴다 [봄] | 밖 |
 | 확인 캡처(⑦) | `_local/pipeline/<id>/check/` (지워지면 ⑦이 "없음"이 되고 다시 돌리면 된다) | 밖 |
 | 게임에 들어가는 것(⑥ 출력) | 자리표가 가리키는 자리(`chapter1/art/actors/hero/<key>/` 등) + `asset_slots.json`의 칸 | 몸은 지금 `.gitignore`(약관 확인 전), 자리표는 올림 |
 
 - 상태의 경로는 `work:`·`repo:`·`local:` 접두를 붙인 상대 경로로 적는다(드라이브가 바뀌어도 읽힘).
-- 기존 냉기 원본은 옮기지 않는다. `adopt`가 지금 자리(`char3d/gen3d/frost/…`, `downloads/mixamo/frost_rigged/…`)를 그대로 상태에 적는다.
+- 기존 냉기 원본은 옮기지 않는다. `adopt`가 지금 자리를 그대로 상태에 적는다. (개정 1) 냉기의 채택 줄은 Tripo 몸이다: `pipeline/frost/tripo_out/20261123_tripo_smart_v2_8k_face2.glb` → `game_a/` → `mixamo_in/frost_t15k.fbx` → `mixamo_out/`(받는 중). 게임에 지금 들어가 있는 앞선 몸(`char3d/gen3d/frost/…`, `downloads/mixamo/frost_rigged/…`)은 `adopt --as replaced`로 "바뀔 것"으로만 적는다.
 
-### 6.2 줄 정의
+### 6.2 줄 정의 (개정 1)
 
 ```json
 {
@@ -284,22 +295,34 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
   "kind": "hero",
   "name": "냉기 마녀",
   "slot": "actor.hero.frost.model",
+  "supplier": {"gen3d": "tripo_web", "rig": "mixamo_web"},
   "stages": {
-    "main":   {"human": "confirm", "how": "원화 시안에서 final 표시", "outputs": ["main/main.png"]},
-    "apose":  {"tool": "apose_gen+apose_finish", "inputs": ["@main"], "args": {"prompt": "tools/art/apose_prompts/frost.json", "views": ["front","back","side"]}, "cost": "codex", "outputs": ["apose/front.png","apose/back.png","apose/side.png"]},
-    "gen3d":  {"human": "upload", "site": "hy3d.tencent.ai", "give": ["@apose:front.png"], "receive": "gen3d/*.glb"},
-    "game":   {"tool": "gen3d_prepare", "inputs": ["@gen3d"], "args": {"target": 15000, "roughness": 0.8}, "outputs": ["game/low15k.glb","game/low15k_color.png","game/low15k_normal.png"]},
-    "rig":    {"tool": "gen3d_to_fbx", "inputs": ["@game"], "then_human": "upload", "site": "mixamo", "give": ["rig/upload.fbx"], "receive": "rig/body_rigged.fbx", "motions": "work:downloads/mixamo/frost_rigged"},
-    "pack":   {"tool": "gen3d_mixamo_pack", "inputs": ["@rig", "@game"], "config_from": "tools/art/gen3d_mixamo_configs/frost.json", "outputs": ["repo:chapter1/art/actors/hero/frost/model.glb"]},
-    "check":  {"tool": ["gen3d_ingame","hero_burn","gen3d_sheet","motion_verify"], "inputs": ["@pack"], "outputs": ["local:pipeline/frost/check/"]},
-    "derive": {"human": "confirm", "cost": "dreamina", "inputs": ["@main", "@check"], "outputs": ["derive/"]}
+    "main":     {"human": "confirm", "how": "원화 시안에서 final 표시", "outputs": ["main/main.png"]},
+    "views":    {"tool": "sheet_split", "inputs": ["@main"], "args": {"names": ["front","left","back"]}, "outputs": ["tripo_in/*.png"]},
+    "gen3d":    {"human": "order", "site": "tripo_web", "give": ["tripo_in/*.png"], "receive": "tripo_out/*.glb", "pick_one": true},
+    "face":     {"optional": true, "tool": "face_reproject", "inputs": ["@gen3d", "face/face_front.png", "face/landmarks.json"], "cost_inputs": {"face/face_front.png": "dreamina"}, "outputs": ["tripo_out/{stem}_face{n}.glb"]},
+    "game":     {"tool": "gen3d_prepare", "inputs": ["@face|@gen3d"], "args": {"target": 15000, "height": 2.03, "face_boost": 1.8}, "outputs": ["game_a/{id}_t15k.glb", "game_a/{id}_t15k_color.png", "game_a/{id}_t15k_normal.png"]},
+    "rig_in":   {"tool": "gen3d_to_fbx", "inputs": ["@game"], "outputs": ["mixamo_in/{id}_t15k.fbx"]},
+    "rig":      {"human": "order", "site": "mixamo_web", "give": ["mixamo_in/{id}_t15k.fbx"], "receive": "mixamo_out/*.fbx",
+                 "body": "{id}_t15k.fbx", "motions": "hero_default"},
+    "inspect":  {"tool": "mixamo_inspect", "inputs": ["@rig"], "outputs": ["local:pipeline/{id}/mixamo_inspect.json"]},
+    "pack":     {"tool": "gen3d_mixamo_pack", "inputs": ["@rig", "@game"], "config": "generated", "outputs": ["pack/model.glb", "pack/model.pack-report.json"]},
+    "check":    {"tool": ["rig_check", "gen3d_views"], "inputs": ["@pack"], "outputs": ["local:pipeline/{id}/check/"]},
+    "ingame":   {"tool": ["gen3d_ingame", "motion_verify"], "inputs": ["@pack"], "godot": true, "outputs": ["local:pipeline/{id}/ingame/"]},
+    "walk":     {"human": "pick", "where": "관리 툴 캐릭터 화면", "inputs": ["@pack"], "outputs": ["picks:{id}/locomotion"]},
+    "apply":    {"human": "confirm", "tool": ["copy_to_slot", "motion_apply", "test_asset_slots"], "inputs": ["@pack", "@walk"], "outputs": ["repo:chapter1/art/actors/hero/{key}/model.glb"]},
+    "derive":   {"human": "confirm", "cost": "dreamina", "inputs": ["@main", "@ingame"], "outputs": ["derive/"]}
   }
 }
 ```
 
-- `kind`: `hero`(8단계), `boss`·`elite`(①~⑦, ⑥은 그 적의 자리표 칸으로), `demon`·`portrait`(①과 ⑧만: 2D). 종류별 기본 단계는 도구 안의 표 하나에 두고, 줄 정의는 다른 점만 적는다.
-- `@<단계>`는 앞 단계의 출력. 낡음 판정이 이 고리로 흐른다.
-- ⑥의 설정 JSON(`gen3d_mixamo_configs/<key>.json`)은 지금처럼 저장소에 두고, 줄 정의가 그 경로를 가리킨다. pipeline은 설정 안의 `body`·`texture_*` 경로를 앞 단계 출력과 견주어 어긋나면 알린다(고쳐 쓰지는 않는다).
+- `kind`: `hero`(위 전부), `boss`·`elite`(① ~ ⑧, ⑩은 그 적의 자리표 칸으로, ⑨ 없음), `demon`·`portrait`(①과 ⑪만: 2D). 종류별 기본 단계는 도구 안의 표 하나에 두고, 줄 정의는 다른 점만 적는다.
+- `supplier`: 공급처 층. `gen3d`는 `tripo_web`(기본) 또는 `hy3d_web`, `rig`는 `mixamo_web`. 공급처가 바뀌면 그 단계의 주문 글과 받는 파일 꼴만 바뀐다. **API를 부르는 공급처는 두지 않는다**(U-89).
+- `human: "order"` 단계는 **주문을 찍고 기다린다**: `pipeline.py order <id> <단계>`가 올릴 파일의 절대 경로, 사이트에서 고를 설정, 받은 파일을 둘 폴더와 이름 규칙을 찍고 상태를 `waiting_human`으로 둔다. 사람이 받은 파일을 그 폴더에 넣으면(관리 툴 「받은 모델 넣기」도 같은 폴더) 다음 `status`가 파일을 찾아 해시를 적고 다음 단계를 `ready`로 바꾼다. `pick_one`이면 여러 파일 가운데 하나를 `pipeline.py mark <id> gen3d --file <이름>`으로 채택한다(냉기는 재시도 셋 가운데 하나).
+- `motions: "hero_default"`: Mixamo에서 받을 동작 표(게임 이름, 검색어, In Place, 받을 파일 이름, 프레임 자르기)는 도구 안의 표 하나에 둔다. 처음 값은 냉기 안내서 C-2의 아홉 줄(idle, run, walk, cast, cast_area, hit, death, dodge, dodge_back). 받을 때의 공통 설정(FBX Binary, 30fps, 키프레임 줄이기 none, 동작은 Without Skin, 몸은 With Skin)도 그 표에.
+- `config: "generated"`: ⑥의 설정 JSON은 줄 정의 + 동작 표 + 앞 단계 출력으로 파이프라인이 `pack/pack.json`에 만든다. 저장소의 `gen3d_mixamo_configs/<key>.json`은 앞선 몸의 기록으로 남기고 새 몸에 쓰지 않는다(D 드라이브 절대 경로를 저장소에 새로 넣지 않으려고).
+- `@<단계>`는 앞 단계의 출력, `@a|@b`는 앞의 것이 있으면 그것. 낡음 판정이 이 고리로 흐른다.
+- `godot: true` 단계는 본 저장소에서 회귀가 도는 동안 돌리지 않는다(`run`이 `tools/dev/godot.py`의 잠금을 보고 기다리거나 멈춘다).
 
 ### 6.3 상태 파일과 "낡음"
 
@@ -318,7 +341,7 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
 }
 ```
 
-- `status`: `missing`(입력이 아직 없음) · `ready`(돌릴 수 있음) · `waiting_human`(사람 손을 기다림) · `waiting_cost`(비용 승인을 기다림) · `running` · `done` · `stale`(낡음) · `failed`.
+- `status`: `missing`(입력이 아직 없음) · `ready`(돌릴 수 있음) · `waiting_human`(사람 손을 기다림 — 주문이 찍혔고 받는 폴더가 비어 있음) · `waiting_pick`(받은 파일이 둘 이상인데 채택이 없음, 개정 1) · `waiting_cost`(비용 승인을 기다림) · `running` · `done` · `stale`(낡음) · `failed`. 사람 단계의 상태에는 `order_printed`(시각)와 `received`(파일 목록·해시)를 적는다.
 - **낡음**: 어떤 단계의 기록된 입력 해시가 앞 단계의 지금 출력 해시와 다르거나, `args_sha`·줄 정의가 바뀌었거나, 출력 파일이 사라졌거나 해시가 바뀌면 그 단계와 그 뒤 모든 단계가 `stale`. `tool_sha`(도구 파일의 해시)가 바뀐 것은 낡음이 아니라 "도구가 바뀜" 알림만(도구 고침마다 모든 줄이 낡지 않게).
 - 해시는 큰 파일에서 느리므로 (경로, 크기, mtime) → sha256 저장소를 `<작업 뿌리>/pipeline/.hash-cache.json`에 둔다.
 - 상태 파일 쓰기는 원자적(임시 파일 → `os.replace`), 줄마다 잠금 파일 하나(두 명령이 한 줄을 같이 돌리지 않게).
@@ -328,9 +351,10 @@ refactor-architect는 1·2묶음에 일이 없다(본체 코드를 고치지 않
 ```
 python tools/art/pipeline.py status [<id>|--all] [--json]       # 표: 줄 × 단계, 낡음·기다림의 까닭 한 줄
 python tools/art/pipeline.py next <id>                          # 다음에 할 일을 문장으로(돌리지 않음)
+python tools/art/pipeline.py order <id> <단계>                   # 사람 단계(Tripo·Mixamo 웹)의 주문을 다시 찍음(개정 1)
 python tools/art/pipeline.py run <id> [<단계>] [--until <단계>]   # 자동 단계를 차례로 돌리고, 사람 손·비용 단계에서 멈춰 안내를 찍음
 python tools/art/pipeline.py run <id> apose --execute --yes     # 비용이 드는 단계(Codex·Dreamina)는 두 깃발이 있어야만 실제로 부름(gen_queue.py와 같은 약속)
-python tools/art/pipeline.py mark <id> <단계> --file <받은 파일>  # 사람이 받아 온 파일(HY 3D glb, Mixamo FBX)을 정한 자리로 복사하고 해시를 적음
+python tools/art/pipeline.py mark <id> <단계> --file <받은 파일>  # 받은 파일(Tripo glb, Mixamo FBX)을 받는 폴더로 복사하고 해시를 적음. 이미 폴더에 있으면 채택만
 python tools/art/pipeline.py confirm <id> main [--from-gallery]  # ①·⑧의 사용자 확정을 적음. --from-gallery는 원화 시안의 final 표시를 읽음
 python tools/art/pipeline.py adopt <id>                          # 이미 있는 산출물을 지금 자리 그대로 done으로 올림(냉기)
 python tools/art/pipeline.py doctor                              # Blender·ffmpeg·Codex·Dreamina CLI·작업 뿌리가 있는지
@@ -338,14 +362,32 @@ python tools/art/pipeline.py ledger <id>                         # 저장소에 
 ```
 
 - `run`은 낱개 도구를 **고치지 않고** 명령줄 인수로 부른다. 낱개 도구의 출력·종료 코드·마지막 20줄을 `log`에 남긴다.
-- 사람 손 단계에서 찍는 안내의 꼴(예):
-  `③ 3D 생성 — 사람 손. hy3d.tencent.ai에 이 그림을 끌어다 놓으세요: D:\…\pipeline\frost\apose\front.png. 받은 glb는 아무 곳에 두고 "python tools/art/pipeline.py mark frost gen3d --file <받은 파일>"을 실행하세요. 하루 5회 무료.`
-- ⑤의 "동작은 한 번 받은 것을 다시 쓸 수 있는지": `run <id> rig`가 끝나면 `mixamo_inspect.py`로 새 몸의 뼈 이름과 받아 둔 동작 폴더의 뼈 이름을 견주어 같으면 "동작 다시 받을 필요 없음", 다르면 받을 목록을 찍는다. 실제로 같은 동작이 새 몸에 맞는지는 ⑦에서 본다 [미확인: 새 몸에서 아직 해 본 적 없음].
+- 사람 단계에서 찍는 주문의 꼴(개정 1, 예):
+  `③ 3D 생성 — 사람: Tripo 웹(구독). 올릴 그림(여러 면): D:\…\pipeline\frost\tripo_in\front.png, left.png, back.png — 관리 툴 캐릭터 화면 「3D 만들기(수동)」에서도 내려받을 수 있음. 받은 glb는 D:\…\pipeline\frost\tripo_out\ 에 넣으세요(관리 툴 「받은 모델 넣기」도 같은 곳). 여러 개면 "python tools/art/pipeline.py mark frost gen3d --file <이름>"으로 하나를 고르세요.`
+  `⑤-b 뼈대·동작 — 사람: Mixamo 웹. 올릴 파일: …\mixamo_in\frost_t15k.fbx. 표지점 주의 …(줄 정의의 메모). 받을 것: 몸 1(With Skin, 이름 frost_t15k.fbx) + 동작 9(Without Skin, 30fps, 키프레임 줄이기 none, In Place는 run·walk만) — 표: … 받는 곳: …\mixamo_out\. 다 넣으면 "python tools/art/pipeline.py run frost"`
+- 사람 단계는 기다리기만 하고 시간 제한이 없다. `status`는 사람 단계에서 멈춘 줄을 "누가 무엇을 기다리는지" 한 줄로 보인다(디렉터가 사용자에게 전할 문장).
+- ⑤의 동작 다시 쓰기(개정 1): **몸이 바뀌면 동작은 다시 받는다.** 받아 둔 Mixamo 동작 FBX에는 뼈 위치 키가 들어 있어 그 동작을 받을 때의 뼈 길이를 새 몸에 덮어쓴다(`gen3d_mixamo_blender.py`는 이름만 맞춰 얹고 옮겨 붙이기를 하지 않음, 냉기 Tripo 보고 3절). `inspect` 단계는 몸과 동작의 뼈 이름·수가 같은지(같은 Mixamo 캐릭터에서 받았는지)만 본다. 냉기 Tripo 몸은 뼈 65개(표준)로 받았다 — 앞선 몸 41개와 섞지 않는다.
 - ⑦의 결과(캡처 판, 타는 화소, 걸음 측정)는 캐릭터 화면의 단계 칸과 그림 칸에 그대로 뜬다.
 
 ### 6.5 원장
 
 `ledger <id>`는 `asset_ledger.py add …` 명령을 채워 찍는다(출처 HY 3D·Mixamo·Dreamina, 모델, 프롬프트 파일, 날짜, "출시 전 약관 확인"). 주인공 몸 폴더는 지금 원장 점검에서 빠져 있다(`asset_ledger.py:93 NOT_KEPT_PREFIXES`) [봄]. 이 빼기를 푸는 것은 사용자의 약관 결정 뒤이고 이 지시서의 일이 아니다.
+
+### 6.6 화염·번개 마녀를 같은 길로 (개정 1)
+
+냉기가 지난 길(그림 → 시트 나누기 → Tripo 웹 → 얼굴 입히기 → 15k → Mixamo 웹 → 묶기 → 검사 → 끼워 보기 → 걸음 → 적용)을 둘째·셋째 마녀가 그대로 타려면:
+
+| # | 필요한 것 | 지금 | 담당 |
+|---|---|---|---|
+| 1 | 확정된 메인 이미지와 Tripo에 보낼 여러 면 그림(턴어라운드 시트 또는 A자세 셋) | 원화 시안의 `final` 여부를 줄마다 확인 [미확인] | art-lead → 디렉터(사용자 확정) |
+| 2 | 줄 정의 `pipeline_lines/ember.json`, `storm.json`(자리표 키 `ember`, `arc`와 줄 id의 대응을 줄 정의에 적음) | 없음 | character-artist(B2-b) |
+| 3 | 사람 단계 두 번(Tripo 재시도 포함, Mixamo 몸 1 + 동작 9) | 사용자 시간. 냉기의 Tripo 무료 재시도 3회, Mixamo 무료 | 사용자 |
+| 4 | 얼굴 다시 입히기의 정면 얼굴 그림(비용, Dreamina 약 11크레딧/장 — 냉기 선례)과 표지점 json | 냉기 것만 있음 | character-artist(비용은 디렉터 승인) |
+| 5 | 마녀별 `look`(빛·색 보정) json — 냉기는 `gen3d_mixamo_configs/frost.hero.json` | 없음 | character-artist |
+| 6 | `rig_check.py`가 `--slot`의 자리표 계약에서 뼈 목록을 읽게(지금 기본 24개 옛 이름이라 Mixamo 몸에서 뼈 줄이 어긋남으로 나옴) | 고칠 것 | B2-b(도구 고침, `rig_check`의 기본 동작은 그대로 두고 `--slot`일 때만) |
+| 7 | 자리표 `actor.hero.ember.model`·`actor.hero.arc.model` 칸의 계약(clips·pose·scale) | 냉기 칸만 채워짐 [짐작: 다른 칸의 꼴은 T7-3에서 확인] | T7-3 담당과 디렉터 차례 |
+| 8 | 게임이 마녀별 몸을 고르는 길(`--chapter1-hero-models`가 냉기 칸만 보는지) | [미확인] | gameplay 쪽이 아니라 표현(`chapter_actors.gd`) — 별도 지시서, 이 문서 밖 |
+| 9 | 손이 나팔 치마를 파고드는 흠(냉기 걷기에서 봄): 마녀 옷 꼴이 비슷하면 같은 흠 | 냉기 미해결 | 원화 단계(art-lead)에서 치마 폭을 먼저 볼 것 |
 
 ---
 
@@ -441,28 +483,31 @@ python tools/art/pipeline.py ledger <id>                         # 저장소에 
 
 **건드리지 말 것**: 자리표의 냉기 칸 밖, `chapter_actors.gd`, 코어, 이동 속도.
 
+**새 몸에서의 B1-d (개정 1)**: 냉기 몸이 Tripo 몸으로 바뀌면 걸음 값은 **다시 잰다**. 같은 Mixamo `Walking`이라도 새 뼈대에서 발끝 지면 속도가 앞선 몸보다 6.6% 낮게 측정됐다(1.96 대 2.10 m/s, 엉덩이 기준, `_local/t9-mixamo/REPORT-walk.txt`). 지면 속도 g가 내려가면 미끄럼 없는 배율 `r0 = v/(g·s)`가 같은 비로 올라가고(5.8 m/s에서 걷기 약 1.99 → 약 2.13배, 모델의 답), 고른 배율이 같아도 미끄러짐 `v − r·g·s`가 달라진다. 그래서: (1) 새 몸의 ⑥이 끝나 `pack/model.pack-report.json`이 생기면 캐릭터 화면이 그 보고서로 값을 다시 낸다 (2) 사용자가 앞선 몸에서 고른 기록이 있으면 그 기록의 "클립 + 배율"을 새 몸에 그대로 얹었을 때의 미끄러짐을 화면이 보이고, 사용자가 다시 고르거나 그대로 둔다(새 기록) (3) `motion_verify.py --report <새 보고서>`로 게임 안 측정을 하되, 화면 값이 새 몸에서 잰 것인지 확인한다(옛 몸의 화면 값과 견주지 않음) (4) 적용은 ⑩(`pipeline.py run frost apply --yes`)으로 몸 파일과 걸음 값을 한 번에 넣는다. 앞선 몸에 B1-d를 먼저 적용했다면 그 값은 ⑩에서 새 값으로 덮인다.
+
 ### B2-a — manager-tools: 파이프라인 도구
 
-**목표**: 6절 그대로. 캐릭터 화면의 단계 칸을 상태 파일로 채운다.
+**목표**(개정 1): 6절 그대로. 사람 단계(Tripo 웹, Mixamo 웹, 걸음 고르기, 적용 확정)는 주문을 찍고 받은 파일·기록을 기다린다. 캐릭터 화면의 단계 칸을 상태 파일로 채우고, 이미 있는 「3D 만들기(수동)」 칸과 같은 폴더(`tripo_in`·`tripo_out`)를 읽는다(같은 파일을 두 곳에서 따로 찾지 않게 `characters.py`가 상태 파일의 경로를 쓰도록 바꾼다).
 
-**만들거나 고칠 파일**: 새 `tools/art/pipeline.py`, 새 `tools/art/pipeline_lines/`(이 묶음에서는 꼴을 보이는 `_example.json` 하나 + 스키마 설명을 `pipeline.py` 머리에), 새 `tools/art/test_pipeline.py`(Blender 없이: 임시 작업 뿌리, 가짜 도구 명령으로 낡음 전파·사람 손 멈춤·비용 깃발·adopt·잠금·원자적 쓰기), 고침 `tools/manager/characters.py`·`character.js`(단계 칸, 그림·영상을 상태 파일에서), `tools/manager/tools_index.json`, `docs/TOOLS-INDEX.ko.md` 다시 만들기, `tools/manager/사용안내.ko.md`.
+**만들거나 고칠 파일**: 새 `tools/art/pipeline.py`, 새 `tools/art/pipeline_lines/`(이 묶음에서는 꼴을 보이는 `_example.json` 하나 + 스키마 설명을 `pipeline.py` 머리에), 새 `tools/art/test_pipeline.py`(Blender·인터넷 없이: 임시 작업 뿌리, 가짜 도구 명령으로 낡음 전파·사람 단계 멈춤과 받은 파일 감지·`waiting_pick`·비용 깃발·adopt·잠금·원자적 쓰기·`godot: true` 단계가 잠금 중 돌지 않음), 고침 `tools/manager/characters.py`·`character.js`(단계 칸, 그림·영상, 「3D 만들기(수동)」이 상태 파일의 경로를 씀), `tools/manager/tools_index.json`, `docs/TOOLS-INDEX.ko.md` 다시 만들기, `tools/manager/사용안내.ko.md`.
 
-**계약**: 6.1~6.5절. 낱개 도구를 고치지 않는다. `--execute --yes` 없이는 Codex·Dreamina를 부르지 않는다. 상태 파일은 작업 뿌리에만 쓴다. 저장소 안에 쓰는 것은 ⑥의 정해진 출력과 ⑦의 `_local/` 뿐.
+**계약**: 6.1~6.5절. 낱개 도구를 고치지 않는다(`rig_check.py`의 고침은 B2-b). `--execute --yes` 없이는 Codex·Dreamina를 부르지 않는다. **Tripo·Mixamo를 부르는 코드는 없다**(웹 주문만). 상태 파일은 작업 뿌리에만 쓴다. 저장소 안에 쓰는 것은 ⑩ `apply`(사람 확정 `--yes` 뒤)와 `_local/` 뿐. 받은 파일은 옮기지 않고 받는 폴더에 둔 채 해시만 적는다.
 
-**끝났다는 기준**: `python tools/art/test_pipeline.py` 통과. B2-b의 `adopt frost` 뒤 `python tools/art/pipeline.py status frost`가 ①을 `waiting_human`(새 얼굴 메인 이미지 없음, 10.1절), ③~⑥을 `done`(옛 얼굴 몸), ⑦을 지금 캡처 유무대로 보인다. 앞 단계 파일 하나의 해시를 바꾼 임시 사본에서 뒤가 모두 `stale`. 캐릭터 화면 캡처(`ui_shot.py`)에 단계 칸. `run_all.py --quick` 통과.
+**끝났다는 기준**: `python tools/art/test_pipeline.py` 통과. B2-b의 `adopt frost` 뒤 `python tools/art/pipeline.py status frost`가 ③(Tripo 몸 채택)·④·⑤-a를 `done`, ⑤-b를 받은 파일 수대로(`mixamo_out/`에 몸·동작 10개가 다 있으면 `done`, 아니면 `waiting_human`과 빠진 이름), ⑥ 뒤를 그 결과대로 보인다. `pipeline.py order frost rig`가 냉기 안내서 C절과 같은 내용(몸 1 + 동작 9, 설정, 받는 곳)을 찍는다. 앞 단계 파일 하나의 해시를 바꾼 임시 사본에서 뒤가 모두 `stale`. 캐릭터 화면 캡처(`ui_shot.py`)에 단계 칸. `run_all.py --quick` 통과.
 
 ### B2-b — character-artist: 일회용 스크립트를 도구로, 세 마녀의 줄
 
 **할 일**:
-1. (B2-a와 함께) `_local/art/gen3d/run_apose2.py`·`run_apose.py` → `tools/art/apose_gen.py <id> --view front|back|side --round rN [--execute --yes]`. 프롬프트의 마녀별 칸(ROLE, EXPR, HAIR, OUTFIT 등)은 코드 밖 `tools/art/apose_prompts/<id>.json`으로. 기본은 프롬프트를 찍기만(Codex 부르지 않음). 프롬프트는 `tools/art/prompt_lint.py`를 지나야 한다. 옷차림 글은 narrative-lead의 `CAST-APPEARANCE`와 어긋나지 않는지 보고서에 적는다.
-2. `post_apose.py`·`post_apose2.py` → `tools/art/apose_finish.py <id> front=<후보> back=<후보> side=<후보> [--out-dir]`(배경 지우기, 키 88%로 가운데 맞추기, 1024×1536, 알파판, 판 한 장).
-3. `D:/…/gen3d/to_fbx.py` → `tools/art/gen3d_to_fbx.py --in <glb> --out <fbx>`(Blender 명령줄, 뼈 지우고 메시만, 질감 넣기).
-4. 각 도구의 Blender·Codex 없이 도는 부분 시험을 `tools/art/test_gen3d_tools.py`에 더하거나 새 시험 파일.
-5. (B2-a 병합 뒤) `tools/art/pipeline_lines/frost.json`, `storm.json`, `ember.json`. `python tools/art/pipeline.py adopt frost`, `adopt storm`(A자세와 HY 3D까지).
-6. `docs/ART-3D-PIPELINE.ko.md` 머리에 "주인공은 Mixamo 길과 `pipeline.py`" 한 단락과 옛 길이 어디에 아직 쓰이는지.
-7. 옮긴 뒤 `_local/art/gen3d/*apose*.py`와 `D:/…/gen3d/*.py`는 지우지 않고 그대로 둔다(지우는 것은 디렉터 결정).
+(개정 1: A자세 생성·마무리 도구 올리기는 뒤로 미룸 — 2.5 ②. 다시 필요해지면 옛 판의 1·2 항목을 그대로 쓴다.)
+1. `D:/…/gen3d/to_fbx.py` → `tools/art/gen3d_to_fbx.py --in <glb> --out <fbx>`(Blender 명령줄, 뼈 지우고 메시만, 질감 넣기). 냉기 `mixamo_in/frost_t15k.fbx`를 다시 만들어 크기·삼각형 수·키가 같은지(바이트가 다르면 그 까닭).
+2. `rig_check.py`: `--slot`을 주면 뼈 목록을 그 자리표 계약에서 읽는다(지금은 옛 24개 이름이 기본). `--slot` 없는 동작은 그대로.
+3. 동작 표 `hero_default`(6.2절): 냉기 안내서 C-2의 아홉 줄과 공통 설정을 `pipeline.py`가 읽을 데이터 파일(`tools/art/pipeline_motions/hero_default.json`)로. 프레임 자르기(dodge 3~32, dodge_back 6~52)는 `frost.json`에서 옮긴다.
+4. 각 도구의 Blender 없이 도는 부분 시험을 `tools/art/test_gen3d_tools.py`에 더하거나 새 시험 파일.
+5. (B2-a 병합 뒤) `tools/art/pipeline_lines/frost.json`, `storm.json`, `ember.json`(공급처 `tripo_web`·`mixamo_web`). `python tools/art/pipeline.py adopt frost`(Tripo 줄, 앞선 몸은 `--as replaced`), `adopt storm`·`adopt ember`는 있는 단계까지.
+6. `docs/ART-3D-PIPELINE.ko.md` 머리에 "주인공은 Tripo 웹 + Mixamo 웹 + `pipeline.py`" 한 단락과 옛 길이 어디에 아직 쓰이는지.
+7. 옮긴 뒤 `D:/…/gen3d/*.py`와 `_local/art/gen3d/*apose*.py`는 지우지 않고 그대로 둔다(지우는 것은 디렉터 결정).
 
-**끝났다는 기준**: 새 도구 셋의 `--help`가 돌고, 냉기의 지금 후보로 `apose_finish.py`를 돌린 결과가 지금 `front.png`와 같은 크기·같은 배경색, 바이트 차가 있다면 그 까닭. `pipeline.py status --all` 표. `run_all.py --only tools-selftest` 통과.
+**끝났다는 기준**: 새 도구의 `--help`가 돌고, 1의 재생성 비교, `rig_check.py <냉기 걷기 미리보기 glb> --slot actor.hero.frost.model`에서 뼈 줄이 통과(클립 줄은 걷기만이라 어긋남 그대로), `pipeline.py status --all` 표, `run_all.py --only tools-selftest` 통과.
 
 ### B3·B4·B5
 
@@ -486,7 +531,7 @@ B2-b 앞 절반 (character-artist, B1-c 뒤) ───────────�
 - `server.py`, `index.html`, `character.js`, `characters.py`는 manager-tools 한 담당이 차례로 잡는다(B1-a → B2-a → B3 화면 → B4 화면).
 - `asset_slots.json`은 B1-d만 쓴다. 그동안 T7-3(자리표의 나머지)이나 다른 묶음이 이 파일을 잡지 않게 디렉터가 막는다.
 - `chapter_actors.gd`는 이 지시서의 어느 묶음도 고치지 않는다.
-- 냉기 새 얼굴 몸(U-70)이 들어오면: 고른 값은 "클립 + 동작 배율"로 남아 있으므로, 새 몸의 ⑥이 끝난 뒤 `motion_apply.py`로 다시 계산한다(배율·지면 속도가 같으면 숫자도 같음). 파이프라인은 그때 ⑥ 뒤를 `stale`로 보인다.
+- 냉기 새 얼굴 몸(U-70 → U-89~U-91의 Tripo 몸)이 들어오면: 지면 속도가 다르므로(걷기 −6.6%) 걸음 값은 다시 잰다 — B1-d의 "새 몸에서의 B1-d" 문단(개정 1). 파이프라인은 그때 ⑨ 뒤를 `stale`로 보인다.
 
 ---
 
@@ -527,8 +572,11 @@ B1-d 검수는 위에 더해 `golden_core.gd` 불일치 0, `test_asset_slots.gd 
 | R8 | 자리표를 JSON 다시 쓰기로 고치면 다른 줄이 바뀐다 [봄] | `motion_apply.py`는 글자만 고침, 시험이 바이트 차를 봄 |
 | R9 | 고름 파일이 git 밖 | `tools/manager/`에 두고 `move_bundle.py`에 더함. 지금 `local-state.json`·`local-drafts.json`도 옮길 목록에 없던 구멍을 같이 막음 |
 | R10 | `BASE_SPEED`가 데이터가 아니라 코드 상수(CLAUDE.md의 "수치는 데이터 파일에서"와 어긋남) [봄] | 속도를 바꾸는 결정이 나면 gameplay-systems가 데이터로 옮기며 골든 갱신 |
-| R11 | 새 몸에 받아 둔 동작이 그대로 맞는지 [미확인] | 6.4절의 뼈 이름 대조 + ⑦에서 봄 |
-| R12 | HY 3D·Mixamo는 사람 손(로그인, 끌어다 놓기). 자동으로 만들 수 없다 | pipeline이 멈추고 안내 |
+| R11 | (개정 1) 받아 둔 동작은 새 몸에 맞지 않는다 — 뼈 위치 키가 앞선 몸의 뼈 길이를 담음 [봄: 냉기 Tripo 보고 3절] | 몸마다 다시 받는다(6.4). `inspect`가 같은 캐릭터에서 받은 파일인지 뼈 수·이름으로 본다 |
+| R12 | (개정 1) Tripo·Mixamo는 사람 손(웹, 로그인, 구독). API는 쓰지 않는다(U-89) | pipeline이 주문을 찍고 받는 폴더를 기다림 |
+| R18 | (개정 1) Tripo 결과가 재시도마다 다르다(얼굴이 찌그러진 첫 결과, U-90) | `pick_one` + `waiting_pick`. 채택은 사람 |
+| R19 | (개정 1) 손이 나팔 치마를 파고든다(냉기 걷기 미리보기) | 표지점으로 고쳐지지 않음. 게임 크기에서 보이는 정도는 ⑧에서 봄, 원화 단계에서 다음 마녀의 치마 폭을 봄(6.6 #9) |
+| R20 | (개정 1) 묶기 설정이 D 드라이브 절대 경로를 가짐(`pipeline/frost/frost.t15k.pack.json`) | 설정을 줄 정의에서 만들어 작업 뿌리에 씀(6.2 `config: generated`). 저장소에 새 절대 경로를 넣지 않음 |
 | R13 | Codex·Dreamina는 비용 | `--execute --yes` 두 깃발 + 디렉터가 값을 보이고 승인 |
 | R14 | 큰 파일 해시가 느림 | 크기·mtime 해시 저장소 |
 | R15 | mp4 범위 요청 없이 브라우저가 영상을 트는지 [미확인] | 범위 요청 하나를 구현 |
