@@ -7,6 +7,9 @@ extends SceneTree
 ## >= 10 kills, screen clears, one-shot share of walkers, lifetimes by kind, big enemies appear -> death), --tuning=_local/x.json (a tuning copy, see tools/dev/tuning_copy.py),
 ## --descent-doc=_local/y.json, --policy=synergy|random|... (the grace pick of sim_builds.gd). Example with a copy and the synergy pick:
 ##   python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_rhythm.gd -- --thirds --tuning=_local/d19/v0/wd_1.json --policy=synergy --out=_local/d19/v0/x.json
+## D22 R0-A (read-only, only this tool; with none of these the printed output of a rhythm-off run is unchanged): --no-trial-arena (--rhythm-on does not switch the 45 s hold on, the same run as the app's
+## `--chapter1-trial=rhythm`), --stand (the pilot's movement is zeroed; casting and the grace pick stay the pilot's; prints when and in which beat / opening step the hero fell),
+## --targets=d22 (the D22 3.4 table, with the opening as its own beat), and with --thirds: wave-crest / lull ratios, grace-density figures, and the card kinds offered after level 12.
 ## Grouping: fixed-size time bins (--bin seconds), D11 A2 beats, and zones. Beats are grouped by `beat_started` core
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
@@ -27,11 +30,30 @@ const BEATS := [
 	{"name": "전C", "from": 390.0, "to": 1.0e9, "alive_avg": [10, 25], "alive_max": 30, "kpm": null, "hits_pm": null, "dmg30": null},
 ]
 ## Core beat ids (combat_tuning.json rhythm.beats, plus the trial and the boss) -> the names of the A2 table above.
+## D22 3.4 table (--targets=d22), pilot-centre values [hypothesis]. The opening is its own beat; "기" starts after it. from/to are the time boundaries
+## used when the core has no beat_started event (the guardian windows are folded into the neighbours). alive_max here is the upper bound only (the cap);
+## the crest / lull rows are checked against crest_min (crest peak share of the cap, 10 s after a crest), lull_max (alive at the end of a lull / cap) and
+## crest_count_max (the absolute peak, for the early beats). "stand": what the standing hero is expected to do ("survive" / "die_here").
+const BEATS_D22 := [
+	{"name": "도입", "from": 0.0, "to": 65.0, "alive_avg": [0, 6], "alive_max": 12, "kpm": [10, 60], "hits_pm": [0, 0], "dmg30": 0.05, "crest_count_max": 12, "stand": "survive"},
+	{"name": "기", "from": 65.0, "to": 105.0, "alive_avg": [6, 15], "alive_max": 20, "kpm": [100, 200], "hits_pm": [0, 2], "dmg30": 0.10, "crest_count_max": 20, "stand": "survive"},
+	{"name": "승1", "from": 105.0, "to": 172.0, "alive_avg": [12, 25], "alive_max": 45, "kpm": [300, 420], "hits_pm": [2, 6], "dmg30": 0.30, "crest_min": 0.75, "lull_max": 0.30, "stand": "survive"},
+	{"name": "승2", "from": 172.0, "to": 302.0, "alive_avg": [18, 35], "alive_max": 75, "kpm": [450, 650], "hits_pm": [4, 9], "dmg30": 0.45, "crest_min": 0.70, "lull_max": 0.30, "stand": "die_here"},
+	{"name": "전A", "from": 302.0, "to": 380.0, "alive_avg": [30, 55], "alive_max": 100, "kpm": [600, 900], "hits_pm": [6, 12], "dmg30": 0.60, "crest_min": 0.75, "lull_max": 0.40},
+	{"name": "전C", "from": 380.0, "to": 1.0e9, "alive_avg": [10, 25], "alive_max": null, "kpm": null, "hits_pm": null, "dmg30": null},
+]
+const OPENING_NAME := "도입"
+const CREST_AFTER_TICKS := 600        ## the peak of the alive count is taken over 10 s after a wave_crest
 const BEAT_NAMES := {"gi": "기", "seung1": "승1", "seung2": "승2", "jeon_a": "전A", "trial": "전B", "boss": "전C"}
 const METRICS := ["alive_avg", "alive_max", "kpm", "hits_pm", "dmg30"]
 const MIN_TICKS := 300
 
 var bin_s := 30.0
+## D22 R0-A switches (see the header).
+var no_trial_arena := false
+var stand_on := false
+var targets_name := ""
+var targets: Array = BEATS
 ## --rhythm-on: test switch. The shipped document is read, rhythm.enabled and trial.enabled are set in memory only.
 var rhythm_on := false
 ## --stop-s=N: end every run after N seconds (a short look at the first minutes, e.g. the run opening with --bin=10).
@@ -96,6 +118,15 @@ func execute() -> void:
 				quit(1)
 				return
 		elif arg == "--thirds": thirds_on = true
+		elif arg == "--no-trial-arena": no_trial_arena = true
+		elif arg == "--stand": stand_on = true
+		elif arg.begins_with("--targets="):
+			targets_name = arg.trim_prefix("--targets=")
+			if targets_name != "d22":
+				push_error("measure_rhythm: --targets must be d22 (the default is the D11 A2 table)")
+				quit(1)
+				return
+			targets = BEATS_D22
 		elif arg == "--spells-on": spells_on = true
 		elif arg == "--extras-on": extras_on = true
 		elif arg == "--pilot-extras": pilot_extras = true
@@ -137,8 +168,9 @@ func execute() -> void:
 			if thirds_on: print_sweep_run(r)
 	var cross := cross_summary(runs)
 	print_cross(cross)
+	if stand_on: print_stand_cross(runs)
 	if thirds_on: print_thirds(runs)
-	var result := {"tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
+	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
 	DirAccess.make_dir_recursive_absolute(abs_path.get_base_dir())
@@ -189,9 +221,9 @@ func add_event(a: Dictionary, ev: Dictionary, run, prim: String) -> void:
 				a.extras[t] = int(a.extras.get(t, 0)) + 1
 
 func beat_name_by_time(sec: float) -> String:
-	for b in BEATS:
+	for b in targets:
 		if sec < float(b.to): return String(b.name)
-	return String(BEATS[BEATS.size() - 1].name)
+	return String(targets[targets.size() - 1].name)
 
 # ---------- one run ----------
 func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: Dictionary = {}) -> Dictionary:
@@ -203,7 +235,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		var doc = tuning_copy.duplicate(true) if not tuning_copy.is_empty() else JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if rhythm_on:
 			doc.rhythm.enabled = true
-			doc.rhythm.trial.enabled = true
+			if not no_trial_arena: doc.rhythm.trial.enabled = true
 			# D15 O-1: the run opening comes with the rhythm in a trial run (`--chapter1-trial=...,rhythm`), so it does here.
 			if doc.rhythm.has("opening"): doc.rhythm.opening.enabled = true
 		if extras_on:
@@ -251,6 +283,13 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	var level_first := -1.0
 	var descent_ends: Array = []
 	var descent_calls: Array = []
+	var op_active := false
+	var op_step_id := ""
+	var boss_tick := -1
+	var offers: Array = []
+	var open_on: bool = bool(run.tuning.get("rhythm", {}).get("enabled", false)) and bool(run.tuning.get("rhythm", {}).get("opening", {}).get("enabled", false))
+	var first_beat_id := ""
+	if run.tuning.get("rhythm", {}).get("beats", []).size() > 0: first_beat_id = String(run.tuning.rhythm.beats[0].id)
 	var ex := {"born": {}, "engaged": {}, "walk_in_s": [], "guard_fight_s": [], "guard_placed_s": [], "guard_unlocked_s": [], "taken_s": [], "chest_s": [], "expired": 0, "locked_expired": 0}
 	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
 		if policy_name != "" and policy_name != "pilot":
@@ -260,12 +299,15 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				g2 += 1
 				var offer: Dictionary = run.get_offer()
 				var cards: Array = offer.cards
+				note_offer(run, offers, offer)
 				var chosen: Dictionary = cards[GracePolicies.pick(policy_name, cards, run.growth.snapshot(), policy_rng)]
 				pilot.selections.append({"tick": run.tick, "id": chosen.id, "kind": chosen.kind})
 				if not run.choose(offer.token, chosen.id):
 					push_error("measure_rhythm: choice rejected %s" % str(run.errors))
 					return {}
+		if run.mode == "choice": note_offer(run, offers, run.get_offer())
 		var mv: Vector2 = pilot.decide()
+		if stand_on: mv = Vector2.ZERO
 		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
@@ -286,6 +328,13 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				event_beats = true
 				cur_beat = str(ev.get("id", ev.get("beat", ev.get("name", "beat%d" % beat_order.size()))))
 				cur_beat = String(BEAT_NAMES.get(cur_beat, cur_beat))
+			if String(ev.type) == "opening_step":
+				op_active = true
+				op_step_id = String(ev.get("id", ""))
+			elif String(ev.type) == "opening_end":
+				op_active = false
+			elif String(ev.type) == "chapter_champion" and int(ev.get("zone", 0)) == 2 and boss_tick < 0:
+				boss_tick = int(ev.tick)
 			match String(ev.type):
 				"gate_opened": marks.append("%.0fs gate%d" % [esec, int(ev.get("zone", 0))])
 				"chapter_champion": marks.append("%.0fs champ%d" % [esec, int(ev.get("zone", 0))])
@@ -302,15 +351,18 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 					if level_first < 0.0:
 						level_first = esec
 						marks.append("%.1fs first level-up" % esec)
-			var accs := [bin_acc(bins, esec),
-				get_beat(beats, beat_order, cur_beat if event_beats else beat_name_by_time(esec), esec),
+			# The first beat's start with an opening is filed under the opening (opening_step follows in the same tick), not under "기".
+			var ebn := OPENING_NAME if op_active else (cur_beat if event_beats else beat_name_by_time(esec))
+			var skip_accs: bool = open_on and String(ev.type) == "beat_started" and String(ev.get("id", "")) == first_beat_id
+			var accs := [] if skip_accs else [bin_acc(bins, esec),
+				get_beat(beats, beat_order, ebn, esec),
 				get_acc(zones, zname, zname, esec)]
 			for a in accs:
 				touch(a, esec)
 				add_event(a, ev, run, prim)
 		# per-step accounting
 		var dropped_now := int(run.metrics.get("events_dropped", 0))
-		var bn := cur_beat if event_beats else beat_name_by_time(sec)
+		var bn := OPENING_NAME if op_active else (cur_beat if event_beats else beat_name_by_time(sec))
 		var step_accs := [bin_acc(bins, sec),
 			get_beat(beats, beat_order, bn, sec), get_acc(zones, zname, zname, sec)]
 		for a in step_accs:
@@ -326,7 +378,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			var sel: Dictionary = pilot.selections[seen_sel]
 			seen_sel += 1
 			var ssec: float = float(int(sel.tick)) / 60.0
-			var gbn := cur_beat if event_beats else beat_name_by_time(ssec)
+			var gbn := OPENING_NAME if op_active else (cur_beat if event_beats else beat_name_by_time(ssec))
 			sw.graces.append([snappedf(ssec, 0.1), gbn])
 			for a in [bin_acc(bins, ssec), get_beat(beats, beat_order, gbn, ssec), get_acc(zones, zname, zname, ssec)]:
 				a.grace += 1
@@ -366,18 +418,91 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"grace_longest_gap_s": snappedf(longest_gap, 0.1), "grace_last_to_end_s": (snappedf(secs - float(times[times.size() - 1]), 0.1) if times.size() > 0 else -1.0),
 		"grace_first75": first75, "level_first_s": snappedf(level_first, 0.1), "worst_bin": String(worst.get("label", "")), "worst_bin_hits": int(worst.get("hits", 0)), "worst_bin_dmg": worst.get("dmg", 0.0),
 		"hits_total": hit_total, "events_dropped": int(run.metrics.get("events_dropped", 0)), "event_types": all_types}
+	summary.merge(grace_density(pilot.selections, boss_tick, secs), true)
+	summary["offers_l12"] = offers_l12(offers)
+	var end_beat := OPENING_NAME if op_active else (cur_beat if event_beats else beat_name_by_time(secs))
+	var defeat := {"mode": String(run.mode), "s": snappedf(secs, 0.1), "beat": end_beat, "opening_active": op_active, "opening_step": op_step_id if op_active else "", "last_opening_step": op_step_id}
 	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "calls": descent_calls, "view": run.descent_view()},
 		"elites": extras_summary(run, ex),
-		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim)}
+		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
+		"end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
+
+# ---------- D22 R0-A helpers (read-only) ----------
+## The name (as the beat tables use), cap and lull length of a core beat id; the opening steps report as the opening. {} = not a beat of the table.
+func beat_cap(sw: Dictionary, id: String) -> Dictionary:
+	for b in sw.beats:
+		if String(b.get("id", "")) == id:
+			var lt := 0
+			if b.get("wave") is Dictionary: lt = int(b.wave.get("lull_ticks", 0))
+			return {"name": String(BEAT_NAMES.get(id, id)), "cap": mini(int(b.get("alive_cap", sw.alive_cap)), int(sw.alive_cap)), "lull_ticks": lt}
+	if id == "trial": return {"name": String(BEAT_NAMES.get(id, id)), "cap": int(sw.trial_cap), "lull_ticks": 0}
+	for st in sw.opening_steps:
+		if String(st.get("id", "")) == id: return {"name": OPENING_NAME, "cap": mini(int(st.get("alive_cap", sw.alive_cap)), int(sw.alive_cap)), "lull_ticks": 0}
+	return {}
+
+## One offer into the log (once per token). level = the growth level the offer is made at.
+func note_offer(run, offers: Array, offer: Dictionary) -> void:
+	if offer.is_empty() or not offer.has("cards"): return
+	var token := String(offer.get("token", ""))
+	if offers.size() > 0 and String(offers[offers.size() - 1].token) == token: return
+	var kinds := {}
+	for c in offer.cards: kinds[String(c.get("kind", ""))] = true
+	offers.append({"token": token, "level": int(run.growth.snapshot().level), "cards": offer.cards.size(), "kinds": kinds.size()})
+
+func offers_l12(offers: Array) -> Dictionary:
+	var kinds: Array = []
+	for o in offers:
+		if int(o.level) >= 12: kinds.append(float(o.kinds))
+	return {"rule": "offers made at growth level >= 12", "n": kinds.size(), "kinds_min": (int(kinds.min()) if kinds.size() > 0 else -1), "kinds_median": (median(kinds) if kinds.size() > 0 else -1.0),
+		"kinds_lt2": kinds.filter(func(k): return k < 2.0).size()}
+
+## Grace density figures from the pilot's picks (tick-stamped). "boss fill" = the pick(s) made at or after the zone-3 guardian's appearance (guardian_grace fills the last level there);
+## natural = made before it. A run with no zone-3 guardian (fell earlier) has no fill and no boss gap (-1).
+func grace_density(selections: Array, boss_tick: int, secs: float) -> Dictionary:
+	var per_sec := {}
+	var same_max := 0
+	var nat: Array = []
+	for sel in selections:
+		var sec := int(int(sel.tick) / 60)
+		per_sec[sec] = int(per_sec.get(sec, 0)) + 1
+		same_max = maxi(same_max, int(per_sec[sec]))
+		if boss_tick < 0 or int(sel.tick) < boss_tick: nat.append(float(int(sel.tick)) / 60.0)
+	var gap_nofill := 0.0
+	for i in range(1, nat.size()): gap_nofill = maxf(gap_nofill, float(nat[i]) - float(nat[i - 1]))
+	var last_to_boss := -1.0
+	if boss_tick >= 0 and nat.size() > 0: last_to_boss = float(boss_tick) / 60.0 - float(nat[nat.size() - 1])
+	return {"grace_same_sec_max": same_max, "grace_longest_gap_nofill_s": snappedf(gap_nofill, 0.1), "grace_last_natural_to_boss_s": snappedf(last_to_boss, 0.1), "boss_appear_s": snappedf(float(boss_tick) / 60.0, 0.1) if boss_tick >= 0 else -1.0}
+
+## Crest peak and lull end per beat, medians over all runs (measured values; n = the number of crests / lulls behind each median).
+func crest_lull_summary(runs: Array) -> Dictionary:
+	var out := {}
+	for r in runs:
+		for c in r.sweep.crests:
+			var k := String(c[0])
+			if not out.has(k): out[k] = {"crest_ratio": [], "crest_max": [], "lull_ratio": []}
+			out[k].crest_ratio.append(float(c[3]))
+			out[k].crest_max.append(float(c[1]))
+		for l in r.sweep.lulls:
+			var k2 := String(l[0])
+			if not out.has(k2): out[k2] = {"crest_ratio": [], "crest_max": [], "lull_ratio": []}
+			out[k2].lull_ratio.append(float(l[3]))
+	var res := {}
+	for k in out:
+		var d: Dictionary = out[k]
+		res[k] = {"crest_n": d.crest_ratio.size(), "crest_ratio_median": snappedf(median(d.crest_ratio), 0.001), "crest_max_median": median(d.crest_max),
+			"lull_n": d.lull_ratio.size(), "lull_ratio_median": snappedf(median(d.lull_ratio), 0.001)}
+	return res
 
 # ---------- D19 V0: sweep counts (read-only; they only read events and run.alive_count()) ----------
 func new_sweep(run) -> Dictionary:
 	return {"cap": int(run.tuning.alive_cap), "alive_cap": int(run.tuning.alive_cap), "beats": run.tuning.get("rhythm", {}).get("beats", []),
 		"trial_cap": int(run.tuning.get("rhythm", {}).get("trial", {}).get("alive_cap", run.tuning.alive_cap)),
+		"opening_steps": run.tuning.get("rhythm", {}).get("opening", {}).get("steps", []),
 		"s": {"kills": [], "okills": [], "pk": [], "dmg": [], "hh": [], "alive": [], "an": [], "casts": [], "sweeps": [], "clears": [], "clears_d": [], "walk": [], "one": []},
-		"casts_by_skill": {}, "kills_by_skill": {}, "window": [], "last_high": -1, "desc_tick": -1, "born": {}, "hitn": {}, "lives": [], "big_open": {}, "big": [], "graces": []}
+		"casts_by_skill": {}, "kills_by_skill": {}, "window": [], "last_high": -1, "desc_tick": -1, "born": {}, "hitn": {}, "lives": [], "big_open": {}, "big": [], "graces": [],
+		"crest_open": [], "crests": [], "lull_wait": [], "lulls": [], "prev_n": 0, "prev_tick": -1}
 
 func bump(a: Array, i: int, v: float = 1.0) -> void:
 	while a.size() <= i: a.append(0.0)
@@ -395,6 +520,16 @@ func sweep_event(sw: Dictionary, ev: Dictionary, run, prim: String) -> void:
 				if String(b.get("id", "")) == id: cap = int(b.get("alive_cap", cap))
 			sw.cap = mini(cap, int(sw.alive_cap))
 		"descent_called", "descent_end": sw.desc_tick = int(ev.tick)
+		"wave_crest":
+			var cb := String(ev.get("beat", ""))
+			var cinfo := beat_cap(sw, cb)
+			if not cinfo.is_empty():
+				sw.crest_open.append({"name": String(cinfo.name), "cap": int(cinfo.cap), "end": int(ev.tick) + CREST_AFTER_TICKS, "max": 0})
+		"lull_started":
+			var lb := String(ev.get("beat", ""))
+			var linfo := beat_cap(sw, lb)
+			if not linfo.is_empty() and int(linfo.lull_ticks) > 0:
+				sw.lull_wait.append({"name": String(linfo.name), "cap": int(linfo.cap), "at": int(ev.tick) + int(linfo.lull_ticks)})
 		"cast":
 			if not ev.has("pulse"):
 				bump(s.casts, sec)
@@ -457,6 +592,24 @@ func sweep_sample(sw: Dictionary, run) -> void:
 	var cap := float(sw.cap)
 	bump(sw.s.alive, sec, float(n))
 	bump(sw.s.an, sec)
+	# D22 R0-A: the lull's end is read from the last sample before it (the next crest lands on that very tick); the crest peak is over the 10 s after it.
+	var still_wait: Array = []
+	for w in sw.lull_wait:
+		if tick >= int(w.at) and int(sw.prev_tick) >= 0:
+			sw.lulls.append([String(w.name), int(sw.prev_n), int(w.cap), snappedf(float(sw.prev_n) / maxf(1.0, float(w.cap)), 0.001)])
+		else:
+			still_wait.append(w)
+	sw.lull_wait = still_wait
+	var still_open: Array = []
+	for c in sw.crest_open:
+		c["max"] = maxi(int(c.max), n)
+		if tick >= int(c.end):
+			sw.crests.append([String(c.name), int(c.max), int(c.cap), snappedf(float(c.max) / maxf(1.0, float(c.cap)), 0.001)])
+		else:
+			still_open.append(c)
+	sw.crest_open = still_open
+	sw.prev_n = n
+	sw.prev_tick = tick
 	if float(n) >= CLEAR_HIGH_SHARE * cap:
 		sw.last_high = tick
 	elif float(n) <= CLEAR_LOW_SHARE * cap and int(sw.last_high) >= 0 and tick - int(sw.last_high) <= CLEAR_WITHIN_TICKS:
@@ -476,7 +629,8 @@ func finish_sweep(sw: Dictionary, secs: float, end_tick: int, prim: String) -> D
 		o["lived_s"] = snappedf(secs - float(o.spawn_s), 0.1)
 		big.append(o)
 	var out := {"s": sw.s, "casts_by_skill": sw.casts_by_skill, "kills_by_skill": sw.kills_by_skill, "lives": sw.lives, "unresolved": unres, "big": big,
-		"graces": sw.graces, "defs": {"sweep": "%d ordinary deaths in %d ticks" % [SWEEP_MIN_KILLS, SWEEP_WINDOW_TICKS],
+		"graces": sw.graces, "crests": sw.crests, "lulls": sw.lulls, "defs": {"crest": "[beat, peak alive within 10 s after the wave_crest, beat cap, ratio]; a crest cut by the run end is dropped",
+			"lull": "[beat, alive at the last sample before lull start + lull_ticks, beat cap, ratio]", "sweep": "%d ordinary deaths in %d ticks" % [SWEEP_MIN_KILLS, SWEEP_WINDOW_TICKS],
 			"clear": "alive >= %.0f%% of the beat cap, then <= %.0f%% within %d ticks" % [CLEAR_HIGH_SHARE * 100.0, CLEAR_LOW_SHARE * 100.0, CLEAR_WITHIN_TICKS],
 			"lives": "[born_s, life_s, kind index of %s]; unresolved = still alive at the run end (life_s so far)" % str(ORDINARY)}}
 	out["thirds"] = thirds_of(out, secs)
@@ -624,7 +778,7 @@ func finalize(a: Dictionary) -> Dictionary:
 		"wave_crests": int(a.waves), "extras": a.extras, "events_dropped": int(a.events_dropped), "reached": int(a.ticks) >= MIN_TICKS}
 
 func target_of(name: String) -> Dictionary:
-	for b in BEATS:
+	for b in targets:
 		if String(b.name) == name: return b
 	return {}
 
@@ -658,7 +812,7 @@ func median(arr: Array) -> float:
 
 func cross_summary(runs: Array) -> Dictionary:
 	var out := {}
-	for b in BEATS:
+	for b in targets:
 		var name := String(b.name)
 		var row := {"runs_reached": 0, "metrics": {}}
 		var per: Dictionary = {}
@@ -700,6 +854,7 @@ func print_run(r: Dictionary) -> void:
 	var s: Dictionary = r.summary
 	print("RUN %s seed=%d mode=%s secs=%.1f kills=%d level=%d  beats by: %s" % [r.primary, r.seed, r.mode, r.secs, r.kills, s.level, r.beat_source])
 	print("  marks: ", ", ".join(PackedStringArray(r.marks)))
+	if stand_on: print(stand_line(r))
 	if r.descent.policy != "":
 		var dm: Dictionary = r.descent.metrics
 		var dk := 0
@@ -752,6 +907,10 @@ func print_sweep_run(r: Dictionary) -> void:
 		for t in 3: row += " %8s" % (col[2] % float(sw.thirds[t][col[0]]))
 		print(row)
 	print("    casts by skill: %s | kills by skill: %s" % [str(sw.casts_by_skill), str(sw.kills_by_skill)])
+	var gs: Dictionary = r.summary
+	print("    은총 밀도(1판): 같은 초 최대 %d / 우두머리 채움 뺀 가장 긴 간격 %.1f초 / 마지막 자연 은총 → 우두머리 등장 %.1f초 (등장 %.1f초, -1 = 우두머리 없음)" % [int(gs.grace_same_sec_max), float(gs.grace_longest_gap_nofill_s), float(gs.grace_last_natural_to_boss_s), float(gs.boss_appear_s)])
+	var o12: Dictionary = gs.offers_l12
+	print("    레벨 12 뒤 제안(1판, %d개): 카드 종류 수 최소 %d 중앙 %.1f, 2종 미만 %d개" % [int(o12.n), int(o12.kinds_min), float(o12.kinds_median), int(o12.kinds_lt2)])
 	var bigs: Array = []
 	for b in sw.big: bigs.append("%s spawn %.1fs %s" % [b.kind, float(b.spawn_s), ("died after %.1fs" % float(b.lived_s)) if float(b.death_s) >= 0.0 else ("alive at end, %.1fs" % float(b.lived_s))])
 	print("    big enemies: %s" % (", ".join(PackedStringArray(bigs)) if bigs.size() > 0 else "-"))
@@ -781,6 +940,21 @@ func print_thirds(runs: Array) -> void:
 		gaps_last.append(float(r.summary.grace_longest_gap_s))
 	print("  뒤/가운데 은총 간격 평균 비: %s | 판 안의 가장 긴 간격(초): %s | 은총 수: %s | 판 길이(초): %s" % [fmt_med(ratio, "%.2f"), fmt_med(gaps_last, "%.1f"),
 		fmt_med(runs.map(func(r): return float(r.summary.grace_count)), "%.1f"), fmt_med(runs.map(func(r): return float(r.secs)), "%.0f")])
+	print_crest_lull(runs)
+	var gden: Array = [[], [], []]
+	var okinds: Array = []
+	var olt2 := 0
+	var on_total := 0
+	for r in runs:
+		gden[0].append(float(r.summary.grace_same_sec_max))
+		if float(r.summary.grace_longest_gap_nofill_s) > 0.0: gden[1].append(float(r.summary.grace_longest_gap_nofill_s))
+		gden[2].append(float(r.summary.grace_last_natural_to_boss_s))
+		var oo: Dictionary = r.summary.offers_l12
+		on_total += int(oo.n)
+		olt2 += int(oo.kinds_lt2)
+		if int(oo.n) > 0: okinds.append(float(oo.kinds_min))
+	print("  은총 밀도(%d판): 같은 초 최대 %s | 우두머리 채움 뺀 가장 긴 간격(초) %s | 마지막 자연 은총 → 우두머리 등장(초, -1 = 우두머리 없음) %s" % [runs.size(), fmt_med(gden[0], "%.0f"), fmt_med(gden[1], "%.1f"), fmt_med(gden[2], "%.1f")])
+	print("  레벨 12 뒤 제안(%d판, 제안 %d개): 판마다 카드 종류 수 최소 %s | 종류 2 미만인 제안 %d개" % [runs.size(), on_total, fmt_med(okinds, "%.0f"), olt2])
 	var modes := {}
 	for r in runs: modes[String(r.mode)] = int(modes.get(String(r.mode), 0)) + 1
 	var dmg_all: Array = []
@@ -812,9 +986,62 @@ func print_thirds(runs: Array) -> void:
 	for k in guard_times: gparts.append("%s 잡음 %d판 %s / 못 잡고 끝 %d판 %s" % [k, guard_times[k].died.size(), fmt_med(guard_times[k].died, "%.1f"), guard_times[k].alive.size(), fmt_med(guard_times[k].alive, "%.1f")])
 	print("  큰 적 등장 → 죽음(초): " + " | ".join(PackedStringArray(gparts)))
 
+## --stand: when the standing hero fell and in which beat / opening step (D22 R0-A).
+func stand_line(r: Dictionary) -> String:
+	var e: Dictionary = r.end
+	var line := ""
+	if String(e.mode) == "defeat":
+		line = "  STAND %s seed=%d: 쓰러짐 %.1f초, 마디=%s, 도입부 단계=%s" % [r.primary, r.seed, float(e.s), String(e.beat), (String(e.opening_step) if bool(e.opening_active) else "(도입부 아님)")]
+	else:
+		line = "  STAND %s seed=%d: 쓰러지지 않음(끝 상태=%s %.1f초, 마디=%s)" % [r.primary, r.seed, String(e.mode), float(e.s), String(e.beat)]
+	if targets_name == "d22": line += " | D22 3.4 서 있는 주인공: " + stand_verdict(e)
+	return line
+
+func stand_verdict(e: Dictionary) -> String:
+	var t := target_of(String(e.beat))
+	var fell := String(e.mode) == "defeat"
+	if not fell: return "승 2 안에 쓰러지지 않음 = 목표 밖"
+	if String(t.get("stand", "")) == "die_here": return "승 2 안에 쓰러짐 = 목표 안"
+	if String(t.get("stand", "")) == "survive": return "%s에서 쓰러짐(서서 버텨야 하는 구간) = 목표 밖" % String(e.beat)
+	return "%s에서 쓰러짐(승 2 뒤) = 목표 밖" % String(e.beat)
+
+func print_stand_cross(runs: Array) -> void:
+	var fell: Array = []
+	var by_beat := {}
+	var kept := 0
+	for r in runs:
+		if String(r.end.mode) == "defeat":
+			fell.append(float(r.end.s))
+			by_beat[String(r.end.beat)] = int(by_beat.get(String(r.end.beat), 0)) + 1
+		else:
+			kept += 1
+	print("STAND across %d runs (measured, pilot casting, movement zeroed): 쓰러짐 %d판 / 끝까지 %d판 | 쓰러진 시각(초) %s | 쓰러진 마디 %s" % [runs.size(), fell.size(), kept, fmt_med(fell, "%.1f"), str(by_beat)])
+
+## Crest peak / lull end, median per beat over all runs (--thirds).
+func print_crest_lull(runs: Array) -> void:
+	var cl := crest_lull_summary(runs)
+	if cl.is_empty():
+		print("  파도·골: 파도(wave_crest)·골(lull_started)이 없는 판(리듬 꺼짐)")
+		return
+	print("  파도·골(마디별 중앙; 파도 뒤 10초 살아 있는 적 최고 ÷ 마디 상한 / 골 끝(골 시작 + lull_ticks) 살아 있는 적 ÷ 마디 상한; n = 파도·골 수, 목표는 --targets=d22일 때):")
+	var names: Array = []
+	for b in targets: names.append(String(b.name))
+	for k in cl:
+		if not k in names: names.append(String(k))
+	for k in names:
+		if not cl.has(k): continue
+		var d: Dictionary = cl[k]
+		var t := target_of(String(k))
+		var note := ""
+		if targets_name == "d22" and not t.is_empty():
+			if t.has("crest_min") and int(d.crest_n) > 0: note += " 머리 뒤 최고 ≥ %.2f: %s" % [float(t.crest_min), ("안" if float(d.crest_ratio_median) >= float(t.crest_min) else "낮음")]
+			if t.has("crest_count_max") and int(d.crest_n) > 0: note += " 머리 뒤 최고 ≤ %d마리: %s" % [int(t.crest_count_max), ("안" if float(d.crest_max_median) <= float(t.crest_count_max) else "높음")]
+			if t.has("lull_max") and int(d.lull_n) > 0: note += " 골 끝 ≤ %.2f: %s" % [float(t.lull_max), ("안" if float(d.lull_ratio_median) <= float(t.lull_max) else "높음")]
+		print("    %-4s 머리 뒤 최고/상한 %.2f (최고 %.0f마리, n=%d) | 골 끝/상한 %.2f (n=%d)%s" % [k, float(d.crest_ratio_median), float(d.crest_max_median), int(d.crest_n), float(d.lull_ratio_median), int(d.lull_n), note])
+
 func print_cross(c: Dictionary) -> void:
 	print("CROSS beats (target vs value across runs that reached the beat; inside/low/high counts)")
-	for b in BEATS:
+	for b in targets:
 		var row: Dictionary = c[String(b.name)]
 		print("  %s runs=%d" % [b.name, row.runs_reached])
 		for k in METRICS:
