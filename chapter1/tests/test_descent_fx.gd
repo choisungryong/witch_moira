@@ -8,6 +8,7 @@ extends SceneTree
 ## Writes nothing. Marker: CHAPTER1_DESCENT_FX_TEST_RESULT.
 const Chapter = preload("res://chapter1/core/chapter_core.gd")
 const DescentFx = preload("res://chapter1/view/fx/descent_fx.gd")
+const Fake = preload("res://chapter1/tests/support/descent_fake_events.gd")
 const DESCENT := "res://chapter1/data/descent.json"
 var checks := 0
 var failures: Array[String] = []
@@ -183,12 +184,12 @@ func sweep_part() -> void:
 		check(of_type(events, "descent_released").size() == 1 and of_type(events, "descent_end").size() == 1, element + ": released and ended once")
 		var status: Dictionary = fx.status()
 		check(int(status.stats.sweeps) == 1 and int(status.stats.cutins) == 1, element + ": the presenter saw one cut-in and one sweep " + str(status.stats))
-		check(int(status.stats.particles) <= 400, "%s: particles %d are inside the 400 budget" % [element, int(status.stats.particles)])
-		check(int(status.stats.lights_peak) <= 2, "%s: at most 2 lights in a sweep (%d)" % [element, int(status.stats.lights_peak)])
+		check(int(status.stats.particles) <= 800, "%s: particles %d are inside the 800 budget" % [element, int(status.stats.particles)])
+		check(int(status.stats.lights_peak) <= 3, "%s: at most 3 lights in a sweep (%d)" % [element, int(status.stats.lights_peak)])
 		check(not bool(status.sweep) and not bool(status.cutin), element + ": the presenter is idle again after the sweep")
 		if element == "arc":
 			check(int(status.stats.bolts) > 0, "arc: bolts were drawn")
-			check(int(status.stats.peak_bolts) <= 40, "arc: the bolt pool stayed inside 40 (%d)" % int(status.stats.peak_bolts))
+			check(int(status.stats.peak_bolts) <= 64, "arc: the bolt pool stayed inside 64 (%d)" % int(status.stats.peak_bolts))
 		check(stage.world.kicks > 0 or element == "frost" and stage.world.kicks >= 0, element + ": the camera got an impulse")
 		stage.queue_free()
 
@@ -257,6 +258,73 @@ func settings_part() -> void:
 	check(stage.world.kicks == 0, "settings: shake off means no impulse (%d)" % stage.world.kicks)
 	stage.queue_free()
 
+## D24 12.2: the three sweeps drawn from FAKE events in the shape of 9.4 (no core needed for them; the run only supplies the view).
+## Checks: every layer runs without a script error, the budgets of 10.2 hold (particles 800, lights 3, bolts 64, fragments 14), the low
+## spec has no light and 35 % of the particles, the presenter ends idle, and the settings (shake off, reduced motion) silence the kicks.
+func fake_run_one(element: String, low: bool, shake_scale: float = 1.0, reduced: bool = false) -> Dictionary:
+	var run := make_run(element, true)
+	var stage := make_stage()
+	var fx = DescentFx.new()
+	fx.setup(stage)
+	fx.low = low
+	fx.shake_scale = shake_scale
+	fx.reduced_motion = reduced
+	play(run, fx, 5)
+	var enemies := PackedVector2Array()
+	var gen = Fake.new(element, 11, enemies)
+	for i in 90:
+		enemies.append(run.hero.position + Vector2(gen.h(9, i, 0) * 30.0 - 15.0, gen.h(9, i, 1) * 24.0 - 12.0))
+	gen.enemies = enemies
+	fx.consume(run.events)
+	var tick := int(run.tick)
+	var released: Array = gen.release(run.hero.position, tick)
+	fx.consume(released)
+	fx.sync(run, 1.0 / 60.0)
+	var types := {}
+	var total := int(Fake.SWEEP_TICKS[element])
+	for s in range(1, total + 260):
+		if s <= total:
+			var evs: Array = gen.step(s)
+			for e in evs: types[String(e.get("phase", e.type))] = int(types.get(String(e.get("phase", e.type)), 0)) + 1
+			fx.consume(evs)
+		fx.sync(run, 1.0 / 60.0)
+	var out := {"stats": fx.status().stats, "status": fx.status(), "types": types, "kicks": stage.world.kicks}
+	stage.queue_free()
+	return out
+
+func fake_part() -> void:
+	for element in ["ember", "frost", "arc"]:
+		for low in [false, true]:
+			var tag := "fake %s/%s" % [element, "low" if low else "full"]
+			var r := fake_run_one(element, low)
+			var stats: Dictionary = r.stats
+			var status: Dictionary = r.status
+			check(int(stats.sweeps) == 1, tag + ": one sweep drawn " + str(stats))
+			check(int(stats.particles) <= 800, "%s: particles %d inside 800" % [tag, int(stats.particles)])
+			if low:
+				check(int(stats.lights_peak) == 0, tag + ": the low spec uses no light (%d)" % int(stats.lights_peak))
+				check(int(stats.particles) <= 300, "%s: the low spec's particles are 35 %% (%d)" % [tag, int(stats.particles)])
+			else:
+				check(int(stats.lights_peak) <= 3 and int(stats.lights_peak) >= 1, "%s: 1 to 3 lights (%d)" % [tag, int(stats.lights_peak)])
+			check(not bool(status.sweep), tag + ": idle after the sweep + its tail")
+			check(int(r.kicks) > 0, tag + ": the camera got impulses")
+			match element:
+				"ember":
+					check(int(stats.rocks) == 14 and int(stats.impacts) == 14, tag + ": 14 fragments booked and landed " + str(stats))
+					check(int(r.types.get("firestorm", 0)) == 1, tag + ": the finale came once")
+				"frost":
+					check(int(stats.pulses) == 8 and int(stats.breaks) == 1, tag + ": eight pulses and one break " + str(stats))
+				"arc":
+					check(int(r.types.get("bolt", 0)) == 40, tag + ": 40 bolts were struck (%d)" % int(r.types.get("bolt", 0)))
+					check(int(stats.bolts) + int(stats.bolts_dropped) == 40, tag + ": every bolt was drawn or counted dropped " + str(stats))
+					check(int(stats.peak_bolts) <= (24 if low else 64), tag + ": the live bolt pool stayed in its cap (%d)" % int(stats.peak_bolts))
+	# settings: shake off = no impulse at all; reduced motion = no impulse either
+	for element in ["ember", "frost", "arc"]:
+		var quiet := fake_run_one(element, false, 0.0, false)
+		check(int(quiet.kicks) == 0, "fake %s: shake off means no impulse (%d)" % [element, int(quiet.kicks)])
+		var calm := fake_run_one(element, false, 1.0, true)
+		check(int(calm.kicks) == 0, "fake %s: reduced motion means no impulse (%d)" % [element, int(calm.kicks)])
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_DESCENT_FX_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -269,5 +337,6 @@ func execute() -> void:
 	purity_part()
 	watchdog_part()
 	settings_part()
+	fake_part()
 	print("CHAPTER1_DESCENT_FX_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

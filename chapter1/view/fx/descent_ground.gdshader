@@ -17,6 +17,7 @@ uniform float fade = 1.0;          // 0..1 the trace's remaining strength
 uniform float time = 0.0;
 uniform vec2 hero_local = vec2(0.0);
 uniform float max_alpha = 0.6;
+uniform vec2 rect = vec2(0.0);      // D24: when > 0 the trace is clipped to this half-size rectangle (the screen area), soft at its edge
 
 varying vec2 lp;
 
@@ -73,6 +74,10 @@ void vertex() {
 void fragment() {
 	float r = length(lp);
 	float inside = 1.0 - smoothstep(reach - 1.6, reach, r);
+	if (rect.x > 0.0) {
+		float rd = max(abs(lp.x) - rect.x, abs(lp.y) - rect.y);
+		inside = 1.0 - smoothstep(-1.2, 1.2, rd);
+	}
 	float hero_clear = smoothstep(1.2, 4.0, length(lp - hero_local));
 	vec3 col = vec3(0.0);
 	float a = 0.0;

@@ -1,33 +1,51 @@
 extends RefCounted
-## The descent's screen (D15 A, D14 4.3-4.4, U-2): the gauge's edge aura, the cut-in, and the sweep of each element.
-## It only READS the core: descent_view() and the events descent_ready / descent_called / descent_released / descent_strike /
-## descent_end / orb_vacuum, plus the orbs and the hero's place. It never writes to the core. The two calls that do
+## The descent's screen (D15 A, D14 4.3-4.4, D24 4.8 / 5-7 / 12.2): the gauge's edge aura, the cut-in, the demon in the sky layer,
+## and the sweep of each element (ember_ult.gd / frost_ult.gd / arc_ult.gd in fx/descent/).
+## It only READS the core: descent_view() and the events descent_ready / descent_called / descent_released / descent_book /
+## descent_strike / descent_end / orb_vacuum, plus the orbs and the hero's place. It never writes to the core. The two calls that do
 ## (request_descent, release_descent) are the app's: this file only says "the cut-in is over" through take_release().
 ##
 ## A run whose descent is off has no node from this file at all: sync() returns on {"enabled":false} before _build() ever runs.
 ##
-## Budget (RS2 notes, D14): ordinary alpha on the single full-screen control (no additive full-screen layer), no effect light during
-## the cut-in, two lights during the sweep, and at most ~200 particles of this file in a run (one element's pool is built).
-## Colours are the element's own; the crimson of an enemy's attack is never used. No speed lines.
+## Budget (D24 10.2): ordinary alpha on the single full-screen control (no additive full-screen layer; storm, flame and flash are
+## values of descent_screen.gdshader), no effect light during the cut-in, at most 3 lights in a sweep, at most 800 particles of this
+## file in a run (one element's pool is built). Low spec (--chapter1-descent-fx=low): particles 35 %, no light, one streak layer,
+## bolts 24. Colours are the element's own; the crimson of an enemy's attack is never used. No speed lines.
+##
+## The sweep's clock: seconds, advanced by the render delta while the core plays, pulled to the event's `step` when it drifts more
+## than 3 frames. A hit-stop (frost break, 0.08 s) pauses only this clock and the particles of this file: never the core's ticks.
+##
+## Events read (D24 9.4): released {center, area{right_deg,half_w_m,half_h_m}, sweep_ticks, cleared_positions}, book {fragments}, strike
+## {phase: impact | firestorm | onset | freeze | pulse | break | bolt | finale, step, center, positions, k, pos, radius_m, big, n, forks, burst},
+## end {kills}. The old reach_m / heading of descent_released and the old phases wall / sweep_end are NOT read any more.
+## Without an `area` (a core older than D24) the screen rectangle falls back to the data's default numbers.
 ##
 ## Settings (variables here; a settings screen and settings.cfg do not exist yet, so the app sets them from launch arguments):
 ##   cutin_short    the 0.5 s cut-in every time ("짧게만")
-##   reduced_motion no slide, no shake, no flash (the picture only fades)
-##   flash_scale    0 off, 0.5 weak, 1 full: the flash of the gesture, the tint washes, the aura swell
+##   reduced_motion no slide, no shake, no flash, no gust (the picture only fades)
+##   flash_scale    0 off, 0.5 weak, 1 full: the flash of the gesture, the tint washes, the aura swell, the white flashes, the lights
 ##   shake_scale    0 off .. 1: the camera impulses
 ##   numbers_on     the one merged kill number after a sweep
+##   low            --chapter1-descent-fx=low
 const Palette = preload("res://chapter1/view/hud/palette.gd")
 const Loc = preload("res://chapter1/view/loc.gd")
 const AssetSlots = preload("res://chapter1/view/assets/asset_slots.gd")
+const EmberUlt = preload("res://chapter1/view/fx/descent/ember_ult.gd")
+const FrostUlt = preload("res://chapter1/view/fx/descent/frost_ult.gd")
+const ArcUlt = preload("res://chapter1/view/fx/descent/arc_ult.gd")
 const SCREEN_SHADER = preload("res://chapter1/view/fx/descent_screen.gdshader")
-const WALL_SHADER = preload("res://chapter1/view/fx/descent_wall.gdshader")
-const GROUND_SHADER = preload("res://chapter1/view/fx/descent_ground.gdshader")
 
 const SLOT_PREFIX := "illustration.cutin.descent."
+const SKY_SLOT_PREFIX := "illustration.sky.descent."
 const ELEMENT_ID := {"ember": 0.0, "frost": 1.0, "arc": 2.0}
 ## Where the bust sits and which way it comes in from, per element (the art decides the final look).
 const SLIDE_DIR := {"ember": Vector2(1, 0), "frost": Vector2(-1, 0), "arc": Vector2(0, 0.6)}
 const ART_FOCUS_Y := {"ember": 0.44, "frost": 0.42, "arc": 0.40}
+## Where the demon stands in the sky layer (uv x): away from where the effect comes in (rocks from the upper left, wind from the upper right).
+const SKY_X := {"ember": 0.72, "frost": 0.28, "arc": 0.5}
+## The sweep's tail after its last tick (the scorch of the rocks stays 3 s).
+const TAIL := {"ember": 3.2, "frost": 3.0, "arc": 1.3}
+const DEFAULT_AREA := {"right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4}
 
 ## The cut-in's own clock, in the seconds of the long one (D14 4.4); the short one scales all of it by SHORT_SECONDS / LONG_SECONDS.
 const LONG_SECONDS := 0.9
@@ -43,52 +61,56 @@ const T_END := 0.90
 ## The app's own watchdog is longer than this; the picture never holds the core for more than this wall time.
 const WATCHDOG_SECONDS := 2.0
 
-const SCREEN_TILT := 0.7314          ## sin of the camera's look-down angle (46.9 degrees): ground depth -> screen height
 const GROUND_Y := 0.045
 const FLIGHT_ORBS := 64
 const FLIGHT_PUFFS := 32
-const BOLT_LIFE := 0.22
-const MAX_BOLTS := 40
 const ORB_COLOR := Color("8fe3c0")
+const MAX_LIGHTS := 3
+const MAX_PARTICLES := 800
+const HITSTOP_SECONDS := 0.08
+const DEMON_IN := 0.35
+const DEMON_OUT := 0.4
 
 var cutin_short := false
 var reduced_motion := false
 var flash_scale := 1.0
 var shake_scale := 1.0
 var numbers_on := true
+var low := false
 
 var view: Node3D
-var stats := {"cutins": 0, "sweeps": 0, "bolts": 0, "bolts_dropped": 0, "peak_bolts": 0, "flights": 0, "lights_peak": 0, "particles": 0}
+var stats := {"cutins": 0, "sweeps": 0, "bolts": 0, "bolts_dropped": 0, "peak_bolts": 0, "flights": 0, "lights_peak": 0, "particles": 0,
+	"rocks": 0, "impacts": 0, "pulses": 0, "breaks": 0, "kicks": 0, "peak_alpha_layers": 0}
+
+## Values the element's module sets each frame for the one screen shader (read by _push_screen).
+var scr := {"sky": 0.0, "sky_flash": 0.0, "storm": 0.0, "gust": 0.0, "fire_cover": 0.0, "fire_alpha": 0.0, "whiteout": 0.0, "demon_pose": 0.0}
+var holder: Node3D
+var tint := Color.WHITE
+var hero := Vector2.ZERO
+var sw: Dictionary = {}
+## The render frame's delta (capped), also while a hit-stop holds the sweep's own clock: flashes decay on this one, so a freeze frame never holds a white screen.
+var wall_dt := 0.0
 
 var _built := false
 var _shown := false
 var _element := ""
-var _tint := Color.WHITE
 var _last_seq := -1
 var _clock := 0.0
 var _release_due := false
-var _holder: Node3D
 var _layer: CanvasLayer
 var _screen: ColorRect
 var _screen_mat: ShaderMaterial
 var _kill_label: Label
-var _ground: MeshInstance3D
-var _ground_mat: ShaderMaterial
-var _wall: MeshInstance3D
-var _wall_mat: ShaderMaterial
-var _bolt_mesh: ImmediateMesh
-var _bolt_node: MeshInstance3D
 var _flight: MultiMeshInstance3D
 var _lights: Array[OmniLight3D] = []
-var _light_life := PackedFloat32Array([0.0, 0.0])
-var _light_total := PackedFloat32Array([0.1, 0.1])
-var _light_energy := PackedFloat32Array([0.0, 0.0])
+var _light_life := PackedFloat32Array([0.0, 0.0, 0.0])
+var _light_total := PackedFloat32Array([0.1, 0.1, 0.1])
+var _light_energy := PackedFloat32Array([0.0, 0.0, 0.0])
 var _light_next := 0
-var _wall_particles: GPUParticles3D
-var _burst_particles: GPUParticles3D
-var _burst_material: ParticleProcessMaterial
+var _ult: RefCounted = null
 var _art: Texture2D = null
 var _art_checked := false
+var _sky_art_checked := false
 
 var _aura := 0.0
 var _aura_pulse := 0.0
@@ -96,19 +118,24 @@ var _pulse := 0.0
 var _freeze := 0.0
 var _shatter := 0.0
 var _scrim_hold := 0.0
+var _demon := 0.0
+var _hitstop := 0.0
 var _cut: Dictionary = {}
-var _sw: Dictionary = {}
-var _bolts: Array[Dictionary] = []
 var _orb_cache := PackedVector2Array()
 var _kill_cache := PackedVector2Array()
 var _flights := PackedFloat32Array()      ## per flight: x, z, delay, age, kind(0 orb, 1 puff), unused
 var _flight_target := Vector3.ZERO
 var _kill_label_age := -1.0
-var _kick_clock := 0.0
-var _hero := Vector2.ZERO
+var _last_kick_t := -1.0
+var _kick_hold := 0.0
+## Frames left in which every material of this file is drawn once, invisibly small, right after it is built (so a sweep never meets a shader compile: D24 10.3).
+var _warm := 0
 
 func setup(owner_view: Node3D) -> void:
 	view = owner_view
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--chapter1-descent-fx=low": low = true
+		elif arg == "--chapter1-descent-fx=full": low = false
 
 ## A new run: everything this file shows is dropped. No node is made here.
 func reset() -> void:
@@ -116,14 +143,17 @@ func reset() -> void:
 	_clock = 0.0
 	_release_due = false
 	_cut = {}
-	_sw = {}
+	sw = {}
 	_aura = 0.0
 	_aura_pulse = 0.0
 	_pulse = 0.0
 	_freeze = 0.0
 	_shatter = 0.0
 	_scrim_hold = 0.0
-	_bolts.clear()
+	_demon = 0.0
+	_hitstop = 0.0
+	_kick_hold = 0.0
+	_last_kick_t = -1.0
 	_orb_cache = PackedVector2Array()
 	_kill_cache = PackedVector2Array()
 	_flights = PackedFloat32Array()
@@ -131,6 +161,8 @@ func reset() -> void:
 	_element = ""
 	_art = null
 	_art_checked = false
+	_sky_art_checked = false
+	_reset_scr()
 	if _built:
 		_hide_all()
 		if _flight != null: _flight.multimesh.visible_instance_count = 0
@@ -138,7 +170,6 @@ func reset() -> void:
 			light.visible = false
 			light.light_energy = 0.0
 		_light_life.fill(0.0)
-		if _wall_particles != null: _wall_particles.emitting = false
 		_free_built()
 
 ## true once, when the cut-in has run to the moment the sweep should start. The app then calls release_descent().
@@ -150,7 +181,114 @@ func take_release() -> bool:
 ## A read-only digest for tools and tests.
 func status() -> Dictionary:
 	return {"built": _built, "element": _element, "cutin": not _cut.is_empty(), "cut_t": float(_cut.get("t", 0.0)), "cut_dur": float(_cut.get("dur", 0.0)),
-		"sweep": not _sw.is_empty(), "sweep_t": float(_sw.get("t", 0.0)), "aura": _aura, "bolts": _bolts.size(), "release_due": _release_due, "stats": stats.duplicate()}
+		"sweep": not sw.is_empty(), "sweep_t": float(sw.get("t", 0.0)), "aura": _aura, "bolts": int(_ult.live_bolts()) if _ult != null and _element == "arc" else 0,
+		"release_due": _release_due, "demon": _demon, "low": low, "stats": stats.duplicate()}
+
+# ---------------------------------------------------------------- services for the element modules
+
+func camera() -> Camera3D:
+	var world: Variant = view.get("world") if view != null else null
+	if world == null: return null
+	return world.get("camera") as Camera3D
+
+func kick(strength: float) -> void:
+	if reduced_motion or shake_scale <= 0.0: return
+	stats.kicks += 1
+	var world: Variant = view.get("world")
+	if world != null and world.has_method("kick_camera"): world.kick_camera(strength * shake_scale)
+
+## Camera impulses that come within 0.1 s of each other are one: the strongest of them goes out when the gap has passed.
+func kick_merged(strength: float, t: float) -> void:
+	if t - _last_kick_t >= 0.1:
+		_last_kick_t = t
+		kick(maxf(strength, _kick_hold))
+		_kick_hold = 0.0
+	else:
+		_kick_hold = maxf(_kick_hold, strength)
+
+func hitstop(seconds: float = HITSTOP_SECONDS) -> void:
+	if reduced_motion: return
+	_hitstop = maxf(_hitstop, seconds)
+
+## A pooled light (3 for the whole sweep, none on the low spec). Round robin.
+func pool_light(at: Vector3, color: Color, energy: float, range_: float, seconds: float) -> void:
+	if low or _lights.is_empty(): return
+	var index := _light_next
+	_light_next = (_light_next + 1) % _lights.size()
+	_set_light(index, at, color, energy, range_, seconds)
+
+func hero_uv() -> Vector2:
+	var cam := camera()
+	if cam == null or not cam.is_inside_tree(): return Vector2(-1, -1)
+	var size_ := view.get_viewport().get_visible_rect().size
+	if size_.x < 1.0 or size_.y < 1.0: return Vector2(-1, -1)
+	return cam.unproject_position(Vector3(hero.x, 1.0, hero.y)) / size_
+
+func screen_aspect() -> float:
+	if _screen != null and _screen.size.y > 1.0: return _screen.size.x / _screen.size.y
+	return 16.0 / 9.0
+
+## Rounds an amount to the low spec's share.
+func count(amount: int) -> int:
+	return maxi(4, int(round(float(amount) * (0.35 if low else 1.0))))
+
+## One soft round dot shared by every particle of this file (untextured quads read as square confetti).
+static var _soft_dot: GradientTexture2D = null
+
+func soft_dot() -> GradientTexture2D:
+	if _soft_dot == null:
+		var gradient := Gradient.new()
+		gradient.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+		gradient.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		_soft_dot = GradientTexture2D.new()
+		_soft_dot.gradient = gradient
+		_soft_dot.fill = GradientTexture2D.FILL_RADIAL
+		_soft_dot.fill_from = Vector2(0.5, 0.5)
+		_soft_dot.fill_to = Vector2(1.0, 0.5)
+		_soft_dot.width = 64
+		_soft_dot.height = 64
+	return _soft_dot
+
+func particle_quad(additive: bool, stretch: Vector2 = Vector2(0.3, 0.3), align_velocity: bool = false) -> QuadMesh:
+	var mesh := QuadMesh.new(); mesh.size = stretch
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = soft_dot()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	material.vertex_color_use_as_albedo = true
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if additive: material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	material.billboard_keep_scale = true
+	mesh.material = material
+	return mesh
+
+func ramp(stops: Array) -> GradientTexture1D:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array(stops.map(func(s): return float(s[0])))
+	gradient.colors = PackedColorArray(stops.map(func(s): return s[1]))
+	var texture := GradientTexture1D.new()
+	texture.gradient = gradient
+	return texture
+
+func ease_out(x: float) -> float:
+	x = clampf(x, 0.0, 1.0)
+	return 1.0 - pow(1.0 - x, 3.0)
+
+func ramp_t(t: float, a: float, b: float) -> float:
+	return clampf((t - a) / maxf(0.0001, b - a), 0.0, 1.0)
+
+## The same integer-ish hash everywhere in the presenter: deterministic, no engine random.
+func hash1(a: float) -> float:
+	return fposmod(sin(a * 12.9898) * 43758.5453, 1.0)
+
+## A world point on the sweep's screen rectangle? (D24 4.1) u along the screen's right, v along its down.
+func in_area(point: Vector2, margin: float = 0.0) -> bool:
+	var a: Dictionary = sw.get("area", DEFAULT_AREA)
+	var d := point - (sw.center as Vector2)
+	var rad := deg_to_rad(float(a.right_deg))
+	var right := Vector2(cos(rad), sin(rad))
+	var down := right.rotated(-PI * 0.5)
+	return absf(d.dot(right)) <= float(a.half_w_m) + margin and absf(d.dot(down)) <= float(a.half_h_m) + margin
 
 # ---------------------------------------------------------------- events
 
@@ -165,6 +303,7 @@ func consume(events: Array) -> void:
 			"descent_ready": _aura_pulse = 1.0
 			"descent_called": _on_called(event)
 			"descent_released": _on_released(event)
+			"descent_book": _on_book(event)
 			"descent_strike": _on_strike(event)
 			"descent_end": _on_end(event)
 			"orb_vacuum":
@@ -182,54 +321,47 @@ func _on_called(event: Dictionary) -> void:
 
 func _on_released(event: Dictionary) -> void:
 	_ensure_built(String(event.element))
-	if not _built: return
+	if not _built or _ult == null: return
 	var el := String(event.element)
-	var center: Vector2 = event.center
-	var heading: Vector2 = event.get("heading", Vector2.ZERO)
-	if heading.length_squared() < 0.0001: heading = Vector2(0.786, -0.618)
+	var area: Dictionary = event.get("area", DEFAULT_AREA)
 	var ticks := int(event.sweep_ticks)
-	var tail := 2.6 if el == "ember" else (0.7 if el == "frost" else 0.35)
-	_sw = {"element": el, "center": center, "reach": float(event.reach_m), "heading": heading.normalized(), "dur": float(ticks) / 60.0, "t": 0.0, "tail": tail,
-		"broke": false, "bt": 0.0, "rounds": 0, "kick": 0.0, "kills": 0}
+	sw = {"element": el, "center": event.center as Vector2, "area": area, "dur": float(ticks) / 60.0, "t": 0.0, "tail": float(TAIL.get(el, 1.0)),
+		"ended_at": -1.0, "kills": 0, "legacy": not event.has("area")}
 	_kill_cache = PackedVector2Array()
+	_hitstop = 0.0
+	_last_kick_t = -1.0
+	_kick_hold = 0.0
+	_reset_scr()
 	stats.sweeps += 1
-	_ground.position = Vector3(center.x, GROUND_Y, center.y)
-	var reach := float(event.reach_m)
-	(_ground.mesh as PlaneMesh).size = Vector2(reach * 2.0 + 4.0, reach * 2.0 + 4.0)
-	_ground_mat.set_shader_parameter("reach", reach)
-	_ground_mat.set_shader_parameter("heading", heading.normalized())
-	_ground_mat.set_shader_parameter("mode", 0 if el == "ember" else (1 if el == "frost" else 0))
-	_ground_mat.set_shader_parameter("progress", 0.0)
-	_ground_mat.set_shader_parameter("shatter", 0.0)
-	_ground_mat.set_shader_parameter("fade", 1.0)
-	_ground.visible = el != "arc"
-	_wall.visible = el == "ember"
+	_load_sky_art()
+	_ult.begin(event)
 	# the shots that were wiped: small flashes where they were
 	var cleared: Array = event.get("cleared_positions", [])
-	var count := mini(cleared.size(), FLIGHT_PUFFS)
-	for i in count:
-		var at: Vector2 = cleared[i]
+	var made := 0
+	for at in cleared:
+		if made >= FLIGHT_PUFFS: break
 		_flights.append(at.x); _flights.append(at.y); _flights.append(0.0); _flights.append(0.0); _flights.append(1.0); _flights.append(0.0)
-	if el == "ember" and _wall_particles != null:
-		_wall_particles.emitting = true
-	if el == "arc": _scrim_hold = 0.28
+		made += 1
+
+func _on_book(event: Dictionary) -> void:
+	if sw.is_empty() or _ult == null: return
+	_ult.book(event)
 
 func _on_strike(event: Dictionary) -> void:
-	if _sw.is_empty() or not _built: return
-	var phase := String(event.phase)
+	if sw.is_empty() or not _built or _ult == null: return
+	if event.has("center"): sw["center"] = event.center
+	var step := int(event.get("step", -1))
+	if step >= 0 and absf(float(sw.t) - float(step) / 60.0) > 0.05: sw["t"] = float(step) / 60.0
 	var positions: Array = event.get("positions", [])
 	for pos in positions:
 		if _kill_cache.size() < 48: _kill_cache.append(pos)
-	match phase:
-		"break": _do_break(positions)
-		"bolt": _do_bolts(positions)
-		"sweep_end": pass
+	_ult.strike(event)
 
 func _on_end(event: Dictionary) -> void:
 	if not _built: return
-	_sw["kills"] = int(event.get("kills", 0))
-	_sw["ended"] = true
-	_kick(0.25)
+	sw["kills"] = int(event.get("kills", 0))
+	if not sw.is_empty(): sw["ended_at"] = float(sw.t)
+	kick(0.25)
 	if numbers_on and int(event.get("kills", 0)) > 0 and _kill_label != null:
 		_kill_label.text = Loc.tn("descent.kills", int(event.kills))
 		_kill_label_age = 0.0
@@ -240,60 +372,23 @@ func _on_end(event: Dictionary) -> void:
 func _ensure_built(element: String) -> void:
 	if _built or view == null: return
 	_element = element
-	_tint = Palette.element_color(element, Palette.BRASS)
+	tint = Palette.element_color(element, Palette.BRASS)
 	_build()
 
 func _free_built() -> void:
-	# The nodes stay for the next run; only the element-specific pieces are reset (the element can differ in a new run).
+	# The nodes are dropped with the run; the element can differ in a new run.
 	if _built:
-		if _holder != null: _holder.queue_free()
+		if _ult != null: _ult.reset()
+		if holder != null: holder.queue_free()
 		if _layer != null: _layer.queue_free()
-		_holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null
-		_ground = null; _wall = null; _bolt_node = null; _flight = null; _wall_particles = null; _burst_particles = null
+		holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null; _flight = null; _ult = null
 		_lights.clear()
 		_built = false
 		_shown = false
 
 func _build() -> void:
-	_holder = Node3D.new(); _holder.name = "DescentFx"
-	view.add_child(_holder)
-	# Floor trace (ember soot, frost crystals): under the enemies' warnings.
-	_ground = MeshInstance3D.new(); _ground.name = "DescentGround"
-	var plane := PlaneMesh.new(); plane.size = Vector2(30, 30)
-	_ground.mesh = plane
-	_ground_mat = ShaderMaterial.new(); _ground_mat.shader = GROUND_SHADER
-	_ground_mat.render_priority = -5
-	_ground.material_override = _ground_mat
-	_ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_ground.visible = false
-	_holder.add_child(_ground)
-	# The wall of fire: a camera-facing quad.
-	_wall = MeshInstance3D.new(); _wall.name = "DescentWall"
-	var quad := QuadMesh.new(); quad.size = Vector2(7, 24)
-	_wall.mesh = quad
-	_wall_mat = ShaderMaterial.new(); _wall_mat.shader = WALL_SHADER
-	_wall_mat.render_priority = 6
-	_wall.material_override = _wall_mat
-	_wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_wall.extra_cull_margin = 40.0
-	_wall.visible = false
-	_holder.add_child(_wall)
-	# Bolts.
-	_bolt_mesh = ImmediateMesh.new()
-	_bolt_node = MeshInstance3D.new(); _bolt_node.name = "DescentBolts"
-	_bolt_node.mesh = _bolt_mesh
-	var bolt_material := StandardMaterial3D.new()
-	bolt_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bolt_material.vertex_color_use_as_albedo = true
-	bolt_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bolt_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bolt_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	bolt_material.render_priority = 7
-	_bolt_node.material_override = bolt_material
-	_bolt_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_bolt_node.extra_cull_margin = 60.0
-	_bolt_node.visible = false
-	_holder.add_child(_bolt_node)
+	holder = Node3D.new(); holder.name = "DescentFx"
+	view.add_child(holder)
 	# Orb flights and the puffs of wiped shots: one MultiMesh.
 	var spark := QuadMesh.new(); spark.size = Vector2(0.34, 0.34)
 	var spark_material := StandardMaterial3D.new()
@@ -314,18 +409,25 @@ func _build() -> void:
 	_flight.material_override = spark_material
 	_flight.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_flight.extra_cull_margin = 60.0
-	_holder.add_child(_flight)
-	# Two lights for the whole sweep (the cut-in uses none).
-	for i in 2:
-		var light := OmniLight3D.new(); light.name = "DescentLight%d" % i
-		light.shadow_enabled = false
-		light.omni_range = 8.0
-		light.light_color = _tint
-		light.light_energy = 0.0
-		light.visible = false
-		_holder.add_child(light)
-		_lights.append(light)
-	_build_particles()
+	holder.add_child(_flight)
+	# Three lights for the whole sweep (the cut-in uses none; the low spec uses none).
+	if not low:
+		for i in MAX_LIGHTS:
+			var light := OmniLight3D.new(); light.name = "DescentLight%d" % i
+			light.shadow_enabled = false
+			light.omni_range = 8.0
+			light.light_color = tint
+			light.light_energy = 0.0
+			light.visible = false
+			holder.add_child(light)
+			_lights.append(light)
+	# The element's own layers.
+	match _element:
+		"ember": _ult = EmberUlt.new()
+		"frost": _ult = FrostUlt.new()
+		_: _ult = ArcUlt.new()
+	_ult.build(self)
+	stats.particles = int(_ult.particle_total())
 	# The screen layer.
 	_layer = CanvasLayer.new(); _layer.name = "DescentScreen"
 	_layer.layer = 0
@@ -345,98 +447,19 @@ func _build() -> void:
 	_kill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_kill_label.add_theme_font_override("font", Loc.font("heading"))
 	_kill_label.add_theme_font_size_override("font_size", 54)
-	_kill_label.add_theme_color_override("font_color", _tint.lerp(Color.WHITE, .35))
+	_kill_label.add_theme_color_override("font_color", tint.lerp(Color.WHITE, .35))
 	_kill_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, .9))
 	_kill_label.add_theme_constant_override("outline_size", 8)
 	_kill_label.visible = false
 	_layer.add_child(_kill_label)
-	_screen_mat.set_shader_parameter("tint", _tint)
+	_screen_mat.set_shader_parameter("tint", tint)
 	_screen_mat.set_shader_parameter("element_id", float(ELEMENT_ID.get(_element, 0.0)))
 	_screen_mat.set_shader_parameter("slide_dir", SLIDE_DIR.get(_element, Vector2(1, 0)))
 	_screen_mat.set_shader_parameter("art_focus_y", float(ART_FOCUS_Y.get(_element, 0.44)))
-	_ground_mat.set_shader_parameter("tint", _tint)
+	_screen_mat.set_shader_parameter("demon_x", float(SKY_X.get(_element, 0.7)))
+	_screen_mat.set_shader_parameter("low", 1.0 if low else 0.0)
 	_built = true
-
-func _particle_quad(additive: bool) -> QuadMesh:
-	var mesh := QuadMesh.new(); mesh.size = Vector2(0.3, 0.3)
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	material.vertex_color_use_as_albedo = true
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	if additive: material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	material.billboard_keep_scale = true
-	mesh.material = material
-	return mesh
-
-func _ramp(stops: Array) -> GradientTexture1D:
-	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array(stops.map(func(s): return float(s[0])))
-	gradient.colors = PackedColorArray(stops.map(func(s): return s[1]))
-	var texture := GradientTexture1D.new()
-	texture.gradient = gradient
-	return texture
-
-func _build_particles() -> void:
-	var aabb := AABB(Vector3(-40, -2, -40), Vector3(80, 16, 80))
-	_burst_material = ParticleProcessMaterial.new()
-	_burst_particles = GPUParticles3D.new(); _burst_particles.name = "DescentBurst"
-	_burst_particles.one_shot = true
-	_burst_particles.explosiveness = 1.0
-	_burst_particles.emitting = false
-	_burst_particles.local_coords = false
-	_burst_particles.visibility_aabb = aabb
-	_burst_particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	match _element:
-		"frost":
-			_burst_particles.amount = 192; _burst_particles.lifetime = 0.95
-			_burst_material.direction = Vector3(0, 1, 0); _burst_material.spread = 75.0
-			_burst_material.initial_velocity_min = 3.0; _burst_material.initial_velocity_max = 9.0
-			_burst_material.gravity = Vector3(0, -16, 0)
-			_burst_material.scale_min = 0.5; _burst_material.scale_max = 1.5
-			_burst_material.color_ramp = _ramp([[0.0, Color(0.95, 1.0, 1.0, 0.95)], [0.5, Color(0.62, 0.9, 0.95, 0.7)], [1.0, Color(0.4, 0.75, 0.9, 0.0)]])
-			_burst_particles.draw_pass_1 = _particle_quad(false)
-		"arc":
-			_burst_particles.amount = 96; _burst_particles.lifetime = 0.38
-			_burst_material.direction = Vector3(0, 0.35, 0); _burst_material.spread = 100.0
-			_burst_material.initial_velocity_min = 3.0; _burst_material.initial_velocity_max = 10.0
-			_burst_material.gravity = Vector3(0, -8, 0)
-			_burst_material.scale_min = 0.3; _burst_material.scale_max = 0.9
-			_burst_material.color_ramp = _ramp([[0.0, Color(1, 1, 1, 1)], [0.4, Color(0.72, 0.8, 1.0, 0.85)], [1.0, Color(0.42, 0.5, 1.0, 0.0)]])
-			_burst_particles.draw_pass_1 = _particle_quad(true)
-		_:
-			_burst_particles.amount = 48; _burst_particles.lifetime = 0.8
-			_burst_material.direction = Vector3(0, 1, 0); _burst_material.spread = 60.0
-			_burst_material.initial_velocity_min = 2.0; _burst_material.initial_velocity_max = 6.0
-			_burst_material.gravity = Vector3(0, -3, 0)
-			_burst_material.scale_min = 0.4; _burst_material.scale_max = 1.0
-			_burst_material.color_ramp = _ramp([[0.0, Color(1, 0.85, 0.5, 1)], [0.5, Color(1, 0.45, 0.12, 0.8)], [1.0, Color(0.2, 0.08, 0.04, 0)]])
-			_burst_particles.draw_pass_1 = _particle_quad(true)
-	_burst_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINTS
-	_burst_material.emission_point_count = 1
-	_burst_particles.process_material = _burst_material
-	_holder.add_child(_burst_particles)
-	stats.particles = _burst_particles.amount
-	if _element == "ember":
-		var wall_material := ParticleProcessMaterial.new()
-		wall_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-		wall_material.emission_box_extents = Vector3(0.45, 0.1, 9.0)
-		wall_material.direction = Vector3(0, 1, 0); wall_material.spread = 35.0
-		wall_material.initial_velocity_min = 1.5; wall_material.initial_velocity_max = 5.0
-		wall_material.gravity = Vector3(0, 1.2, 0)
-		wall_material.damping_min = 0.3; wall_material.damping_max = 1.0
-		wall_material.scale_min = 0.3; wall_material.scale_max = 0.8
-		wall_material.color_ramp = _ramp([[0.0, Color(1, 0.9, 0.55, 1)], [0.45, Color(1, 0.5, 0.14, 0.8)], [1.0, Color(0.25, 0.08, 0.03, 0)]])
-		_wall_particles = GPUParticles3D.new(); _wall_particles.name = "DescentEmbers"
-		_wall_particles.amount = 140; _wall_particles.lifetime = 1.1
-		_wall_particles.local_coords = false
-		_wall_particles.emitting = false
-		_wall_particles.visibility_aabb = aabb
-		_wall_particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_wall_particles.process_material = wall_material
-		_wall_particles.draw_pass_1 = _particle_quad(true)
-		_holder.add_child(_wall_particles)
-		stats.particles += 140
+	_warm = 5
 
 func _load_art() -> void:
 	if _art_checked: return
@@ -449,6 +472,21 @@ func _load_art() -> void:
 	_screen_mat.set_shader_parameter("art", _art)
 	_screen_mat.set_shader_parameter("has_art", 1.0 if _art != null else 0.0)
 
+## The demon of the sky layer: the picture of the slot illustration.sky.descent.<element> when there is one, else the code silhouette.
+func _load_sky_art() -> void:
+	if _sky_art_checked or _screen_mat == null: return
+	_sky_art_checked = true
+	var slot := SKY_SLOT_PREFIX + _element
+	var tex: Texture2D = null
+	if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot):
+		tex = AssetSlots.texture(slot)
+		if slot in AssetSlots.missing(): tex = null
+	_screen_mat.set_shader_parameter("sky_art", tex)
+	_screen_mat.set_shader_parameter("has_sky_art", 1.0 if tex != null else 0.0)
+
+func _reset_scr() -> void:
+	for key in scr: scr[key] = 0.0
+
 # ---------------------------------------------------------------- per frame
 
 func sync(run: RefCounted, delta: float) -> void:
@@ -460,9 +498,10 @@ func sync(run: RefCounted, delta: float) -> void:
 		_ensure_built(String(v.element))
 		if not _built: return
 	var dt := minf(delta, 0.1)
+	wall_dt = dt
 	_clock += delta
 	var mode := String(run.mode)
-	_hero = run.hero.position if not run.hero.is_empty() else Vector2.ZERO
+	hero = run.hero.position if not run.hero.is_empty() else Vector2.ZERO
 	var state := String(v.state)
 	# The edge aura: only while the gauge is full and nothing else is going on.
 	var aura_target := 1.0 if state == "ready" and mode == "playing" else 0.0
@@ -470,8 +509,8 @@ func sync(run: RefCounted, delta: float) -> void:
 	_aura_pulse = maxf(0.0, _aura_pulse - dt * 1.2)
 	_pulse = maxf(0.0, _pulse - dt * 4.5)
 	_update_cutin(run, mode, state, dt, delta)
+	_update_warm()
 	_update_sweep(run, mode, dt)
-	_update_bolts(dt)
 	_update_flights(run, dt)
 	_update_lights(dt)
 	_update_label(dt)
@@ -480,22 +519,8 @@ func sync(run: RefCounted, delta: float) -> void:
 func _hide_all() -> void:
 	_shown = false
 	if _screen != null: _screen.visible = false
-	if _ground != null: _ground.visible = false
-	if _wall != null: _wall.visible = false
-	if _bolt_node != null: _bolt_node.visible = false
 	if _kill_label != null: _kill_label.visible = false
-
-func _kick(strength: float) -> void:
-	if reduced_motion or shake_scale <= 0.0: return
-	var world: Variant = view.get("world")
-	if world != null and world.has_method("kick_camera"): world.kick_camera(strength * shake_scale)
-
-func _ease_out(x: float) -> float:
-	x = clampf(x, 0.0, 1.0)
-	return 1.0 - pow(1.0 - x, 3.0)
-
-func _ramp_t(t: float, a: float, b: float) -> float:
-	return clampf((t - a) / maxf(0.0001, b - a), 0.0, 1.0)
+	if _ult != null: _ult.hide_all()
 
 func _update_cutin(run: RefCounted, mode: String, state: String, dt: float, wall_dt: float) -> void:
 	if _cut.is_empty(): return
@@ -517,14 +542,14 @@ func _cut_uniforms() -> Dictionary:
 	var u := {"scrim": 0.0, "rift": 0.0, "slide": 0.0, "retract": 0.0, "flash": 0.0}
 	if _cut.is_empty(): return u
 	var tt := float(_cut.t) / float(_cut.dur) * T_END
-	u.scrim = _ramp_t(tt, 0.0, T_DARK_END) * (1.0 - _ramp_t(tt, T_RELEASE, T_END - 0.03))
-	if tt < T_SLIT_END: u.rift = _ramp_t(tt, T_DARK_END, T_SLIT_END) * 0.2
-	else: u.rift = 0.2 + 0.8 * _ease_out(_ramp_t(tt, T_SLIT_END, T_OPEN_END))
-	u.slide = _ramp_t(tt, T_SLIT_END, T_SLIDE_END)
-	u.retract = _ease_out(_ramp_t(tt, T_RELEASE, T_END))
+	u.scrim = ramp_t(tt, 0.0, T_DARK_END) * (1.0 - ramp_t(tt, T_RELEASE, T_END - 0.03))
+	if tt < T_SLIT_END: u.rift = ramp_t(tt, T_DARK_END, T_SLIT_END) * 0.2
+	else: u.rift = 0.2 + 0.8 * ease_out(ramp_t(tt, T_SLIT_END, T_OPEN_END))
+	u.slide = ramp_t(tt, T_SLIT_END, T_SLIDE_END)
+	u.retract = ease_out(ramp_t(tt, T_RELEASE, T_END))
 	if not reduced_motion and flash_scale > 0.0:
-		var up := _ramp_t(tt, T_SLIDE_END, T_FLASH_PEAK)
-		var down := 1.0 - _ramp_t(tt, T_FLASH_PEAK, T_FLASH_END)
+		var up := ramp_t(tt, T_SLIDE_END, T_FLASH_PEAK)
+		var down := 1.0 - ramp_t(tt, T_FLASH_PEAK, T_FLASH_END)
 		u.flash = minf(up, down) * flash_scale
 	if reduced_motion: u.slide = 1.0
 	return u
@@ -533,7 +558,8 @@ func _push_screen() -> void:
 	var cu := _cut_uniforms()
 	var cut_on := not _cut.is_empty()
 	var scrim := maxf(float(cu.scrim), _scrim_hold)
-	var any := _aura > 0.005 or _aura_pulse > 0.005 or cut_on or _freeze > 0.005 or _pulse > 0.005 or scrim > 0.005
+	var sweeping := not sw.is_empty()
+	var any := _aura > 0.005 or _aura_pulse > 0.005 or cut_on or _freeze > 0.005 or _pulse > 0.005 or scrim > 0.005 or sweeping or _warm > 0 or float(scr.whiteout) > 0.005
 	_shown = _shown or any
 	_screen.visible = any
 	if not any: return
@@ -551,238 +577,72 @@ func _push_screen() -> void:
 	_screen_mat.set_shader_parameter("freeze", _freeze)
 	_screen_mat.set_shader_parameter("shatter", _shatter)
 	_screen_mat.set_shader_parameter("pulse", _pulse * flash_scale)
+	# the sweep's layers (settings applied here, in one place)
+	var flashy := 0.0 if reduced_motion else flash_scale
+	_screen_mat.set_shader_parameter("sky", float(scr.sky))
+	_screen_mat.set_shader_parameter("sky_flash", float(scr.sky_flash) * flashy)
+	_screen_mat.set_shader_parameter("storm", float(scr.storm))
+	_screen_mat.set_shader_parameter("gust", float(scr.gust) * (0.0 if reduced_motion else 1.0))
+	_screen_mat.set_shader_parameter("fire_cover", float(scr.fire_cover))
+	_screen_mat.set_shader_parameter("fire_alpha", float(scr.fire_alpha) * lerpf(0.3, 1.0, flashy))
+	_screen_mat.set_shader_parameter("whiteout", float(scr.whiteout) * flashy)
+	_screen_mat.set_shader_parameter("demon", _demon)
+	_screen_mat.set_shader_parameter("demon_pose", float(scr.demon_pose))
+
+func _update_warm() -> void:
+	if _ult == null: return
+	if _warm > 0 and sw.is_empty() and _cut.is_empty():
+		_warm -= 1
+		_ult.warm(true)
+		# the merged kill number's glyphs (a CJK heading font with an outline) are rasterised on first use: a 400 ms hitch at the sweep's last tick
+		if _kill_label != null and _kill_label_age < 0.0:
+			_kill_label.text = Loc.tn("descent.kills", 8888)
+			_kill_label.modulate = Color(1, 1, 1, 0.01)
+			_kill_label.visible = true
+		if _warm == 0:
+			_ult.warm(false)
+			if _kill_label != null and _kill_label_age < 0.0: _kill_label.visible = false
+	elif _warm > 0:
+		_warm = 0
+		_ult.warm(false)
+		if _kill_label != null and _kill_label_age < 0.0: _kill_label.visible = false
 
 func _update_sweep(run: RefCounted, mode: String, dt: float) -> void:
-	if _sw.is_empty():
-		_ground.visible = false
-		_wall.visible = false
+	if sw.is_empty():
 		_freeze = 0.0
 		_shatter = 0.0
+		_demon = 0.0
 		_scrim_hold = maxf(0.0, _scrim_hold - dt * 2.0)
 		return
+	var step_dt := 0.0
 	if mode == "playing" or mode == "choice":
-		_sw["t"] = float(_sw.t) + dt
-	var t := float(_sw.t)
-	var dur := float(_sw.dur)
-	var tail := float(_sw.tail)
-	var el := String(_sw.element)
-	var reach := float(_sw.reach)
-	var center: Vector2 = _sw.center
-	_ground_mat.set_shader_parameter("time", _clock)
-	_ground_mat.set_shader_parameter("hero_local", _hero - center)
-	match el:
-		"ember": _sweep_ember(t, dur, tail, reach, center, dt)
-		"frost": _sweep_frost(t, dur, tail, dt)
-		"arc": _sweep_arc(t, dur, tail, dt)
-	if t >= dur + tail:
-		_sw = {}
-		_ground.visible = false
-		_wall.visible = false
+		if _hitstop > 0.0:
+			_hitstop = maxf(0.0, _hitstop - dt)
+			if _hitstop <= 0.0 and _ult != null: _ult.set_hold(false)
+		else:
+			step_dt = dt
+	if _hitstop > 0.0 and _ult != null: _ult.set_hold(true)
+	sw["t"] = float(sw.t) + step_dt
+	var t := float(sw.t)
+	var dur := float(sw.dur)
+	# the demon: in over 0.35 s, out over 0.4 s once the sweep ends (the core does not wait for it)
+	var out_from := float(sw.ended_at) if float(sw.ended_at) >= 0.0 else dur
+	_demon = ramp_t(t, 0.0, DEMON_IN) * (1.0 - ramp_t(t, out_from, out_from + DEMON_OUT))
+	_ult.update(t, step_dt)
+	# the freeze rim and the arc's dim are the element module's too: it writes them through these two fields
+	_freeze = float(_ult.freeze_value())
+	_shatter = float(_ult.shatter_value())
+	_scrim_hold = float(_ult.scrim_value())
+	if _kick_hold > 0.0 and t - _last_kick_t >= 0.1:
+		_last_kick_t = t
+		kick(_kick_hold)
+		_kick_hold = 0.0
+	if t >= dur + float(sw.tail):
+		sw = {}
+		_ult.finish()
+		_reset_scr()
 		_freeze = 0.0
 		_shatter = 0.0
-		if _wall_particles != null: _wall_particles.emitting = false
-
-func _sweep_ember(t: float, dur: float, tail: float, reach: float, center: Vector2, dt: float) -> void:
-	var cam := _camera()
-	var p := clampf(t / dur, 0.0, 1.0)
-	var heading: Vector2 = _sw.heading
-	var a := -reach + 2.0 * reach * p
-	var front := center + heading * a
-	var chord := sqrt(maxf(0.0, reach * reach - a * a))
-	var half_len := chord * SCREEN_TILT + 1.0
-	var gain := minf(_ramp_t(t, 0.0, 0.07), 1.0 - _ramp_t(t, dur - 0.05, dur + 0.05))
-	_wall.visible = cam != null and gain > 0.01
-	if cam != null:
-		var basis := cam.global_basis
-		var size := Vector2(7.0, (reach * SCREEN_TILT + 3.0) * 2.0)
-		(_wall.mesh as QuadMesh).size = size
-		var origin := Vector3(front.x, GROUND_Y + 0.2, front.y)
-		_wall.global_transform = Transform3D(basis, origin)
-		_wall_mat.set_shader_parameter("quad_size", size)
-		_wall_mat.set_shader_parameter("half_len", half_len)
-		_wall_mat.set_shader_parameter("gain", gain)
-		_wall_mat.set_shader_parameter("time", _clock)
-		var rel := Vector3(_hero.x - front.x, 0.0, _hero.y - front.y)
-		_wall_mat.set_shader_parameter("hero_xy", Vector2(rel.dot(basis.x), rel.dot(basis.y) + 1.0))
-	# the floor: the trace behind the wall, then it fades
-	_ground_mat.set_shader_parameter("progress", p)
-	var fade := 1.0 - _ramp_t(t, dur + 0.4, dur + tail)
-	_ground_mat.set_shader_parameter("fade", fade)
-	_ground.visible = true
-	if _wall_particles != null:
-		_wall_particles.emitting = p < 1.0
-		_wall_particles.global_position = Vector3(front.x, 0.4, front.y)
-		_wall_particles.rotation = Vector3(0.0, atan2(-heading.y, heading.x), 0.0)
-		(_wall_particles.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(0.45, 0.1, maxf(0.5, chord))
-	# two lights: one rides the wall, one stays at the centre
-	_set_light(0, Vector3(front.x, 2.4, front.y), Color(1.0, 0.55, 0.2), 3.6 * gain * (0.8 + 0.2 * sin(_clock * 31.0)), 9.0)
-	_set_light(1, Vector3(center.x, 1.8, center.y), Color(1.0, 0.5, 0.18), 1.6 * minf(1.0, p * 3.0) * (1.0 - _ramp_t(t, dur, dur + 0.5)), 10.0)
-	if t < dur:
-		_sw["kick"] = float(_sw.kick) + dt
-		if float(_sw.kick) >= 0.1:
-			_sw["kick"] = 0.0
-			_kick(0.3)
-
-func _sweep_frost(t: float, dur: float, tail: float, dt: float) -> void:
-	var grow := _ease_out(_ramp_t(t, 0.0, 0.34))
-	var broke := bool(_sw.broke)
-	if not broke and t >= dur + 0.02: _do_break([])
-	if not broke:
-		_freeze = _ease_out(_ramp_t(t, 0.0, 0.5))
-		_ground_mat.set_shader_parameter("progress", grow)
-		_ground_mat.set_shader_parameter("shatter", 0.0)
-		_ground_mat.set_shader_parameter("fade", 1.0)
-		_set_light(0, Vector3(float((_sw.center as Vector2).x), 3.0, float((_sw.center as Vector2).y)), Color(0.55, 0.85, 1.0), 1.6 * grow, 11.0)
-	else:
-		_sw["bt"] = float(_sw.bt) + dt
-		var bt := float(_sw.bt)
-		_shatter = _ramp_t(bt, 0.0, 0.42)
-		_freeze = 1.0 - _ramp_t(bt, 0.25, 0.6)
-		_ground_mat.set_shader_parameter("progress", 1.0)
-		_ground_mat.set_shader_parameter("shatter", _shatter)
-		_ground_mat.set_shader_parameter("fade", 1.0 - _ramp_t(bt, 0.3, 0.65))
-		_set_light(0, Vector3(float((_sw.center as Vector2).x), 3.0, float((_sw.center as Vector2).y)), Color(0.7, 0.92, 1.0), 6.0 * (1.0 - _ramp_t(bt, 0.0, 0.18)), 13.0)
-	_ground.visible = true
-
-func _sweep_arc(t: float, dur: float, tail: float, dt: float) -> void:
-	_scrim_hold = 0.30 * (1.0 - _ramp_t(t, dur - 0.1, dur + tail))
-
-func _camera() -> Camera3D:
-	var world: Variant = view.get("world")
-	if world == null: return null
-	var cam: Variant = world.get("camera")
-	return cam as Camera3D
-
-func _do_break(positions: Array) -> void:
-	if bool(_sw.broke): return
-	_sw["broke"] = true
-	_sw["bt"] = 0.0
-	_pulse = 1.0
-	_kick(1.0)
-	_emit_burst(positions, _sw.center)
-
-## One GPU burst from up to 64 points (the points are handed over as a texture; the pool is one node of 192 particles).
-func _emit_burst(positions: Array, fallback: Vector2) -> void:
-	if _burst_particles == null: return
-	var points := PackedVector3Array()
-	for pos in positions:
-		if points.size() >= 64: break
-		var at: Vector2 = pos
-		points.append(Vector3(at.x, 0.5, at.y))
-	if points.is_empty(): points.append(Vector3(fallback.x, 0.5, fallback.y))
-	var image := Image.create_from_data(points.size(), 1, false, Image.FORMAT_RGBF, points.to_byte_array())
-	_burst_material.emission_point_texture = ImageTexture.create_from_image(image)
-	_burst_material.emission_point_count = points.size()
-	_burst_particles.restart()
-	_burst_particles.emitting = true
-
-# ---- bolts
-
-func _hash(a: float) -> float:
-	return fposmod(sin(a * 12.9898) * 43758.5453, 1.0)
-
-func _do_bolts(positions: Array) -> void:
-	_sw["rounds"] = int(_sw.rounds) + 1
-	_pulse = maxf(_pulse, 0.55)
-	_kick(0.4)
-	var count := positions.size()
-	# the first per_round (12) are the round's own strikes, the rest are where it jumped to (the core's order; no field says which)
-	var primaries := mini(12, count)
-	for i in count:
-		if _bolts.size() >= MAX_BOLTS:
-			stats.bolts_dropped += 1
-			continue
-		var at: Vector2 = positions[i]
-		var bolt := {"foot": Vector3(at.x, GROUND_Y + 0.05, at.y), "t": 0.0, "seed": float(int(_sw.rounds) * 97 + i * 13), "parent": Vector3.ZERO, "link": false}
-		if i >= primaries and primaries > 0:
-			# jump from the nearest primary of this round
-			var best := Vector2.ZERO
-			var best_d := 1.0e9
-			for k in primaries:
-				var q: Vector2 = positions[k]
-				var d := q.distance_squared_to(at)
-				if d < best_d:
-					best_d = d
-					best = q
-			bolt.parent = Vector3(best.x, 0.9, best.y)
-			bolt.link = true
-		_bolts.append(bolt)
-		stats.bolts += 1
-	stats.peak_bolts = maxi(int(stats.peak_bolts), _bolts.size())
-	if count > 0:
-		var first: Vector2 = positions[0]
-		_set_light(int(_sw.rounds) % 2, Vector3(first.x, 2.0, first.y), Color(0.72, 0.8, 1.0), 6.5, 8.0, 0.12)
-	_emit_burst(positions.slice(0, mini(count, 24)), _sw.center)
-
-func _update_bolts(dt: float) -> void:
-	if _bolts.is_empty():
-		if _bolt_node != null and _bolt_node.visible:
-			_bolt_node.visible = false
-			_bolt_mesh.clear_surfaces()
-		return
-	var cam := _camera()
-	if cam == null:
-		_bolts.clear()
-		return
-	var right := cam.global_basis.x
-	var up := cam.global_basis.y
-	_bolt_mesh.clear_surfaces()
-	var kept: Array[Dictionary] = []
-	for bolt in _bolts:
-		bolt["t"] = float(bolt.t) + dt
-		var age := float(bolt.t) / BOLT_LIFE
-		if age >= 1.0: continue
-		kept.append(bolt)
-		var fade := 1.0 - age
-		var flick := 1.0 if int(float(bolt.t) * 60.0) % 2 == 0 else 0.7
-		if bool(bolt.link):
-			_draw_jagged(bolt.parent, bolt.foot + Vector3(0, 0.9, 0), 9, 0.10, 0.38, bolt.seed, fade * flick, right, up, true)
-		else:
-			var foot: Vector3 = bolt.foot
-			_draw_jagged(foot + Vector3(0, 15.0, 0), foot, 12, 0.13, 0.55, bolt.seed, fade * flick, right, up, false)
-			_draw_flare(foot, 0.7 + 0.9 * fade, fade, right, up)
-	_bolts = kept
-	_bolt_node.visible = not _bolts.is_empty()
-
-func _draw_jagged(from: Vector3, to: Vector3, segments: int, width: float, amp: float, seed_: float, fade: float, right: Vector3, up: Vector3, link: bool) -> void:
-	var pts := PackedVector3Array()
-	var dir := to - from
-	var t_screen := Vector2(dir.dot(right), dir.dot(up)).normalized()
-	var perp := (right * -t_screen.y + up * t_screen.x).normalized()
-	for i in segments + 1:
-		var f := float(i) / float(segments)
-		var base := from.lerp(to, f)
-		var env := sin(f * PI) if link else (1.0 - f * 0.85)
-		var jitter := (_hash(seed_ + float(i) * 3.7) - 0.5) * 2.0 * amp * env
-		pts.append(base + perp * jitter)
-	# wide glow ribbon, then the thin white core
-	for pass_ in 2:
-		var w := width * (3.2 if pass_ == 0 else 1.0)
-		var color := Color(_tint.r, _tint.g, _tint.b, 0.28 * fade) if pass_ == 0 else Color(1.0, 1.0, 1.0, 0.95 * fade)
-		_bolt_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-		for i in pts.size():
-			var f2 := float(i) / float(pts.size() - 1)
-			var taper := 1.0 if link else lerpf(0.45, 1.0, f2)
-			var tangent := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)])
-			var ts := Vector2(tangent.dot(right), tangent.dot(up)).normalized()
-			var pp := (right * -ts.y + up * ts.x).normalized()
-			_bolt_mesh.surface_set_color(color)
-			_bolt_mesh.surface_add_vertex(pts[i] + pp * w * taper)
-			_bolt_mesh.surface_set_color(color)
-			_bolt_mesh.surface_add_vertex(pts[i] - pp * w * taper)
-		_bolt_mesh.surface_end()
-
-func _draw_flare(foot: Vector3, size: float, fade: float, right: Vector3, up: Vector3) -> void:
-	# a flat diamond at the foot: the bolt's landing
-	var color := Color(0.85, 0.9, 1.0, 0.8 * fade)
-	_bolt_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	var c := foot + Vector3(0, 0.1, 0)
-	for p in [Vector3(-size, 0, 0), Vector3(0, 0, -size * 0.5), Vector3(0, 0, size * 0.5), Vector3(size, 0, 0)]:
-		_bolt_mesh.surface_set_color(color)
-		_bolt_mesh.surface_add_vertex(c + right * p.x + up * p.z)
-	_bolt_mesh.surface_end()
-
-# ---- flights (orbs coming in, puffs of wiped shots)
 
 func _start_flights() -> void:
 	if _flight == null: return
@@ -798,7 +658,7 @@ func _start_flights() -> void:
 	var made := 0
 	for at in from:
 		_flights.append(at.x); _flights.append(at.y)
-		_flights.append(_hash(float(made) * 1.7) * 0.28)
+		_flights.append(hash1(float(made) * 1.7) * 0.28)
 		_flights.append(0.0); _flights.append(0.0); _flights.append(0.0)
 		made += 1
 	stats.flights += made
@@ -806,7 +666,7 @@ func _start_flights() -> void:
 
 func _update_flights(run: RefCounted, dt: float) -> void:
 	# keep the freshest orbs' places while a sweep runs (the vacuum empties the list on the sweep's last tick)
-	if not _sw.is_empty() and run.orbs.size() > 0:
+	if not sw.is_empty() and run.orbs.size() > 0:
 		var fresh := PackedVector2Array()
 		for orb in run.orbs:
 			fresh.append(orb.position)
@@ -816,7 +676,7 @@ func _update_flights(run: RefCounted, dt: float) -> void:
 	if n == 0:
 		if mm.visible_instance_count != 0: mm.visible_instance_count = 0
 		return
-	_flight_target = Vector3(_hero.x, 1.1, _hero.y)
+	_flight_target = Vector3(hero.x, 1.1, hero.y)
 	var live := 0
 	var orb_count := 0
 	var puff_count := 0
@@ -852,7 +712,7 @@ func _update_flights(run: RefCounted, dt: float) -> void:
 		else:
 			var s2 := lerpf(0.7, 2.2, f)
 			mm.set_instance_transform(slot, Transform3D(Basis.from_scale(Vector3.ONE * s2), src + Vector3(0, 0.4 + f * 0.6, 0)))
-			mm.set_instance_color(slot, Color(_tint.r, _tint.g, _tint.b, 0.55 * (1.0 - f)))
+			mm.set_instance_color(slot, Color(tint.r, tint.g, tint.b, 0.55 * (1.0 - f)))
 		live += 1
 	_flights = keep
 	# unused slots shrink to nothing; draw everything up to the highest used slot
@@ -892,7 +752,7 @@ func _update_lights(dt: float) -> void:
 			_lights[i].light_energy = _light_energy[i] * f * f
 			if _light_life[i] <= 0.0:
 				_lights[i].visible = false
-	if _sw.is_empty() and _cut.is_empty():
+	if sw.is_empty() and _cut.is_empty():
 		for i in _lights.size():
 			if _light_life[i] <= 0.0 and _lights[i].visible:
 				_lights[i].visible = false
@@ -902,8 +762,8 @@ func _update_label(dt: float) -> void:
 	if _kill_label == null or _kill_label_age < 0.0: return
 	_kill_label_age += dt
 	var a := _kill_label_age
-	var pop := 1.0 + 0.35 * (1.0 - _ramp_t(a, 0.0, 0.18))
-	var alpha := _ramp_t(a, 0.0, 0.08) * (1.0 - _ramp_t(a, 1.1, 1.6))
+	var pop := 1.0 + 0.35 * (1.0 - ramp_t(a, 0.0, 0.18))
+	var alpha := ramp_t(a, 0.0, 0.08) * (1.0 - ramp_t(a, 1.1, 1.6))
 	_kill_label.pivot_offset = _kill_label.size * 0.5
 	_kill_label.scale = Vector2.ONE * (1.0 if reduced_motion else pop)
 	_kill_label.modulate = Color(1, 1, 1, alpha)

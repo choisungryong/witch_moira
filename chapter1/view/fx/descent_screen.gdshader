@@ -26,6 +26,21 @@ uniform float freeze = 0.0;        // 0..1 the crystal rim
 uniform float shatter = 0.0;       // 0..1 the rim breaking away
 uniform float pulse = 0.0;         // 0..1 a tint wash
 uniform float element_id = 0.0;    // 0 ember, 1 frost, 2 arc (the stand-in silhouette)
+// ---- D24 sweep layers (the same one control; ordinary alpha, no additive full-screen area) ----
+uniform float sky = 0.0;           // 0..1 the sky band at the top 42 % (ember: cracked red-brown cloud, frost: storm cloud, arc: thunder cloud)
+uniform float sky_flash = 0.0;     // 0..1 the cloud lit from inside (arc, one per bolt, smoothed so it never strobes)
+uniform float storm = 0.0;         // 0..1 frost: the ice storm sweeping in from the upper right
+uniform float gust = 0.0;          // 0..1 frost: a pulse makes the wind surge
+uniform vec2 storm_dir = vec2(-0.62, 0.78);   // where the wind runs to on the screen (uv, y down)
+uniform float low = 0.0;           // 1 = the low-spec look: one streak layer, no cloud noise detail
+uniform float fire_cover = 0.0;    // 0..1 ember finale: the flame creeping in from the edges
+uniform float fire_alpha = 0.0;    // 0..1 its visibility
+uniform float whiteout = 0.0;      // 0..1 one white flash (frost break, arc finale); flash_scale is applied by the host
+uniform float demon = 0.0;         // 0..1 the demon in the sky layer
+uniform float demon_pose = 0.0;    // 0..1 the arm swung down / the fist closed
+uniform float demon_x = 0.7;       // where it stands (uv x)
+uniform float has_sky_art : hint_range(0.0, 1.0) = 0.0;
+uniform sampler2D sky_art : source_color, filter_linear;
 
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -76,8 +91,27 @@ float ell(vec2 p, vec2 c, vec2 r, float rot) {
 	return (length(q / r) - 1.0) * min(r.x, r.y);
 }
 
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float fbm(vec2 p) {
+	float a = 0.5;
+	float s = 0.0;
+	for (int i = 0; i < 4; i++) {
+		s += a * vnoise(p);
+		p = p * 2.03 + 11.7;
+		a *= 0.5;
+	}
+	return s;
+}
+
 // The stand-in bust while the art slot is planned (code-drawn; only the eyes and the fingertip carry colour).
-vec4 silhouette(vec2 p, float elem) {
+// g (0..1) swings the arm down: ember draws the hand down, frost closes the fist, arc touches two fingers to the hand.
+vec4 silhouette_g(vec2 p, float elem, float g) {
 	float head = ell(p, vec2(0.0, 0.07), vec2(0.082, 0.108), 0.0);
 	float jaw = ell(p, vec2(0.0, 0.0), vec2(0.066, 0.085), 0.0);
 	float neck = ell(p, vec2(0.0, -0.08), vec2(0.04, 0.07), 0.0);
@@ -85,12 +119,17 @@ vec4 silhouette(vec2 p, float elem) {
 	float hair = ell(p, vec2(0.02, 0.1), vec2(0.115, 0.14), 0.0);
 	float horn_l = ell(p, vec2(-0.1, 0.2), vec2(0.016, 0.085), 0.55);
 	float horn_r = ell(p, vec2(0.1, 0.2), vec2(0.016, 0.085), -0.55);
-	float arm = ell(p, vec2(-0.22, -0.12), vec2(0.07, 0.19), -0.5);
-	float hand = ell(p, vec2(-0.3, 0.02), vec2(0.04, 0.065), -0.2);
+	vec2 hand_c = mix(vec2(-0.30, 0.02), vec2(-0.28, -0.16), g);
+	vec2 sh_c = vec2(-0.16, -0.18);
+	vec2 arm_c = (sh_c + hand_c) * 0.5;
+	vec2 dv = hand_c - sh_c;
+	float arm_rot = -atan(dv.x, dv.y);
+	float arm = ell(p, arm_c, vec2(0.07, max(0.05, length(dv) * 0.55)), arm_rot);
+	float hand = ell(p, hand_c, vec2(0.04 + 0.02 * g * step(0.5, elem) * step(elem, 1.5), 0.065), -0.2);
 	if (elem > 1.5) {
 		// the lightning demon holds two fingers to the back of a hand: no raised arm
 		arm = ell(p, vec2(-0.12, -0.2), vec2(0.17, 0.05), 0.5);
-		hand = ell(p, vec2(-0.2, -0.17), vec2(0.04, 0.03), 0.4);
+		hand = ell(p, vec2(-0.2, -0.17 + 0.03 * g), vec2(0.04, 0.03), 0.4);
 	}
 	float d = min(min(min(head, jaw), min(neck, shoulders)), min(min(hair, horn_l), min(horn_r, min(arm, hand))));
 	float body = 1.0 - smoothstep(-0.004, 0.004, d);
@@ -98,11 +137,15 @@ vec4 silhouette(vec2 p, float elem) {
 	vec3 col = vec3(0.012, 0.012, 0.016);
 	float eye_l = 1.0 - smoothstep(0.0, 0.006, ell(p, vec2(-0.034, 0.085), vec2(0.022, 0.0065), 0.12));
 	float eye_r = 1.0 - smoothstep(0.0, 0.006, ell(p, vec2(0.034, 0.085), vec2(0.022, 0.0065), -0.12));
-	float tip = 1.0 - smoothstep(0.0, 0.01, length(p - (elem > 1.5 ? vec2(-0.185, -0.15) : vec2(-0.33, 0.075))) - 0.008);
+	float tip = 1.0 - smoothstep(0.0, 0.01, length(p - (elem > 1.5 ? vec2(-0.185, -0.15) : hand_c + vec2(-0.03, 0.055))) - 0.008 - 0.01 * g);
 	float lit = max(max(eye_l, eye_r), tip) * body;
 	vec3 lit_col = col + tint.rgb * (lit * 1.6);
 	vec3 rgb = mix(tint.rgb * 0.5, lit_col, body);
 	return vec4(rgb, max(body, rim * 0.7));
+}
+
+vec4 silhouette(vec2 p, float elem) {
+	return silhouette_g(p, elem, 0.0);
 }
 
 void fragment() {
@@ -165,7 +208,9 @@ void fragment() {
 					col = mix(bg, t.rgb * 0.94, s_e);
 				}
 			} else {
-				vec4 sil = silhouette((sc - off) - vec2(0.12, 0.0), element_id);
+				// the stand-in is drawn y up and the screen's y runs down: flip it (it hung upside down before D24)
+				vec2 sp = (sc - off) - vec2(0.12, 0.0);
+				vec4 sil = silhouette(vec2(sp.x, -sp.y), element_id);
 				col = mix(bg, sil.rgb, sil.a * s_e);
 				col += tint.rgb * 0.0;
 			}
@@ -189,6 +234,104 @@ void fragment() {
 		vec3 pc = mix(tint.rgb, vec3(1.0), 0.6);
 		float pa = pulse * 0.34 * (0.5 + 0.5 * smoothstep(0.0, 0.6, length(sc)));
 		out_c = vec4(mix(out_c.rgb, pc, pa / max(0.001, pa + out_c.a)), clamp(out_c.a + pa * (1.0 - out_c.a), 0.0, 1.0));
+	}
+	// ---- D24 sky band: the cloud ceiling the demon works in ----
+	if (sky > 0.001) {
+		float m = 1.0 - smoothstep(0.0, 0.42, uv.y);
+		vec2 cp = vec2(sc.x * 1.5 + time * 0.04, uv.y * 3.2 - time * 0.015);
+		float cl = low > 0.5 ? vnoise(cp * 2.0) : fbm(cp * 2.0);
+		vec3 sc3;
+		float sa;
+		if (element_id < 0.5) {
+			sc3 = mix(vec3(0.15, 0.04, 0.02), vec3(0.50, 0.15, 0.05), cl);
+			float cr = 1.0 - smoothstep(0.0, 0.035, abs(vnoise(cp * 5.0 + 7.0) - 0.5));
+			sc3 = mix(sc3, vec3(1.0, 0.55, 0.16), cr * (0.55 + 0.45 * sin(time * 2.5 + cl * 8.0)) * smoothstep(0.1, 0.9, m));
+			sa = m * sky * (0.30 + 0.28 * cl);
+		} else if (element_id < 1.5) {
+			sc3 = mix(vec3(0.09, 0.16, 0.23), vec3(0.50, 0.70, 0.82), cl);
+			sa = m * sky * (0.26 + 0.28 * cl);
+		} else {
+			sc3 = mix(vec3(0.03, 0.04, 0.08), vec3(0.20, 0.24, 0.42), cl) + vec3(0.62, 0.72, 1.0) * sky_flash * (0.4 + cl);
+			sa = m * sky * (0.46 + 0.16 * cl) + sky_flash * m * 0.18;
+		}
+		sa = clamp(sa, 0.0, 0.58);
+		float oa = out_c.a;
+		out_c.rgb = mix(out_c.rgb, sc3, sa / max(0.001, sa + oa));
+		out_c.a = clamp(oa + sa * (1.0 - oa), 0.0, 1.0);
+	}
+
+	// ---- D24 frost: the ice storm (two layers of slanted streaks, a drifting snow veil, a cold wash) ----
+	if (storm > 0.001) {
+		vec2 sdir = normalize(storm_dir);
+		float along = dot(sc, sdir);
+		float across = dot(sc, vec2(-sdir.y, sdir.x));
+		float dcorner = length((uv - vec2(1.0, 0.0)) * vec2(aspect, 1.0)) / (aspect + 1.0);
+		float cov = clamp((storm * 1.45 - dcorner) * 3.5, 0.0, 1.0);
+		float sp = 1.0 + gust * 1.8;
+		float streak = 0.0;
+		for (int ly = 0; ly < 2; ly++) {
+			if (ly == 1 && low > 0.5) break;
+			float cells = ly == 0 ? 34.0 : 71.0;
+			float cid = floor(across * cells);
+			float h = hash21(vec2(cid, float(ly) * 13.0));
+			float lane = 1.0 - smoothstep(0.0, 0.55, abs(fract(across * cells) - 0.5) * 2.0);
+			float pos = fract(along * (ly == 0 ? 0.34 : 0.6) - time * (1.5 + h * 1.6 + float(ly)) * sp + h * 9.0);
+			float len = ly == 0 ? 0.20 : 0.11;
+			float s1 = smoothstep(0.0, 0.015, pos) * (1.0 - smoothstep(0.015, len, pos));
+			streak = max(streak, s1 * lane * step(ly == 0 ? 0.35 : 0.45, h) * (ly == 0 ? 0.55 : 0.36));
+		}
+		float veil = low > 0.5 ? 0.5 : fbm(vec2(along * 2.2 - time * 0.9 * sp, across * 2.6));
+		float edge_boost = 1.0 - smoothstep(0.0, 0.30, edge_d);
+		float wa = clamp(cov * (streak * (1.0 + gust * 0.8) + 0.07 * veil + 0.10 * edge_boost), 0.0, 0.55);
+		vec3 wc = mix(vec3(0.62, 0.84, 0.96), vec3(0.96, 0.99, 1.0), clamp(streak * 3.0, 0.0, 1.0));
+		float oa2 = out_c.a;
+		out_c.rgb = mix(out_c.rgb, wc, wa / max(0.001, wa + oa2));
+		out_c.a = clamp(oa2 + wa * (1.0 - oa2), 0.0, 1.0);
+	}
+
+	// ---- D24 ember finale: flame creeping in from the edges, thin over the middle ----
+	if (fire_alpha > 0.001) {
+		float reach_f = fire_cover * 0.36;
+		float rr = length(vec2(sc.x / (aspect * 0.5), sc.y / 0.5));          // 0 centre, 1 edge midpoints, 1.41 corners: a rounded frame, not a box
+		float fn = fbm(vec2(sc.x * 3.2, sc.y * 3.2 - time * 2.4)) * 0.6 + 0.4 * vnoise(vec2(atan(sc.y, sc.x) * 4.0 + time * 1.5, rr * 5.0 - time * 3.0));
+		float fd = (1.45 - rr) * 0.42 + (fn - 0.5) * 0.22;
+		float cover = 1.0 - smoothstep(reach_f * 0.45, max(reach_f, 0.001), fd);
+		float tongue = smoothstep(0.30, 0.72, fn + (1.0 - fd * 2.0) * 0.25);
+		vec3 fc2 = mix(vec3(0.62, 0.12, 0.02), vec3(1.0, 0.66, 0.22), smoothstep(0.35, 0.95, tongue * cover));
+		float fa = cover * (0.28 + 0.42 * tongue) * mix(1.0, 0.4, smoothstep(0.05, 0.30, fd)) * fire_alpha;
+		float oa3 = out_c.a;
+		out_c.rgb = mix(out_c.rgb, fc2, fa / max(0.001, fa + oa3));
+		out_c.a = clamp(oa3 + fa * (1.0 - oa3), 0.0, 1.0);
+	}
+
+	// ---- D24 the demon in the sky layer (35-50 % opacity, inside the top 40 % of the screen) ----
+	if (demon > 0.001) {
+		vec2 dp = vec2((uv.x - demon_x) * aspect, uv.y - 0.19);
+		vec2 q = vec2(dp.x, -dp.y) / 0.50;               // the stand-in is drawn y up
+		float da = 0.0;
+		vec3 dc = vec3(0.0);
+		if (has_sky_art > 0.5) {
+			vec2 auv = vec2(0.5 + dp.x / 0.62, 0.5 + dp.y / 0.42);
+			if (auv.x >= 0.0 && auv.x <= 1.0 && auv.y >= 0.0 && auv.y <= 1.0) {
+				vec4 t = texture(sky_art, auv);
+				dc = t.rgb;
+				da = t.a;
+			}
+		} else {
+			vec4 sil = silhouette_g(q, element_id, demon_pose);
+			dc = sil.rgb;
+			da = sil.a;
+		}
+		float fade_top = smoothstep(-0.02, 0.10, uv.y) * (1.0 - smoothstep(0.34, 0.42, uv.y));
+		float dalpha = da * demon * 0.40 * fade_top;
+		float oa4 = out_c.a;
+		out_c.rgb = mix(out_c.rgb, dc, dalpha / max(0.001, dalpha + oa4));
+		out_c.a = clamp(oa4 + dalpha * (1.0 - oa4), 0.0, 1.0);
+	}
+
+	// ---- D24 one white flash ----
+	if (whiteout > 0.001) {
+		out_c = vec4(mix(out_c.rgb, vec3(0.96, 0.98, 1.0), whiteout), max(out_c.a, whiteout));
 	}
 	COLOR = out_c;
 }
