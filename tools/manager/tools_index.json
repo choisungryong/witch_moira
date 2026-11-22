@@ -108,7 +108,10 @@
       {"path": "tools/art/rig_common.py", "use": "3D 도구들이 불러 쓰는 공용 모듈(따로 돌리지 않음)"},
       {"path": "tools/art/motion_math.py", "use": "걸음 계약 계산(동작 배율·보폭·발 미끄러짐, 모델의 답). 관리 툴 캐릭터 화면과 적용·검증 도구가 부르는 공용 모듈(따로 돌리지 않음)"},
       {"path": "tools/art/motion_apply.py", "use": "캐릭터 화면에서 고른 걸음 값을 자리표(asset_slots.json)의 그 칸에 글자만 바꿔 옮김. 기본은 바뀔 줄 보기, --write로 씀, --check로 자리표와 고름이 맞는지(종료 코드)"},
-      {"path": "tools/art/sheet_split.py", "use": "턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각"}
+      {"path": "tools/art/sheet_split.py", "use": "턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각"},
+      {"path": "tools/art/face_reproject.py", "use": "정면 얼굴 그림을 3D 모델(glb)의 얼굴 살갗 텍셀에만 다시 입힘(메시·UV 불변, 표지점 json으로 맞춤). 그림→3D 모델의 얼굴이 어긋났을 때"},
+      {"path": "chapter1/tests/hero_motion_probe.gd", "use": "게임 안 걸음 측정: 주인공을 직진시켜 프레임마다 클립 시각과 발끝 뼈 위치를 적음(동작 배율 실측, 디딤 미끄러짐). motion_verify.py가 부름"},
+      {"path": "tools/art/motion_verify.py", "use": "화면에서 고른 걸음 값(또는 --current)이 게임 안에서 같은 배율·미끄러짐인지 견줌(종료 코드). hero_motion_probe.gd를 돌려 계산값·화면 측정값과 비교"}
     ]},
     {"id": "environment-artist", "label": "환경 아트(environment-artist)", "about": "3D 에셋.", "tools": [
       {"path": "chapter1/tests/bake_vat.gd", "use": "걷는 적을 정점 애니메이션으로 굽기"},

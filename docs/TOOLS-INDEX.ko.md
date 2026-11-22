@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 00:23:33 · 도구 157개
+생성: 2026-11-23 01:31:01 · 도구 160개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -170,6 +170,9 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/motion_math.py` | 걸음 계약 계산(동작 배율·보폭·발 미끄러짐, 모델의 답). 관리 툴 캐릭터 화면과 적용·검증 도구가 부르는 공용 모듈(따로 돌리지 않음) | 걸음 계약 계산(표준 라이브러리만). 관리 툴(characters.py), 적용 도구(motion_apply.py), 검증 도구가 모두 이 식을 부른다. |  |
 | `tools/art/motion_apply.py` | 캐릭터 화면에서 고른 걸음 값을 자리표(asset_slots.json)의 그 칸에 글자만 바꿔 옮김. 기본은 바뀔 줄 보기, --write로 씀, --check로 자리표와 고름이 맞는지(종료 코드) | 고름 기록(관리 툴 「캐릭터」 화면에서 저장)을 게임 자리표(chapter1/art/asset_slots.json)의 그 캐릭터 칸으로 옮긴다. | `python tools/art/motion_apply.py --pick <기록 id>`<br>`python tools/art/motion_apply.py --pick <기록 id> --write` |
 | `tools/art/sheet_split.py` | 턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각 | 턴어라운드 시트 한 장을 보기별 낱장으로 나눈다(그림→3D 서비스의 여러 면 입력용). | `python tools/art/sheet_split.py <시트.png> --out <폴더> [--names front,left,back] [--pad 0.06] [--square]` |
+| `tools/art/face_reproject.py` | 정면 얼굴 그림을 3D 모델(glb)의 얼굴 살갗 텍셀에만 다시 입힘(메시·UV 불변, 표지점 json으로 맞춤). 그림→3D 모델의 얼굴이 어긋났을 때 | 정면 얼굴 그림을 3D 모델(glb)의 얼굴 살갗 텍셀에만 다시 입힌다 (메시·UV·텍스처 해상도는 그대로). | `python face_reproject.py --model 모델.glb --image 정면얼굴.png --landmarks 표지점.json` |
+| `chapter1/tests/hero_motion_probe.gd` | 게임 안 걸음 측정: 주인공을 직진시켜 프레임마다 클립 시각과 발끝 뼈 위치를 적음(동작 배율 실측, 디딤 미끄러짐). motion_verify.py가 부름 | Walk probe (T9 B1-b): the hero's new body, in the real game scene, while the pilot moves it. Per render frame it reads the hero's | `python tools/dev/godot.py --headless --fixed-fps 60 --path . --script res://chapter1/tests/hero_motion_probe.gd -- \` |
+| `tools/art/motion_verify.py` | 화면에서 고른 걸음 값(또는 --current)이 게임 안에서 같은 배율·미끄러짐인지 견줌(종료 코드). hero_motion_probe.gd를 돌려 계산값·화면 측정값과 비교 | 게임 안 걸음 측정(chapter1/tests/hero_motion_probe.gd)을 돌려 캐릭터 화면의 계산과 견준다. | `python tools/art/motion_verify.py --current`<br>`python tools/art/motion_verify.py --clip walk --rate 1.3` |
 
 ## 환경 아트(environment-artist)
 
