@@ -11,7 +11,8 @@ extends SceneTree
 ## Marker: CHAPTER1_RHYTHM_TEST_RESULT. Writes nothing.
 const Chapter = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
-const TUNING := "res://chapter1/data/combat_tuning.json"
+const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
+const TUNING :="res://chapter1/data/combat_tuning.json"
 const DROP_SOURCES := ["normal","forced","chest","elite","carrier","ritual","champion","boss","first_kill","quest","shop"]
 var checks := 0
 var failures: Array[String] = []
@@ -645,6 +646,19 @@ func opening_validator_checks() -> void:
 	rejects("opening heading choice above 180", func(d): d.rhythm.opening.steps[1].heading.choices_deg = [181.0])
 	rejects("opening heading arc 0", func(d): d.rhythm.opening.steps[1].heading.arc_deg = 0)
 
+## D22 R0-B: the app's "first-time visitor" for the run opening (profile on: runs of all witches < 2; off: true; the argument wins).
+func first_visit_checks() -> void:
+	var App = load("res://chapter1/app/chapter_one.gd")
+	var none := PackedStringArray()
+	var returning := PackedStringArray(["--chapter1-opening=returning"])
+	var expect := {0: true, 1: true, 2: false, 5: false}
+	for runs in expect:
+		check(App.opening_first_visit_for(true, runs, none) == expect[runs], "R0-B profile on, %d runs: first visit %s" % [runs, expect[runs]])
+		check(not App.opening_first_visit_for(true, runs, returning), "R0-B profile on, %d runs, opening=returning: false" % runs)
+	check(App.opening_first_visit_for(false, 0, none) and App.opening_first_visit_for(false, 9, none), "R0-B profile off: true whatever the count")
+	check(not App.opening_first_visit_for(false, 0, returning), "R0-B profile off, opening=returning: false")
+	check(TrialDocs.TRIAL_NAMES.has("elites") and TrialDocs.switches(PackedStringArray(["--chapter1-profile-off", "--chapter1-trial=rhythm,elites"])) == ["trial:rhythm", "trial:elites"], "R0-B elites is a known trial name")
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -663,5 +677,6 @@ func execute() -> void:
 	opening_validator_checks()
 	opening_checks()
 	opening_off_checks()
+	first_visit_checks()
 	print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

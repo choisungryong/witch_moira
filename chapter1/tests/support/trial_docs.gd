@@ -11,7 +11,7 @@ const DescentDoc := preload("res://chapter1/core/descent.gd")
 const TrialPace := preload("res://chapter1/app/trial_pace.gd")
 
 ## The names `--chapter1-trial=` knows (chapter_one.gd `_apply_trial`). Anything else is a typo that the app drops without a word.
-const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace"]
+const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace", "grace", "elites"]
 ## Other arguments that change what a capture shows, listed in the switch list so a capture says it (name -> what it does).
 const SWITCH_ARGS := {"--run-spells=on": "spells (tool)", "--chapter1-opening=returning": "opening=returning", "--chapter1-no-juice": "no-juice"}
 

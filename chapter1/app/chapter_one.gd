@@ -386,11 +386,10 @@ func _apply_trial() -> void:
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
 	for part in parts:
-		if part in ["spells","rhythm","descent","pace","grace"]:trial_switches.append(part)
-		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace), ignored"%part)
+		if part in ["spells","rhythm","descent","pace","grace","elites"]:trial_switches.append(part)
+		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace, elites), ignored"%part)
 	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
-	# The run opening (D15 B) is the long one unless asked otherwise: the app has no play counter yet (no schema change).
-	if "--chapter1-opening=returning" in _user_args():run.opening_first_visit=false
+	# The run opening (D15 B): "first-time visitor" is decided per run in start_run() (opening_first_visit_for), where the profile is known.
 	# rhythm and elites both change the one tuning document, so it is read once and handed over once.
 	# "pace" (D19 C1) is the rhythm with the first growth-pace values in the in-memory copy (level table, seal kills, guardian level, sweep bonus).
 	if "rhythm" in parts or "elites" in parts or "pace" in parts or "grace" in parts:
@@ -422,6 +421,12 @@ func _apply_trial() -> void:
 			for arg in _user_args():
 				if arg.begins_with("--chapter1-descent-cost="):descent_doc["cost"]=[int(arg.trim_prefix("--chapter1-descent-cost="))]
 			if not run.set_descent(descent_doc):push_warning("trial descent refused: "+str(run.errors))
+## D22 R0-B: the run opening's "first-time visitor". With the profile on: the runs of all witches together (records.runs, read only) are
+## fewer than 2. Profile off (or not available): true, as before. `--chapter1-opening=returning` makes it false in every case.
+static func opening_first_visit_for(profile_on:bool,total_runs:int,args:PackedStringArray) -> bool:
+	if "--chapter1-opening=returning" in args:return false
+	if not profile_on:return true
+	return total_runs<2
 func _init() -> void:
 	run=ChapterRun.new();world=ChapterWorld.new();hud=ChapterHUD.new();effects=ChapterEffects.new();actors=ChapterActors.new()
 	_apply_trial()
@@ -452,6 +457,7 @@ func start_run(id_: String) -> void:
 		if profile_rejected():hud.show_profile_notice()
 		else:hud.notify(_profile_error_text())
 		return
+	run.opening_first_visit=opening_first_visit_for(profile.available,profile.total_runs(),_user_args())
 	_chapter_last_event=-1
 	_receipt="%d-%d-%d"%[OS.get_process_id(),Time.get_unix_time_from_system(),Time.get_ticks_usec()];_saved_receipt=""
 	hud.stash_open=false
