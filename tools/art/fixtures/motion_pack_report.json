@@ -1,0 +1,6 @@
+{
+  "clips": {
+    "run": {"length_s": 0.53333, "ground_speed_toe_mps": 7.2215},
+    "walk": {"length_s": 0.96667, "ground_speed_toe_mps": 2.2125}
+  }
+}

@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 01:31:01 · 도구 160개
+생성: 2026-11-23 05:33:35 · 도구 161개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -172,7 +172,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/sheet_split.py` | 턴어라운드 시트 한 장을 정면·옆·뒤 낱장으로 나눔(그림→3D 서비스의 여러 면 입력용). 바탕과 다른 덩어리를 왼쪽부터 --names 순서로 자름, --square로 정사각 | 턴어라운드 시트 한 장을 보기별 낱장으로 나눈다(그림→3D 서비스의 여러 면 입력용). | `python tools/art/sheet_split.py <시트.png> --out <폴더> [--names front,left,back] [--pad 0.06] [--square]` |
 | `tools/art/face_reproject.py` | 정면 얼굴 그림을 3D 모델(glb)의 얼굴 살갗 텍셀에만 다시 입힘(메시·UV 불변, 표지점 json으로 맞춤). 그림→3D 모델의 얼굴이 어긋났을 때 | 정면 얼굴 그림을 3D 모델(glb)의 얼굴 살갗 텍셀에만 다시 입힌다 (메시·UV·텍스처 해상도는 그대로). | `python face_reproject.py --model 모델.glb --image 정면얼굴.png --landmarks 표지점.json` |
 | `chapter1/tests/hero_motion_probe.gd` | 게임 안 걸음 측정: 주인공을 직진시켜 프레임마다 클립 시각과 발끝 뼈 위치를 적음(동작 배율 실측, 디딤 미끄러짐). motion_verify.py가 부름 | Walk probe (T9 B1-b): the hero's new body, in the real game scene, while the pilot moves it. Per render frame it reads the hero's | `python tools/dev/godot.py --headless --fixed-fps 60 --path . --script res://chapter1/tests/hero_motion_probe.gd -- \` |
-| `tools/art/motion_verify.py` | 화면에서 고른 걸음 값(또는 --current)이 게임 안에서 같은 배율·미끄러짐인지 견줌(종료 코드). hero_motion_probe.gd를 돌려 계산값·화면 측정값과 비교 | 게임 안 걸음 측정(chapter1/tests/hero_motion_probe.gd)을 돌려 캐릭터 화면의 계산과 견준다. | `python tools/art/motion_verify.py --current`<br>`python tools/art/motion_verify.py --clip walk --rate 1.3` |
+| `tools/art/motion_verify.py` | 화면에서 고른 걸음 값(또는 --current)이 게임 안에서 같은 배율·미끄러짐인지 견줌. hero_motion_probe.gd를 돌려 배율은 계산과 2% 안, 미끄러짐은 화면이 잰 값과 0.15 m/s 안인지 판정(계산값과는 견주지 않음). 종료 코드 0 같음 / 1 어긋남 / 2 측정 못 함 / 3 화면 값이 없어 배율만 판정. --report로 몸 보고서를 줄 수 있음 | 게임 안 걸음 측정(chapter1/tests/hero_motion_probe.gd)을 돌려 캐릭터 화면의 계산과 견준다. | `python tools/art/motion_verify.py --current`<br>`python tools/art/motion_verify.py --clip walk --rate 1.3` |
 
 ## 환경 아트(environment-artist)
 
@@ -245,6 +245,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/choice_frame_probe.gd` | Real-time frame interval while the growth-choice window is open (QA tool, no gameplay writes). The built-in pilot plays to the first choice, is parked, | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/choice_frame_probe.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost` |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
+| `chapter1/tests/descent_fx_shots.gd` | QA tool (never product code): pictures and frame times of the descent's three sweeps (D24 12.2), on the real ChapterOne scene. | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/descent_fx_shots.gd -- \` |
 | `chapter1/tests/descent_policy.gd` | When a bot uses the descent (D15 A6.5). MEASUREMENT ONLY: chapter_pilot.gd is not touched (the golden replay plays it as it is), |  |
 | `chapter1/tests/elite_sites_shot.gd` | Look study for guarded elites and the shrine/chest they guard (docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/elite_sites_shot.gd -- \` |
 | `chapter1/tests/equiv_dump.gd` | Equivalence dump for tools/dev/equiv.py (QA tool, reads presentation state only, writes no game state). | `python tools/dev/godot.py --headless --fixed-fps 60 --path <root> --script res://chapter1/tests/equiv_dump.gd -- --chapter1-pilot` |
@@ -330,4 +331,4 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/video_strip.py` | 녹화 영상의 구간을 원래 프레임률로 뽑아 잘라 확대하고, 프레임 번호를 붙여 가로 띠(판)로 이어 붙인다. | `python tools/dev/video_strip.py _local/ref/sacrata/yt/sacrata-yt-0-21m.mp4 --start 342 --dur 2` |
 | `tools/manager/audit_view.py` | 점검 화면의 뒷면: 가장 최근 audit 결과를 읽고(읽기 전용), 다시 돌리기는 audit.py 를 하위 프로세스로 부른다. |  |
 
-chapter1/tests/test_*.gd 27개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
+chapter1/tests/test_*.gd 28개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.

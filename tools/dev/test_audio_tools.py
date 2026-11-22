@@ -20,6 +20,7 @@ import audio_audition as ad
 REPO = HERE.parents[1]
 PY = sys.executable
 fails = []
+CHILD_TIMEOUT_S = 180
 
 
 def check(name, cond, detail=''):
@@ -29,8 +30,41 @@ def check(name, cond, detail=''):
 
 
 def run(args):
-    p = subprocess.run([PY] + [str(a) for a in args], capture_output=True, text=True, encoding='utf-8')
+    # A child that hangs must not hang the whole self test (180 s limit); the result is never a bare FileNotFoundError downstream: see load().
+    try:
+        p = subprocess.run([PY] + [str(a) for a in args], capture_output=True, text=True, encoding='utf-8', timeout=CHILD_TIMEOUT_S)
+    except subprocess.TimeoutExpired as e:
+        out = (e.stdout or b'') if isinstance(e.stdout, bytes) else (e.stdout or '')
+        if isinstance(out, bytes):
+            out = out.decode('utf-8', 'replace')
+        return 124, out + '\nTIMEOUT after %d s' % CHILD_TIMEOUT_S
     return p.returncode, p.stdout + p.stderr
+
+
+class GroupFailed(Exception):
+    pass
+
+
+def tail(text, n=20):
+    return '\n'.join('    | ' + l for l in text.strip().splitlines()[-n:])
+
+
+def load(name, code, text, path, ok_codes=(0,)):
+    """Exit code first, then the result file: a failed child prints the tail of its own output and fails its group, instead of a bare FileNotFoundError."""
+    if code not in ok_codes or not Path(path).is_file():
+        print('FAIL  %s: child exit code %s, result file %s\n%s' % (name, code, 'present' if Path(path).is_file() else 'missing', tail(text)))
+        fails.append(name)
+        raise GroupFailed(name)
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+class group:
+    """A failed child ends this group of checks only; the next group still runs."""
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, value, trace):
+        return kind is GroupFailed
 
 
 def tone(path, hz, seconds=0.3, amp=0.5):
@@ -40,7 +74,8 @@ def tone(path, hz, seconds=0.3, amp=0.5):
 
 
 def main():
-    tmp = Path(tempfile.mkdtemp()) / '_local' / 'selftest'
+    root = Path(tempfile.mkdtemp())
+    tmp = root / '_local' / 'selftest'
     try:
         cap = tmp / 'capture'
         (cap / 'frames').mkdir(parents=True)
@@ -60,54 +95,58 @@ def main():
             {'id': 'A', 'label': 'A tones', 'files': {'fire': ['fire_0.wav', 'fire_1.wav', 'fire_2.wav'], 'lightning': ['light.wav']}}]}), encoding='utf-8')
 
         base_args = [HERE / 'audio_scene_audition.py', cap, '--requests', tmp / 'req.json', '--candidates', tmp / 'cands.json']
-        code, text = run(base_args + ['--out', tmp / 'o1', '--no-video'])
-        check('scene tool runs', code == 0, text[-200:] if code else '')
-        m = json.loads((tmp / 'o1/measure.json').read_text(encoding='utf-8'))
-        vids = {v['id']: v for v in m['videos']}
-        check('alignment matches (hit events == impact requests)', m['alignment']['ok'], str(m['alignment']['notes']))
-        check('cooldown from player file: fire 3 requests -> 2 played (COOLDOWNS fire=10)', vids['0']['played_in_window'].get('fire') == 2, str(vids['0']['played_in_window']))
-        check('SILENT cue lightning makes no sound (baseline and candidate)', 'lightning' not in vids['0']['played_in_window'] and 'lightning' not in vids['A']['played_in_window'],
-              str(vids['A']['played_in_window']))
-        check('paused request dropped (hurt)', 'hurt' not in vids['0']['played_in_window'])
-        check('candidate files used and level-matched', len(vids['A']['candidate_files']['cues']['fire']) == 3 and vids['A']['candidate_files']['warnings'] == ['lightning is SILENT in the game: its files are not played'],
-              str(vids['A']['candidate_files']['warnings']))
-        check('true peak at or under -1 dBTP, nothing clipped', all(v['true_peak_dbtp'] <= -0.95 and v['clipped'] == 0 for v in m['videos']), str([v['true_peak_dbtp'] for v in m['videos']]))
-        check('common loudness: one gain for all', len({v['gain_db'] for v in m['videos']}) == 1, str([v['gain_db'] for v in m['videos']]))
-        ans = (tmp / 'o1/answers.ko.txt').read_text(encoding='utf-8')
-        check('blind: send/ has numbers only, answers name both candidates', sorted(p.name for p in (tmp / 'o1/send').glob('*.wav')) == ['01.wav', '02.wav'] and '= 0 (' in ans and '= A (' in ans)
-        check('answer key not inside send/', not any(' = A (' in p.read_text(encoding='utf-8') for p in (tmp / 'o1/send').glob('*.txt')))
+        with group():
+            code, text = run(base_args + ['--out', tmp / 'o1', '--no-video'])
+            check('scene tool runs', code == 0, text[-200:] if code else '')
+            m = load('scene tool runs', code, text, tmp / 'o1/measure.json')
+            vids = {v['id']: v for v in m['videos']}
+            check('alignment matches (hit events == impact requests)', m['alignment']['ok'], str(m['alignment']['notes']))
+            check('cooldown from player file: fire 3 requests -> 2 played (COOLDOWNS fire=10)', vids['0']['played_in_window'].get('fire') == 2, str(vids['0']['played_in_window']))
+            check('SILENT cue lightning makes no sound (baseline and candidate)', 'lightning' not in vids['0']['played_in_window'] and 'lightning' not in vids['A']['played_in_window'],
+                  str(vids['A']['played_in_window']))
+            check('paused request dropped (hurt)', 'hurt' not in vids['0']['played_in_window'])
+            check('candidate files used and level-matched', len(vids['A']['candidate_files']['cues']['fire']) == 3 and vids['A']['candidate_files']['warnings'] == ['lightning is SILENT in the game: its files are not played'],
+                  str(vids['A']['candidate_files']['warnings']))
+            check('true peak at or under -1 dBTP, nothing clipped', all(v['true_peak_dbtp'] <= -0.95 and v['clipped'] == 0 for v in m['videos']), str([v['true_peak_dbtp'] for v in m['videos']]))
+            check('common loudness: one gain for all', len({v['gain_db'] for v in m['videos']}) == 1, str([v['gain_db'] for v in m['videos']]))
+            ans = (tmp / 'o1/answers.ko.txt').read_text(encoding='utf-8')
+            check('blind: send/ has numbers only, answers name both candidates', sorted(p.name for p in (tmp / 'o1/send').glob('*.wav')) == ['01.wav', '02.wav'] and '= 0 (' in ans and '= A (' in ans)
+            check('answer key not inside send/', not any(' = A (' in p.read_text(encoding='utf-8') for p in (tmp / 'o1/send').glob('*.txt')))
 
         # per-candidate unsilence + level_ref: only that candidate's video lets the SILENT cue sound, at the referenced cue's level
         (tmp / 'cands_u.json').write_text(json.dumps({'title': 'selftest', 'level_match': 'game', 'candidates': [
             {'id': 'U', 'label': 'U', 'unsilence': ['lightning'], 'level_ref': {'lightning': 'fire'}, 'level_offset_db': {'lightning': -6}, 'files': {'lightning': ['light.wav']}},
             {'id': 'V', 'label': 'V', 'files': {'lightning': ['light.wav']}}]}), encoding='utf-8')
-        code, text = run([HERE / 'audio_scene_audition.py', cap, '--requests', tmp / 'req.json', '--candidates', tmp / 'cands_u.json', '--out', tmp / 'o1u', '--no-video'])
-        mu = json.loads((tmp / 'o1u/measure.json').read_text(encoding='utf-8'))
-        vu = {v['id']: v for v in mu['videos']}
-        check('unsilence: lightning sounds in U only (baseline and V stay SILENT)', code == 0 and vu['U']['played_in_window'].get('lightning') == 1
-              and 'lightning' not in vu['0']['played_in_window'] and 'lightning' not in vu['V']['played_in_window'], str({k: v['played_in_window'] for k, v in vu.items()}))
-        gu, gv = vu['U']['candidate_files']['cues']['lightning'][0], vu['V']['candidate_files']['cues']['lightning'][0]
-        check('level_ref + offset: U lightning level = fire level - 6 dB, differs from own-cue match', gu.get('level_ref') == 'fire' and abs(gu['gain_db'] - gv['gain_db']) > 0.5, '%s %s' % (gu, gv))
-        check('unsilenced candidate has no SILENT warning, the other does', vu['U']['candidate_files']['warnings'] == [] and len(vu['V']['candidate_files']['warnings']) == 1)
+        with group():
+            code, text = run([HERE / 'audio_scene_audition.py', cap, '--requests', tmp / 'req.json', '--candidates', tmp / 'cands_u.json', '--out', tmp / 'o1u', '--no-video'])
+            mu = load('scene tool (unsilence)', code, text, tmp / 'o1u/measure.json')
+            vu = {v['id']: v for v in mu['videos']}
+            check('unsilence: lightning sounds in U only (baseline and V stay SILENT)', code == 0 and vu['U']['played_in_window'].get('lightning') == 1
+                  and 'lightning' not in vu['0']['played_in_window'] and 'lightning' not in vu['V']['played_in_window'], str({k: v['played_in_window'] for k, v in vu.items()}))
+            gu, gv = vu['U']['candidate_files']['cues']['lightning'][0], vu['V']['candidate_files']['cues']['lightning'][0]
+            check('level_ref + offset: U lightning level = fire level - 6 dB, differs from own-cue match', gu.get('level_ref') == 'fire' and abs(gu['gain_db'] - gv['gain_db']) > 0.5, '%s %s' % (gu, gv))
+            check('unsilenced candidate has no SILENT warning, the other does', vu['U']['candidate_files']['warnings'] == [] and len(vu['V']['candidate_files']['warnings']) == 1)
 
         # a different player file must change the result: proves the rules are read, not copied
         player = tmp / 'combat_audio.gd'
         text_gd = (REPO / 'chapter1/presentation/combat_audio.gd').read_text(encoding='utf-8')
         edited, n = re.subn(r'("fire":)10,', r'\g<1>3,', text_gd, count=1)
-        player.write_text(edited, encoding='utf-8')
-        code, text = run(base_args + ['--out', tmp / 'o2', '--no-video', '--player', player])
-        m2 = json.loads((tmp / 'o2/measure.json').read_text(encoding='utf-8'))
-        v2 = {v['id']: v for v in m2['videos']}
-        check('player file edited (COOLDOWNS fire 10 -> 3): fire plays 3', n == 1 and code == 0 and v2['0']['played_in_window'].get('fire') == 3, str(v2['0']['played_in_window']))
-        player.write_text(re.sub(r'const SILENT: Array\[String\] = \[[^\]]*\]', 'const SILENT: Array[String] = []', text_gd), encoding='utf-8')
-        code, text = run(base_args + ['--out', tmp / 'o3', '--no-video', '--player', player])
-        m3 = json.loads((tmp / 'o3/measure.json').read_text(encoding='utf-8'))
-        check('SILENT emptied in the player file: lightning plays', {v['id']: v for v in m3['videos']}['0']['played_in_window'].get('lightning') == 1)
+        with group():
+            player.write_text(edited, encoding='utf-8')
+            code, text = run(base_args + ['--out', tmp / 'o2', '--no-video', '--player', player])
+            m2 = load('scene tool (player file edited)', code, text, tmp / 'o2/measure.json')
+            v2 = {v['id']: v for v in m2['videos']}
+            check('player file edited (COOLDOWNS fire 10 -> 3): fire plays 3', n == 1 and code == 0 and v2['0']['played_in_window'].get('fire') == 3, str(v2['0']['played_in_window']))
+            player.write_text(re.sub(r'const SILENT: Array\[String\] = \[[^\]]*\]', 'const SILENT: Array[String] = []', text_gd), encoding='utf-8')
+            code, text = run(base_args + ['--out', tmp / 'o3', '--no-video', '--player', player])
+            m3 = load('scene tool (SILENT emptied)', code, text, tmp / 'o3/measure.json')
+            check('SILENT emptied in the player file: lightning plays', {v['id']: v for v in m3['videos']}['0']['played_in_window'].get('lightning') == 1)
 
-        code, text = run(base_args + ['--out', tmp / 'o4', '--no-video', '--loudness', 'each', '--open-labels'])
-        m4 = json.loads((tmp / 'o4/measure.json').read_text(encoding='utf-8'))
-        check('each loudness: every video at target or limited by -1 dBTP', all(abs(v['lufs_i'] + 16) < 0.2 or v['true_peak_dbtp'] > -1.3 for v in m4['videos']), str([(v['lufs_i'], v['true_peak_dbtp']) for v in m4['videos']]))
-        check('open labels name files by candidate id', (tmp / 'o4/send/cand_A.wav').is_file())
+        with group():
+            code, text = run(base_args + ['--out', tmp / 'o4', '--no-video', '--loudness', 'each', '--open-labels'])
+            m4 = load('scene tool (each loudness)', code, text, tmp / 'o4/measure.json')
+            check('each loudness: every video at target or limited by -1 dBTP', all(abs(v['lufs_i'] + 16) < 0.2 or v['true_peak_dbtp'] > -1.3 for v in m4['videos']), str([(v['lufs_i'], v['true_peak_dbtp']) for v in m4['videos']]))
+            check('open labels name files by candidate id', (tmp / 'o4/send/cand_A.wav').is_file())
         code, text = run(base_args + ['--out', 'C:/elsewhere/out', '--no-video'])
         check('refuses an output folder outside _local', code == 2, text[-100:])
         if have_ffmpeg:
@@ -161,13 +200,14 @@ def main():
             return hashlib.sha256((led / n).read_bytes()).hexdigest()
         (led / 'AUDIO-LEDGER.json').write_text(json.dumps({'creator': 'T', 'products': [
             {'file': 'a.wav', 'sha256': sha('a.wav')}, {'file': 'b.wav', 'sha256': 'f' * 64}, {'file': 'gone.wav', 'sha256': 'e' * 64, 'origin': 'unverified'}]}), encoding='utf-8')
-        code, text = run([HERE / 'audio_ledger_check.py', '--dir', led, '--json', tmp / 'led.json'])
-        res = json.loads((tmp / 'led.json').read_text(encoding='utf-8'))[0]
-        check('ledger: exit 1 with findings', code == 1)
-        check('ledger: file without entry c.wav', res['no_entry'] == ['c.wav'])
-        check('ledger: hash mismatch b.wav', res['hash_mismatch'] == ['b.wav'])
-        check('ledger: entry without file gone.wav', res['entry_without_file'] == ['gone.wav'])
-        check('ledger: unverified listed', res['unverified'] == ['gone.wav'])
+        with group():
+            code, text = run([HERE / 'audio_ledger_check.py', '--dir', led, '--json', tmp / 'led.json'])
+            res = load('ledger tool', code, text, tmp / 'led.json', ok_codes=(1,))[0]
+            check('ledger: exit 1 with findings', code == 1)
+            check('ledger: file without entry c.wav', res['no_entry'] == ['c.wav'])
+            check('ledger: hash mismatch b.wav', res['hash_mismatch'] == ['b.wav'])
+            check('ledger: entry without file gone.wav', res['entry_without_file'] == ['gone.wav'])
+            check('ledger: unverified listed', res['unverified'] == ['gone.wav'])
         (led / 'AUDIO-LEDGER.json').write_text(json.dumps({'creator': 'T', 'files': [
             {'file': n, 'sha256': sha(n)} for n in ('a.wav', 'b.wav', 'c.wav')]}), encoding='utf-8')
         code, text = run([HERE / 'audio_ledger_check.py', '--dir', led])
@@ -180,7 +220,7 @@ def main():
         (led / 'AUDIO-LEDGER.json').unlink()
         check('ledger: no ledger file -> exit 2', run([HERE / 'audio_ledger_check.py', '--dir', led])[0] == 2)
     finally:
-        shutil.rmtree(tmp.parent, ignore_errors=True)
+        shutil.rmtree(root, ignore_errors=True)
     print('\n%d failed' % len(fails) if fails else '\nall passed')
     return 1 if fails else 0
 
