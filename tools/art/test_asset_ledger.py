@@ -119,6 +119,13 @@ def main():
               all((REAL_ROOT / "chapter1/art" / r["path"]).is_file() for r in m["records"]) and len(m["records"]) >= 10)
         check("옛 기록 파일을 지우지 않았다", (REAL_ROOT / "chapter1/art/quality03/ASSET-LEDGER-v04.json").is_file())
         check("migrate 결과가 점검을 통과(오류 0)", not L.run_check(REAL_ROOT, out)["errors"])
+        # 새 소리 폴더 audio/ 의 항목이 소리 원장(audio/AUDIO-LEDGER.json)의 사실 그대로 허용 값으로 변환됨
+        nal = json.loads((REAL_ROOT / "chapter1/art/audio/AUDIO-LEDGER.json").read_text(encoding="utf-8"))
+        okn = len(nal["products"]) > 0
+        for p in nal["products"]:
+            e = by.get("audio/" + p["file"])
+            okn = okn and e is not None and e["source_type"] in L.SOURCE_TYPES and e["sha256"] == p["sha256"]                 and e["origin"] == p["source"] and e["license"] == p["license"] and e["postprocess"] == p["method"]
+        check("migrate: 새 소리 폴더 audio/ 항목이 원장의 출처·가공·라이선스·해시 그대로 허용 source_type 으로 들어온다", okn)
         check("migrate 직후 배포 가능으로 표기된 것은 0(release_cleared 없음)",
               L.run_check(REAL_ROOT, out)["counts"]["release_ready"] == 0)
         check("출처를 모르는 생성물은 '미확인'으로 적힘(지어내지 않음)",

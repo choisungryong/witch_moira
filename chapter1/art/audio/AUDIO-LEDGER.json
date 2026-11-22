@@ -1,0 +1,70 @@
+{
+  "products": [
+    {
+      "file": "chain/a1.wav",
+      "sha256": "c60335b828dc5b5794525aec8b3ca59a306121f5f084097a6931eb07c40646db",
+      "pack": "sonniss-gdc-2026",
+      "source": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "source_sha256": "87c709fed078cfea7447e1e13b50715c59d7d78f2589d7bba9382ed3fafbef69",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_design.wav",
+      "candidate_sha256": "e6e3476e175cffcfb8cb149bfc1c5eae984363061e4458c7a3220cb2704ed6e9",
+      "method": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    },
+    {
+      "file": "chain/a2.wav",
+      "sha256": "d0054412106bfdb8a6e78f5e956d290eff79d063038aca376b646a3488099f11",
+      "pack": "sonniss-gdc-2026",
+      "source": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "source_sha256": "87c709fed078cfea7447e1e13b50715c59d7d78f2589d7bba9382ed3fafbef69",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_design.wav",
+      "candidate_sha256": "e6e3476e175cffcfb8cb149bfc1c5eae984363061e4458c7a3220cb2704ed6e9",
+      "method": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    },
+    {
+      "file": "chain/a3.wav",
+      "sha256": "3c5452147d1837e2362a933fa971452bcaba1b4e9c9776cc01d99f9a76bb89c0",
+      "pack": "sonniss-gdc-2026",
+      "source": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "source_sha256": "87c709fed078cfea7447e1e13b50715c59d7d78f2589d7bba9382ed3fafbef69",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_design.wav",
+      "candidate_sha256": "e6e3476e175cffcfb8cb149bfc1c5eae984363061e4458c7a3220cb2704ed6e9",
+      "method": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    },
+    {
+      "file": "chain/b1.wav",
+      "sha256": "c54719d7009883d37535c7304708493faa6aaf0d52cf2c2b7b55192162662784",
+      "pack": "sonniss-2020",
+      "source": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "source_sha256": "4c27cc0903f7e5e592860497b5608eb03c14ead7925ae8598759f2947ac541a9",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_low.wav",
+      "candidate_sha256": "7d5c8f2b87f5119002c642404927f995ccaff480edc71b08f2422936aaf8ddf2",
+      "method": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    },
+    {
+      "file": "chain/b2.wav",
+      "sha256": "fcfbde353b4441ef621da5a6f4a6815af17ecacca0640a27de93d79585a927f5",
+      "pack": "sonniss-2020",
+      "source": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "source_sha256": "4c27cc0903f7e5e592860497b5608eb03c14ead7925ae8598759f2947ac541a9",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_low.wav",
+      "candidate_sha256": "7d5c8f2b87f5119002c642404927f995ccaff480edc71b08f2422936aaf8ddf2",
+      "method": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    },
+    {
+      "file": "chain/b3.wav",
+      "sha256": "055db2b1ddac410311b2816d07fd68b88d85ee6ffe15820880d93f03d6e372bb",
+      "pack": "sonniss-2020",
+      "source": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "source_sha256": "4c27cc0903f7e5e592860497b5608eb03c14ead7925ae8598759f2947ac541a9",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "candidate": "local_arc_low.wav",
+      "candidate_sha256": "7d5c8f2b87f5119002c642404927f995ccaff480edc71b08f2422936aaf8ddf2",
+      "method": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz."
+    }
+  ]
+}

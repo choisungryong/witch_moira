@@ -22,6 +22,14 @@ const CUT_PAIR_DB := 2.0           # two or more cuts in one tick
 const LONG_DETONATION_AT := 4
 const INTERLOCK_CLASSES := ["frozen","stunned","staggered"]    # "slowed" makes no sound (3.7)
 
+## Optional audition of the resolved contacts. No core state or random draws.
+static func chain_bank() -> String:
+	for bank in ["A", "B"]:
+		if OS.get_cmdline_user_args().has("--chapter1-chain-audio=" + bank):
+			return bank
+	return ""
+
+var _chain_preview := not chain_bank().is_empty()
 var _last_pulse_tick := -100000
 var _last_pulse_calm := false
 var _decay_db := 0.0
@@ -60,7 +68,12 @@ func route(events: Array,spells: Dictionary,tick: int) -> Array:
 				if on and rings.has(id_):
 					_pulse(out,event,String(rings[id_]),facts,tick)
 				else:
-					var cast := _request(SKILL_CUE.get(event.skill_id,"fire"),"cast")
+					var cue := String(SKILL_CUE.get(id_, "fire"))
+					if _chain_preview and id_ == "chapter1.skill.arc":
+						var contacts := mini(3, event.get("targets", []).size())
+						if contacts > 0:
+							cue = "arc_path_%d" % contacts
+					var cast := _request(cue,"cast")
 					cast.skill_id = id_
 					out.append(cast)
 			"hit":

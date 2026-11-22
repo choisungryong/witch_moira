@@ -39,11 +39,24 @@ var pitch_turn: Dictionary={}
 var raw_fallbacks: Array[String]=[]
 var voice_gains: Array[float]=[]
 
+func _load_chain_bank() -> void:
+	var bank := preload("res://chapter1/presentation/audio_routes.gd").chain_bank()
+	if bank.is_empty(): return
+	var data = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/audio_map.json"))
+	if not data is Dictionary or not data.get("chain_lightning", {}).has(bank):
+		push_error("Missing chain sound bank " + bank)
+		return
+	var table: Dictionary = data.chain_lightning[bank]
+	for cue in table:
+		var sample := _load_wav(String(table[cue]))
+		if sample != null: streams[cue] = [sample]
+
 func setup(view: Node3D) -> void:
 	for cue in COUNTS:
 		var options: Array[AudioStream]=[]
 		for i in int(COUNTS[cue]):options.append(_load_wav(path_of(cue)+cue+"_%d.wav" % i))
 		streams[cue]=options
+	_load_chain_bank()
 	for i in MAX_VOICES:
 		var voice := AudioStreamPlayer.new()
 		voice.name="Chapter1CombatVoice%d" % i
@@ -78,25 +91,27 @@ func play_ui(cue: String,tick: int) -> void:
 
 func _play_cue(cue: String,tick: int,ui: bool,gain_db: float=0.0) -> void:
 	if muted or (paused and not ui) or not streams.has(cue) or cue in SILENT:return
-	if tick>=0 and tick-int(last_cue_tick.get(cue,-100000))<int(COOLDOWNS[cue]):return
+	var chain := cue.begins_with("arc_path_")
+	var group := "lightning" if chain else cue
+	if tick>=0 and tick-int(last_cue_tick.get(group,-100000))<int(COOLDOWNS[group]):return
 	# Two final voices remain available for player hurt and important loot/UI cues.
 	var critical: bool=cue in ["hurt","drop","equip","pickup","jewel","legend"]
 	var end := MAX_VOICES if critical else MAX_VOICES-2
 	for index in range(1,end):
 		var voice := voices[index]
 		if voice.playing:continue
-		var variant: int=int(variants.get(cue,0))%int(COUNTS[cue])
+		var variant: int=int(variants.get(cue,0))%streams[cue].size()
 		variants[cue]=variant+1
 		voice.stream=streams[cue][variant]
 		voice.pitch_scale=PITCHES[variant%PITCHES.size()]
-		if DIRS.has(cue):
-			var turn: int=int(pitch_turn.get(cue,0));pitch_turn[cue]=turn+1
+		if chain or DIRS.has(cue):
+			var turn: int=int(pitch_turn.get(group,0));pitch_turn[group]=turn+1
 			voice.pitch_scale=PITCH_STEPS[turn%PITCH_STEPS.size()]
-		voice_gains[index]=float(GAINS[cue])*(db_to_linear(gain_db) if gain_db!=0.0 else 1.0)
+		voice_gains[index]=float(GAINS[group])*(db_to_linear(gain_db) if gain_db!=0.0 else 1.0)
 		voice.volume_db=linear_to_db(maxf(.0001,master_volume*.11*voice_gains[index]))
 		voice.stream_paused=false;voice.play()
 		played+=1
-		if tick>=0:last_cue_tick[cue]=tick
+		if tick>=0:last_cue_tick[group]=tick
 		return
 	dropped+=1
 

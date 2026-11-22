@@ -1,0 +1,14 @@
+{
+  "chain_lightning": {
+    "A": {
+      "arc_path_1": "res://chapter1/art/audio/chain/a1.wav",
+      "arc_path_2": "res://chapter1/art/audio/chain/a2.wav",
+      "arc_path_3": "res://chapter1/art/audio/chain/a3.wav"
+    },
+    "B": {
+      "arc_path_1": "res://chapter1/art/audio/chain/b1.wav",
+      "arc_path_2": "res://chapter1/art/audio/chain/b2.wav",
+      "arc_path_3": "res://chapter1/art/audio/chain/b3.wav"
+    }
+  }
+}

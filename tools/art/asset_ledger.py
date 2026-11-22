@@ -671,15 +671,35 @@ def migrate_quality03_images(root, led, used_records):
     return out
 
 
+NEW_AUDIO_LEDGER = "audio/AUDIO-LEDGER.json"
+
+
 def audio_entries(root, rels):
     al = _read(root, "quality03_audio/AUDIO-LEDGER.json")
     out = []
     products = {p["file"]: p for p in (al or {}).get("products", [])}
+    # 새 소리 폴더 audio/ 의 원장(products[].file 은 audio/ 기준 상대 경로, 항목마다 pack·source·license·method)
+    nal = _read(root, NEW_AUDIO_LEDGER)
+    nproducts = {p["file"]: p for p in (nal or {}).get("products", [])}
     for rel in rels:
         name = rel.split("/", 1)[1]
         e = {"path": rel}
         e.update(file_facts(root, rel))
-        if name in products:
+        if rel.startswith("audio/") and name in nproducts:
+            p = nproducts[name]
+            e.update(
+                source_type="third_party_derived",  # 원장: 외부 팩의 원음(source)을 잘라 필터·피치·층으로 가공(method)
+                creator=p.get("creator") or "%s 팩 수록 원음(제작자 표기는 source 경로 %s)" % (p.get("pack", UNKNOWN), p.get("source", UNKNOWN)),
+                origin=p.get("source", UNKNOWN),
+                license=p.get("license", UNKNOWN),
+                date=p.get("date") or UNKNOWN + ": 가공일 기록 없음",
+                postprocess=p.get("method", UNKNOWN),
+                record_files=[record_ref(root, NEW_AUDIO_LEDGER)],
+                release_cleared=False, status="기록 이관(원장 migrate)",
+                notes="원음 sha256 %s, 후보 %s(sha256 %s). 원장 항목: %s" % (p.get("source_sha256", UNKNOWN), p.get("candidate", UNKNOWN), p.get("candidate_sha256", UNKNOWN), NEW_AUDIO_LEDGER))
+            if p.get("sha256") != e["sha256"]:
+                e["notes"] += " 주의: 소리 원장의 sha256 과 현재 파일이 다르다."
+        elif name in products:
             p = products[name]
             e.update(
                 source_type="third_party_derived", creator=al.get("creator", UNKNOWN),
@@ -723,7 +743,7 @@ def cmd_migrate(a):
         if kind == "ok":
             assets[e["path"]] = e
     files = list_asset_files(a.root)
-    audio_rels = [r for r in files if r.startswith("quality03_audio/") and ASSET_EXT[Path(r).suffix.lower()] == "audio"]
+    audio_rels = [r for r in files if r.startswith(("quality03_audio/", "audio/")) and ASSET_EXT[Path(r).suffix.lower()] == "audio"]
     for e in audio_entries(a.root, audio_rels):
         assets[e["path"]] = e
     for rel in files:

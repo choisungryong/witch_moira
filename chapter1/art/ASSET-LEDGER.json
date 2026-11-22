@@ -4031,6 +4031,126 @@
       ],
       "release_cleared": false,
       "status": "기록 이관(원장 migrate)"
+    },
+    {
+      "path": "audio/chain/a1.wav",
+      "sha256": "c60335b828dc5b5794525aec8b3ca59a306121f5f084097a6931eb07c40646db",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/a2.wav",
+      "sha256": "d0054412106bfdb8a6e78f5e956d290eff79d063038aca376b646a3488099f11",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/a3.wav",
+      "sha256": "3c5452147d1837e2362a933fa971452bcaba1b4e9c9776cc01d99f9a76bb89c0",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b1.wav",
+      "sha256": "c54719d7009883d37535c7304708493faa6aaf0d52cf2c2b7b55192162662784",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b2.wav",
+      "sha256": "fcfbde353b4441ef621da5a6f4a6815af17ecacca0640a27de93d79585a927f5",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b3.wav",
+      "sha256": "055db2b1ddac410311b2816d07fd68b88d85ee6ffe15820880d93f03d6e372bb",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
     }
   ]
 }
