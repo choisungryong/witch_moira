@@ -4,7 +4,7 @@ extends SceneTree
 ##
 ##   --script res://chapter1/tests/sim_loot.gd                 10000 runs, checks targets
 ##   ... -- --runs=2000 --primary=chapter1.skill.ember
-##   ... -- --affix-rolls=on --luck=3000                       D23 3.16 (needs the core's affix_rolls branch, see below)
+##   ... -- --affix-rolls=on --luck=3000                       D23 3.16 (needs the core's affix_rolls branch and, for --luck>0, set_luck + quality_weights: else exit 3, see below)
 ##   ... -- --pity=on                                          D23 T9: every simulated run counts as a win; after 5 runs without a legendary or unique the
 ##                                                               next boss's first guaranteed line is a legendary. Adds pity_fired_runs; the drought line is judged.
 ##
@@ -35,6 +35,8 @@ extends SceneTree
 ##   snapshot, the median wear) and, with --kits-out, a file of the same shape as tests/fixtures/gear_kits.json (`kits`), every item checked with loot.validate.
 ## --affix-rolls=on and --luck=N need the core branch of D23 T1: the loot object must offer set_affix_rolls(enabled: bool) -> bool.
 ## Without it this script prints LOOT_AFFIX_SIM_UNSUPPORTED and exits 3. It never reports a value it did not measure.
+## --luck=N>0 also needs set_luck(enabled) and quality_weights(class, mods) (D23 T8): missing -> LOOT_AFFIX_SIM_UNSUPPORTED, exit 3; set_luck(true) refused -> exit 2.
+##   Before the run it prints LOOT_LUCK_PROBE {luck, weights_off, weights_on, changed} (quality_weights("normal",{}) vs {"luck_bps":N}); changed=false -> exit 3.
 const Loot = preload("res://chapter1/core/loot.gd")
 const GearKits = preload("res://chapter1/tests/support/gear_kits.gd")
 const ZONE_LEVELS := [4,8,12]
@@ -97,6 +99,21 @@ func execute() -> void:
 			quit(3); return
 		if not loot.call("set_affix_rolls",affix_on):
 			push_error("set_affix_rolls refused (the affix_rolls block is invalid)"); quit(2); return
+	if luck > 0:
+		# D23 T11 B5: a luck the core cannot apply must not be "measured" (before this the run ended 0 with luck_bps ignored by roll_class).
+		if not loot.has_method("set_luck") or not loot.has_method("quality_weights"):
+			print("LOOT_AFFIX_SIM_UNSUPPORTED ",JSON.stringify({"requested":["--luck="+str(luck)],"reason":"코어에 운 가지 없음(D23 T8 전)","measured":false}))
+			push_error("luck branch missing in the core: nothing was measured")
+			quit(3); return
+		if not loot.call("set_luck",true):
+			push_error("set_luck refused (loot.json has no luck block)"); quit(2); return
+		var weights_off: Dictionary = loot.call("quality_weights","normal",{})
+		var weights_on: Dictionary = loot.call("quality_weights","normal",{"luck_bps":luck})
+		var probe_changed := JSON.stringify(weights_off) != JSON.stringify(weights_on)
+		print("LOOT_LUCK_PROBE ",JSON.stringify({"luck":luck,"weights_off":weights_off,"weights_on":weights_on,"changed":probe_changed}))
+		if not probe_changed:
+			push_error("luck probe: quality_weights did not change with luck_bps; nothing would be measured")
+			quit(3); return
 	# D23 T9: --pity=on counts every simulated run as a win to the boss; after pity_runs() runs without a legendary or unique the next boss's
 	# first guaranteed line is a legendary (loot.roll_class first_quality), exactly what the core does for an armed run.
 	if pity_on and not loot.set_pity(true):
