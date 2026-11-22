@@ -106,6 +106,8 @@ func execute() -> void:
 	check(loot.is_upgrade(loot.make_unique("ash_bloom",12),strong,"chapter1.skill.frost"),"unique always prompts")
 	name_checks(loot)
 	affix_checks(loot)
+	roll_checks(loot)
+	pity_checks(loot)
 	finish()
 
 ## D5 (a): names and descriptions are presentation. validate() checks ids and numbers; dress() rebuilds the text.
@@ -486,6 +488,310 @@ func affix_checks(loot: RefCounted) -> void:
 	# Read helpers.
 	check(loot.affix_tier("wrath5") == 5 and loot.affix_tier("wrath") == 1 and loot.affix_tier("no_such") == 0 and loot.affix_class("wrath5") == "number" and loot.affix_def("wrath5").get("stat","") == "damage_bps" and loot.affix_def("no_such").is_empty(),"T1-A affix_tier, affix_class and affix_def read live and pool rows")
 	loot.set_affix_rolls(bool(block.enabled))
+
+# ------------------------------------------------------------------ B1 (tech review 2026-11-23): the ON path, roll by roll
+# The golden's one affix-on run can miss a data branch by luck, so the draws are checked here one branch at a time: fixed seeds, the
+# affix_rolls roll switched on in memory, thousands of rolls, and every expected number is READ from the data (loot.json affix_rolls),
+# never typed here (only ROLL_HASH is). A count is accepted within 5 sigma of its expectation (sigma = sqrt(n p (1-p))), plus one.
+# Also covers B4: a ladder weight put back (vs_status 10 -> 40) is seen by the ladder-weight check.
+# ROLL_HASH: if the data or the roll order changes ON PURPOSE, run this test, copy the "got" value from the failing line and update it
+# in the same commit (say so in the message). An unplanned change of the hash is the finding.
+const ROLL_SEED := 20261124
+const ROLL_HASH := "c25fe62b663291dd85e7681213d848b683a928007ff25a9ef97445616eddc103"
+const SIGMAS := 5.0
+
+func sigma_ok(observed: int, n: int, p: float) -> bool:
+	return absf(float(observed) - float(n) * p) <= SIGMAS * sqrt(float(n) * p * (1.0 - p)) + 1.0
+
+func row_tier(row: Dictionary) -> int:
+	return int(row.get("tier", 1))
+
+## Every row of the roll (live rows first, then the pool), as the roll sees it.
+func all_rows(loot: RefCounted) -> Array:
+	var rows: Array = []
+	rows.append_array(loot.data.affixes)
+	rows.append_array(loot.data.affix_rolls.pool)
+	return rows
+
+## [lo, hi] item levels where a row is open (a live row follows legacy_windows when it has an entry).
+func row_window(block: Dictionary, row: Dictionary) -> Array:
+	var legacy: Dictionary = block.legacy_windows.get(row.id, {})
+	return [int(legacy.get("level", row.level)), int(legacy.get("max_level", row.max_level))]
+
+## ladder key -> {weight, tiers: {tier: true}, rows}: rows with the same group and stat; the weight is the lowest tier row's.
+func ladders_of(loot: RefCounted) -> Dictionary:
+	var out: Dictionary = {}
+	for row in all_rows(loot):
+		var key := String(row.group) + "|" + String(row.stat)
+		if not out.has(key): out[key] = {"weight": int(row.weight), "low": row_tier(row), "tiers": {}, "rows": []}
+		var ladder: Dictionary = out[key]
+		ladder.rows.append(row)
+		ladder.tiers[row_tier(row)] = true
+		if row_tier(row) < int(ladder.low):
+			ladder.low = row_tier(row)
+			ladder.weight = int(row.weight)
+	return out
+
+## ladder key -> weight of the ladders that can give a first line to this slot at this item level.
+func open_ladders(loot: RefCounted, slot: String, level: int) -> Dictionary:
+	var block: Dictionary = loot.data.affix_rolls
+	var out: Dictionary = {}
+	var ladders := ladders_of(loot)
+	for key in ladders:
+		var ladder: Dictionary = ladders[key]
+		for row in ladder.rows:
+			var win := row_window(block, row)
+			if slot in row.slots and level >= win[0] and level <= win[1] and String(row.stat) in Loot.STATS_READ:
+				out[key] = int(ladder.weight)
+				break
+	return out
+
+func line_key(line: Dictionary) -> String:
+	return String(line.group) + "|" + String(line.stat)
+
+func roll_checks(loot: RefCounted) -> void:
+	var block: Dictionary = loot.data.get("affix_rolls", {})
+	if block.is_empty():
+		check(false, "B1 the data has no affix_rolls block")
+		return
+	check(loot.set_affix_rolls(true) and loot.affix_rolls_on(), "B1 the affix_rolls roll is switched on in memory")
+	var seen_stats: Dictionary = {}
+	var out_of_range := 0
+	var unread := 0
+	var line_total := 0
+	var ladders := ladders_of(loot)
+	var unread_ids: Dictionary = {}
+	for row in all_rows(loot):
+		if not String(row.stat) in Loot.STATS_READ: unread_ids[row.id] = true
+	check(unread_ids.size() > 0, "B1 the data still has rows whose stat the core does not read (%d), so check (e) is not empty" % unread_ids.size())
+	# (a) the number of lines: the treasure class's profile, read from the data
+	var boss_class: Dictionary = loot.data.treasure_classes.boss
+	check(String(boss_class.get("lines_profile", "")) == "rare_boss" and block.lines.has("rare_boss") and block.lines.has("rare"), "B1 boss carries lines_profile rare_boss and the data has both rare tables")
+	var rolls := 6000
+	var boss_counts: Dictionary = {}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ROLL_SEED
+	for i in rolls:
+		var drops: Array[Dictionary] = loot.roll_class(rng, "boss", 12, "chapter1.skill.ember")
+		var first: Dictionary = drops[0]
+		boss_counts[first.affixes.size()] = int(boss_counts.get(first.affixes.size(), 0)) + 1
+		line_total += first.affixes.size()
+		for line in first.affixes:
+			seen_stats[line.stat] = true
+			if String(line.id) in unread_ids: unread += 1
+			var def: Dictionary = loot.affix_def(line.id)
+			if int(line.value) < int(def.low) or int(line.value) > int(def.high): out_of_range += 1
+	var boss_total := 0
+	for k in block.lines.rare_boss: boss_total += int(block.lines.rare_boss[k])
+	for k in block.lines.rare_boss:
+		var p := float(block.lines.rare_boss[k]) / float(boss_total)
+		check(sigma_ok(int(boss_counts.get(int(k), 0)), rolls, p), "B1 (a) boss guaranteed rare: %s lines in %d of %d rolls, rare_boss table says %.3f (got %.3f)" % [k, int(boss_counts.get(int(k), 0)), rolls, p, float(boss_counts.get(int(k), 0)) / rolls])
+	var plain_counts: Dictionary = {}
+	rng.seed = ROLL_SEED + 1
+	for i in rolls:
+		var item: Dictionary = loot.roll_item(rng, 15, "rare", "")
+		plain_counts[item.affixes.size()] = int(plain_counts.get(item.affixes.size(), 0)) + 1
+		for line in item.affixes:
+			seen_stats[line.stat] = true
+			if String(line.id) in unread_ids: unread += 1
+			var def2: Dictionary = loot.affix_def(line.id)
+			if int(line.value) < int(def2.low) or int(line.value) > int(def2.high): out_of_range += 1
+	var rare_total := 0
+	for k in block.lines.rare: rare_total += int(block.lines.rare[k])
+	for k in block.lines.rare:
+		var p2 := float(block.lines.rare[k]) / float(rare_total)
+		check(sigma_ok(int(plain_counts.get(int(k), 0)), rolls, p2), "B1 (a) an ordinary rare: %s lines in %d of %d rolls, rare table says %.3f (got %.3f)" % [k, int(plain_counts.get(int(k), 0)), rolls, p2, float(plain_counts.get(int(k), 0)) / rolls])
+	var profile_gap := absf(float(block.lines.rare_boss.get("3", 0)) / boss_total - float(block.lines.rare.get("3", 0)) / rare_total)
+	check(profile_gap > 0.10, "B1 (a) the two tables differ by %.2f in the three-line share, so a lost lines_profile would be seen" % profile_gap)
+	# (b) + (c) the tiers open at each item level, and their shares, over rare items of random slots
+	var tiers: Array = block.tiers
+	var window := int(block.tier_window)
+	var full: Dictionary = {}
+	for key in ladders:
+		var ok := String(ladders[key].rows[0].stat) in Loot.STATS_READ
+		for entry in tiers:
+			if not ladders[key].tiers.has(int(entry.tier)): ok = false
+		if ok: full[key] = true
+	check(full.size() >= 5, "B1 the data has %d full five-tier ladders that the core reads" % full.size())
+	var tier_seen_at: Dictionary = {}
+	for level in [1, 4, 5, 8, 9, 12, 13, 14, 15, 30]:
+		var open: Array = []
+		for entry in tiers:
+			if int(level) >= int(entry.min_level): open.append(int(entry.tier))
+		open.sort()
+		var window_tiers: Array = open.slice(maxi(0, open.size() - window))
+		var top: int = open.max() if not open.is_empty() else 1
+		var share_sum := 0
+		var share_of: Dictionary = {}
+		for entry in tiers: share_of[int(entry.tier)] = int(entry.share)
+		for t in window_tiers: share_sum += int(share_of[t])
+		rng.seed = ROLL_SEED + 100 + int(level)
+		var by_tier: Dictionary = {}
+		var on_full := 0
+		var above := 0
+		var below := 0
+		for i in 2500:
+			var item2: Dictionary = loot.roll_item(rng, int(level), "rare", "")
+			for line in item2.affixes:
+				seen_stats[line.stat] = true
+				if String(line.id) in unread_ids: unread += 1
+				var def3: Dictionary = loot.affix_def(line.id)
+				if int(line.value) < int(def3.low) or int(line.value) > int(def3.high): out_of_range += 1
+				var t := row_tier(def3)
+				tier_seen_at[str(level) + ":" + str(t)] = true
+				if t > top: above += 1
+				if full.has(line_key(line)):
+					on_full += 1
+					by_tier[t] = int(by_tier.get(t, 0)) + 1
+					if not t in window_tiers: below += 1
+		check(above == 0, "B1 (b) item level %d: no line above tier %d, the highest tier opened by tiers.min_level (%d lines above)" % [level, top, above])
+		check(below == 0, "B1 (b) item level %d: lines on full ladders stay in the top %d open tiers %s (%d outside)" % [level, window, str(window_tiers), below])
+		if level == 15 or level == 13 or level == 9:
+			for t in window_tiers:
+				var p3 := float(share_of[t]) / float(share_sum)
+				check(sigma_ok(int(by_tier.get(t, 0)), on_full, p3), "B1 (c) item level %d: tier %d took %d of %d lines on full ladders, share says %.3f (got %.3f)" % [level, t, int(by_tier.get(t, 0)), on_full, p3, float(by_tier.get(t, 0)) / maxf(1.0, on_full)])
+	var v_min := 0
+	for entry in tiers:
+		if int(entry.tier) == 5: v_min = int(entry.min_level)
+	check(tier_seen_at.has("15:5") and tier_seen_at.has("15:4") and tier_seen_at.has("13:4"), "B1 (b) tiers IV and V do come out (V at level 15, IV from 13)")
+	var five_early := false
+	for level in [1, 4, 5, 8, 9, 12, 13, 14]:
+		if tier_seen_at.has(str(level) + ":5"): five_early = true
+	check(v_min == 15 and not five_early, "B1 (b) tier V only from item level %d (the data's min_level), never below it" % v_min)
+	# (d) ladder weights: the first line of a rare item picks a ladder with the weight of its lowest-tier row (B4: vs_status ladders)
+	for combo in [["hands", 15], ["hands", 9], ["weapon", 15], ["head", 12]]:
+		var slot: String = combo[0]
+		var level: int = combo[1]
+		var expect := open_ladders(loot, slot, level)
+		var weight_total := 0
+		for key in expect: weight_total += int(expect[key])
+		rng.seed = ROLL_SEED + 500 + level + slot.length()
+		var firsts: Dictionary = {}
+		var n_first := 20000
+		for i in n_first:
+			var item3: Dictionary = loot.roll_item(rng, level, "rare", slot)
+			if item3.affixes.is_empty(): continue
+			var key2 := line_key(item3.affixes[0])
+			firsts[key2] = int(firsts.get(key2, 0)) + 1
+			for line in item3.affixes:
+				seen_stats[line.stat] = true
+				if String(line.id) in unread_ids: unread += 1
+				var def4: Dictionary = loot.affix_def(line.id)
+				if int(line.value) < int(def4.low) or int(line.value) > int(def4.high): out_of_range += 1
+		var stranger := false
+		for key3 in firsts:
+			if not expect.has(key3): stranger = true
+		check(not stranger and weight_total > 0, "B1 (d) %s at level %d: every first line comes from a ladder the data opens there (%d ladders)" % [slot, level, expect.size()])
+		for key4 in expect:
+			var p4 := float(expect[key4]) / float(weight_total)
+			check(sigma_ok(int(firsts.get(key4, 0)), n_first, p4), "B1 (d) %s at level %d: ladder %s picked %d of %d, weight %d of %d says %.4f (got %.4f)" % [slot, level, key4, int(firsts.get(key4, 0)), n_first, int(expect[key4]), weight_total, p4, float(firsts.get(key4, 0)) / n_first])
+		if slot == "hands" and level == 15:
+			var vs_n := 0
+			var vs_w := 0
+			var ref_key := "damage|damage_bps"
+			for key5 in expect:
+				if key5.begins_with("vs_status|"):
+					vs_n += int(firsts.get(key5, 0))
+					vs_w += int(expect[key5])
+			var ref_w := int(expect.get(ref_key, 0))
+			var ladders_vs := 0
+			for key6 in ladders:
+				if key6.begins_with("vs_status|") and expect.has(key6): ladders_vs += 1
+			check(ladders_vs >= 2 and ref_w > 0, "B1 (d) hands at 15: %d vs_status ladders the core reads weigh %d together against %d for damage" % [ladders_vs, vs_w, ref_w])
+			# B4: the meaning of the data trim: every vs_status ladder (all four, read or not) weighs less than every other condition ladder.
+			var other_condition_min := 1 << 30
+			var vs_max := 0
+			var vs_ladders := 0
+			for key7 in ladders:
+				var ladder7: Dictionary = ladders[key7]
+				if key7.begins_with("vs_status|"):
+					vs_ladders += 1
+					vs_max = maxi(vs_max, int(ladder7.weight))
+				elif String(ladder7.rows[0].get("class", "")) == "condition":
+					other_condition_min = mini(other_condition_min, int(ladder7.weight))
+			check(vs_ladders == 4 and vs_max < other_condition_min, "B1 (d)/B4 the four vs_status ladders weigh at most %d, below every other condition ladder (lowest %d)" % [vs_max, other_condition_min])
+			var ref_n := int(firsts.get(ref_key, 0))
+			var ratio_expect := float(vs_w) / float(ref_w)
+			check(absf(float(vs_n) / maxf(1.0, ref_n) - ratio_expect) <= ratio_expect * 0.35 + 0.01, "B1 (d) hands at 15: vs_status first lines against damage first lines %d : %d = %.3f, the weights say %.3f" % [vs_n, ref_n, float(vs_n) / maxf(1.0, ref_n), ratio_expect])
+	# (e) no row the core does not read ever comes out; (f) every value lies inside its row's low..high
+	check(unread == 0, "B1 (e) rows whose stat is not in STATS_READ never rolled (%d lines of %d unread rows)" % [unread, unread_ids.size()])
+	var stranger_stat := false
+	for stat in seen_stats:
+		if not String(stat) in Loot.STATS_READ: stranger_stat = true
+	check(not stranger_stat and seen_stats.size() >= 15, "B1 (e) every rolled stat is in STATS_READ (%d different stats seen)" % seen_stats.size())
+	check(out_of_range == 0, "B1 (f) every rolled value lies inside its row's low..high (%d outside)" % out_of_range)
+	# the pinned hash: a mixed batch of qualities, levels, slots and treasure classes, in a fixed order
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	var pin_rng := RandomNumberGenerator.new()
+	pin_rng.seed = ROLL_SEED + 9000
+	var pinned := 0
+	for level in [3, 9, 13, 15]:
+		for quality in ["magic", "rare", "legendary"]:
+			for i in 150:
+				ctx.update(JSON.stringify(loot.roll_item(pin_rng, level, quality, "", {}, "rare_boss" if i % 3 == 0 else "")).to_utf8_buffer())
+				pinned += 1
+	for class_id in ["normal", "elite", "carrier", "champion", "boss", "chest"]:
+		for i in 100:
+			ctx.update(JSON.stringify(loot.roll_class(pin_rng, class_id, 12, "chapter1.skill.frost")).to_utf8_buffer())
+			pinned += 1
+	var got := ctx.finish().hex_encode()
+	check(pinned == 2400 and got == ROLL_HASH, "B1 pinned hash of %d rolls on the ON path is %s (got %s; update ROLL_HASH only for a planned data or roll-order change)" % [pinned, ROLL_HASH, got])
+	loot.set_affix_rolls(bool(block.enabled))
+## D23 T9: the drop pity block and roll_class(first_quality).
+func mutate_pity_enabled_text(doc: Dictionary) -> void:
+	doc.pity.enabled = "yes"
+
+func mutate_pity_runs_zero(doc: Dictionary) -> void:
+	doc.pity.runs_without_legendary = 0
+
+func mutate_pity_runs_51(doc: Dictionary) -> void:
+	doc.pity.runs_without_legendary = 51
+
+func mutate_pity_upgrade(doc: Dictionary) -> void:
+	doc.pity.upgrade = "anything_else"
+
+func mutate_pity_extra_key(doc: Dictionary) -> void:
+	doc.pity["more"] = 1
+
+func mutate_pity_missing_key(doc: Dictionary) -> void:
+	doc.pity.erase("upgrade")
+
+func mutate_pity_absent(doc: Dictionary) -> void:
+	doc.erase("pity")
+
+func pity_checks(loot: RefCounted) -> void:
+	check(loot.data.has("pity") and not loot.pity_on() and loot.pity_runs() == 5,"T9 the shipped data has the pity block, off, 5 runs")
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Loot.DATA_PATH))
+	var bad := {"enabled_not_bool": mutate_pity_enabled_text,"runs_zero": mutate_pity_runs_zero,"runs_51": mutate_pity_runs_51,"upgrade_other": mutate_pity_upgrade,"extra_key": mutate_pity_extra_key,"missing_key": mutate_pity_missing_key}
+	for name_ in bad:
+		check(not bad_block_loads(raw,bad[name_],"pity_"+name_),"T9 a pity block with "+name_+" fails load_file")
+	check(bad_block_loads(raw,mutate_pity_absent,"pity_absent"),"T9 data without a pity block loads (the pity is off)")
+	var no_pity = Loot.new()
+	check(no_pity.load_file(BAD_DIR+"/pity_absent.json") and not no_pity.pity_on() and not no_pity.set_pity(true) and no_pity.set_pity(false),"T9 without a block set_pity(true) is refused and the pity stays off")
+	check(loot.set_pity(true) and loot.pity_on() and loot.set_pity(false) and not loot.pity_on(),"T9 set_pity switches it in memory")
+	# roll_class: the first guaranteed line of the boss class becomes a legendary; the rest is left alone.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 90909
+	var first_ok := true
+	var later_not_all_legendary := false
+	var identity_ok := true
+	for i in 300:
+		var drops: Array[Dictionary] = loot.roll_class(rng,"boss",15,"chapter1.skill.frost",{},"legendary")
+		if drops.size() != 5 or drops[0].quality != "legendary" or not drops[0].has("legendary_id") or not loot.validate(drops[0]).is_empty(): first_ok = false
+		for j in range(1,drops.size()):
+			if drops[j].quality != "legendary": later_not_all_legendary = true
+	check(first_ok and later_not_all_legendary,"T9 roll_class(boss, first_quality legendary): the first of five is a valid legendary, the other lines are rolled as before")
+	var champion_drops: Array[Dictionary] = loot.roll_class(rng,"champion",8,"chapter1.skill.ember")
+	check(champion_drops.size() == 3,"T9 the champion class is unchanged without the argument")
+	for class_id in ["normal","elite","champion","boss","chest","ritual_chest"]:
+		var plain := RandomNumberGenerator.new()
+		plain.seed = 4242
+		var empty := RandomNumberGenerator.new()
+		empty.seed = 4242
+		for i in 300:
+			if JSON.stringify(loot.roll_class(plain,class_id,12,"chapter1.skill.arc")) != JSON.stringify(loot.roll_class(empty,class_id,12,"chapter1.skill.arc",{},"")): identity_ok = false
+	check(identity_ok,"T9 an empty first_quality draws exactly what the call without it draws (6 classes x 300 rolls)")
 
 func finish() -> void:
 	print("CHAPTER1_LOOT_RESULT ",JSON.stringify({"checks":checks,"failures":failures,"scope":"loot grammar v2 only; not wired into the running chapter"}))

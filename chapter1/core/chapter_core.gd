@@ -21,6 +21,10 @@ const FIELD_PULSE_DEFAULT := 30
 const ZONE_LEVELS := [4,8,12]
 const MAX_PENDING_REWARDS := 4
 var _world_uniques36: Dictionary={}
+## D23 T9: the account's count of runs to the final boss without a legendary or unique, put in by the app before start() (the core knows no save).
+var drop_dry_runs := 0
+var _pity_armed := false
+var _pity_fired := false
 ## The loot tables are read once and shared by every run in the process.
 static var _shared_loot: RefCounted
 var loot: RefCounted
@@ -1173,7 +1177,7 @@ func _maybe_drop_item(e: Dictionary) -> void:
 		var drops: Array[Dictionary]=[]
 		if boss and first_boss_kill:drops.append_array(loot.roll_class(_loot_rng,"boss_first_kill",level,primary_))
 		var first_kill_drops := drops.size()
-		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_))
+		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_,{},"legendary" if boss and _pity_armed else ""))
 		var marked := false
 		var spray := _spray_enabled()
 		var spilled: Array[Dictionary]=[]
@@ -1192,6 +1196,9 @@ func _maybe_drop_item(e: Dictionary) -> void:
 				spilled.append({"id":int(item.uid),"rarity":String(item.quality),"to":landing})
 			else:_publish_item(item,e.position,true,notable,source_name)
 		if spray and not spilled.is_empty():_spray_begin("boss" if boss else "champion",e.position,spilled,notable_uid,boss)
+		# D23 T9: the pity fired when the first guaranteed line of the boss class came out as a legendary.
+		if boss and _pity_armed and drops.size()>first_kill_drops and drops[first_kill_drops].quality=="legendary":
+			_pity_fired=true;_emit("drop_pity",e.position,{"uid":int(drops[first_kill_drops].uid),"item_id":String(drops[first_kill_drops].get("legendary_id",""))})
 		return
 	# A strong body (grade "elite", D13 W4-a): the elite table, on the floor like any ordinary drop; a guard opens its site after it.
 	if e.get("grade","")=="elite":
@@ -1720,6 +1727,8 @@ var _gate_sweep_qualities: Array[String] = []
 ## D21 N2: read tuning.loot_flow. Off (or absent) leaves both lists empty and the 180 s rule untouched. The quality names must exist in loot.json.
 func _prepare_loot_flow() -> bool:
 	_kept_qualities.clear();_gate_sweep_qualities.clear();_spray.clear();_spray_done_boss=false
+	# D23 T9: whether this run carries the drop pity is decided once, here, from the number the app put in before start().
+	_pity_armed=loot!=null and loot.pity_on() and drop_dry_runs>=loot.pity_runs();_pity_fired=false
 	if not tuning.has("loot_flow") or not bool(tuning.loot_flow.enabled):return true
 	if loot==null:errors.assign(["loot_flow needs the loot tables"]);return false
 	var order: Array=loot.data.qualities
@@ -2176,10 +2185,6 @@ func _descent_cost() -> int:
 	var costs: Array=descent.cost
 	return int(costs[mini(_d_uses,costs.size()-1)])
 
-## Old readers (the screen's ground quad) still ask for a radius: the screen's half height plus the edge. Not used by the core.
-func _descent_compat_reach() -> float:
-	return float(descent.area.half_h_m)+float(descent.area.edge_m)
-
 func _descent_area_view() -> Dictionary:
 	return {"right_deg":float(descent.area.right_deg),"half_w_m":float(descent.area.half_w_m),"half_h_m":float(descent.area.half_h_m)}
 
@@ -2254,7 +2259,7 @@ func request_descent() -> bool:
 	_descent_hold=true
 	_refresh_mode()
 	metrics.descent.call_ticks.append(tick)
-	_emit("descent_called",hero.position,{"element":_d_element,"index":_d_uses+1,"variant":"long" if _d_uses==0 else "short","center":hero.position,"area":_descent_area_view(),"reach_m":_descent_compat_reach(),
+	_emit("descent_called",hero.position,{"element":_d_element,"index":_d_uses+1,"variant":"long" if _d_uses==0 else "short","center":hero.position,"area":_descent_area_view(),
 		"normals_in_reach":normals,"strongs_in_reach":strongs,"marks_in_reach":marks,"hold_bonus_bps":_descent_bonus_bps(),"in_trial":_trial_phase=="hold","boss_alive":_descent_boss_alive()})
 	return true
 
@@ -2501,8 +2506,7 @@ func _step_descent() -> void:
 	var cleared := _descent_clear_shots()
 	if s==1:
 		_emit("descent_released",hero.position,{"element":_d_element,"center":hero.position,"area":_descent_area_view(),"sweep_ticks":int(cfg.sweep_ticks),
-			"cleared_shots":int(cleared.count),"cleared_positions":cleared.positions,
-			"reach_m":_descent_compat_reach(),"heading":_d_right})
+			"cleared_shots":int(cleared.count),"cleared_positions":cleared.positions})
 	match _d_element:
 		"ember":_descent_ember(s,cfg)
 		"frost":_descent_frost(s,cfg)
@@ -2785,6 +2789,7 @@ func snapshot() -> Dictionary:
 			result.rhythm.kill_burst=window_list
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
 	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
+	if _pity_armed:result.chapter.pity={"armed":true,"fired":_pity_fired}
 	if not _spray.is_empty():
 		var groups: Array=[]
 		for group in _spray:groups.append({"source":group.source,"start":group.start,"arrive":group.arrive,"uids":group.uids.duplicate(),"notable":group.notable,"boss":group.boss})

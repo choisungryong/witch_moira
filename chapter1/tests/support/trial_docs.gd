@@ -59,6 +59,16 @@ static func enable_affix_rolls_problem(run: RefCounted) -> String:
 	run.loot = tables
 	return ""
 
+## The D23 T9 drop pity (loot.json `pity`) on, for this run only (its own loot tables, as above), with the account's count already at the pity
+## line: the final boss's first guaranteed line is a legendary. "" when it worked, else one sentence.
+static func enable_pity_problem(run: RefCounted) -> String:
+	var tables = LootTables.new()
+	if not tables.load_file(): return "loot.json could not be loaded: " + str(tables.errors)
+	if not tables.set_pity(true): return "pity block refused"
+	run.loot = tables
+	run.drop_dry_runs = tables.pity_runs()
+	return ""
+
 ## The `--chapter1-trial=` parts of an argument list, in the order given. Empty when the argument is absent.
 static func trial_parts(args: PackedStringArray) -> Array[String]:
 	var parts: Array[String] = []

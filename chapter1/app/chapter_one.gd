@@ -478,6 +478,8 @@ func start_run(id_: String) -> void:
 	if profile.available and not run_character_id.is_empty():run.first_boss_kill=not "boss" in profile.character_entry(run_character_id).first_rewards
 	elif _profile_session_off:run.first_boss_kill=false # Nothing is saved this session; a first-kill unique would only mislead.
 	else:run.first_boss_kill=not profile.available or int(profile.state.completed_runs)==0
+	# D23 T9: the drop pity's count goes in only with a real save and the pity switched on; everywhere else the core gets 0.
+	run.drop_dry_runs=int(profile.town_view().get("luck",{}).get("drop_runs_since_legendary",0)) if profile.available and not _profile_session_off and run.loot.pity_on() else 0
 	start_run__chapter(id_)
 	run_record_view={};recorder.begin(run,"d1")
 	var gear_failed := false
@@ -659,7 +661,7 @@ func _save_terminal() -> void:
 	var carry := {}
 	if _run_carry_ok and not run_character_id.is_empty():carry={"character_id":run_character_id,"equipped":run.equipped.duplicate(true),"kept_slots":_run_kept_slots.duplicate()}
 	# Schema 5: pass `outcome={"record":run_record_view.record}` as the last argument here (T6 record_run, 8th parameter) once record_run takes it. Not passed yet.
-	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress,carry):
+	if profile.record_run(_receipt,run.inventory,run.pending_rewards,run.mode=="victory",run.tick,progress,carry,{},not _profile_session_off and run.loot.pity_on()):
 		_saved_receipt=_receipt;hud.result_unsaved=false
 		if not run_character_id.is_empty():view_after=profile.character_view(run_character_id)
 		hud.set_growth_result(run_character_id,view_before,view_after,run_progress)

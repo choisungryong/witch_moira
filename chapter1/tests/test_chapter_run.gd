@@ -1142,6 +1142,50 @@ func t15b_checks() -> void:
 	hit=t5_events(r,"hero_hit")[0]
 	check(hit.source_key=="" and hit.attack_id=="","T15b hero_hit whose body is already gone: both empty")
 
+## D23 T9: the drop pity in the core. The run gets its own loot tables (the shared ones stay as the data file says: off).
+func t9_run(pity_on: bool,dry_runs: int,seed_: int=17) -> RefCounted:
+	var r := Chapter.new()
+	var tables = load("res://chapter1/core/loot.gd").new()
+	check(tables.load_file() and tables.set_pity(pity_on),"T9 run: own loot tables")
+	r.loot=tables;r.drop_dry_runs=dry_runs
+	check(r.set_tuning(tuning_with({})) and r.start(seed_,EMBER),"T9 run starts")
+	clear_field(r)
+	r.zone=2;r.hero.position=Chapter.ZONES[2];r._zone_entered=true;r.zone_kills=r.tuning.seal_kills[2];r._spawn_wave()
+	return r
+
+func t9_core_checks() -> void:
+	# The decision: at the line (5) armed, under it (4) not; off with a big count not.
+	check(t9_run(true,5)._pity_armed and not t9_run(true,4)._pity_armed and not t9_run(false,9)._pity_armed and not t9_run(true,0)._pity_armed,"T9 armed at 5 dry runs with the pity on; not at 4; not with the pity off even at 9")
+	# Before the boss falls the two runs are the same (only the pity key of the snapshot differs).
+	var armed := t9_run(true,5)
+	var plain := t9_run(true,4)
+	var snap_armed: Dictionary=armed.snapshot()
+	var snap_plain: Dictionary=plain.snapshot()
+	check(snap_armed.chapter.has("pity") and snap_armed.chapter.pity=={"armed":true,"fired":false} and not snap_plain.chapter.has("pity"),"T9 the snapshot has chapter.pity only in an armed run")
+	snap_armed.chapter.erase("pity")
+	check(JSON.stringify(snap_armed)==JSON.stringify(snap_plain),"T9 up to the boss's fall an armed run and a not armed run of the same seed are identical")
+	# The boss falls.
+	t5_kill(armed);t5_kill(plain)
+	var names_plain: Array=[]
+	for item in plain.inventory:names_plain.append(item.quality)
+	var names_armed: Array=[]
+	for item in armed.inventory:names_armed.append(item.quality)
+	check(armed.inventory.size()==plain.inventory.size() and armed.inventory.size()==6 and names_armed[0]==names_plain[0],"T9 six pieces either way (the first-kill unique, then five), the first-kill unique is the same")
+	check(names_armed[1]=="legendary" and armed.inventory[1].has("legendary_id") and true and names_armed[1]=="legendary" and armed.inventory[1].has("legendary_id"),"T9 armed: the first guaranteed line of the boss class is a legendary")
+	var pity_events := t5_events(armed,"drop_pity")
+	check(pity_events.size()==1 and pity_events[0].uid==armed.inventory[1].uid and pity_events[0].item_id==armed.inventory[1].legendary_id and t5_events(plain,"drop_pity").is_empty(),"T9 armed: one drop_pity {uid, item_id}; not armed: none")
+	check(armed.snapshot().chapter.pity=={"armed":true,"fired":true} and not plain.snapshot().chapter.has("pity"),"T9 the snapshot says fired")
+	# A guardian is never touched (the zone 0 champion rolls the same with and without the pity).
+	var kept_off: Array=[]
+	var kept_on: Array=[]
+	for armed_state in [false,true]:
+		var g := t9_run(true,5 if armed_state else 0)
+		clear_field(g)
+		g.zone=0;g.hero.position=Chapter.ZONES[0];g._zone_entered=true;g.zone_kills=g.tuning.seal_kills[0];g._spawn_wave()
+		t5_kill(g)
+		for item in g.inventory:(kept_on if armed_state else kept_off).append(JSON.stringify([item.base_id,item.quality,item.stats]))
+	check(kept_on==kept_off and kept_on.size()==3,"T9 a seal guardian's three pieces are the same with the pity armed")
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -1242,6 +1286,7 @@ func execute() -> void:
 	t1b_checks()
 	t5_checks()
 	t15b_checks()
+	t9_core_checks()
 	build_checks()
 	abandon_checks()
 	sheet_checks()

@@ -5,6 +5,8 @@ extends SceneTree
 ##   --script res://chapter1/tests/sim_loot.gd                 10000 runs, checks targets
 ##   ... -- --runs=2000 --primary=chapter1.skill.ember
 ##   ... -- --affix-rolls=on --luck=3000                       D23 3.16 (needs the core's affix_rolls branch, see below)
+##   ... -- --pity=on                                          D23 T9: every simulated run counts as a win; after 5 runs without a legendary or unique the
+##                                                               next boss's first guaranteed line is a legendary. Adds pity_fired_runs; the drought line is judged.
 ##
 ## Kill counts for ordinary enemies, champions and the boss come from the golden
 ## replay of the current chapter (seed 11, frost). Elites and the treasure carrier
@@ -59,6 +61,7 @@ func execute() -> void:
 	var runs := 10000
 	var primary := "chapter1.skill.frost"
 	var affix_arg := "off"
+	var pity_arg := "off"
 	var luck := 0
 	var wear_on := false
 	var wear_runs := 2000
@@ -68,6 +71,7 @@ func execute() -> void:
 		if arg.begins_with("--runs="): runs = maxi(1,int(arg.trim_prefix("--runs=")))
 		elif arg.begins_with("--primary="): primary = arg.trim_prefix("--primary=")
 		elif arg.begins_with("--affix-rolls="): affix_arg = arg.trim_prefix("--affix-rolls=")
+		elif arg.begins_with("--pity="): pity_arg = arg.trim_prefix("--pity=")
 		elif arg.begins_with("--luck="): luck = int(arg.trim_prefix("--luck="))
 		elif arg == "--wear": wear_on = true
 		elif arg.begins_with("--wear-runs="): wear_runs = maxi(30,int(arg.trim_prefix("--wear-runs=")))
@@ -75,8 +79,9 @@ func execute() -> void:
 			wear_seeds = []
 			for part in arg.trim_prefix("--wear-seeds=").split(","): wear_seeds.append(int(part))
 		elif arg.begins_with("--kits-out="): kits_out = arg.trim_prefix("--kits-out=")
-	if not affix_arg in ["on","off"] or luck < 0 or luck > 3000:
-		push_error("usage: --affix-rolls=on|off  --luck=0..3000"); quit(2); return
+	if not affix_arg in ["on","off"] or not pity_arg in ["on","off"] or luck < 0 or luck > 3000:
+		push_error("usage: --affix-rolls=on|off  --pity=on|off  --luck=0..3000"); quit(2); return
+	var pity_on := pity_arg == "on"
 	var affix_on := affix_arg == "on"
 	var loot = Loot.new()
 	if not loot.load_file():
@@ -92,6 +97,11 @@ func execute() -> void:
 			quit(3); return
 		if not loot.call("set_affix_rolls",affix_on):
 			push_error("set_affix_rolls refused (the affix_rolls block is invalid)"); quit(2); return
+	# D23 T9: --pity=on counts every simulated run as a win to the boss; after pity_runs() runs without a legendary or unique the next boss's
+	# first guaranteed line is a legendary (loot.roll_class first_quality), exactly what the core does for an armed run.
+	if pity_on and not loot.set_pity(true):
+		push_error("set_pity refused (loot.json has no pity block)"); quit(2); return
+	var pity_fired_runs := 0
 	var mods: Dictionary = {"luck_bps":luck} if luck > 0 else {}
 	if wear_on:
 		quit(_wear_main(loot,wear_runs,wear_seeds,kits_out,mods,affix_arg))
@@ -125,7 +135,10 @@ func execute() -> void:
 				if not batch.is_empty(): _take(drops,sources,batch,"normal")
 			for i in ELITES_PER_ZONE: _take(drops,sources,loot.roll_class(rng,"elite",level,primary,mods),"elite")
 			var boss_class := "boss" if zone == 2 else "champion"
-			_take(drops,sources,loot.roll_class(rng,boss_class,level,primary,mods),boss_class)
+			var armed: bool = pity_on and zone == 2 and dry_now >= loot.pity_runs()
+			var boss_batch: Array[Dictionary] = loot.roll_class(rng,boss_class,level,primary,mods,"legendary" if armed else "")
+			if armed and not boss_batch.is_empty() and boss_batch[0].quality == "legendary": pity_fired_runs += 1
+			_take(drops,sources,boss_batch,boss_class)
 		for i in CARRIERS_PER_RUN: _take(drops,sources,loot.roll_class(rng,"carrier",ZONE_LEVELS[1],primary,mods),"carrier")
 		var seen := {"legendary":false,"unique":false,"jewelry":false}
 		var run_tier5 := false
@@ -197,17 +210,20 @@ func execute() -> void:
 		if value < float(D23_TARGETS[key][0]) or value > float(D23_TARGETS[key][1]): d23_misses.append("%s %.3f outside %s" % [key,value,str(D23_TARGETS[key])])
 	for slot in loot.data.slots:
 		if int(direct.max_lines_by_slot[slot]) < 5: d23_misses.append("%s cannot roll 5 lines (max %d)" % [slot,int(direct.max_lines_by_slot[slot])])
-	if dry_max > D23_DROUGHT_MAX: d23_misses.append("drought %d > %d (no pity in the core)" % [dry_max,D23_DROUGHT_MAX])
+	if dry_max > D23_DROUGHT_MAX: d23_misses.append("drought %d > %d (%s)" % [dry_max,D23_DROUGHT_MAX,"pity on" if pity_on else "no pity in the core"])
 	print("LOOT_AFFIX_SIM ",JSON.stringify({"runs":runs,"affix_rolls":affix_arg,"luck":luck,"core_branch":loot.has_method("set_affix_rolls"),
 		"rare_lines_per_source":per_source,"rare_lines_by_slot":by_slot_lines,"rare_lines_direct":direct.table,"max_lines_by_slot":direct.max_lines_by_slot,
 		"five_line_rares_per_run":d23_values.five_line_rares_per_run,"runs_with_tier5":d23_values.runs_with_tier5,"runs_with_jackpot":d23_values.runs_with_jackpot,
-		"affix_lines_by_tier_per_run":tier_per_run,"legend_unique_drought":{"longest_dry_runs":dry_max,"dry_spells_of_5_or_more":dry_spells_ge5,"pity":"none in the core"},
+		"affix_lines_by_tier_per_run":tier_per_run,"legend_unique_drought":{"longest_dry_runs":dry_max,"dry_spells_of_5_or_more":dry_spells_ge5,"pity":({"mode":"on","runs_without_legendary":loot.pity_runs(),"pity_fired_runs":snappedf(float(pity_fired_runs)/runs,.0001),"pity_fired_count":pity_fired_runs,"runs":runs,"every_run_counted_as_a_win":true} if pity_on else "none in the core")},
 		"pool_capacity":_capacity_report(loot),"d23_targets":D23_TARGETS,"d23_misses":d23_misses,"d23_enforced":affix_on,
 		"note":"rolls of the real core (loot.gd) with the seeds above; pool_capacity is computed from the data file, not rolled; drop rolls say nothing about fun"}))
 	var d23_fail := affix_on and not d23_misses.is_empty()
 	if affix_on and luck >= 3000 and float(average.unique) > D23_UNIQUE_AT_MAX_LUCK:
 		d23_fail = true
 		push_error("unique %.3f above %.2f at luck 3000" % [average.unique,D23_UNIQUE_AT_MAX_LUCK])
+	if pity_on and dry_max > D23_DROUGHT_MAX:
+		d23_fail = true
+		push_error("pity on: longest run without a legendary or unique %d > %d" % [dry_max,D23_DROUGHT_MAX])
 	quit(0 if (misses.is_empty() and not d23_fail) else 1)
 
 # ---------------------------------------------------------------- D23 T1 appendix A.6 (1): the F2 wear policy

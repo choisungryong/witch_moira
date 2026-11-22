@@ -262,5 +262,6 @@
       {"id": "luck_4", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 13, "max_level": 30, "stat": "luck_bps", "low": 1100, "high": 1400, "weight": 100, "tier": 4, "class": "number", "core_reads": false},
       {"id": "luck_5", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 15, "max_level": 30, "stat": "luck_bps", "low": 1400, "high": 1800, "weight": 100, "tier": 5, "class": "number", "core_reads": false}
     ]
-  }
+  },
+  "pity": {"enabled": false, "runs_without_legendary": 5, "upgrade": "first_guaranteed_to_legendary"}
 }

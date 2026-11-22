@@ -485,6 +485,7 @@ func element_ember() -> void:
 	var released: Array = of_type(events, "descent_released")
 	check(released.size() == 1 and int(released[0].tick) == int(shot.start) + 1 and int(released[0].cleared_shots) == 1 and int(released[0].sweep_ticks) == 132, "ember: descent_released one tick after the release, 132 ticks, 1 shot cleared: " + str(released))
 	check(released[0].area == {"right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4} and released[0].center == run.hero.position and not released[0].has("cleared_positions") == false, "ember: descent_released carries the area and the centre")
+	check(not released[0].has("reach_m") and not released[0].has("heading") and not called.has("reach_m"), "ember: the old reach_m and heading are no longer sent (descent_released, descent_called)")
 	# (6) the booking: 14 fragments, all on the screen, land steps in range and in order, the aimed ones on the strong bodies
 	var books: Array = of_type(events, "descent_book")
 	check(books.size() == 1 and int(books[0].tick) == int(shot.start) + 1, "ember: one descent_book on step 1")

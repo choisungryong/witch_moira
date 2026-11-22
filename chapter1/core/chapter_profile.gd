@@ -50,6 +50,10 @@ const NEW_CHAR_KEYS := ["quests","records","grace"]
 const TOWN_KEYS := ["unlocked","bought","shop","luck"]
 const SHOP_KEYS := ["seed","refreshed_run","stock"]
 const LUCK_KEYS := ["gamble_since_legendary","forge_fails_in_row"]
+## D23 T9: one optional third key of `luck`: runs to the final boss without a legendary or unique in the stash (the drop pity). A file
+## without it is read as 0 and written back without it; the key appears only when the pity is on and a run first sets it.
+const LUCK_OPTIONAL := ["drop_runs_since_legendary"]
+const DROP_RUNS_MAX := 1000000
 const QUEST_KEYS := ["active","progress","done","claimed","bounty_offer","bounty_seed","bounty_run","repeat_claims"]
 const RECORD_KEYS := ["runs","wins","last","best"]
 const BEST_KEYS := ["ticks","grade","kills"]
@@ -1125,9 +1129,15 @@ static func _read_town(town: Variant,strict: bool,report: Dictionary,tables: Ref
 			_bump(report,"dropped_stock");continue
 		stock.append(kept)
 	var luck: Variant=town.luck
-	if not luck is Dictionary or not Catalog.keys_match(luck,LUCK_KEYS) or not Catalog.integer(luck.gamble_since_legendary,0,1000000000) or not Catalog.integer(luck.forge_fails_in_row,0,10):_bad(reasons,"town luck");return null
-	return {"unlocked":unlocked,"bought":bought,"shop":{"seed":int(shop.seed),"refreshed_run":int(shop.refreshed_run),"stock":stock},
-		"luck":{"gamble_since_legendary":int(luck.gamble_since_legendary),"forge_fails_in_row":int(luck.forge_fails_in_row)}}
+	var luck_base: Variant=luck
+	var drop_runs: Variant=null
+	if luck is Dictionary and luck.has(LUCK_OPTIONAL[0]):
+		luck_base=luck.duplicate();drop_runs=luck_base[LUCK_OPTIONAL[0]];luck_base.erase(LUCK_OPTIONAL[0])
+		if not Catalog.integer(drop_runs,0,DROP_RUNS_MAX):_bad(reasons,"town luck");return null
+	if not luck_base is Dictionary or not Catalog.keys_match(luck_base,LUCK_KEYS) or not Catalog.integer(luck_base.gamble_since_legendary,0,1000000000) or not Catalog.integer(luck_base.forge_fails_in_row,0,10):_bad(reasons,"town luck");return null
+	var read_luck := {"gamble_since_legendary":int(luck_base.gamble_since_legendary),"forge_fails_in_row":int(luck_base.forge_fails_in_row)}
+	if drop_runs!=null:read_luck[LUCK_OPTIONAL[0]]=int(drop_runs)
+	return {"unlocked":unlocked,"bought":bought,"shop":{"seed":int(shop.seed),"refreshed_run":int(shop.refreshed_run),"stock":stock},"luck":read_luck}
 
 ## One shop piece in its file form (no text, no storage id). Returns the cleaned piece, or {} when it does not fit the data,
 ## is a v1 piece, or has a key only an owned piece has (veiled, forge, rerolls, storage_id).
@@ -1389,7 +1399,9 @@ static func apply_progress(current: Dictionary,progress: Dictionary) -> Dictiona
 ## core keys are wrong is left out and `outcome_note` says "record_not_saved"; an open key that breaks the rules is cut off
 ## and named in `outcome_trimmed`. A key other than `record` is not taken yet: the record is left out and `outcome_note` is
 ## "outcome_unknown_key". Neither ever costs the run's rewards.
-func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ticks: int,progress: Dictionary={},carry: Dictionary={},outcome: Dictionary={}) -> bool:
+## `drop_pity` (D23 T9, ninth parameter, false = nothing below happens): the run counts for the drop pity in `town.luck.drop_runs_since_legendary`:
+## a NEW legendary or unique among the saved pieces sets it to 0, otherwise a win adds 1 (stops at 1,000,000), a defeat leaves it.
+func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ticks: int,progress: Dictionary={},carry: Dictionary={},outcome: Dictionary={},drop_pity: bool=false) -> bool:
 	if not available:return false
 	if receipt in state.receipts:return true
 	carry_note="";outcome_note="";outcome_trimmed=[]
@@ -1418,6 +1430,7 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 			if not found_id in story.found:story.found.append(found_id)
 	var candidate: Dictionary=state.duplicate(true)
 	var by_uid := {}
+	var saw_rare_quality := false
 	for index in inventory.size()+pending.size():
 		var in_inventory: bool=index<inventory.size()
 		var source: Dictionary=inventory[index] if in_inventory else pending[index-inventory.size()]
@@ -1427,6 +1440,7 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 			for key in ITEM_KEYS+ITEM_KEYS_V2:
 				if source.has(key):clean[key]=source[key]
 			if not loot().validate(clean).is_empty():_err("reward_rejected","Reward item failed validation");return false
+			if clean.get("quality","") in ["legendary","unique"]:saw_rare_quality=true
 			candidate.items.append({"storage_id":int(candidate.next_id),"item":clean.duplicate(true)})
 			if clean.get("quality")=="unique" and String(clean.get("base_id","")).begins_with(UNIQUE_ID_PREFIX):_codex_add(candidate,"uniques",String(clean.base_id).trim_prefix(UNIQUE_ID_PREFIX))
 			if clean.get("quality")=="legendary" and clean.has("legendary_id"):_codex_add(candidate,"legendaries",String(clean.legendary_id))
@@ -1444,6 +1458,12 @@ func record_run(receipt: String,inventory: Array,pending: Array,victory: bool,ti
 			print("CHAPTER1_PROFILE_CARRY_DROPPED ",JSON.stringify({"reason":carried}))
 	candidate.receipts.append(receipt)
 	if candidate.receipts.size()>64:candidate.receipts.pop_front()
+	if drop_pity:
+		var pity_luck: Dictionary=candidate.town.luck
+		var dry_runs := int(pity_luck.get(LUCK_OPTIONAL[0],0))
+		if saw_rare_quality:dry_runs=0
+		elif victory:dry_runs=mini(DROP_RUNS_MAX,dry_runs+1)
+		if saw_rare_quality or victory or pity_luck.has(LUCK_OPTIONAL[0]):pity_luck[LUCK_OPTIONAL[0]]=dry_runs
 	if victory:
 		candidate.completed_runs+=1
 		if candidate.best_ticks==0 or ticks<candidate.best_ticks:candidate.best_ticks=ticks

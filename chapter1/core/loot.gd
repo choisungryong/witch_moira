@@ -33,6 +33,9 @@ var _affix_on := false
 var _ladders: Array[Dictionary] = []
 var _tier_share: Dictionary = {}
 var _legacy_windows: Dictionary = {}
+## D23 T9: the drop pity block (optional) and its switch in memory.
+const PITY_KEYS := ["enabled","runs_without_legendary","upgrade"]
+var _pity_on := false
 
 func load_file(path: String = DATA_PATH) -> bool:
 	errors.clear()
@@ -55,6 +58,7 @@ func load_file(path: String = DATA_PATH) -> bool:
 	for row in data.legendaries: _legendaries[row.id] = row
 	for row in data.uniques: _uniques[row.id] = row
 	_index_affix_rolls()
+	_pity_on = data.has("pity") and data.pity.enabled == true
 	return true
 
 ## D23 T1: the pool rows join the id table (validate and the read helpers find them; the off roll walks data.affixes only), the ladders
@@ -83,6 +87,19 @@ func _index_affix_rolls() -> void:
 		# A ladder's weight is that of its lowest-tier row, whether that tier is open at the item level or not.
 		if int(row.get("tier",1)) < int(ladder.low_tier):
 			ladder.low_tier = int(row.get("tier",1)); ladder.weight = int(row.weight)
+
+## D23 T9: the drop pity. pity_on() = the block is there and enabled; pity_runs() = runs without a legendary or unique after which the
+## next final boss's first guaranteed line is a legendary. set_pity() switches it in memory (on is refused without a block).
+func pity_on() -> bool:
+	return _pity_on
+
+func pity_runs() -> int:
+	return int(data.get("pity",{}).get("runs_without_legendary",0))
+
+func set_pity(enabled: bool) -> bool:
+	if enabled and not data.has("pity"): return false
+	_pity_on = enabled
+	return true
 
 ## Turn the affix_rolls roll on or off in memory (the data file is never written). On is refused (false) when the data has no valid block.
 func set_affix_rolls(enabled: bool) -> bool:
@@ -160,6 +177,17 @@ func _check(doc: Dictionary) -> Array[String]:
 			total += int(tc.quality[quality])
 		if total <= 0: issues.append("Treasure class has no quality weight "+str(id_))
 	if doc.has("affix_rolls"): issues.append_array(_check_affix_rolls(doc))
+	if doc.has("pity"):
+		var pity: Variant = doc.pity
+		var pity_shape_ok: bool = pity is Dictionary and pity.size() == PITY_KEYS.size()
+		if pity_shape_ok:
+			for key in PITY_KEYS:
+				if not pity.has(key): pity_shape_ok = false
+		if not pity_shape_ok: issues.append("pity keys")
+		else:
+			if not pity.enabled is bool: issues.append("pity enabled")
+			if not pity.runs_without_legendary is int or pity.runs_without_legendary < 1 or pity.runs_without_legendary > 50: issues.append("pity runs_without_legendary")
+			if pity.upgrade != "first_guaranteed_to_legendary": issues.append("pity upgrade")
 	return issues
 
 ## D23 T1 2.2-6: the `affix_rolls` block. A wrong block fails load_file like a wrong `affixes` list does.
@@ -522,7 +550,9 @@ func _roll_unique(rng: RandomNumberGenerator, level: int, primary: String, prima
 ## Resolve one treasure class into zero or more items. `mods` (D13 5.2 shrine of luck) is optional: {drop_bps: share of the drop weight
 ## in ten-thousandths, quality_bps: {quality: share of that quality's weight}}. Without it (the default) the draws and their count are
 ## exactly what they were before the argument existed.
-func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, primary: String = "", mods: Dictionary = {}) -> Array[Dictionary]:
+## `first_quality` (D23 T9, last parameter): "legendary" turns the first guaranteed line of a class whose first guarantee is "rare" into a legendary
+## (the drop pity). Empty = the draws are exactly what they were before the parameter existed.
+func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, primary: String = "", mods: Dictionary = {}, first_quality: String = "") -> Array[Dictionary]:
 	var drops: Array[Dictionary] = []
 	if not data.treasure_classes.has(class_id): return drops
 	var tc: Dictionary = data.treasure_classes[class_id]
@@ -543,7 +573,10 @@ func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, p
 		var item: Dictionary = {}
 		if pick < guaranteed.size():
 			if guaranteed[pick] == "unique_primary": item = _roll_unique(rng,level,primary,true)
-			else: item = roll_item(rng,level,String(guaranteed[pick]),"",weights,lines_profile)
+			else:
+				var guaranteed_quality := String(guaranteed[pick])
+				if pick == 0 and first_quality == "legendary" and guaranteed_quality == "rare": guaranteed_quality = "legendary"
+				item = roll_item(rng,level,guaranteed_quality,"",weights,lines_profile)
 		else:
 			if rng.randi_range(1,int(tc.no_drop)+drop_weight) <= int(tc.no_drop): continue
 			var quality := _weighted(rng,quality_weights,data.qualities)

@@ -189,6 +189,7 @@ func execute() -> void:
 	v17_journal_checks()
 	v18_forge_checks(base)
 	v19_luck_checks()
+	t9_pity_checks(base)
 	v20_grace_checks(base)
 	v21_last_checks(base)
 	v9_strict_checks()
@@ -680,6 +681,78 @@ func v19_luck_checks() -> void:
 	var cases := {"key missing":func(d): d.town.luck.erase("gamble_since_legendary"),"key added":func(d): d.town.luck["more"]=1,"negative":func(d): d.town.luck.forge_fails_in_row=-1,
 		"forge_fails_in_row 11":func(d): d.town.luck.forge_fails_in_row=11,"string":func(d): d.town.luck.gamble_since_legendary="39","float":func(d): d.town.luck.gamble_since_legendary=1.5,"too big":func(d): d.town.luck.gamble_since_legendary=1000000001}
 	for label in cases:refuse_case("luck "+String(label),text,cases[label],folder)
+
+# D23 T9: the drop pity's counter `town.luck.drop_runs_since_legendary` (optional third key, schema 5 unchanged).
+func t9_piece(tables: RefCounted,kind: String,uid: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 900+uid
+	var piece: Dictionary=tables.make_unique("winter_heart",12) if kind=="unique" else tables.roll_item(rng,12,kind,"weapon")
+	piece.uid=uid;piece.position=Vector2.ZERO;piece.collected=true
+	return piece
+
+func t9_counter(profile: RefCounted) -> Variant:
+	return profile.state.town.luck.get("drop_runs_since_legendary",-1)
+
+func t9_pity_checks(base: Dictionary) -> void:
+	var tables=Profile.loot()
+	var folder := work+"/t9"
+	Snap4.wipe_tree(folder)
+	var KEY := "drop_runs_since_legendary"
+	# (a) A file with the two old luck keys reads and is written back with exactly those two (and the same town bytes).
+	var old=Profile.new()
+	check(old.configure(folder+"/old/chapter-one-profile-v5.json",true) and old.record_run("t9-a",[],[],true,100),"T9 a profile with the two old luck keys saves a run (drop_pity left false)")
+	var old_doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string(old.path))
+	var town_before := JSON.stringify(old_doc.town)
+	check(old_doc.town.luck.keys().size()==2 and not old_doc.town.luck.has(KEY),"T9 drop_pity=false never creates the key")
+	var old_again=open_v5(old.path)
+	check(old_again.available and old_again.record_run("t9-b",[],[],true,100) and JSON.stringify(JSON.parse_string(FileAccess.get_file_as_string(old.path)).town)==town_before,"T9 reading and saving again leaves the town text of a two-key file unchanged")
+	# (b) A file with the third key reads; it is kept through a save that does not count.
+	var text := FileAccess.get_file_as_string(old.path)
+	var three := mutated(text,func(d): d.town.luck[KEY]=3)
+	write_text(folder+"/three/chapter-one-profile-v5.json",JSON.stringify(three,"  "))
+	var opened=open_v5(folder+"/three/chapter-one-profile-v5.json")
+	check(opened.available and t9_counter(opened)==3 and typeof(t9_counter(opened))==TYPE_INT,"T9 a file with the third key (3) is read")
+	check(opened.record_run("t9-c",[],[],true,100) and open_v5(opened.path).state.town.luck[KEY]==3,"T9 the third key stays through a save that does not count")
+	good_files.append(opened.path)
+	# (c) Wrong third keys are refused like any wrong luck.
+	var cases := {"negative":func(d): d.town.luck[KEY]=-1,"too big":func(d): d.town.luck[KEY]=1000001,"string":func(d): d.town.luck[KEY]="3","float":func(d): d.town.luck[KEY]=1.5,"fourth key":func(d): d.town.luck[KEY]=1;d.town.luck["more"]=1,"other name":func(d): d.town.luck["drop_runs"]=1}
+	for label in cases:refuse_case("T9 luck "+String(label),text,cases[label],folder+"/refused")
+	# (d) drop_pity=true: win without a legendary +1, again +1, defeat unchanged, defeat with a unique 0, win with a legendary 0.
+	var counter=Profile.new()
+	check(counter.configure(folder+"/count/chapter-one-profile-v5.json",true),"T9 counting profile")
+	check(counter.record_run("w1",[],[],true,100,{},{},{},true) and t9_counter(counter)==1,"T9 a win without a legendary or unique counts 1 (the key appears)")
+	check(counter.record_run("w2",[],[],true,100,{},{},{},true) and t9_counter(counter)==2,"T9 and 2")
+	check(counter.record_run("l1",[],[],false,100,{},{},{},true) and t9_counter(counter)==2,"T9 a defeat without one leaves it at 2")
+	check(counter.record_run("l2",[t9_piece(tables,"unique",1)],[],false,100,{},{},{},true) and t9_counter(counter)==0,"T9 a defeat that brought a unique sets it to 0")
+	check(counter.record_run("w3",[],[],true,100,{},{},{},true) and t9_counter(counter)==1,"T9 counting starts again from 0")
+	check(counter.record_run("w4",[t9_piece(tables,"legendary",2)],[],true,100,{},{},{},true) and t9_counter(counter)==0,"T9 a win with a legendary sets it to 0")
+	check(counter.record_run("w5",[],[],true,100,{},{},{},true) and t9_counter(counter)==1,"T9 +1 after the reset")
+	# A pending piece (bag full) counts as seen too.
+	check(counter.record_run("w6",[],[t9_piece(tables,"legendary",3)],true,100,{},{},{},true) and t9_counter(counter)==0,"T9 a legendary among the pending rewards counts as seen")
+	# Only a NEW piece is seen: a piece already stored does not reset it.
+	counter.record_run("w7",[],[],true,100,{},{},{},true)
+	var stored_id := 0
+	for record in counter.state.items:
+		if record.item.quality=="legendary":stored_id=int(record.storage_id)
+	check(stored_id>0 and counter.record_run("w8",[{"storage_id":stored_id}],[],true,100,{},{},{},true) and t9_counter(counter)==2,"T9 a legendary that was already in the stash does not reset it (+1)")
+	var before_text := FileAccess.get_file_as_string(counter.path)
+	check(counter.record_run("w8",[],[],true,100,{},{},{},true) and t9_counter(counter)==2 and FileAccess.get_file_as_string(counter.path)==before_text,"T9 the same receipt twice counts once and writes nothing")
+	# The count stops at 1,000,000.
+	var capped: Dictionary=counter.state.duplicate(true)
+	capped.town.luck[KEY]=1000000
+	check(counter._persist(capped) and counter.record_run("w9",[],[],true,100,{},{},{},true) and t9_counter(counter)==1000000,"T9 the count stops at 1,000,000")
+	# A defeat on a profile that never had the key does not create it.
+	var plain=Profile.new()
+	check(plain.configure(folder+"/plain/chapter-one-profile-v5.json",true) and plain.record_run("p1",[],[],false,100,{},{},{},true) and not plain.state.town.luck.has(KEY),"T9 a defeat with nothing seen creates no key")
+	# A refused save changes nothing.
+	var full=Profile.new()
+	full.configure(folder+"/full/chapter-one-profile-v5.json",true)
+	var too_many: Array=[]
+	for i in 66:too_many.append(t9_piece(tables,"legendary",10+i))
+	var full_text := FileAccess.get_file_as_string(full.path) if FileAccess.file_exists(full.path) else ""
+	check(not full.record_run("big",too_many,[],true,100,{},{},{},true) and not full.state.town.luck.has(KEY),"T9 a refused record_run leaves the counter as it was")
+	# A profile carried over from schema 4 (make_base) has no key.
+	check(not String(base.text).contains(KEY) and not base.profile.state.town.luck.has(KEY),"T9 a profile carried over from schema 4 has no key")
 
 # V5-20
 func v20_grace_checks(base: Dictionary) -> void:
