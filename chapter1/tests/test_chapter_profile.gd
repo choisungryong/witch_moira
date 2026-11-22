@@ -40,6 +40,37 @@ func returned(base_text: String,target: String,mutate: Callable,label: String) -
 	var loader=Profile.new()
 	var ok: bool=loader.configure(target,true)
 	check(ok and loader.available and loader.characters[FROST].ranks.is_empty() and loader.notices.has(FROST) and int(loader.read_report.get("refunded_trees",0))==1 and FileAccess.get_file_as_string(target)==text,label)
+## D23 T1-A: equipment rolled by the affix_rolls branch (a frozen bundle, five-line rares among it) is stored, saved and read back, with the
+## roll switch off and on; the switch changes nothing about a saved document.
+func affix_profile_checks(directory: String,tables: RefCounted) -> void:
+	var bundle: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/tests/fixtures/loot_affix_v2_items.json"))
+	check(bundle is Dictionary and bundle.get("items") is Array and bundle.items.size()>=600,"T1-A frozen affix_rolls bundle is present")
+	if not bundle is Dictionary:return
+	var haul: Array=[];var five := 0;var others := {"magic":0,"legendary":0}
+	for entry in bundle.items:
+		var piece: Dictionary=entry.duplicate(true)
+		piece.item_level=int(piece.item_level);piece.required_level=int(piece.required_level);piece.grammar=int(piece.grammar)
+		for stat in piece.stats:piece.stats[stat]=int(piece.stats[stat])
+		for affix in piece.affixes:affix.value=int(affix.value)
+		var take := false
+		if piece.quality=="rare" and piece.affixes.size()==5 and five<6:five+=1;take=true
+		elif others.has(piece.quality) and int(others[piece.quality])<3:others[piece.quality]=int(others[piece.quality])+1;take=true
+		if take:
+			piece.uid=300+haul.size();piece.position=Vector2.ZERO;piece.collected=true;haul.append(piece)
+	check(five==6 and haul.size()==12,"T1-A the profile test takes six five-line rares, three magic and three legendary pieces from the bundle")
+	var written=Profile.new();check(written.configure(directory+"/affix-v2.json",true),"T1-A affix profile configured")
+	check(written.record_run("run-affix",haul,[],false,100,progress(1000)) and written.state.items.size()==12,"T1-A five-line rares are stored")
+	var five_stored := 0
+	for record in written.state.items:
+		if record.item.quality=="rare" and record.item.affixes.size()==5:five_stored+=1
+	check(five_stored==6,"T1-A the stored five-line rares keep all five lines")
+	var was_on: bool=tables.affix_rolls_on()
+	for mode in [false,true]:
+		check(tables.set_affix_rolls(mode),"T1-A roll switch set to "+str(mode))
+		var again=Profile.new()
+		check(again.configure(written.path,true) and again.state==written.state,"T1-A the saved five-line profile reads back identically with the roll switch "+str(mode))
+	tables.set_affix_rolls(was_on)
+
 func g1_checks(directory: String,tables: RefCounted,rng: RandomNumberGenerator,v2_state: Dictionary) -> void:
 	var root := directory+"/g1"
 	# 1. v2 file -> v5 file; the v2 bytes never change.
@@ -409,6 +440,7 @@ func execute() -> void:
 	var refuse=Profile.new();refuse.configure(directory+"/refuse.json",true)
 	check(not refuse.import_v1_text('{"schema_version":2}') and not refuse.import_v1_text("not json") and not refuse.imported_from_v1,"Non-v1 or broken text is refused as an import")
 	check(Profile.normalize(JSON.parse_string(old_text)).is_empty(),"A schema-1 document is not accepted as schema 2 without the import step")
+	affix_profile_checks(directory,tables)
 	g1_checks(directory,tables,rng,as_v2(v2.state,v2.loadout(FROST)))
 	d5_checks(directory,tables,rng)
 	if "--negative" in OS.get_cmdline_user_args():check(false,"Intentional checker failure")

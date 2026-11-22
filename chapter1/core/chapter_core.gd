@@ -1433,7 +1433,7 @@ func _step_rituals() -> void:
 		var target := 25*HZ if def.kind=="hold" else 60
 		if state.progress>=target:
 			state.state="completed";state.completed_tick=tick;_record("ritual_completed:"+def.id)
-			_publish_item(loot.roll_item(_loot_rng,ZONE_LEVELS[zone],"rare"),def.position,true,false,"ritual")
+			_publish_item(loot.roll_item(_loot_rng,ZONE_LEVELS[zone],"rare","",{},"rare_boss"),def.position,true,false,"ritual")
 			_drop_potion(def.position);_emit("ritual_completed",def.position,{"id":def.id})
 
 func _step_chapter_hazards() -> void:

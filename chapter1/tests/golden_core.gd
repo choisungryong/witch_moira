@@ -34,9 +34,10 @@ var dump_at := -1
 var dump_out := ""
 ## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
 ## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
-## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes).
+## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes). The sixth is the
+## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off).
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"]]
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -70,6 +71,9 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 		var problem := TrialDocs.enable_rhythm_problem(run,false,true)
 		if problem.is_empty():problem=TrialDocs.enable_spells_problem(run)
 		if not problem.is_empty():return {"error":"setup rejected: "+problem}
+	elif setup=="affix-on":
+		var affix_problem := TrialDocs.enable_affix_rolls_problem(run)
+		if not affix_problem.is_empty():return {"error":"setup rejected: "+affix_problem}
 	if not build_path.is_empty():
 		var build: Variant=JSON.parse_string(FileAccess.get_file_as_string(build_path))
 		if not build is Dictionary or not run.configure_build(build):

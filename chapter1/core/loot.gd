@@ -10,6 +10,17 @@ const BASE_PREFIX := "chapter1.full."
 const UNIQUE_PREFIX := "chapter1.full.unique."
 const AFFIX_COUNTS := {"common":[0,0],"magic":[1,2],"rare":[2,4],"legendary":[1,3],"unique":[0,0]}
 const KIND_CAPS := {"magic":1,"rare":2,"legendary":2}
+## D23 T1: what validate() accepts whatever the switch says (the widest grammar; it never narrows, so older saves stay loadable).
+## The data block `affix_rolls` must lie inside it (checked at load). Rolling off uses AFFIX_COUNTS/KIND_CAPS above, unchanged.
+const VALID_COUNTS := {"common":[0,0],"magic":[1,2],"rare":[2,5],"legendary":[1,3],"unique":[0,0]}
+const VALID_KIND_CAPS := {"magic":1,"rare":3,"legendary":2}
+const VALID_CLASS_CAPS := {"magic":{"condition":1,"skill":0},"rare":{"condition":2,"skill":1},"legendary":{"condition":2,"skill":1}}
+const AFFIX_CLASSES := ["number","shape","condition","skill"]
+## Which lines profile belongs to which quality (the `lines` table of the affix_rolls block).
+const LINE_PROFILES := {"magic":"magic","rare":"rare","rare_boss":"rare","legendary":"legendary"}
+## The stat keys the running core reads (D23 T1 2.2-7). The affix_rolls roll draws no row whose stat is not listed here. A patch that
+## makes the core read one more key adds it HERE in the same patch; the data's `core_reads` flag is a mirror that test_loot compares.
+const STATS_READ := ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","pickup_radius_cm","projectiles","pierce","chain_targets","shatter_count","radius_cm","slow_bps","fire_damage_bps","fire_burst","frost_threshold","arc_branches","arc_damage_bps","move_speed_bps","dash_cooldown_bps","soul_gain_bps"]
 
 var data: Dictionary = {}
 var errors: Array[String] = []
@@ -17,6 +28,11 @@ var _bases: Dictionary = {}
 var _affixes: Dictionary = {}
 var _legendaries: Dictionary = {}
 var _uniques: Dictionary = {}
+## affix_rolls (D23 T1): the switch in memory, the ladders in data order, and the window of every live row for the union check.
+var _affix_on := false
+var _ladders: Array[Dictionary] = []
+var _tier_share: Dictionary = {}
+var _legacy_windows: Dictionary = {}
 
 func load_file(path: String = DATA_PATH) -> bool:
 	errors.clear()
@@ -38,7 +54,54 @@ func load_file(path: String = DATA_PATH) -> bool:
 	for row in data.affixes: _affixes[row.id] = row
 	for row in data.legendaries: _legendaries[row.id] = row
 	for row in data.uniques: _uniques[row.id] = row
+	_index_affix_rolls()
 	return true
+
+## D23 T1: the pool rows join the id table (validate and the read helpers find them; the off roll walks data.affixes only), the ladders
+## are built in data order (affixes first, then pool; a ladder sits where its first row appeared) and the switch takes the data's value.
+func _index_affix_rolls() -> void:
+	_ladders.clear(); _tier_share.clear(); _legacy_windows.clear()
+	_affix_on = false
+	var block: Dictionary = data.get("affix_rolls",{})
+	if block.is_empty(): return
+	_affix_on = block.enabled == true
+	_legacy_windows = block.legacy_windows
+	for row in block.pool: _affixes[row.id] = row
+	for entry in block.tiers: _tier_share[int(entry.tier)] = int(entry.share)
+	var by_key: Dictionary = {}
+	var rows: Array = []
+	rows.append_array(data.affixes)
+	rows.append_array(block.pool)
+	for row in rows:
+		var key := String(row.group)+"|"+String(row.stat)
+		if not by_key.has(key):
+			by_key[key] = _ladders.size()
+			_ladders.append({"group":row.group,"stat":row.stat,"kind":row.kind,"class":String(row.get("class","")),"rows":[],"weight":int(row.weight),"low_tier":int(row.get("tier",1))})
+		var ladder: Dictionary = _ladders[by_key[key]]
+		var window: Dictionary = _legacy_windows.get(row.id,{})
+		ladder.rows.append({"def":row,"lo":int(window.get("level",row.level)),"hi":int(window.get("max_level",row.max_level))})
+		# A ladder's weight is that of its lowest-tier row, whether that tier is open at the item level or not.
+		if int(row.get("tier",1)) < int(ladder.low_tier):
+			ladder.low_tier = int(row.get("tier",1)); ladder.weight = int(row.weight)
+
+## Turn the affix_rolls roll on or off in memory (the data file is never written). On is refused (false) when the data has no valid block.
+func set_affix_rolls(enabled: bool) -> bool:
+	if enabled and (not data.has("affix_rolls") or _ladders.is_empty()): return false
+	_affix_on = enabled
+	return true
+
+func affix_rolls_on() -> bool:
+	return _affix_on
+
+## Read-only helpers for the screen and tools: the live row or pool row of an id ({} when unknown), its tier (0 when none) and class.
+func affix_def(id_: String) -> Dictionary:
+	return _affixes.get(id_,{}).duplicate(true)
+
+func affix_tier(id_: String) -> int:
+	return int(_affixes.get(id_,{}).get("tier",0))
+
+func affix_class(id_: String) -> String:
+	return String(_affixes.get(id_,{}).get("class",""))
 
 ## JSON numbers arrive as floats. Game data is integral: convert once at the boundary.
 func _ints(value: Variant) -> Variant:
@@ -96,6 +159,101 @@ func _check(doc: Dictionary) -> Array[String]:
 			if not quality in doc.qualities: issues.append("Treasure class quality "+str(id_))
 			total += int(tc.quality[quality])
 		if total <= 0: issues.append("Treasure class has no quality weight "+str(id_))
+	if doc.has("affix_rolls"): issues.append_array(_check_affix_rolls(doc))
+	return issues
+
+## D23 T1 2.2-6: the `affix_rolls` block. A wrong block fails load_file like a wrong `affixes` list does.
+func _check_affix_rolls(doc: Dictionary) -> Array[String]:
+	var block: Variant = doc.affix_rolls
+	if not block is Dictionary: return ["affix_rolls shape"]
+	for key in ["enabled","lines","kind_caps","class_caps","tier_window","tiers","legacy_windows","pool"]:
+		if not block.has(key): return ["affix_rolls missing "+key]
+	var issues: Array[String] = []
+	if not block.enabled is bool: issues.append("affix_rolls enabled")
+	if not block.lines is Dictionary or not block.kind_caps is Dictionary or not block.class_caps is Dictionary or not block.tiers is Array or not block.legacy_windows is Dictionary or not block.pool is Array: return issues+(["affix_rolls types"] as Array[String])
+	# lines: profile -> {"3": weight, ...}. Keys are line counts inside what validate() accepts for the profile's quality.
+	for profile in block.lines:
+		var table: Variant = block.lines[profile]
+		if not LINE_PROFILES.has(profile) or not table is Dictionary or table.is_empty(): issues.append("affix_rolls lines profile "+str(profile)); continue
+		var bounds: Array = VALID_COUNTS[LINE_PROFILES[profile]]
+		var sum := 0
+		for count in table:
+			if not String(count).is_valid_int() or int(count) < int(bounds[0]) or int(count) > int(bounds[1]) or int(count) < 1: issues.append("affix_rolls lines count "+str(profile)+" "+str(count)); continue
+			if not table[count] is int or int(table[count]) <= 0: issues.append("affix_rolls lines weight "+str(profile)+" "+str(count)); continue
+			sum += int(table[count])
+		if sum <= 0: issues.append("affix_rolls lines sum "+str(profile))
+	for quality in block.kind_caps:
+		if not VALID_KIND_CAPS.has(quality) or not block.kind_caps[quality] is int or int(block.kind_caps[quality]) < 0 or int(block.kind_caps[quality]) > int(VALID_KIND_CAPS[quality]): issues.append("affix_rolls kind_caps "+str(quality))
+	for quality in block.class_caps:
+		if not VALID_CLASS_CAPS.has(quality) or not block.class_caps[quality] is Dictionary: issues.append("affix_rolls class_caps "+str(quality)); continue
+		for kind in block.class_caps[quality]:
+			if not kind in AFFIX_CLASSES or not block.class_caps[quality][kind] is int or int(block.class_caps[quality][kind]) < 0 or int(block.class_caps[quality][kind]) > int(VALID_CLASS_CAPS[quality].get(kind,99)): issues.append("affix_rolls class_caps "+str(quality)+" "+str(kind))
+	# tiers: tier 1..5 ascending, min_level ascending, share > 0.
+	var tier_numbers: Dictionary = {}
+	var last_tier := 0
+	var last_level := 0
+	for entry in block.tiers:
+		if not entry is Dictionary or not entry.has_all(["tier","min_level","share"]) or not entry.tier is int or not entry.min_level is int or not entry.share is int: issues.append("affix_rolls tiers shape"); continue
+		if int(entry.tier) < 1 or int(entry.tier) > 5 or int(entry.tier) <= last_tier: issues.append("affix_rolls tiers order")
+		if int(entry.min_level) < last_level: issues.append("affix_rolls tiers min_level order")
+		if int(entry.share) <= 0: issues.append("affix_rolls tiers share")
+		last_tier = int(entry.tier); last_level = int(entry.min_level)
+		tier_numbers[int(entry.tier)] = true
+	if tier_numbers.is_empty(): issues.append("affix_rolls tiers empty")
+	if not block.tier_window is int or int(block.tier_window) < 1: issues.append("affix_rolls tier_window")
+	# Rows: ids are unique over `affixes` and `pool`; every number lies inside the stat's limits.
+	var ids: Dictionary = {}
+	for row in doc.affixes: ids[row.id] = true
+	var ladders: Dictionary = {}
+	var order: Array[String] = []
+	for row in block.pool:
+		if not row is Dictionary or not row.has_all(["id","kind","group","stat","slots","level","max_level","low","high","weight","tier","class","core_reads"]): issues.append("affix_rolls pool row shape"); continue
+		var label := "affix_rolls pool "+str(row.id)
+		if ids.has(row.id): issues.append(label+" duplicate id")
+		ids[row.id] = true
+		if not row.kind in ["prefix","suffix"]: issues.append(label+" kind")
+		if not row.stat is String or not doc.limits.has(row.stat): issues.append(label+" stat"); continue
+		if not row.low is int or not row.high is int or not row.level is int or not row.max_level is int or not row.weight is int: issues.append(label+" number type"); continue
+		if int(row.low) > int(row.high) or int(row.level) > int(row.max_level) or int(row.weight) <= 0: issues.append(label+" range")
+		if int(row.low) < int(doc.limits[row.stat][0]) or int(row.high) > int(doc.limits[row.stat][1]): issues.append(label+" outside limits")
+		if not row.slots is Array or row.slots.is_empty(): issues.append(label+" slots")
+		else:
+			for slot in row.slots:
+				if not slot in doc.slots: issues.append(label+" slot")
+		if not row.tier is int or not tier_numbers.has(int(row.tier)): issues.append(label+" tier")
+		if not row.class is String or not row.class in AFFIX_CLASSES: issues.append(label+" class")
+		if not row.core_reads is bool: issues.append(label+" core_reads")
+		if row.has("excludes"):
+			if not row.excludes is Array: issues.append(label+" excludes")
+			else:
+				for stat in row.excludes:
+					if not stat is String or not doc.limits.has(stat): issues.append(label+" excludes key")
+	# Ladders (same group and stat): one kind, one class, no tier twice, ranges never fall as the tier rises (end points may be shared).
+	var members: Array = []
+	members.append_array(doc.affixes)
+	members.append_array(block.pool)
+	for row in members:
+		if not row is Dictionary or not row.has_all(["group","stat","kind","tier","low","high"]) or not row.tier is int or not row.low is int or not row.high is int: continue
+		var key := String(row.group)+"|"+String(row.stat)
+		if not ladders.has(key): ladders[key] = []; order.append(key)
+		ladders[key].append(row)
+	for key in order:
+		var rows: Array = ladders[key]
+		rows.sort_custom(func(a, b): return int(a.tier) < int(b.tier))
+		for index in rows.size():
+			var row: Dictionary = rows[index]
+			if row.kind != rows[0].kind or String(row.get("class","")) != String(rows[0].get("class","")): issues.append("affix_rolls ladder kind/class "+key)
+			if index > 0:
+				if int(row.tier) == int(rows[index-1].tier): issues.append("affix_rolls ladder tier twice "+key)
+				elif int(row.low) < int(rows[index-1].high): issues.append("affix_rolls ladder values fall "+key+" tier "+str(row.tier))
+	var live_ids: Dictionary = {}
+	for row in doc.affixes: live_ids[row.id] = true
+	for id_ in block.legacy_windows:
+		var window: Variant = block.legacy_windows[id_]
+		if not live_ids.has(id_) or not window is Dictionary or not window.has_all(["level","max_level"]) or not window.level is int or not window.max_level is int or int(window.level) > int(window.max_level): issues.append("affix_rolls legacy_windows "+str(id_))
+	for id_ in doc.treasure_classes:
+		var tc: Dictionary = doc.treasure_classes[id_]
+		if tc.has("lines_profile") and not (tc.lines_profile is String and block.lines.has(tc.lines_profile)): issues.append("Treasure class lines_profile "+str(id_))
 	return issues
 
 ## rare_names = {"first": [{"id","name"}...], "second": [...]}. Ids are permanent (saved items point at them), unique over both
@@ -232,7 +390,7 @@ func _compose(base: Dictionary, quality: String, affixes: Array, legendary_id: S
 	return {"name":name_,"stats":stats,"description":description}
 
 ## Roll one non-unique item. An empty slot means "use the global slot weights".
-func roll_item(rng: RandomNumberGenerator, item_level: int, quality: String, slot: String = "", slot_weights: Dictionary = {}) -> Dictionary:
+func roll_item(rng: RandomNumberGenerator, item_level: int, quality: String, slot: String = "", slot_weights: Dictionary = {}, lines_profile: String = "") -> Dictionary:
 	var level := _clamp_level(item_level)
 	var legendary_id := ""
 	if quality == "legendary":
@@ -246,6 +404,7 @@ func roll_item(rng: RandomNumberGenerator, item_level: int, quality: String, slo
 			if slot.is_empty(): slot = legend.slots[rng.randi_range(0,legend.slots.size()-1)]
 	if slot.is_empty(): slot = _weighted(rng,data.slot_weights if slot_weights.is_empty() else slot_weights,data.slots)
 	var base := _pick_base(rng,slot,level)
+	if _affix_on: return _roll_item_v2(rng,level,quality,slot,base,legendary_id,lines_profile)
 	var bounds: Array = AFFIX_COUNTS[quality]
 	var wanted := 0 if int(bounds[1]) == 0 else rng.randi_range(maxi(int(bounds[0]),int(bounds[1])-1),int(bounds[1]))
 	var chosen: Array = []
@@ -277,6 +436,74 @@ func roll_item(rng: RandomNumberGenerator, item_level: int, quality: String, slo
 	if quality == "legendary": item.legendary_id = legendary_id
 	item.required_level = required_level(item)
 	return item
+
+## D23 T1 (affix_rolls on): same quality, slot and base draws as above (they happened before the branch); then the lines roll of 2.3.
+func _roll_item_v2(rng: RandomNumberGenerator, level: int, quality: String, slot: String, base: Dictionary, legendary_id: String, lines_profile: String) -> Dictionary:
+	var chosen: Array = _roll_lines_v2(rng,level,quality,slot,legendary_id,lines_profile)
+	if quality == "rare" and chosen.size() < 2: quality = "magic" if chosen.size() >= 1 else "common"
+	elif quality == "magic" and chosen.is_empty(): quality = "common"
+	var rare_name := ""
+	if quality == "rare":
+		rare_name = String(data.rare_names.first[rng.randi_range(0,data.rare_names.first.size()-1)].name)+" "+String(data.rare_names.second[rng.randi_range(0,data.rare_names.second.size()-1)].name)
+	var composed := _compose(base,quality,chosen,legendary_id,rare_name)
+	var item := {"grammar":2,"base_id":BASE_PREFIX+String(base.id),"name":composed.name,"slot":slot,"stats":composed.stats,"quality":quality,"item_level":level,"affixes":chosen,"description":composed.description}
+	if quality == "legendary": item.legendary_id = legendary_id
+	item.required_level = required_level(item)
+	return item
+
+## Line count by weight (keys ascending), then per line three draws: ladder, tier, value. Candidates follow the data order. Common and
+## unique items have no lines and draw nothing. A line with no candidate ends the roll early (and draws nothing).
+func _roll_lines_v2(rng: RandomNumberGenerator, level: int, quality: String, slot: String, legendary_id: String, lines_profile: String) -> Array:
+	var chosen: Array = []
+	if not quality in ["magic","rare","legendary"]: return chosen
+	var block: Dictionary = data.affix_rolls
+	var profile := "rare_boss" if quality == "rare" and lines_profile == "rare_boss" and block.lines.has("rare_boss") else quality
+	var table: Dictionary = block.lines.get(profile,{})
+	var counts: Array = table.keys()
+	counts.sort_custom(func(a, b): return int(a) < int(b))
+	var wanted := int(_weighted(rng,table,counts)) if not table.is_empty() else 0
+	var banned: Dictionary = _legendaries[legendary_id].stats if quality == "legendary" and _legendaries.has(legendary_id) else {}
+	var kind_caps: Dictionary = block.kind_caps
+	var class_caps: Dictionary = block.class_caps.get(quality,{})
+	var groups: Dictionary = {}
+	var kinds := {"prefix":0,"suffix":0}
+	var classes: Dictionary = {}
+	for i in wanted:
+		var open: Array = []
+		var total := 0
+		for ladder in _ladders:
+			if groups.has(ladder.group) or int(kinds[ladder.kind]) >= int(kind_caps.get(quality,0)): continue
+			if class_caps.has(ladder["class"]) and int(classes.get(ladder["class"],0)) >= int(class_caps[ladder["class"]]): continue
+			var rows: Array = []
+			for entry in ladder.rows:
+				var def: Dictionary = entry.def
+				if not slot in def.slots or level < int(entry.lo) or level > int(entry.hi) or not String(def.stat) in STATS_READ: continue
+				var blocked := false
+				for stat in def.get("excludes",[]):
+					if banned.has(stat): blocked = true
+				if not blocked: rows.append(entry)
+			if rows.is_empty(): continue
+			open.append([ladder,rows])
+			total += int(ladder.weight)
+		if open.is_empty(): break
+		var draw := rng.randi_range(1,total)
+		var picked: Array = open[0]
+		for pair in open:
+			draw -= int(pair[0].weight)
+			if draw <= 0: picked = pair; break
+		var ladder_picked: Dictionary = picked[0]
+		var tier_total := 0
+		for entry in picked[1]: tier_total += int(_tier_share.get(int(entry.def.tier),0))
+		var tier_draw := rng.randi_range(1,tier_total)
+		var row: Dictionary = picked[1][0].def
+		for entry in picked[1]:
+			tier_draw -= int(_tier_share.get(int(entry.def.tier),0))
+			if tier_draw <= 0: row = entry.def; break
+		groups[ladder_picked.group] = true
+		kinds[ladder_picked.kind] = int(kinds[ladder_picked.kind])+1
+		classes[ladder_picked["class"]] = int(classes.get(ladder_picked["class"],0))+1
+		chosen.append({"id":row.id,"group":row.group,"stat":row.stat,"value":rng.randi_range(int(row.low),int(row.high))})
+	return chosen
 
 func make_unique(id_: String, item_level: int) -> Dictionary:
 	if not _uniques.has(id_): return {}
@@ -311,18 +538,19 @@ func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, p
 	var level := _clamp_level(zone_level+int(tc.level_bonus))
 	var weights: Dictionary = tc.get("slot_weights",{})
 	var guaranteed: Array = tc.get("guaranteed",[])
+	var lines_profile := String(tc.get("lines_profile",""))
 	for pick in int(tc.picks):
 		var item: Dictionary = {}
 		if pick < guaranteed.size():
 			if guaranteed[pick] == "unique_primary": item = _roll_unique(rng,level,primary,true)
-			else: item = roll_item(rng,level,String(guaranteed[pick]),"",weights)
+			else: item = roll_item(rng,level,String(guaranteed[pick]),"",weights,lines_profile)
 		else:
 			if rng.randi_range(1,int(tc.no_drop)+drop_weight) <= int(tc.no_drop): continue
 			var quality := _weighted(rng,quality_weights,data.qualities)
 			if quality == "unique":
 				item = _roll_unique(rng,level,primary,false)
 				if item.is_empty(): quality = "legendary"
-			if item.is_empty(): item = roll_item(rng,level,quality,"",weights)
+			if item.is_empty(): item = roll_item(rng,level,quality,"",weights,lines_profile)
 		if not item.is_empty(): drops.append(item)
 	return drops
 
@@ -354,9 +582,10 @@ func validate(item: Dictionary) -> Array[String]:
 	if not _bases.has(bid): return issues+(["Unknown base"] as Array[String])
 	var base: Dictionary = _bases[bid]
 	if item.slot != base.slot or item.item_level < int(base.level): issues.append("Base eligibility")
-	var bounds: Array = AFFIX_COUNTS[item.quality]
+	var bounds: Array = VALID_COUNTS[item.quality]
 	if item.affixes.size() < int(bounds[0]) or item.affixes.size() > int(bounds[1]): issues.append("Affix count")
 	var groups: Dictionary = {}
+	var classes: Dictionary = {}
 	var kinds := {"prefix":0,"suffix":0}
 	for entry in item.affixes:
 		if not entry is Dictionary or not entry.has_all(["id","group","stat","value"]) or not _affixes.has(entry.id): return issues+(["Affix shape"] as Array[String])
@@ -364,9 +593,13 @@ func validate(item: Dictionary) -> Array[String]:
 		if groups.has(def.group): issues.append("Duplicate affix group")
 		groups[def.group] = true
 		kinds[def.kind] = int(kinds[def.kind])+1
-		if entry.group != def.group or entry.stat != def.stat or not item.slot in def.slots or item.item_level < int(def.level) or item.item_level > int(def.max_level) or not entry.value is int or entry.value < int(def.low) or entry.value > int(def.high): issues.append("Affix eligibility/range")
-	var cap := int(KIND_CAPS.get(item.quality,0))
+		if def.has("class"): classes[def.class] = int(classes.get(def.class,0))+1
+		if entry.group != def.group or entry.stat != def.stat or not item.slot in def.slots or not _in_window(def,item.item_level) or not entry.value is int or entry.value < int(def.low) or entry.value > int(def.high): issues.append("Affix eligibility/range")
+	var cap := int(VALID_KIND_CAPS.get(item.quality,0))
 	if int(kinds.prefix) > cap or int(kinds.suffix) > cap: issues.append("Affix kind cap")
+	var class_caps: Dictionary = VALID_CLASS_CAPS.get(item.quality,{})
+	for kind in classes:
+		if class_caps.has(kind) and int(classes[kind]) > int(class_caps[kind]): issues.append("Affix class cap")
 	var legendary_id := String(item.get("legendary_id",""))
 	if item.quality == "legendary":
 		if not _legendaries.has(legendary_id) or not item.slot in _legendaries[legendary_id].slots or item.item_level < int(_legendaries[legendary_id].level): return issues+(["Legendary identity"] as Array[String])
@@ -377,6 +610,12 @@ func validate(item: Dictionary) -> Array[String]:
 	if item.stats != expected.stats: issues.append("Base+affix identity/stats")
 	issues.append_array(_check_text(item))
 	return issues
+
+## The item levels a row may appear at: a pool row its own window; a live row its own window or the affix_rolls `legacy_windows` one.
+func _in_window(def: Dictionary, level: int) -> bool:
+	if level >= int(def.level) and level <= int(def.max_level): return true
+	var window: Dictionary = _legacy_windows.get(def.id,{})
+	return not window.is_empty() and level >= int(window.level) and level <= int(window.max_level)
 
 ## Name 1..160 characters on one line, description 0..300 characters (line breaks allowed); no control characters.
 func _check_text(item: Dictionary) -> Array[String]:

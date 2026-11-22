@@ -105,6 +105,7 @@ func execute() -> void:
 	check(loot.is_upgrade(weak,{},"chapter1.skill.frost"),"empty slot always prompts")
 	check(loot.is_upgrade(loot.make_unique("ash_bloom",12),strong,"chapter1.skill.frost"),"unique always prompts")
 	name_checks(loot)
+	affix_checks(loot)
 	finish()
 
 ## D5 (a): names and descriptions are presentation. validate() checks ids and numbers; dress() rebuilds the text.
@@ -260,6 +261,231 @@ func name_checks(loot: RefCounted) -> void:
 		renamed_ok = renamed_ok and renamed_loot.dress(old_unique).name == "새 고유 이름" and renamed_loot.dress(old_unique).description == "새 고유 설명"
 		renamed_ok = renamed_ok and "새 기본 이름" in renamed_loot.dress(old_base_item).name and "새 접두" in renamed_loot.dress(old_affix_item).name
 	check(renamed_ok,"L-7 items rolled with the old names validate against renamed data and dress() uses the new names")
+
+## D23 T1-A. The hash of 84,000 off-path rolls (7 slots x levels 6/11/15 x 4,000, quality cycling common/magic/rare/legendary, seed 20261123)
+## taken with loot.gd as it was before T1-A (main c3c26db). The off path must keep producing exactly these items.
+const OFF_PATH_HASH := "da3485dd7275ccbe409f434292fd2590a22510478961b468ba80b014a06efe9a"
+const AFFIX_FIXTURE := "res://chapter1/tests/fixtures/loot_affix_v2_items.json"
+const BAD_DIR := "res://_local/d23t1a"
+
+## Item dictionaries read from a fixture file, with the integer fields JSON turned into floats put back.
+func fixture_items(path: String) -> Array:
+	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var list: Array = []
+	if not doc is Dictionary or not doc.get("items") is Array: return list
+	for entry in doc.items:
+		var fixed: Dictionary = entry.duplicate(true)
+		fixed.item_level = int(fixed.item_level)
+		fixed.required_level = int(fixed.required_level)
+		fixed.grammar = int(fixed.grammar)
+		for stat in fixed.stats: fixed.stats[stat] = int(fixed.stats[stat])
+		for affix in fixed.affixes: affix.value = int(affix.value)
+		list.append(fixed)
+	return list
+
+func bad_block_loads(raw: Dictionary, mutate: Callable, name_: String) -> bool:
+	var doc: Dictionary = raw.duplicate(true)
+	mutate.call(doc)
+	DirAccess.make_dir_recursive_absolute(BAD_DIR)
+	var path := BAD_DIR+"/"+name_+".json"
+	var handle := FileAccess.open(path,FileAccess.WRITE)
+	handle.store_string(JSON.stringify(doc,"\t"))
+	handle.close()
+	var probe = Loot.new()
+	return probe.load_file(path)
+
+func mutate_nothing(_doc: Dictionary) -> void:
+	pass
+
+func mutate_good_profile(doc: Dictionary) -> void:
+	doc.treasure_classes.champion["lines_profile"] = "rare_boss"
+
+func mutate_dup_id(doc: Dictionary) -> void:
+	doc.affix_rolls.pool[1].id = doc.affix_rolls.pool[0].id
+
+func mutate_unknown_stat(doc: Dictionary) -> void:
+	doc.affix_rolls.pool[0].stat = "no_such_stat"
+
+func mutate_low_above_high(doc: Dictionary) -> void:
+	doc.affix_rolls.pool[0].low = int(doc.affix_rolls.pool[0].high)+1
+
+func mutate_ladder_values_fall(doc: Dictionary) -> void:
+	for row in doc.affix_rolls.pool:
+		if row.id == "wrath4":
+			row.low = 1000
+			row.high = 1200
+
+func mutate_unknown_tier(doc: Dictionary) -> void:
+	doc.affix_rolls.pool[0].tier = 9
+
+func mutate_unknown_lines_profile(doc: Dictionary) -> void:
+	doc.treasure_classes.champion["lines_profile"] = "no_such_profile"
+
+func mutate_bad_class(doc: Dictionary) -> void:
+	doc.affix_rolls.pool[0]["class"] = "weird"
+
+func mutate_legacy_unknown_id(doc: Dictionary) -> void:
+	doc.affix_rolls.legacy_windows["ghost"] = {"level":1,"max_level":9}
+
+func affix_checks(loot: RefCounted) -> void:
+	var block: Dictionary = loot.data.get("affix_rolls",{})
+	check(not block.is_empty() and not loot.affix_rolls_on(),"T1-A the shipped data carries the affix_rolls block and it is off")
+	if block.is_empty(): return
+	# Off path unchanged: the hash of the rolls taken before the change.
+	check(loot.set_affix_rolls(false) and not loot.affix_rolls_on(),"T1-A set_affix_rolls(false) is always accepted")
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	var hash_rng := RandomNumberGenerator.new()
+	hash_rng.seed = 20261123
+	var rolled := 0
+	for slot in loot.data.slots:
+		for level in [6,11,15]:
+			for i in 4000:
+				ctx.update(JSON.stringify(loot.roll_item(hash_rng,level,["common","magic","rare","legendary"][i%4],slot)).to_utf8_buffer())
+				rolled += 1
+	var off_hash := ctx.finish().hex_encode()
+	check(rolled == 84000 and off_hash == OFF_PATH_HASH,"T1-A off path: %d rolls hash to the value taken before the change (got %s)"%[rolled,off_hash])
+	# Data: core_reads mirrors STATS_READ; the window rule; skill rows.
+	var mirror_ok := true
+	for row in block.pool:
+		if bool(row.core_reads) != (String(row.stat) in Loot.STATS_READ): mirror_ok = false
+	for stat in Loot.STATS_READ:
+		if not loot.data.limits.has(stat): mirror_ok = false
+	check(mirror_ok,"T1-A the data's core_reads flag equals membership in STATS_READ for every pool row")
+	var tier_min: Dictionary = {}
+	for entry in block.tiers: tier_min[int(entry.tier)] = int(entry.min_level)
+	var ladders: Dictionary = {}
+	var all_rows: Array = []
+	all_rows.append_array(loot.data.affixes)
+	all_rows.append_array(block.pool)
+	for row in all_rows:
+		var key := String(row.group)+"|"+String(row.stat)
+		if not ladders.has(key): ladders[key] = []
+		ladders[key].append(row)
+	var window_ok := true
+	var window_first := ""
+	for key in ladders:
+		var rows: Array = ladders[key]
+		var full: bool = rows.size() == tier_min.size()
+		for row in rows:
+			var live: Dictionary = block.legacy_windows.get(row.id,{})
+			var lo := int(live.get("level",row.level))
+			var hi := int(live.get("max_level",row.max_level))
+			var tier := int(row.tier)
+			var want_hi := int(loot.data.max_item_level)
+			if full and tier_min.has(tier+int(block.tier_window)): want_hi = int(tier_min[tier+int(block.tier_window)])-1
+			var skill_floor := int(block.skill_min_item_level) if row["class"] == "skill" else 0
+			var lo_ok: bool = lo >= int(tier_min[tier]) if tier == 1 else lo == maxi(int(tier_min[tier]),skill_floor)
+			if row["class"] == "skill" and lo < skill_floor: lo_ok = false
+			if hi != want_hi or not lo_ok:
+				window_ok = false
+				if window_first.is_empty(): window_first = "%s tier %d window %d-%d, want hi %d"%[row.id,tier,lo,hi,want_hi]
+	check(window_ok,"T1-A every ladder row's level window follows tier_window %d from the tiers table; skill rows open at skill_min_item_level (%s)"%[int(block.tier_window),window_first])
+	# A broken block is refused by load_file; the unmodified copy and a valid lines_profile are accepted.
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Loot.DATA_PATH))
+	check(bad_block_loads(raw,mutate_nothing,"control"),"T1-A control: an unmodified copy of the data loads")
+	check(bad_block_loads(raw,mutate_good_profile,"good_profile"),"T1-A control: a lines_profile that exists in lines loads")
+	var bad_cases := {
+		"dup_id": mutate_dup_id,
+		"unknown_stat": mutate_unknown_stat,
+		"low_above_high": mutate_low_above_high,
+		"ladder_values_fall": mutate_ladder_values_fall,
+		"unknown_tier": mutate_unknown_tier,
+		"unknown_lines_profile": mutate_unknown_lines_profile,
+		"bad_class": mutate_bad_class,
+		"legacy_window_unknown_id": mutate_legacy_unknown_id,
+	}
+	for name_ in bad_cases:
+		check(not bad_block_loads(raw,bad_cases[name_],"bad_"+name_),"T1-A a block with "+name_+" fails load_file")
+	# On path: every slot x level, violations counted.
+	check(loot.set_affix_rolls(true) and loot.affix_rolls_on(),"T1-A set_affix_rolls(true) is accepted for a valid block")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1123
+	var violations := {"count":0,"dup_group":0,"kind_cap":0,"class_cap":0,"excludes":0,"unread_stat":0,"invalid":0}
+	var first_violation := ""
+	var rolled_on := 0
+	var kept: Array = []
+	for slot in loot.data.slots:
+		for level in [6,11,15]:
+			for i in 1500:
+				var quality: String = ["magic","rare","legendary","rare"][i%4]
+				var item: Dictionary = loot.roll_item(rng,level,quality,slot,{},"rare_boss" if i%8 == 3 else "")
+				rolled_on += 1
+				if kept.size() < 1000 and i%5 == 0: kept.append(item)
+				var lines: int = item.affixes.size()
+				var table_key: String = "rare_boss" if item.quality == "rare" and i%8 == 3 else String(item.quality)
+				var allowed: Dictionary = block.lines.get(table_key,{})
+				if item.quality in ["magic","rare","legendary"] and not allowed.has(str(lines)):
+					violations.count += 1
+					if first_violation.is_empty(): first_violation = "count "+JSON.stringify(item)
+				var seen_groups: Dictionary = {}
+				var kinds := {"prefix":0,"suffix":0}
+				var classes: Dictionary = {}
+				for entry in item.affixes:
+					var def: Dictionary = loot.affix_def(entry.id)
+					if seen_groups.has(def.group): violations.dup_group += 1
+					seen_groups[def.group] = true
+					kinds[def.kind] += 1
+					classes[def["class"]] = int(classes.get(def["class"],0))+1
+					if not String(def.stat) in Loot.STATS_READ: violations.unread_stat += 1
+					if item.quality == "legendary":
+						for stat in def.get("excludes",[]):
+							if loot._legendaries[item.legendary_id].stats.has(stat): violations.excludes += 1
+				var kind_cap := int(block.kind_caps.get(item.quality,0))
+				if int(kinds.prefix) > kind_cap or int(kinds.suffix) > kind_cap: violations.kind_cap += 1
+				for kind in classes:
+					if int(classes[kind]) > int(block.class_caps.get(item.quality,{}).get(kind,99)): violations.class_cap += 1
+				if not loot.validate(item).is_empty():
+					violations.invalid += 1
+					if first_violation.is_empty(): first_violation = "invalid "+str(loot.validate(item))+" "+JSON.stringify(item)
+	var total_violations := 0
+	for key in violations: total_violations += int(violations[key])
+	check(total_violations == 0,"T1-A on path %d rolls (slot x level 6/11/15): lines in range, no repeated group, kind and class caps, legendary excludes, only STATS_READ stats, all validate: %s %s"%[rolled_on,JSON.stringify(violations),first_violation])
+	# Same seed, same items.
+	var twin_a := RandomNumberGenerator.new()
+	twin_a.seed = 77
+	var twin_b := RandomNumberGenerator.new()
+	twin_b.seed = 77
+	var twin_same := true
+	for i in 600:
+		var level_twin := 1+i%30
+		if JSON.stringify(loot.roll_item(twin_a,level_twin,"rare","",{},"rare_boss")) != JSON.stringify(loot.roll_item(twin_b,level_twin,"rare","",{},"rare_boss")): twin_same = false
+	check(twin_same,"T1-A on path: same seed gives the same items")
+	# Items rolled ON stay valid with the switch OFF.
+	var off_failures := 0
+	loot.set_affix_rolls(false)
+	for item in kept:
+		if not loot.validate(item).is_empty(): off_failures += 1
+	check(kept.size() == 1000 and off_failures == 0,"T1-A %d items rolled with the switch on all validate with it off (%d failing)"%[kept.size(),off_failures])
+	# Frozen bundles, switch off and on.
+	var frozen: Array = fixture_items(AFFIX_FIXTURE)
+	var old_bundle: Array = fixture_items("res://chapter1/tests/fixtures/loot_compat_items.json")
+	var five := 0
+	for item in frozen:
+		if item.quality == "rare" and item.affixes.size() == 5: five += 1
+	var frozen_bad := 0
+	var old_bad := 0
+	for mode in [false,true]:
+		loot.set_affix_rolls(mode)
+		for item in frozen:
+			if not loot.validate(item).is_empty(): frozen_bad += 1
+		for item in old_bundle:
+			if not loot.validate(item).is_empty(): old_bad += 1
+	check(frozen.size() >= 600 and five >= 5 and frozen_bad == 0,"T1-A loot_affix_v2_items.json (%d items, %d five-line rares) validates with the switch off and on (%d failing)"%[frozen.size(),five,frozen_bad])
+	check(old_bundle.size() >= 200 and old_bad == 0,"T1-A loot_compat_items.json (%d items) validates with the switch off and on (%d failing)"%[old_bundle.size(),old_bad])
+	# validate still rejects what it did not widen: a sixth line.
+	loot.set_affix_rolls(false)
+	var strict_ok := false
+	for item in frozen:
+		if item.quality == "rare" and item.affixes.size() == 5:
+			var six: Dictionary = item.duplicate(true)
+			six.affixes.append(six.affixes[0].duplicate(true))
+			strict_ok = not loot.validate(six).is_empty()
+			break
+	check(strict_ok,"T1-A validate still rejects a rare item with a sixth line")
+	# Read helpers.
+	check(loot.affix_tier("wrath5") == 5 and loot.affix_tier("wrath") == 1 and loot.affix_tier("no_such") == 0 and loot.affix_class("wrath5") == "number" and loot.affix_def("wrath5").get("stat","") == "damage_bps" and loot.affix_def("no_such").is_empty(),"T1-A affix_tier, affix_class and affix_def read live and pool rows")
+	loot.set_affix_rolls(bool(block.enabled))
 
 func finish() -> void:
 	print("CHAPTER1_LOOT_RESULT ",JSON.stringify({"checks":checks,"failures":failures,"scope":"loot grammar v2 only; not wired into the running chapter"}))

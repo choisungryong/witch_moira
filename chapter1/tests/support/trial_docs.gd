@@ -9,6 +9,7 @@ const Tuning := preload("res://chapter1/core/combat_tuning.gd")
 const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
 const DescentDoc := preload("res://chapter1/core/descent.gd")
 const TrialPace := preload("res://chapter1/app/trial_pace.gd")
+const LootTables := preload("res://chapter1/core/loot.gd")
 
 ## The names `--chapter1-trial=` knows (chapter_one.gd `_apply_trial`). Anything else is a typo that the app drops without a word.
 const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace", "grace", "elites"]
@@ -47,6 +48,15 @@ static func enable_descent_problem(run: RefCounted) -> String:
 	if not doc is Dictionary: return "descent.json could not be read"
 	doc["enabled"] = true
 	if not run.set_descent(doc): return "descent document refused: " + str(run.errors)
+	return ""
+
+## The D23 T1 equipment roll (loot.json `affix_rolls`) on, for this run only: the run gets its own loot tables with the switch turned on in
+## memory, so the tables the other runs of the process share stay as the data file says (off). "" when it worked, else one sentence.
+static func enable_affix_rolls_problem(run: RefCounted) -> String:
+	var tables = LootTables.new()
+	if not tables.load_file(): return "loot.json could not be loaded: " + str(tables.errors)
+	if not tables.set_affix_rolls(true): return "affix_rolls block refused"
+	run.loot = tables
 	return ""
 
 ## The `--chapter1-trial=` parts of an argument list, in the order given. Empty when the argument is absent.
