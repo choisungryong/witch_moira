@@ -17,7 +17,7 @@ const BLAST_SHADER := preload("res://chapter1/view/fx/descent_blast.gdshader")
 
 const MAX_BOLTS := 64
 const MAX_BOLTS_LOW := 24
-const BOLT_LIFE := 0.26
+const BOLT_LIFE := 0.42
 const FOOT_LIFE := 1.0
 const TRUNK_HEIGHT := 34.0
 const SPARK_EMITTERS := 6
@@ -263,7 +263,7 @@ func update(t: float, dt: float) -> void:
 			continue
 		live += 1
 		var flick := 1.0 if int(_ages[i] * 60.0 + _flicker[i] * 4.0) % 2 == 0 else 0.72
-		_mats[i].set_shader_parameter("fade", (1.0 - age * age) * flick)
+		_mats[i].set_shader_parameter("fade", (1.0 - pow(age, 1.6)) * flick)
 	_bolt_count = live
 	# the feet
 	var mm := _flat.multimesh

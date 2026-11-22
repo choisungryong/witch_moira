@@ -281,13 +281,18 @@ func fake_run_one(element: String, low: bool, shake_scale: float = 1.0, reduced:
 	fx.consume(released)
 	fx.sync(run, 1.0 / 60.0)
 	var types := {}
+	var end_total := 0
 	var total := int(Fake.SWEEP_TICKS[element])
 	for s in range(1, total + 260):
 		if s <= total:
 			var evs: Array = gen.step(s)
+			for e in evs:
+				if String(e.type) == "descent_end": end_total = int(e.kills_total)
 			for e in evs: types[String(e.get("phase", e.type))] = int(types.get(String(e.get("phase", e.type)), 0)) + 1
 			fx.consume(evs)
 		fx.sync(run, 1.0 / 60.0)
+	var label_text := String(fx._kill_label.text) if fx._kill_label != null else ""
+	check(end_total > 0 and label_text.contains(str(end_total)), "fake %s: the end number is kills_total (%d) in \"%s\"" % [element, end_total, label_text])
 	var out := {"stats": fx.status().stats, "status": fx.status(), "types": types, "kicks": stage.world.kicks}
 	stage.queue_free()
 	return out

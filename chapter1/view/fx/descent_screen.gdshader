@@ -91,11 +91,18 @@ float ell(vec2 p, vec2 c, vec2 r, float rot) {
 	return (length(q / r) - 1.0) * min(r.x, r.y);
 }
 
+// a better scrambled hash for the smooth noise (hash21's neighbouring cells are correlated and showed as blocks in the flame)
+float hash12(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
 float vnoise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+	f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x), mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
 float fbm(vec2 p) {
@@ -165,7 +172,7 @@ void fragment() {
 
 	// ---- freeze rim ----
 	if (freeze > 0.001) {
-		float close_in = 0.05 + 0.20 * freeze;
+		float close_in = 0.07 + 0.28 * freeze;
 		vec4 v = voronoi(vec2(sc.x, sc.y) * 7.0 + 3.0);
 		float crack = 1.0 - smoothstep(0.0, 0.05, v.y);
 		float rimmask = 1.0 - smoothstep(close_in * 0.35, close_in, edge_d + (v.x - 0.5) * 0.04);
@@ -262,28 +269,36 @@ void fragment() {
 
 	// ---- D24 frost: the ice storm (two layers of slanted streaks, a drifting snow veil, a cold wash) ----
 	if (storm > 0.001) {
+		// A blizzard, not a floor pattern: three depths of flakes streaking one way (near ones big and fast, far ones small and slow),
+		// the wind's direction swaying with slow gust bands, frost creeping in from the rim. Each pulse (gust) makes it surge.
 		vec2 sdir = normalize(storm_dir);
-		float along = dot(sc, sdir);
-		float across = dot(sc, vec2(-sdir.y, sdir.x));
 		float dcorner = length((uv - vec2(1.0, 0.0)) * vec2(aspect, 1.0)) / (aspect + 1.0);
 		float cov = clamp((storm * 1.45 - dcorner) * 3.5, 0.0, 1.0);
-		float sp = 1.0 + gust * 1.8;
+		float sp = 1.0 + gust * 1.6;
+		vec2 bp = vec2(dot(sc, sdir) * 1.1 - time * 1.5 * sp, dot(sc, vec2(-sdir.y, sdir.x)) * 1.3);
+		float band = low > 0.5 ? 0.5 : vnoise(bp) * 0.65 + vnoise(bp * 2.1 + 5.0) * 0.35;      // two octaves: cheap (the storm covers the whole screen)
 		float streak = 0.0;
-		for (int ly = 0; ly < 2; ly++) {
-			if (ly == 1 && low > 0.5) break;
-			float cells = ly == 0 ? 34.0 : 71.0;
+		for (int ly = 0; ly < 3; ly++) {
+			if (low > 0.5 && ly != 1) continue;
+			float cells = ly == 0 ? 8.0 : (ly == 1 ? 20.0 : 46.0);
+			float speed = ly == 0 ? 3.4 : (ly == 1 ? 2.1 : 1.2);
+			float len = ly == 0 ? 0.34 : (ly == 1 ? 0.22 : 0.12);
+			float amp = ly == 0 ? 0.62 : (ly == 1 ? 0.45 : 0.30);
+			float sway = sin(dot(sc, vec2(1.3, 0.9)) * 1.7 + time * 0.9 + float(ly) * 2.0) * 0.20 + (band - 0.5) * 0.7;
+			vec2 d = vec2(sdir.x * cos(sway) - sdir.y * sin(sway), sdir.x * sin(sway) + sdir.y * cos(sway));
+			float along = dot(sc, d);
+			float across = dot(sc, vec2(-d.y, d.x));
 			float cid = floor(across * cells);
-			float h = hash21(vec2(cid, float(ly) * 13.0));
-			float lane = 1.0 - smoothstep(0.0, 0.55, abs(fract(across * cells) - 0.5) * 2.0);
-			float pos = fract(along * (ly == 0 ? 0.34 : 0.6) - time * (1.5 + h * 1.6 + float(ly)) * sp + h * 9.0);
-			float len = ly == 0 ? 0.20 : 0.11;
-			float s1 = smoothstep(0.0, 0.015, pos) * (1.0 - smoothstep(0.015, len, pos));
-			streak = max(streak, s1 * lane * step(ly == 0 ? 0.35 : 0.45, h) * (ly == 0 ? 0.55 : 0.36));
+			float h = hash21(vec2(cid, float(ly) * 13.0 + 3.0));
+			float lane = 1.0 - smoothstep(0.0, ly == 0 ? 0.75 : 0.55, abs(fract(across * cells) - 0.5) * 2.0);
+			float pos = fract(along * 0.22 - time * speed * (0.7 + h * 0.8) * sp + h * 7.0);
+			float s1 = smoothstep(0.0, 0.02, pos) * (1.0 - smoothstep(0.02, len, pos));
+			streak = max(streak, s1 * lane * step(0.42, h) * amp);
 		}
-		float veil = low > 0.5 ? 0.5 : fbm(vec2(along * 2.2 - time * 0.9 * sp, across * 2.6));
-		float edge_boost = 1.0 - smoothstep(0.0, 0.30, edge_d);
-		float wa = clamp(cov * (streak * (1.0 + gust * 0.8) + 0.07 * veil + 0.10 * edge_boost), 0.0, 0.55);
-		vec3 wc = mix(vec3(0.62, 0.84, 0.96), vec3(0.96, 0.99, 1.0), clamp(streak * 3.0, 0.0, 1.0));
+		float swirl = low > 0.5 ? 0.0 : smoothstep(0.46, 0.82, band) * 0.20;
+		float rim = 1.0 - smoothstep(0.0, 0.34, edge_d);
+		float wa = clamp(cov * ((streak + swirl) * (1.0 + gust * 0.9) + 0.06 + 0.24 * rim), 0.0, 0.62);
+		vec3 wc = mix(vec3(0.60, 0.82, 0.96), vec3(0.97, 0.99, 1.0), clamp(streak * 2.6, 0.0, 1.0));
 		float oa2 = out_c.a;
 		out_c.rgb = mix(out_c.rgb, wc, wa / max(0.001, wa + oa2));
 		out_c.a = clamp(oa2 + wa * (1.0 - oa2), 0.0, 1.0);
@@ -291,14 +306,30 @@ void fragment() {
 
 	// ---- D24 ember finale: flame creeping in from the edges, thin over the middle ----
 	if (fire_alpha > 0.001) {
-		float reach_f = fire_cover * 0.36;
-		float rr = length(vec2(sc.x / (aspect * 0.5), sc.y / 0.5));          // 0 centre, 1 edge midpoints, 1.41 corners: a rounded frame, not a box
-		float fn = fbm(vec2(sc.x * 3.2, sc.y * 3.2 - time * 2.4)) * 0.6 + 0.4 * vnoise(vec2(atan(sc.y, sc.x) * 4.0 + time * 1.5, rr * 5.0 - time * 3.0));
-		float fd = (1.45 - rr) * 0.42 + (fn - 0.5) * 0.22;
-		float cover = 1.0 - smoothstep(reach_f * 0.45, max(reach_f, 0.001), fd);
-		float tongue = smoothstep(0.30, 0.72, fn + (1.0 - fd * 2.0) * 0.25);
-		vec3 fc2 = mix(vec3(0.62, 0.12, 0.02), vec3(1.0, 0.66, 0.22), smoothstep(0.35, 0.95, tongue * cover));
-		float fa = cover * (0.28 + 0.42 * tongue) * mix(1.0, 0.4, smoothstep(0.05, 0.30, fd)) * fire_alpha;
+		// Flames rising from the bottom edge and licking in from the sides (value noise scrolled upward, smooth: no cells show), embers lifting off.
+		float t_up = time * 3.2;
+		float n1 = fbm(vec2(sc.x * 4.0, sc.y * 2.2 + t_up));
+		float n2 = fbm(vec2(sc.x * 9.0 + 3.0, sc.y * 4.5 + t_up * 1.7));
+		float below = 1.0 - uv.y;                                        // distance up from the bottom edge, in screen heights
+		float side = min(uv.x * aspect, (1.0 - uv.x) * aspect);          // distance in from the nearest side
+		float reach_b = fire_cover * (0.20 + 0.30 * n1);
+		float reach_s = fire_cover * (0.10 + 0.22 * n1);
+		float flame_b = 1.0 - smoothstep(reach_b * 0.35, max(reach_b, 0.001), below + (n2 - 0.5) * 0.10);
+		float flame_s = 1.0 - smoothstep(reach_s * 0.35, max(reach_s, 0.001), side + (n2 - 0.5) * 0.08);
+		float top = 1.0 - smoothstep(0.0, fire_cover * 0.12, uv.y + (n2 - 0.5) * 0.05);
+		float flame = clamp(max(max(flame_b, flame_s), top * 0.7), 0.0, 1.0);
+		float core = smoothstep(0.55, 1.0, flame) * smoothstep(0.30, 0.8, n2);
+		vec3 fc2 = mix(vec3(0.70, 0.13, 0.02), vec3(1.0, 0.55, 0.12), smoothstep(0.1, 0.8, flame));
+		fc2 = mix(fc2, vec3(1.0, 0.86, 0.45), core);
+		// embers
+		vec2 eg = vec2(sc.x * 26.0, sc.y * 15.0 + time * 5.0);
+		vec2 ei = floor(eg);
+		vec2 ef = fract(eg) - 0.5;
+		float eh = hash21(ei);
+		float ember = step(0.88, eh) * (1.0 - smoothstep(0.05, 0.16, length(ef - (hash22(ei + 3.0) - 0.5) * 0.5))) * smoothstep(0.0, 0.3, fire_cover);
+		float fa = flame * (0.34 + 0.40 * smoothstep(0.2, 0.9, n1)) * fire_alpha;
+		fa = max(fa, ember * 0.8 * fire_alpha);
+		fc2 = mix(fc2, vec3(1.0, 0.8, 0.4), ember);
 		float oa3 = out_c.a;
 		out_c.rgb = mix(out_c.rgb, fc2, fa / max(0.001, fa + oa3));
 		out_c.a = clamp(oa3 + fa * (1.0 - oa3), 0.0, 1.0);
@@ -311,19 +342,30 @@ void fragment() {
 		float da = 0.0;
 		vec3 dc = vec3(0.0);
 		if (has_sky_art > 0.5) {
-			vec2 auv = vec2(0.5 + dp.x / 0.62, 0.5 + dp.y / 0.42);
+			// a full-length figure on a near-black ground (the grace screen's demon): its upper body, the ground turned into transparency by brightness,
+			// lit from behind in the element colour; the gesture tilts it a little, pulses its light and puts a glow at the beckoning hand
+			float tilt = (demon_pose - 0.35) * 0.10;
+			vec2 rp = vec2(dp.x, uv.y - 0.20);
+			rp = vec2(rp.x * cos(tilt) - rp.y * sin(tilt), rp.x * sin(tilt) + rp.y * cos(tilt));
+			vec2 auv = vec2(0.5 + rp.x / 0.56, (rp.y + 0.20) / 0.42 * 0.5);
 			if (auv.x >= 0.0 && auv.x <= 1.0 && auv.y >= 0.0 && auv.y <= 1.0) {
-				vec4 t = texture(sky_art, auv);
-				dc = t.rgb;
-				da = t.a;
+				vec3 t = texture(sky_art, auv).rgb;
+				float lum = max(t.r, max(t.g, t.b));
+				da = smoothstep(0.07, 0.30, lum);
+				dc = t * (1.0 + 0.6 * demon_pose) + tint.rgb * 0.18 * (1.0 + demon_pose);
+				float hand = exp(-dot(auv - vec2(0.12, 0.2), auv - vec2(0.12, 0.2)) * 60.0) * demon_pose;
+				dc += tint.rgb * hand * 1.5;
+				da = max(da, hand * 0.6);
 			}
+			float halo = exp(-dot(dp, dp) * 9.0) * 0.18;
+			if (da < halo) { da = halo; dc = tint.rgb; }
 		} else {
 			vec4 sil = silhouette_g(q, element_id, demon_pose);
 			dc = sil.rgb;
 			da = sil.a;
 		}
 		float fade_top = smoothstep(-0.02, 0.10, uv.y) * (1.0 - smoothstep(0.34, 0.42, uv.y));
-		float dalpha = da * demon * 0.40 * fade_top;
+		float dalpha = da * demon * (has_sky_art > 0.5 ? 0.48 : 0.40) * fade_top;
 		float oa4 = out_c.a;
 		out_c.rgb = mix(out_c.rgb, dc, dalpha / max(0.001, dalpha + oa4));
 		out_c.a = clamp(oa4 + dalpha * (1.0 - oa4), 0.0, 1.0);

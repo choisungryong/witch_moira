@@ -214,5 +214,5 @@ func step(s: int) -> Array:
 			if s == 120:
 				events.append(_event("descent_strike", center, tick_, _common("finale", s, _inside(), {})))
 	if s == int(SWEEP_TICKS[element]):
-		events.append(_event("descent_end", center, tick_, {"element": element, "kills": _dead.size(), "strong_hits": 0, "strong_damage_raw": 0, "boss_share_bps": 0, "duration_ticks": s}))
+		events.append(_event("descent_end", center, tick_, {"element": element, "kills": _dead.size(), "kills_total": _dead.size() + 7, "strong_hits": 0, "strong_damage_raw": 0, "boss_share_bps": 0, "duration_ticks": s}))
 	return events

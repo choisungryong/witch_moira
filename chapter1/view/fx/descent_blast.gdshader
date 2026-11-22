@@ -12,7 +12,7 @@ uniform int layer = 0;
 uniform vec2 hero_uv = vec2(-1.0);   // the hero on the screen (viewport uv): the dome and the flash thin out over the hero
 uniform float aspect = 1.7778;
 varying vec4 bd;
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}
 void vertex(){
  bd=INSTANCE_CUSTOM;

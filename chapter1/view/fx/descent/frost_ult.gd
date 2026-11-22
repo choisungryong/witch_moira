@@ -34,6 +34,7 @@ var _bt := 0.0
 var _cracks := 0.0
 var _gust := 0.0
 var _white := 0.0
+var _white_frames := 0
 var _freeze := 0.0
 var _shatter := 0.0
 var _wind := Vector2(-0.12, 0.99)
@@ -50,7 +51,7 @@ func build(host_: RefCounted) -> void:
 	_ground_mat.set_shader_parameter("mode", 1)
 	_ground_mat.set_shader_parameter("tint", host.tint)
 	_ground_mat.set_shader_parameter("reach", 26.0)
-	_ground_mat.set_shader_parameter("max_alpha", 0.2)
+	_ground_mat.set_shader_parameter("max_alpha", 0.07)
 	_ground.material_override = _ground_mat
 	_ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ground.visible = false
@@ -76,9 +77,9 @@ func build(host_: RefCounted) -> void:
 	_storm_mat.emission_box_extents = Vector3(17.0, 5.0, 17.0)
 	_storm_mat.direction = Vector3(-0.12, -0.35, 0.99).normalized()
 	_storm_mat.spread = 5.0
-	_storm_mat.initial_velocity_min = 26.0; _storm_mat.initial_velocity_max = 40.0
+	_storm_mat.initial_velocity_min = 30.0; _storm_mat.initial_velocity_max = 55.0
 	_storm_mat.gravity = Vector3.ZERO
-	_storm_mat.scale_min = 0.6; _storm_mat.scale_max = 1.5
+	_storm_mat.scale_min = 0.5; _storm_mat.scale_max = 2.6
 	_storm_mat.color_ramp = host.ramp([[0.0, Color(0.9, 0.97, 1.0, 0.0)], [0.15, Color(0.9, 0.97, 1.0, 0.75)], [0.8, Color(0.7, 0.9, 1.0, 0.6)], [1.0, Color(0.6, 0.85, 1.0, 0.0)]])
 	_storm = GPUParticles3D.new(); _storm.name = "DescentWind"
 	_storm.amount = host.count(STORM_AMOUNT); _storm.lifetime = 1.1
@@ -92,10 +93,10 @@ func build(host_: RefCounted) -> void:
 	_shard_mat = ParticleProcessMaterial.new()
 	_shard_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINTS
 	_shard_mat.emission_point_count = 1
-	_shard_mat.direction = Vector3(0, 1, 0); _shard_mat.spread = 75.0
-	_shard_mat.initial_velocity_min = 3.0; _shard_mat.initial_velocity_max = 10.0
+	_shard_mat.direction = Vector3(0, 0.6, 0); _shard_mat.spread = 110.0
+	_shard_mat.initial_velocity_min = 7.0; _shard_mat.initial_velocity_max = 20.0
 	_shard_mat.gravity = Vector3(0, -16, 0)
-	_shard_mat.scale_min = 0.5; _shard_mat.scale_max = 1.6
+	_shard_mat.scale_min = 0.6; _shard_mat.scale_max = 2.0
 	_shard_mat.color_ramp = host.ramp([[0.0, Color(0.97, 1.0, 1.0, 0.95)], [0.5, Color(0.62, 0.9, 0.97, 0.7)], [1.0, Color(0.4, 0.75, 0.9, 0.0)]])
 	_shards = GPUParticles3D.new(); _shards.name = "DescentShards"
 	_shards.amount = host.count(SHARD_AMOUNT); _shards.lifetime = 0.95
@@ -164,7 +165,7 @@ func strike(event: Dictionary) -> void:
 			var n := int(event.get("n", 1))
 			_cracks = clampf(float(n) / 8.0, 0.0, 1.0)
 			_gust = 1.0
-			host.kick(0.08)
+			host.kick(0.16)
 			host.pool_light(Vector3(host.hero.x, 3.0, host.hero.y), COLD, 2.2, 14.0, 0.2)
 		"break":
 			_do_break(positions)
@@ -185,7 +186,8 @@ func _do_break(positions: Array) -> void:
 	host.stats.breaks += 1
 	host.hitstop(host.HITSTOP_SECONDS)
 	host.kick(1.0)
-	_white = 0.85
+	_white = 1.0
+	_white_frames = 2
 	var points := PackedVector3Array()
 	var from: Array = []
 	for at in _frozen: from.append(at)
@@ -215,7 +217,8 @@ func update(t: float, dt: float) -> void:
 	host.scr.storm = enter * leave
 	host.scr.gust = _gust
 	host.scr.sky = host.ramp_t(t, 0.0, 0.4) * (1.0 - host.ramp_t(t, dur + 0.2, dur + 1.2))
-	_white = maxf(0.0, _white - host.wall_dt * (0.85 / 0.10))
+	if _white_frames > 0: _white_frames -= 1
+	else: _white = maxf(0.0, _white - host.wall_dt * (1.0 / 0.12))
 	host.scr.whiteout = _white
 	# the demon: a long exhale while the storm blows, the fist closes at the break
 	var pose: float = 0.35 * host.ramp_t(t, 0.3, 2.0)

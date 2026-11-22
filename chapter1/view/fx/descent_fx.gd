@@ -37,6 +37,8 @@ const SCREEN_SHADER = preload("res://chapter1/view/fx/descent_screen.gdshader")
 
 const SLOT_PREFIX := "illustration.cutin.descent."
 const SKY_SLOT_PREFIX := "illustration.sky.descent."
+## Until the sky pictures exist the grace screen's demon (a full-length figure on a dark ground, the same one per element) is used, upper body only.
+const GRACE_SLOT_PREFIX := "ui.grace.demon."
 const ELEMENT_ID := {"ember": 0.0, "frost": 1.0, "arc": 2.0}
 ## Where the bust sits and which way it comes in from, per element (the art decides the final look).
 const SLIDE_DIR := {"ember": Vector2(1, 0), "frost": Vector2(-1, 0), "arc": Vector2(0, 0.6)}
@@ -359,11 +361,13 @@ func _on_strike(event: Dictionary) -> void:
 
 func _on_end(event: Dictionary) -> void:
 	if not _built: return
-	sw["kills"] = int(event.get("kills", 0))
+	# kills_total (the core's later field: the whole sweep, entrants included) when it is there, else kills
+	var shown := int(event.get("kills_total", event.get("kills", 0)))
+	sw["kills"] = shown
 	if not sw.is_empty(): sw["ended_at"] = float(sw.t)
 	kick(0.25)
-	if numbers_on and int(event.get("kills", 0)) > 0 and _kill_label != null:
-		_kill_label.text = Loc.tn("descent.kills", int(event.kills))
+	if numbers_on and shown > 0 and _kill_label != null:
+		_kill_label.text = Loc.tn("descent.kills", shown)
 		_kill_label_age = 0.0
 		_kill_label.visible = true
 
@@ -481,6 +485,11 @@ func _load_sky_art() -> void:
 	if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot):
 		tex = AssetSlots.texture(slot)
 		if slot in AssetSlots.missing(): tex = null
+	if tex == null and not ("--chapter1-descent-sky=silhouette" in OS.get_cmdline_user_args()):
+		var grace := GRACE_SLOT_PREFIX + _element
+		if AssetSlots.has_slot(grace) and not AssetSlots.is_planned(grace):
+			tex = AssetSlots.texture(grace)
+			if grace in AssetSlots.missing(): tex = null
 	_screen_mat.set_shader_parameter("sky_art", tex)
 	_screen_mat.set_shader_parameter("has_sky_art", 1.0 if tex != null else 0.0)
 
