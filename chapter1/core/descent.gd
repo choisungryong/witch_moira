@@ -4,7 +4,7 @@ extends RefCounted
 ## nothing of it. Pure data: no node, no profile I/O. Every number lives in the file; the ids below are structure.
 const GrowthCatalog = preload("res://chapter1/core/growth_catalog.gd")
 const DEFAULT_PATH := "res://chapter1/data/descent.json"
-const ROOT_KEYS := ["schema_version","provenance","balance_status","enabled","cost","points","area","normal","strong","after","ultimates","blocked_phases","crown"]
+const ROOT_KEYS := ["schema_version","provenance","balance_status","enabled","cost","points","area","normal","strong","after","hold_bonus","cue","ultimates","blocked_phases","crown"]
 const ELEMENTS := ["ember","frost","arc"]
 ## Beat ids the kill points may name: the rhythm beats of combat_tuning.json plus its trial and boss.
 const BEAT_IDS := ["gi","seung1","seung2","jeon_a","trial","boss"]
@@ -39,14 +39,19 @@ static func validate(v: Variant) -> Array[String]:
 	elif not _number(area.right_deg,-180.0,180.0) or not _number(area.half_w_m,6.0,30.0) or not _number(area.half_h_m,6.0,30.0) or not _number(area.edge_m,0.0,4.0): issues.append("descent area range")
 	if not _keys(v.normal,["trial_kill_cap"]) or not _int(v.normal.trial_kill_cap,0,400): issues.append("descent normal")
 	var s: Variant = v.strong
-	if not _keys(s,["elite_bps","champion_bps","boss_bps","per_mark_bps","marks_cap_bps","cut_windup_ticks","champion_stun_ticks","boss_stagger_ticks"]): issues.append("descent strong keys")
+	if not _keys(s,["elite_bps","champion_bps","boss_bps","per_mark_bps","marks_cap_bps","cut_windup_ticks","champion_stun_ticks","boss_stagger_ticks","boss_cap_bps"]): issues.append("descent strong keys")
 	else:
 		for key in ["elite_bps","champion_bps","boss_bps","per_mark_bps","marks_cap_bps"]:
 			if not _int(s[key],0,10000): issues.append("descent strong "+key)
 		for key in ["cut_windup_ticks","champion_stun_ticks","boss_stagger_ticks"]:
 			if not _int(s[key],1 if key=="cut_windup_ticks" else 0,600): issues.append("descent strong "+key)
+		if not _int(s.boss_cap_bps,0,10000) or (_int(s.boss_bps,0,10000) and int(s.boss_cap_bps) < int(s.boss_bps)): issues.append("descent strong boss_cap_bps")
 	var a: Variant = v.after
-	if not _keys(a,["iframe_ticks","spawn_pause_ticks"]) or not _int(a.iframe_ticks,0,600) or not _int(a.spawn_pause_ticks,0,600): issues.append("descent after")
+	if not _keys(a,["iframe_ticks","spawn_pause_ticks","sweep_spawn_bps"]) or not _int(a.iframe_ticks,0,600) or not _int(a.spawn_pause_ticks,0,600) or not _int(a.sweep_spawn_bps,0,30000): issues.append("descent after")
+	var hb: Variant = v.hold_bonus
+	if not _keys(hb,["per_points","step_bps","max_bps","cap_points"]) or not _int(hb.per_points,1,100000) or not _int(hb.step_bps,0,10000) or not _int(hb.max_bps,0,10000) or not _int(hb.cap_points,0,1000000): issues.append("descent hold_bonus")
+	var cue: Variant = v.cue
+	if not _keys(cue,["normals_min","crest_ticks"]) or not _int(cue.normals_min,0,500) or not _int(cue.crest_ticks,0,3600): issues.append("descent cue")
 	issues.append_array(_ultimate_issues(v.ultimates))
 	if not v.blocked_phases is Array or v.blocked_phases.size() > PHASES.size(): issues.append("descent blocked_phases")
 	else:

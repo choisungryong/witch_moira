@@ -58,7 +58,7 @@ var targets: Array = BEATS
 var rhythm_on := false
 ## --stop-s=N: end every run after N seconds (a short look at the first minutes, e.g. the run opening with --bin=10).
 var stop_s := 0.0
-## --descent=off|now|hold|panic: switch the descent on in memory (descent.json stays off) and let the bot use it by that rule (D15 A6.5).
+## --descent=off|now|hold|panic|crest|boss (D24: crest = call when the screen is full, boss = call when the boss is on the screen): switch the descent on in memory (descent.json stays off) and let the bot use it by that rule (D15 A6.5).
 ## "off" counts the gauge but never calls. --spells-on: the in-run spell composition on in memory (the pilot picks its own cards).
 var descent_policy := ""
 var spells_on := false
@@ -168,9 +168,10 @@ func execute() -> void:
 			if thirds_on: print_sweep_run(r)
 	var cross := cross_summary(runs)
 	print_cross(cross)
+	if descent_policy != "": print_descent_cross(runs)
 	if stand_on: print_stand_cross(runs)
 	if thirds_on: print_thirds(runs)
-	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
+	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "descent_cross": (descent_cross(runs) if descent_policy != "" else {}), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
 	DirAccess.make_dir_recursive_absolute(abs_path.get_base_dir())
@@ -345,8 +346,8 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				"descent_ready": marks.append("%.0fs descent ready" % esec)
 				"descent_called":
 					marks.append("%.0fs descent used" % esec)
-					descent_calls.append({"tick": int(ev.tick), "normals": int(ev.get("normals_in_reach", 0)), "strongs": int(ev.get("strongs_in_reach", 0)), "alive": int(run.alive_count())})
-				"descent_end": descent_ends.append({"tick": int(ev.tick), "kills": int(ev.kills), "strong_hits": int(ev.strong_hits), "strong_damage_raw": int(ev.strong_damage_raw), "marks_taken": int(ev.marks_taken), "refund": int(ev.refund), "boss_share_bps": int(ev.get("boss_share_bps", 0))})
+					descent_calls.append({"tick": int(ev.tick), "normals": int(ev.get("normals_in_reach", 0)), "strongs": int(ev.get("strongs_in_reach", 0)), "alive": int(run.alive_count()), "hold_bonus_bps": int(ev.get("hold_bonus_bps", 0))})
+				"descent_end": descent_ends.append({"tick": int(ev.tick), "kills": int(ev.kills), "strong_hits": int(ev.strong_hits), "strong_damage_raw": int(ev.strong_damage_raw), "marks_taken": int(ev.marks_taken), "refund": int(ev.refund), "boss_share_bps": int(ev.get("boss_share_bps", 0)), "kills_total": int(ev.get("kills_total", 0)), "normals_at_call": int(ev.get("normals_at_call", 0)), "entered": int(ev.get("entered", 0)), "clear_ratio_bps": int(ev.get("clear_ratio_bps", 0))})
 				"level_choice":
 					if level_first < 0.0:
 						level_first = esec
@@ -849,6 +850,49 @@ func cross_summary(runs: Array) -> Dictionary:
 	out["run_count"] = runs.size()
 	return out
 
+# ---------- D24 1st edition: the descent's medians over all uses of a policy ----------
+func median_of(list: Array) -> float:
+	if list.is_empty(): return -1.0
+	var sorted_list := list.duplicate()
+	sorted_list.sort()
+	var n := sorted_list.size()
+	return float(sorted_list[n / 2]) if n % 2 == 1 else (float(sorted_list[n / 2 - 1]) + float(sorted_list[n / 2])) / 2.0
+
+func descent_cross(runs: Array) -> Dictionary:
+	var out := {"policy": descent_policy, "runs": runs.size(), "uses": 0, "by_primary": {}}
+	var all: Dictionary = {}
+	for r in runs:
+		if r.descent.policy == "": continue
+		var prim := String(r.primary)
+		if not out.by_primary.has(prim): out.by_primary[prim] = {}
+		for i in r.descent.ends.size():
+			var e: Dictionary = r.descent.ends[i]
+			var c: Dictionary = r.descent.calls[i] if i < r.descent.calls.size() else {}
+			for scope in [all, out.by_primary[prim]]:
+				for key in ["kills_total", "kills", "normals_at_call", "entered", "clear_ratio_bps", "boss_share_bps"]:
+					if not scope.has(key): scope[key] = []
+					scope[key].append(int(e.get(key, 0)))
+				if not scope.has("hold_bonus_bps"): scope["hold_bonus_bps"] = []
+				scope["hold_bonus_bps"].append(int(c.get("hold_bonus_bps", 0)))
+			out.uses = int(out.uses) + 1
+	var summarize := func(scope: Dictionary) -> Dictionary:
+		var row := {"uses": 0}
+		for key in scope:
+			row["median_" + key] = median_of(scope[key])
+			row["min_" + key] = (scope[key].min() if scope[key].size() > 0 else -1)
+			row["max_" + key] = (scope[key].max() if scope[key].size() > 0 else -1)
+			row["uses"] = scope[key].size()
+		return row
+	out["all"] = summarize.call(all)
+	var by: Dictionary = {}
+	for prim in out.by_primary: by[prim] = summarize.call(out.by_primary[prim])
+	out["by_primary"] = by
+	return out
+
+func print_descent_cross(runs: Array) -> void:
+	var c := descent_cross(runs)
+	print("DESCENT_CROSS " + JSON.stringify(c))
+
 # ---------- printing ----------
 func print_run(r: Dictionary) -> void:
 	var s: Dictionary = r.summary
@@ -866,7 +910,8 @@ func print_run(r: Dictionary) -> void:
 			boss_bps += int(d.get("boss_share_bps", 0))
 		kill_list.sort()
 		print("  descent bodies on screen at the call (normals/strongs/alive)=%s" % str(r.descent.calls.map(func(c): return "%d/%d/%d" % [int(c.normals), int(c.strongs), int(c.alive)])))
-		print("  descent kills per use=%s median=%s boss_share_bps_total=%d (D24 Q-D5/Q-D6: median 45..120, boss share per run <= 2500)" % [str(kill_list), str(kill_list[kill_list.size() / 2]) if kill_list.size() > 0 else "-", boss_bps])
+		print("  descent kills(own) per use=%s median=%s boss_share_bps_total=%d" % [str(kill_list), str(kill_list[kill_list.size() / 2]) if kill_list.size() > 0 else "-", boss_bps])
+		print("  descent per use (D24 1st edition): at_call/entered/kills_total/own/clear_ratio_bps/hold_bonus_bps/boss_share_bps = %s" % str(range(r.descent.ends.size()).map(func(i): return "%d/%d/%d/%d/%d/%d/%d" % [int(r.descent.ends[i].normals_at_call), int(r.descent.ends[i].entered), int(r.descent.ends[i].kills_total), int(r.descent.ends[i].kills), int(r.descent.ends[i].clear_ratio_bps), int(r.descent.calls[i].hold_bonus_bps) if i < r.descent.calls.size() else 0, int(r.descent.ends[i].boss_share_bps)])))
 		print("  descent[%s]: uses=%d ready_at=%s used_at=%s kills_by_descent=%d gauge_in=%d wasted=%d refunded=%d strong_dmg_raw=%d" % [r.descent.policy, int(dm.get("uses", 0)),
 			str(dm.get("ready_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), str(dm.get("call_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), dk,
 			int(dm.get("gauge_in", 0)), int(dm.get("wasted", 0)), int(dm.get("refunded", 0)), int(dm.get("strong_damage_raw", 0))])

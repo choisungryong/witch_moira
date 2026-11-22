@@ -621,8 +621,10 @@ func _spawn_wave() -> void:
 			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id})
 			if zone==2 and tuning.final_level_on_boss_spawn:_seal_grace()
 			if zone==2 and _rhythm_on:_spawn_hp_bps=10000;_emit("beat_started",hero.position,{"id":"boss"})
-	# The breath after a descent: nothing ordinary is sent in (a guardian above is not held back).
+	# The breath after a descent (from its end tick on): nothing ordinary is sent in (a guardian above is not held back).
+	# During the sweep the ordinary spawn goes on at after.sweep_spawn_bps of its pace (D24 1st edition 4.7).
 	if tick<_d_pause_until:return
+	if not _d_sweep.is_empty() and int(descent.after.sweep_spawn_bps)<=0:return
 	if _rhythm_on and not (zone==2 and _champion_id>0):_spawn_rhythm_wave();return
 	if tick<_next_spawn:return
 	# Frequent weak bodies provide sweepable packs, mixed with bounded specialists.
@@ -631,7 +633,7 @@ func _spawn_wave() -> void:
 	for step in tuning.spawn.opening:
 		if tick<int(step.until_s)*HZ:amount=int(step.amount);break
 	if zone==2 and _champion_id>0:wave=tuning.spawn.boss_phase;amount=int(wave.amount)
-	_next_spawn=tick+int(wave.interval_ticks)
+	_next_spawn=tick+_descent_spawn_interval(int(wave.interval_ticks))
 	var count := alive_count()
 	var alive_cap := int(tuning.alive_cap)
 	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
@@ -947,7 +949,7 @@ func _spawn_rhythm_wave() -> void:
 	elif not trial and rule.get("taste_crest")!=null and not _taste_done and tick>=int(rule.taste_crest.at_ticks):
 		_taste_done=true;_spawn_crest(rule,rule.taste_crest,cap)
 	if tick<_next_spawn:return
-	_next_spawn=tick+int(rule.interval_ticks)
+	_next_spawn=tick+_descent_spawn_interval(int(rule.interval_ticks))
 	var count := alive_count()
 	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
 	for i in amount:
@@ -1008,6 +1010,9 @@ func _resolve_elite_attack(e: Dictionary,definition: Dictionary,distance: float)
 func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 	super._emit(type,position,details)
 	if type=="death" and _op_active and not details.get("elite",false):_op_step_kills+=1;_op_total_kills+=1
+	if not descent.is_empty():
+		if type=="wave_crest":_d_crest_tick=tick
+		elif type=="death" and not _d_sweep.is_empty() and String(details.get("role","normal"))=="normal":_d_sweep.kills_total=int(_d_sweep.kills_total)+1
 	# The gauge counts events, and only while no descent is called or sweeping (it never fills itself).
 	if not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent"):_descent_score(type,details)
 	if type=="death" and _kb_on:_kill_burst_note(details,position)
@@ -1920,6 +1925,10 @@ var _d_combo_tick := -1
 var _d_combo_sum := 0
 var _d_iframe_until := 0
 var _d_pause_until := 0
+## Gauge that overflowed while ready (D24 1st edition 8.5): it lifts the strong bodies' share at the next call. Read-only view: hold_bonus_bps.
+var _d_hold_bonus := 0
+## The tick of the last rhythm wave_crest (for the view's crest flag). Not in the snapshot's contract; a read-only cue.
+var _d_crest_tick := -100000
 var _d_sweep: Dictionary = {}
 ## Ground that stays after a sweep (ember fire spots, the frost ground): [{kind, pos, radius, until, next}]. Empty while off.
 var _d_burn: Array = []
@@ -1959,7 +1968,7 @@ func _prepare_descent() -> bool:
 	return true
 
 func _descent_reset() -> void:
-	_d_gauge=0;_d_uses=0;_d_ready=false;_d_wasted=0;_d_strong_carry=0;_d_combo_tick=-1;_d_combo_sum=0;_d_iframe_until=0;_d_pause_until=0
+	_d_gauge=0;_d_uses=0;_d_ready=false;_d_wasted=0;_d_strong_carry=0;_d_combo_tick=-1;_d_combo_sum=0;_d_iframe_until=0;_d_pause_until=0;_d_hold_bonus=0;_d_crest_tick=-100000
 	_d_sweep={};_d_burn=[];_d_element="";_d_strike_ids=[];_d_strike_pos=[];_d_strike_marks=[]
 	if descent.is_empty():return
 	_d_element=String(_primary_id).trim_prefix("chapter1.skill.")
@@ -1967,6 +1976,26 @@ func _descent_reset() -> void:
 	var angle := deg_to_rad(float(descent.area.right_deg))
 	_d_right=Vector2(cos(angle),sin(angle));_d_up=Vector2(_d_right.y,-_d_right.x)
 	metrics.descent={"uses":0,"gauge_in":0,"wasted":0,"kills":0,"strong_hits":0,"strong_damage_raw":0,"marks_taken":0,"refunded":0,"ready_ticks":[],"call_ticks":[]}
+
+## The share lift of the overflowed gauge: step_bps for every per_points, at most max_bps.
+func _descent_bonus_bps() -> int:
+	var rule: Dictionary=descent.hold_bonus
+	return mini(int(rule.max_bps),_d_hold_bonus/int(rule.per_points)*int(rule.step_bps))
+
+## Ordinary bodies on the screen rectangle around the hero (read only).
+func _descent_screen_normals() -> int:
+	var n := 0
+	for id_ in enemies:
+		var e: Dictionary=enemies[id_]
+		if e.hp_raw>0 and e.generation==_epoch and _enemy_role(e)=="normal" and _descent_inside(e.position,hero.position):n+=1
+	return n
+
+## The ordinary spawn's interval during a sweep: after.sweep_spawn_bps of its pace (10000 = as it is).
+func _descent_spawn_interval(ticks: int) -> int:
+	if descent.is_empty() or _d_sweep.is_empty():return ticks
+	var bps := int(descent.after.sweep_spawn_bps)
+	if bps==10000 or bps<=0:return ticks
+	return maxi(1,ticks*10000/bps)
 
 func _descent_cost() -> int:
 	var costs: Array=descent.cost
@@ -2016,7 +2045,9 @@ func _descent_boss_alive() -> bool:
 ## Read only, for the screens and the sound (D15 A6.4). Changes nothing. {"enabled":false} while off.
 ## {enabled, element, gauge, cost_now, ratio_bps (0..10000), ready, state "charging"|"ready"|"hold"|"sweep", uses,
 ##  first (is this the run's first descent: the one being called or swept, else the one to come), sweep_left_ticks, iframe_until_tick,
-##  area {right_deg, half_w_m, half_h_m} (D24: the screen rectangle), sweep_ticks (this element's length)}
+##  area {right_deg, half_w_m, half_h_m} (D24: the screen rectangle), sweep_ticks (this element's length),
+##  hold_bonus_bps (what the overflowed gauge adds to a strong body's share at the next call), screen_normals (ordinary bodies on the
+##  screen rectangle), crest (ready and the screen is full: screen_normals >= cue.normals_min, or a rhythm wave_crest within cue.crest_ticks)}
 func descent_view() -> Dictionary:
 	if descent.is_empty():return {"enabled":false}
 	var state := "charging"
@@ -2025,9 +2056,12 @@ func descent_view() -> Dictionary:
 	elif _d_ready:state="ready"
 	var cost := _descent_cost()
 	var first := (_d_uses==1) if state=="sweep" else (_d_uses==0)
+	var screen_normals := _descent_screen_normals()
+	var crest := _d_ready and state=="ready" and (screen_normals>=int(descent.cue.normals_min) or tick-_d_crest_tick<=int(descent.cue.crest_ticks))
 	return {"enabled":true,"element":_d_element,"gauge":_d_gauge,"cost_now":cost,"ratio_bps":clampi(_d_gauge*10000/maxi(1,cost),0,10000),"ready":_d_ready,"state":state,
 		"uses":_d_uses,"first":first,"sweep_left_ticks":maxi(0,int(_d_sweep.until_tick)-tick) if state=="sweep" else 0,"iframe_until_tick":_d_iframe_until,
-		"area":_descent_area_view(),"sweep_ticks":int(descent.ultimates[_d_element].sweep_ticks)}
+		"area":_descent_area_view(),"sweep_ticks":int(descent.ultimates[_d_element].sweep_ticks),
+		"hold_bonus_bps":_descent_bonus_bps(),"screen_normals":screen_normals,"crest":crest}
 
 ## Call the descent. Accepted only while playing with a ready gauge and no sweep running; then the core stands still
 ## (mode "descent") until release_descent(). The screen shows its cut-in in between; nothing changes meanwhile.
@@ -2046,7 +2080,7 @@ func request_descent() -> bool:
 	_refresh_mode()
 	metrics.descent.call_ticks.append(tick)
 	_emit("descent_called",hero.position,{"element":_d_element,"index":_d_uses+1,"variant":"long" if _d_uses==0 else "short","center":hero.position,"area":_descent_area_view(),"reach_m":_descent_compat_reach(),
-		"normals_in_reach":normals,"strongs_in_reach":strongs,"marks_in_reach":marks,"in_trial":_trial_phase=="hold","boss_alive":_descent_boss_alive()})
+		"normals_in_reach":normals,"strongs_in_reach":strongs,"marks_in_reach":marks,"hold_bonus_bps":_descent_bonus_bps(),"in_trial":_trial_phase=="hold","boss_alive":_descent_boss_alive()})
 	return true
 
 ## The cut-in is over: the gauge is spent and the sweep starts with the next tick. Only in mode "descent".
@@ -2059,25 +2093,36 @@ func release_descent() -> bool:
 	metrics.descent.uses=_d_uses
 	_d_sweep={"element":_d_element,"start_tick":tick,"until_tick":tick+ticks,"hit_ids":[],"strong_paid":{},"strong_total":{},"frozen":[],"booked":[],"next_k":0,
 		"next_step":int(cfg.first_step) if _d_element=="arc" else 0,"last_bolt_step":-1,"recent":[],
-		"kills":0,"strong_hits":0,"strong_damage_raw":0,"marks_taken":0,"trial_kills":0,"boss_raw":0,"boss_max_raw":0}
+		"kills":0,"strong_hits":0,"strong_damage_raw":0,"marks_taken":0,"trial_kills":0,"boss_raw":0,"boss_max_raw":0,
+		"kills_total":0,"normals_at_call":0,"entered":0,"capped":0,"seen":{},"bonus_bps":_descent_bonus_bps()}
+	_d_hold_bonus=0
+	for id_ in enemies:
+		var e: Dictionary=enemies[id_]
+		if e.hp_raw>0 and e.generation==_epoch and _enemy_role(e)=="normal" and _descent_inside(e.position,hero.position):
+			_d_sweep.seen[id_]=true;_d_sweep.normals_at_call=int(_d_sweep.normals_at_call)+1
 	# No blow lands from the tick after the release until the sweep is over and for after.iframe_ticks beyond it.
 	_d_iframe_until=tick+ticks+int(descent.after.iframe_ticks)
 	_invulnerable_until=maxi(_invulnerable_until,_d_iframe_until)
-	# The breath: nothing ordinary is sent in from the release on until spawn_pause_ticks after the end (D24 4.7).
-	_d_pause_until=tick+ticks+int(descent.after.spawn_pause_ticks)
 	_refresh_mode()
 	return true
 
-## Points into the gauge. Over the cost is thrown away (counted in wasted), and a full gauge takes nothing.
+## What overflows the gauge is kept as the hold bonus up to hold_bonus.cap_points; only what is over that is thrown away (wasted).
+func _descent_overflow(points: int) -> void:
+	var room := maxi(0,int(descent.hold_bonus.cap_points)-_d_hold_bonus)
+	var kept := mini(points,room)
+	_d_hold_bonus+=kept
+	if points>kept:_d_wasted+=points-kept;metrics.descent.wasted=_d_wasted
+
+## Points into the gauge. A full gauge takes nothing more: the points go to the hold bonus.
 func _descent_add(points: int) -> void:
 	if points<=0:return
 	var tally: Dictionary=metrics.descent
 	if _d_ready:
-		_d_wasted+=points;tally.wasted=_d_wasted;return
+		_descent_overflow(points);return
 	var cost := _descent_cost()
 	var taken := mini(points,cost-_d_gauge)
 	_d_gauge+=taken;tally.gauge_in=int(tally.gauge_in)+taken
-	if points>taken:_d_wasted+=points-taken;tally.wasted=_d_wasted
+	if points>taken:_descent_overflow(points-taken)
 	if _d_gauge>=cost:
 		_d_ready=true
 		tally.ready_ticks.append(tick)
@@ -2212,13 +2257,15 @@ func _descent_touch(id_: int,frac: int,final: bool=false) -> void:
 		_d_strike_ids.append(id_);_d_strike_pos.append(e.position)
 	if role=="normal":
 		if _trial_phase=="hold":
-			if int(sw.trial_kills)>=int(descent.normal.trial_kill_cap):_descent_cap_control(e);return
+			if int(sw.trial_kills)>=int(descent.normal.trial_kill_cap):sw.capped=int(sw.capped)+1;_descent_cap_control(e);return
 			sw.trial_kills=int(sw.trial_kills)+1
 		_descent_blow(id_,int(e.hp_raw))
 		return
 	var rule: Dictionary=descent.strong
 	if first:
-		sw.strong_total[id_]=int(rule[role+"_bps"])+mini(marks*int(rule.per_mark_bps),int(rule.marks_cap_bps))
+		var total := (int(rule[role+"_bps"])+mini(marks*int(rule.per_mark_bps),int(rule.marks_cap_bps)))*(10000+int(sw.bonus_bps))/10000
+		if role=="boss":total=mini(total,int(rule.boss_cap_bps))
+		sw.strong_total[id_]=total
 		sw.strong_paid[id_]=0
 		sw.strong_hits=int(sw.strong_hits)+1;metrics.descent.strong_hits=int(metrics.descent.strong_hits)+1
 		_descent_cut_windup(e)
@@ -2271,6 +2318,11 @@ func _step_descent() -> void:
 	var s := tick-int(sw.start_tick)
 	if s<1:return
 	var cfg: Dictionary=descent.ultimates[_d_element]
+	# Ordinary bodies that come onto the screen during the sweep (counted once each).
+	for id_ in enemies:
+		var e: Dictionary=enemies[id_]
+		if e.hp_raw>0 and e.generation==_epoch and not sw.seen.has(id_) and _enemy_role(e)=="normal" and _descent_inside(e.position,hero.position):
+			sw.seen[id_]=true;sw.entered=int(sw.entered)+1
 	var cleared := _descent_clear_shots()
 	if s==1:
 		_emit("descent_released",hero.position,{"element":_d_element,"center":hero.position,"area":_descent_area_view(),"sweep_ticks":int(cfg.sweep_ticks),
@@ -2485,8 +2537,18 @@ func _descent_finish(s: int) -> void:
 	items=left
 	var refund := mini(int(sw.marks_taken)*int(descent.points.marks_refund_per_stack),int(descent.points.marks_refund_cap))
 	var boss_share := int(sw.boss_raw)*10000/maxi(1,int(sw.boss_max_raw)) if int(sw.boss_max_raw)>0 else 0
+	# Cleared ratio: the ordinary bodies seen on the screen (at the call and entering) that are dead by now, whoever killed them,
+	# over those seen minus the ones the trial's cap left standing.
+	var dead := 0
+	for id_ in sw.seen:
+		if not enemies.has(id_) or int(enemies[id_].hp_raw)<=0:dead+=1
+	var seen_n: int=int(sw.normals_at_call)+int(sw.entered)
+	var clear_ratio := clampi(dead*10000/maxi(1,seen_n-int(sw.capped)),0,10000)
 	_emit("descent_end",center,{"element":_d_element,"kills":int(sw.kills),"strong_hits":int(sw.strong_hits),"strong_damage_raw":int(sw.strong_damage_raw),
-		"marks_taken":int(sw.marks_taken),"refund":refund,"duration_ticks":s,"boss_share_bps":boss_share})
+		"marks_taken":int(sw.marks_taken),"refund":refund,"duration_ticks":s,"boss_share_bps":boss_share,
+		"kills_total":int(sw.kills_total),"normals_at_call":int(sw.normals_at_call),"entered":int(sw.entered),"clear_ratio_bps":clear_ratio})
+	# The breath starts here: nothing ordinary is sent in for spawn_pause_ticks after the end tick.
+	_d_pause_until=tick+int(descent.after.spawn_pause_ticks)
 	# The frost ground stays over the screen the break covered (the slow is a plain field; the chill needs the spell composition).
 	if _d_element=="frost":
 		_d_burn.append({"kind":"frost","pos":center,"radius":0.0,"until":tick+int(cfg.ground_ticks),"next":tick+int(cfg.pulse_every_ticks)})
@@ -2552,7 +2614,7 @@ func snapshot() -> Dictionary:
 	# The descent's state exists only in a run whose descent.json is on (D15 A6.2); a run without it keeps the old snapshot.
 	if not descent.is_empty():
 		result.descent={"gauge":_d_gauge,"uses":_d_uses,"cost_now":_descent_cost(),"ready":_d_ready,"hold":_descent_hold,"sweep":_d_sweep.duplicate(true),
-			"wasted":_d_wasted,"strong_carry":_d_strong_carry,"pause_until":_d_pause_until,"burn":_d_burn.duplicate(true)}
+			"wasted":_d_wasted,"hold_bonus":_d_hold_bonus,"strong_carry":_d_strong_carry,"pause_until":_d_pause_until,"burn":_d_burn.duplicate(true)}
 	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
 	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
 	# D19 C1-f: the pace clock exists only while grace.pace is configured.

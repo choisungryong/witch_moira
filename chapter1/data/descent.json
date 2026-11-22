@@ -15,8 +15,10 @@
   "area": {"shape": "screen", "right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4, "edge_m": 1.0},
   "normal": {"trial_kill_cap": 180},
   "strong": {"elite_bps": 5000, "champion_bps": 2000, "boss_bps": 1200, "per_mark_bps": 150, "marks_cap_bps": 600,
-             "cut_windup_ticks": 30, "champion_stun_ticks": 45, "boss_stagger_ticks": 45},
-  "after": {"iframe_ticks": 30, "spawn_pause_ticks": 90},
+             "cut_windup_ticks": 30, "champion_stun_ticks": 45, "boss_stagger_ticks": 45, "boss_cap_bps": 1800},
+  "after": {"iframe_ticks": 30, "spawn_pause_ticks": 90, "sweep_spawn_bps": 10000},
+  "hold_bonus": {"per_points": 1000, "step_bps": 500, "max_bps": 3000, "cap_points": 6000},
+  "cue": {"normals_min": 30, "crest_ticks": 300},
   "ultimates": {
     "ember": {"sweep_ticks": 132, "grid": [4, 3], "aimed": 2, "big_count": 5, "big_radius_m": 4.5, "small_radius_m": 3.0,
               "first_land_step": 30, "gap_ticks": [4, 8], "last_land_step": 126, "first_hit_share_bps": 6000, "next_hit_share_bps": 2000,

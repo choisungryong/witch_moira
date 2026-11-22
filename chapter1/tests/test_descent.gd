@@ -197,12 +197,12 @@ func gauge_checks() -> void:
 	full._descent_add(30)
 	var view: Dictionary = full.descent_view()
 	check(int(view.gauge) == 1000 and bool(view.ready) and view.state == "ready" and int(view.ratio_bps) == 10000, "gauge: it fills to the cost and is ready: " + str(view))
-	check(int(full.snapshot().descent.wasted) == 20, "gauge: the part over the cost is wasted (20): " + str(full.snapshot().descent.wasted))
+	check(int(full.snapshot().descent.hold_bonus) == 20 and int(full.snapshot().descent.wasted) == 0, "gauge: the part over the cost is kept as the hold bonus (20), nothing is wasted: " + str(full.snapshot().descent))
 	var ready_events: Array = of_type(full.events, "descent_ready")
 	check(ready_events.size() == 1 and int(ready_events[0].uses) == 0 and int(ready_events[0].cost) == 1000, "gauge: descent_ready came once with {uses, cost}: " + str(ready_events))
 	full._descent_add(500)
-	check(gauge(full) == 1000 and int(full.snapshot().descent.wasted) == 520 and of_type(full.events, "descent_ready").size() == 1, "gauge: a ready gauge only wastes (520)")
-	check(int(full.metrics.descent.wasted) == 520, "gauge: metrics.descent.wasted follows")
+	check(gauge(full) == 1000 and int(full.snapshot().descent.hold_bonus) == 520 and of_type(full.events, "descent_ready").size() == 1, "gauge: a ready gauge only piles the hold bonus (520)")
+	check(int(full.metrics.descent.wasted) == 0, "gauge: metrics.descent.wasted counts only what is over the bonus cap")
 	# the cost rises with each use; from the last entry on it stays
 	check(full.request_descent() and full.release_descent(), "gauge: the call and the release are accepted")
 	check(int(full.descent_view().cost_now) == 2000 and int(full.descent_view().uses) == 1 and gauge(full) == 0, "gauge: after one use the next cost is 2000 and the gauge is empty")
@@ -384,6 +384,17 @@ func validator_checks() -> void:
 	rejects("crown with two charge values", func(d): d.crown.charge_bps = [1000, 2000])
 	rejects("crown power_bps 9999", func(d): d.crown.power_bps = 9999)
 	rejects("crown with the old reach_add_m", func(d): d.crown.reach_add_m = 1.0)
+	rejects("boss_cap_bps below boss_bps", func(d): d.strong.boss_cap_bps = 1100)
+	rejects("boss_cap_bps 10001", func(d): d.strong.boss_cap_bps = 10001)
+	rejects("boss_cap_bps missing", func(d): d.strong.erase("boss_cap_bps"))
+	rejects("sweep_spawn_bps 30001", func(d): d.after.sweep_spawn_bps = 30001)
+	rejects("sweep_spawn_bps missing", func(d): d.after.erase("sweep_spawn_bps"))
+	rejects("hold_bonus per_points 0", func(d): d.hold_bonus.per_points = 0)
+	rejects("hold_bonus max_bps 10001", func(d): d.hold_bonus.max_bps = 10001)
+	rejects("hold_bonus missing", func(d): d.erase("hold_bonus"))
+	rejects("cue normals_min 501", func(d): d.cue.normals_min = 501)
+	rejects("cue missing", func(d): d.erase("cue"))
+	check(Chapter.new().set_descent(doc_on(func(d): d.after.sweep_spawn_bps = 15000)), "validator: sweep_spawn_bps 15000 is accepted")
 	# a refused document changes nothing: the run keeps the parked one
 	var holder = Chapter.new()
 	holder.set_descent(doc_on(func(d): d.cost = [1234]))
@@ -866,7 +877,7 @@ func end_checks() -> void:
 	var first_hurt := hit_log.find(true)
 	check(first_hurt == 161, "invulnerable: the first blow that lands is on step %d after the release (expected 162 = 132 + 30, index 161)" % (first_hurt + 1))
 	check(int(guard.descent_view().iframe_until_tick) == start + 162, "invulnerable: the view names the tick it ends (%d)" % int(guard.descent_view().iframe_until_tick))
-	# (10) the breath: nothing ordinary spawns from the release on, and not until 90 ticks after the end
+	# (13) the breath starts at the end tick: the ordinary spawn goes on during the sweep, and stops for 90 ticks after the end
 	for element in ["ember", "frost", "arc"]:
 		var breath := stage(element)
 		breath._next_spawn = 0
@@ -877,7 +888,8 @@ func end_checks() -> void:
 		var sweep := int(breath.descent.ultimates[element].sweep_ticks)
 		var timeline := tick_run(breath, sweep)
 		check(of_type(timeline, "descent_end").size() == 1, "breath: %s: the sweep ended" % element)
-		check(of_type(timeline, "spawn").filter(func(e): return not e.elite).is_empty(), "breath: %s: nothing ordinary spawned during the sweep" % element)
+		check(of_type(timeline, "spawn").filter(func(e): return not e.elite).size() >= 2, "breath: %s: ordinary enemies keep spawning during the sweep (%d)" % [element, of_type(timeline, "spawn").filter(func(e): return not e.elite).size()])
+		check(int(breath._d_pause_until) == release_tick + sweep + 90, "breath: %s: the pause runs to end + 90 ticks" % element)
 		var after := tick_run(breath, 120)
 		var spawns: Array = of_type(after, "spawn").filter(func(e): return not e.elite)
 		var first_spawn: int = int(spawns[0].tick) if spawns.size() > 0 else -1
@@ -887,7 +899,7 @@ func end_checks() -> void:
 func view_checks() -> void:
 	var run := stage("frost", func(d): d.cost = [2000, 4000])
 	var view: Dictionary = run.descent_view()
-	check(view.keys() == ["enabled", "element", "gauge", "cost_now", "ratio_bps", "ready", "state", "uses", "first", "sweep_left_ticks", "iframe_until_tick", "area", "sweep_ticks"], "view: the keys are as the contract says: " + str(view.keys()))
+	check(view.keys() == ["enabled", "element", "gauge", "cost_now", "ratio_bps", "ready", "state", "uses", "first", "sweep_left_ticks", "iframe_until_tick", "area", "sweep_ticks", "hold_bonus_bps", "screen_normals", "crest"], "view: the keys are as the contract says: " + str(view.keys()))
 	check(view.enabled and view.element == "frost" and int(view.gauge) == 0 and int(view.cost_now) == 2000 and view.state == "charging" and not view.ready and int(view.uses) == 0 and view.first, "view: charging: " + str(view))
 	check(view.area == {"right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4} and int(view.sweep_ticks) == 150, "view: the area and this element's sweep length: " + str(view.area))
 	run._descent_add(500)
@@ -1007,6 +1019,235 @@ func determinism_checks() -> void:
 	check(int(now.uses) > int(held.uses), "policy: hold uses it less than now in a run without a trial or a boss (%d vs %d)" % [int(held.uses), int(now.uses)])
 	check(not Policy.valid("sometimes") and Policy.valid("panic"), "policy: names")
 
+# ------------------------------------------------------------------ D24 1st edition (12.1-b): totals, entering bodies, hold bonus, cue, policies
+
+## Another cause of death in the middle of a sweep (the hero's spell, not the descent): one blow that takes all that is left.
+func kill_by_hero(run: RefCounted, id_: int) -> void:
+	run._cast_sequence += 1
+	var effects := {"damage_raw": int(run.enemies[id_].hp_raw), "proc_depth": 0, "death_burst": 0, "shatter_count": 0, "radius_cm": 0, "slow_bps": 0, "freeze_stacks": 0, "pierce": 0, "hit_budget": 512, "cooldown_ticks": 0, "projectiles": 0, "chain_targets": 0, "branches": 0}
+	run._damage_enemy(id_, {"uid": run._cast_sequence, "skill_id": "test.hero", "effects": effects, "remaining_hits": 512, "hit_ids": [], "evolved": false}, 0)
+
+func totals_checks() -> void:
+	for element in ["ember", "frost", "arc"]:
+		# (15) kills_total counts every ordinary death from the release to the end tick, whoever killed it; clear_ratio_bps is exact
+		var run := stage(element)
+		var crowd := spread(run, 3.2)
+		var strong := put_strong(run, Vector2(6, -4), "champion")
+		ready(run)
+		var at_call := 0
+		for id_ in crowd: at_call += 1 if on_screen(run, id_) else 0
+		check(run.request_descent() and run.release_descent(), "totals: %s: called" % element)
+		var events: Array = tick_run(run, 6)
+		var victims: Array = []
+		for k in 3: victims.append(crowd[k * 5])
+		for id_ in victims: kill_by_hero(run, id_)
+		events.append_array(tick_run(run, int(run.descent.ultimates[element].sweep_ticks) - 6))
+		var deaths := 0
+		for e in of_type(events, "death"):
+			if e.role == "normal": deaths += 1
+		# the three killed by the hero's own blow come in `run.events` of the moment they died, which tick_run has not collected
+		var end_ev: Dictionary = of_type(events, "descent_end")[0]
+		check(int(end_ev.kills_total) == deaths + 3, "totals: %s: kills_total %d = ordinary deaths of the sweep %d + 3 by the hero" % [element, int(end_ev.kills_total), deaths])
+		check(int(end_ev.kills) == int(end_ev.kills_total) - 3, "totals: %s: kills (the descent's own) is %d, the 3 the hero took are not in it" % [element, int(end_ev.kills)])
+		check(int(end_ev.normals_at_call) == at_call and at_call == crowd.size(), "totals: %s: normals_at_call is the screen's ordinary bodies at the release (%d of %d)" % [element, int(end_ev.normals_at_call), at_call])
+		check(int(end_ev.clear_ratio_bps) == 10000, "totals: %s: every body seen is dead by the end tick: clear_ratio_bps 10000 (%d)" % [element, int(end_ev.clear_ratio_bps)])
+		check(screen_normals_alive(run) == 0, "totals: %s: no ordinary body on the screen after the end tick" % element)
+		# the trial's cap: the ones left standing leave the denominator
+		var trial := stage(element, func(d): d.normal.trial_kill_cap = 30)
+		var herd := spread(trial, 3.2)
+		trial._trial_phase = "hold"
+		trial._trial_center = trial.hero.position
+		ready(trial)
+		var shot := fire(trial)
+		var t_end: Dictionary = of_type(shot.events, "descent_end")[0]
+		var left := alive_ids(trial, herd).size()
+		check(herd.size() > 60 and left == herd.size() - 30 and int(t_end.clear_ratio_bps) == 10000, "totals: %s: past the trial's cap %d stay standing and leave the denominator: ratio %d" % [element, left, int(t_end.clear_ratio_bps)])
+		# a body that is seen but walks off the screen alive lowers the ratio
+		var wander := stage(element)
+		var pack := spread(wander, 6.0)
+		ready(wander)
+		wander.request_descent()
+		wander.release_descent()
+		tick_run(wander, 2)
+		wander.enemies[pack[0]].position = Vector2(-16, 16)
+		var w_events := tick_run(wander, int(wander.descent.ultimates[element].sweep_ticks) - 2)
+		var w_end: Dictionary = of_type(w_events, "descent_end")[0]
+		check(wander.enemies[pack[0]].hp_raw > 0 and int(w_end.clear_ratio_bps) == (pack.size() - 1) * 10000 / pack.size(), "totals: %s: one that walked off the screen alive keeps the ratio below 10000 (%d of %d)" % [element, int(w_end.clear_ratio_bps), pack.size()])
+		check(w_end.has_all(["kills", "kills_total", "normals_at_call", "entered", "clear_ratio_bps", "boss_share_bps", "marks_taken", "refund", "duration_ticks", "strong_hits", "strong_damage_raw"]), "totals: %s: descent_end keeps its old fields and has the new ones" % element)
+		check(strong > 0, "totals: %s: (a guardian stood on the screen)" % element)
+
+func entering_checks() -> void:
+	# (14) bodies that come onto the screen during the sweep are counted as entered and are dead by the end tick, for all three
+	for element in ["ember", "frost", "arc"]:
+		var run := stage(element)
+		var first := spread(run, 5.0)
+		ready(run)
+		run.request_descent()
+		run.release_descent()
+		tick_run(run, 20)
+		var late: Array = []
+		for k in 12: late.append(put(run, Vector2(-16.0 + k * 0.5, 16.0 - k * 0.5)))
+		for id_ in late: run.enemies[id_].position = Vector2(-16.0, 16.0)
+		tick_run(run, 5)
+		for k in 12:
+			run.enemies[late[k]].position = run.hero.position + run._d_right * (-6.0 + k) + run._d_up * (3.0 if k % 2 == 0 else -3.0)
+		var events := tick_run(run, int(run.descent.ultimates[element].sweep_ticks) - 25)
+		var end_ev: Dictionary = of_type(events, "descent_end")[0]
+		check(int(end_ev.entered) == 12 and int(end_ev.normals_at_call) == first.size(), "entering: %s: 12 bodies entered the screen during the sweep, %d were there at the call (%s)" % [element, first.size(), str(end_ev)])
+		check(screen_normals_alive(run) == 0 and alive_ids(run, late).is_empty(), "entering: %s: the bodies that came in are dead after the end tick" % element)
+		check(int(end_ev.clear_ratio_bps) == 10000, "entering: %s: clear_ratio_bps 10000" % element)
+
+func hold_bonus_checks() -> void:
+	# (16) the overflow piles up to cap_points, stops there, wasted counts only what is over; a call empties it
+	var run := stage("ember")
+	ready(run)
+	check(int(run.descent_view().hold_bonus_bps) == 0, "bonus: none at first")
+	run._descent_add(2500)
+	check(int(run.descent_view().hold_bonus_bps) == 1000 and int(run.snapshot().descent.hold_bonus) == 2500, "bonus: 2500 overflow points give 2 steps of 500 bps (%d)" % int(run.descent_view().hold_bonus_bps))
+	run._descent_add(10000)
+	check(int(run.snapshot().descent.hold_bonus) == 6000 and int(run.descent_view().hold_bonus_bps) == 3000, "bonus: it stops at 6000 points and 3000 bps")
+	check(int(run.metrics.descent.wasted) == 6500 and int(run.snapshot().descent.wasted) == 6500, "bonus: wasted counts only the part over the cap (6500: %d)" % int(run.metrics.descent.wasted))
+	var champion := put_strong(run, Vector2(-8, 6), "champion")
+	var boss := put_strong(run, Vector2(6, -7), "boss")
+	var elite := put_strong(run, Vector2(3, 0), "elite")
+	var crowd := spread(run, 4.0)
+	mark(run.enemies[boss], 4)
+	run.request_descent()
+	var called: Dictionary = of_type(run.events, "descent_called").back()
+	check(int(called.hold_bonus_bps) == 3000, "bonus: descent_called carries hold_bonus_bps 3000")
+	run.release_descent()
+	check(int(run.snapshot().descent.hold_bonus) == 0 and int(run.descent_view().hold_bonus_bps) == 0, "bonus: the call empties the bonus")
+	var events := tick_run(run, 132)
+	# the share is raised by 30 percent; a boss never loses more than 18 percent in one call
+	var champ_life := 1400 * UNIT
+	var elite_life := 600 * UNIT
+	var boss_life := 4500 * UNIT
+	check(int(run.enemies[champion].hp_raw) == champ_life - champ_life * 2600 / 10000, "bonus: the guardian lost 2000 x 1.3 = 2600 bps (%d)" % (champ_life - int(run.enemies[champion].hp_raw)))
+	check(int(run.enemies[elite].hp_raw) == elite_life - elite_life * 6500 / 10000, "bonus: the elite lost 5000 x 1.3 = 6500 bps")
+	check(int(run.enemies[boss].hp_raw) == boss_life - boss_life * 1800 / 10000, "bonus: the boss with 4 marks (1800 x 1.3 = 2340) is held at the cap 1800 bps (%d)" % (boss_life - int(run.enemies[boss].hp_raw)))
+	check(int(of_type(events, "descent_end")[0].boss_share_bps) == 1800, "bonus: boss_share_bps 1800")
+	check(alive_ids(run, crowd).is_empty(), "bonus: ordinary bodies are untouched by the bonus (all dead as always)")
+	# a boss without marks gets 1200 x 1.3 = 1560 (under the cap); half the bonus gives its half
+	for pair in [[6000, 1560], [3000, 1380], [0, 1200], [500, 1200]]:
+		var r2 := stage("frost")
+		ready(r2)
+		r2._descent_add(int(pair[0]))
+		var b := put_strong(r2, Vector2(5, 5), "boss")
+		fire(r2)
+		check(int(r2.enemies[b].hp_raw) == boss_life - boss_life * int(pair[1]) / 10000, "bonus: %d bonus points give a boss %d bps (%d)" % [int(pair[0]), int(pair[1]), boss_life - int(r2.enemies[b].hp_raw)])
+	# the share is the same in the three shapes
+	for element in ["ember", "arc"]:
+		var r3 := stage(element)
+		ready(r3)
+		r3._descent_add(2000)
+		var c3 := put_strong(r3, Vector2(-5, 5), "champion")
+		fire(r3)
+		check(int(r3.enemies[c3].hp_raw) == champ_life - champ_life * 2200 / 10000, "bonus: %s: 2000 points lift a guardian's 2000 bps to 2200" % element)
+	# a refund in the same call counts as the next gauge, not as a bonus: a gauge not ready takes it in
+	var r4 := stage("arc", func(d): d.cost = [3000, 8000])
+	for k in 5: mark(r4.enemies[put(r4, Vector2(2 + k, 3))], 3)
+	ready(r4)
+	fire(r4)
+	check(int(r4.snapshot().descent.hold_bonus) == 0 and gauge(r4) == 90, "bonus: the marks' give-back fills the next gauge (90), the bonus stays 0")
+
+func cue_checks() -> void:
+	# (17) screen_normals and crest follow the screen rectangle
+	var run := stage("ember", func(d): d.cue.normals_min = 30)
+	var view: Dictionary = run.descent_view()
+	check(int(view.screen_normals) == 0 and not bool(view.crest) and int(view.hold_bonus_bps) == 0, "cue: an empty field is no crest")
+	var crowd := spread(run, 4.0)
+	var out_of_screen := put(run, Vector2.ZERO)
+	run.enemies[out_of_screen].position = Vector2(-16, 16)
+	put_strong(run, Vector2(5, 5), "champion")
+	var manual := 0
+	for id_ in crowd:
+		if run._descent_inside(run.enemies[id_].position, run.hero.position): manual += 1
+	check(int(run.descent_view().screen_normals) == manual and manual == crowd.size(), "cue: screen_normals counts the ordinary bodies inside the rectangle (%d), not the one outside nor the guardian" % int(run.descent_view().screen_normals))
+	check(crowd.size() >= 30 and not bool(run.descent_view().crest), "cue: a full screen is no crest while the gauge is not ready")
+	ready(run)
+	check(bool(run.descent_view().crest), "cue: ready and 30 or more on the screen is a crest")
+	var thin := stage("ember")
+	ready(thin)
+	for k in 10: put(thin, Vector2(3.0 + k, 2.0))
+	check(int(thin.descent_view().screen_normals) == 10 and not bool(thin.descent_view().crest), "cue: ready with 10 on the screen is no crest")
+	thin._d_crest_tick = thin.tick
+	check(bool(thin.descent_view().crest), "cue: a rhythm wave_crest just now makes it a crest")
+	thin.tick += 301
+	check(not bool(thin.descent_view().crest), "cue: and 301 ticks later it no longer does")
+	thin._emit("wave_crest", Vector2.ZERO, {"beat": "x", "direction": Vector2.RIGHT, "count": 1})
+	check(bool(thin.descent_view().crest), "cue: the wave_crest event itself sets it")
+	var snap_a := JSON.stringify(thin.snapshot()).sha256_text()
+	for i in 4: thin.descent_view()
+	check(JSON.stringify(thin.snapshot()).sha256_text() == snap_a, "cue: reading the view changes nothing")
+	var data_min := stage("ember", func(d): d.cue.normals_min = 5)
+	ready(data_min)
+	for k in 6: put(data_min, Vector2(3.0 + k, 2.0))
+	check(bool(data_min.descent_view().crest), "cue: normals_min is data (5 makes 6 a crest)")
+
+func policy_checks() -> void:
+	# (18) the two new policies exist, call by their own rule, and do nothing in a run with the descent off
+	check(Policy.valid("crest") and Policy.valid("boss") and Policy.valid("now") and not Policy.valid("crests"), "policy: crest and boss are valid names")
+	var run := stage("ember")
+	for k in 10: put(run, Vector2(3.0 + k, 2.0))
+	check(not Policy.wants(run, "crest") and not Policy.wants(run, "boss"), "policy: nothing is wanted while the gauge is charging")
+	ready(run)
+	check(not Policy.wants(run, "crest") and not Policy.wants(run, "boss"), "policy: ready with 10 on the screen and no boss: neither calls")
+	run.tick += 20 * 60 - 1
+	check(not Policy.wants(run, "crest"), "policy: crest waits")
+	run.tick += 2
+	check(Policy.wants(run, "crest"), "policy: crest calls once it has been ready for 20 seconds")
+	var full := stage("frost")
+	spread(full, 4.0)
+	ready(full)
+	check(Policy.wants(full, "crest") and not Policy.wants(full, "boss"), "policy: crest calls at 30 or more on the screen, boss does not")
+	var low := stage("arc")
+	ready(low)
+	low.hero.hp_raw = low.hero.max_hp_raw * 25 / 100
+	check(Policy.wants(low, "crest") and Policy.wants(low, "boss"), "policy: both call under 30 percent life")
+	var boss_run := stage("ember")
+	boss_run.zone = 2
+	var bid := put_strong(boss_run, Vector2(60, 60), "boss")
+	boss_run.enemies[bid].position = Vector2(-16, 16)
+	boss_run._champion_id = bid
+	ready(boss_run)
+	check(not Policy.wants(boss_run, "boss") and not Policy.boss_on_screen(boss_run), "policy: a boss outside the screen is not a reason to call")
+	boss_run.enemies[bid].position = Vector2(6, -4)
+	check(Policy.wants(boss_run, "boss") and Policy.boss_on_screen(boss_run), "policy: the boss inside the screen makes boss call")
+	var used := Policy.use(boss_run, "boss")
+	check(of_type(used, "descent_called").size() == 1 and boss_run.mode == "playing", "policy: use() called and released it in one frame")
+	# a run with the descent off: no policy ever calls anything
+	var off := Chapter.new()
+	check(off.start(11, "chapter1.skill.ember"), "policy: the off run starts")
+	var any := false
+	for policy in Policy.POLICIES:
+		for i in 30:
+			off.step(Vector2.ZERO)
+			any = any or not Policy.use(off, policy).is_empty() or Policy.wants(off, policy)
+	check(not any and off.mode == "playing" and not off.snapshot().has("descent"), "policy: with the descent off no policy wants or calls anything")
+	# the new policies run a whole bot play twice to the same snapshot
+	for policy in ["crest", "boss"]:
+		var a := play_with_policy(policy, 11, "chapter1.skill.frost", 3000)
+		var b := play_with_policy(policy, 11, "chapter1.skill.frost", 3000)
+		check(a.hash == b.hash and JSON.stringify(a.ends) == JSON.stringify(b.ends), "policy: %s twice with the same seed gives the same snapshot (%d uses)" % [policy, int(a.uses)])
+
+func spawn_pace_checks() -> void:
+	# (13) after.sweep_spawn_bps sets the ordinary spawn pace during the sweep: 0 none, 10000 as it is, 20000 faster
+	var counts: Array = []
+	for bps in [0, 10000, 20000]:
+		var run := stage("frost", func(d): d.after.sweep_spawn_bps = bps)
+		run._next_spawn = 0
+		ready(run)
+		run.request_descent()
+		run.release_descent()
+		var timeline := tick_run(run, 150)
+		counts.append(of_type(timeline, "spawn").filter(func(e): return not e.elite).size())
+	check(counts[0] == 0 and counts[1] > 0 and counts[2] > counts[1], "spawn pace: sweep_spawn_bps 0 / 10000 / 20000 spawn %s ordinary bodies during the sweep" % str(counts))
+	# the same stage with the descent off spawns as the 10000 run does (the sweep's pace is the plain pace)
+	var plain := stage("frost")
+	plain._next_spawn = 0
+	var plain_events := tick_run(plain, 150)
+	check(of_type(plain_events, "spawn").filter(func(e): return not e.elite).size() == counts[1], "spawn pace: 10000 is exactly the plain pace (%d)" % counts[1])
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_DESCENT_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -1025,6 +1266,12 @@ func execute() -> void:
 	strong_checks()
 	cause_checks()
 	end_checks()
+	spawn_pace_checks()
+	totals_checks()
+	entering_checks()
+	hold_bonus_checks()
+	cue_checks()
+	policy_checks()
 	view_checks()
 	burn_check()
 	determinism_checks()
