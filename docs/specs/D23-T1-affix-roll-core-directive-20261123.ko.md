@@ -1,0 +1,280 @@
+# D23 T1 지시서 — 코어의 옵션 확률 문법, 그리고 T2·T3 보고의 "정할 것" 결정 (2026-11-23)
+
+작성: 기획 책임자(design-lead) · 판정: 총괄 디렉터 · 구현: `gameplay-systems`(코어), `content-balance`(데이터·측정)
+근거: `docs/specs/D23-d2r-lessons-and-affix-probability-20261122.ko.md`(아래 "D23") 3장·5장, `docs/specs/D12-skill-and-gear-redesign.ko.md`(아래 "D12") D2·D3·D7·P10, T2·T3 보고 `_local/d23-t2t3/REPORT.txt`(아래 "보고"), 병합된 main `62f0f58`의 `chapter1/data/loot.json`·`chapter1/core/loot.gd`.
+
+**사용자 지시(원문, 2026-11-22, U-78)**: "장비는 확률을 적용하면 좋겠어. 확률에 따라 옵션들이 붙는걸로 이 설계도 필요할 거 같네." 큰 방향(D23 6.1 U1~U7)은 "권고대로"로 확정됐다(장부 U-81). 이 문서의 결정은 모두 그 범위 안의 세부이고, 기획 책임자가 정한다.
+
+**받는 명세 절.** 굴림 규칙은 D23 3.1~3.7, 데이터 형식은 D23 3.14, 저장·결정론은 3.15, 끝난 기준은 3.16. 새 능력치 키의 뜻은 D12 D2·D3, 힘의 예산은 D12 P10.
+
+**표기.** [코드] 코드·데이터를 직접 읽음 · [실행] 이번에 직접 돌림 · [보고] 담당 보고서의 값(내가 다시 돌리지 않음) · [모델] 계산 모델의 답 · [가설] 재기 전의 첫 값(무엇으로 잴지 함께 적음). 사람의 재미 평가는 모두 **미평가**.
+
+다섯 요소 약호: 섹(섹시) · 쾌(쾌감) · 도(도박) · 보(보상) · 성(성장).
+
+---
+
+## 1. 결정 표 — 보고 9절 가~자
+
+| # | 물음 | 결정 | 까닭(한 줄) | 요소 |
+|---|---|---|---|---|
+| 가 | 코어가 읽지 않는 키 70행 | **(1) 거름 + 키 여덟을 T1과 함께 구현.** 켠 경로는 "코어가 읽는 키" 목록(`loot.gd`의 상수 하나, 2.3)에 없는 능력치의 행을 굴림 후보에서 뺀다. 동시에 T1-B에서 키 여덟(`max_hp_bps`, `after_dash_guard_bps`, `after_dash_bps`, `moving_damage_bps`, `lowhp_cooldown_bps`, `vs_elite_bps`, `vs_frozen_bps`, `vs_marked_bps`)을 구현한다. 그러면 일곱 칸 모두 읽는 키만으로 5줄이 된다(3절 표). **임시 사다리는 두지 않는다** | 죽은 줄이 하나도 없고, 접사 id는 저장이 가리켜 지울 수 없으므로(D12 D7) 임시 행은 영원히 남는 짐이 된다. 여덟 키는 모두 "명중 처리 한 곳" 또는 "주인공 몸 계산 한 곳"에 들어가는 작은 조건이다 | 도(줄 수 굴림이 모든 칸에서 산다)·성 |
+| 나 | 피해 감소 합계 상한 | **7500 bps [가설]**, `combat_tuning.json`의 새 블록 `stat_caps.damage_reduction_bps`. 자르는 곳은 `combat_core.gd`의 새 함수 `_reduction_bps(extra)` 하나 — 받는 피해(지금 802행)와 능력치 판(지금 409행)이 모두 이 함수를 부른다. 장비 합 + 트리(`_build_reduction_bps`) + 사당 + 회피 뒤 감소(`after_dash_guard_bps`)를 더한 뒤 자른다. **스위치와 상관없이 늘 걸린다** | 모델의 켬 분포는 중앙 4180·90% 6323·최대 9266 [보고·모델]. 7500은 꼬리만 자르고 "끝까지 쌓으면 닿는 목표"를 남긴다. 상한에 닿는 사람이 많아지면 상한이 아니라 아직 켜지 않은 풀 행(`ward3~5`)의 값을 낮춘다 | 성(닿을 수 있는 천장)·보 |
+| 다 | Ⅴ단의 힘 | **첫 값은 D23 3.5 그대로**(피해 Ⅴ 6000~8000 등, 데이터에 이미 있음). 켜는 조건으로 **잰다**: `content-balance`가 T1-M(아래 6절)에서 `sim_power.gd`에 장비 묶음 입구(`--gear-kit=`)와 `chapter1/tests/fixtures/gear_kits.json`을 만들고, `kit.d1_end` + 무기 Ⅴ단 피해 한 줄의 `P_crowd` 증가가 **+130% 이하**(D12 P10 `kit.d2_mid` 위 끝) [가설]인지 본다. 넘으면 Ⅴ단 범위를 6000~7000으로 좁힌다(Ⅳ와 겹치지 않게 아래 끝은 그대로). T1-M은 T1-A와 **함께 시작**하고 T1-A 병합 뒤 끝난다 | 측정 도구 없이 값을 낮추면 근거 없는 숫자를 또 하나 두는 것이다. 풀 행은 아직 한 번도 굴려지지 않아 저장된 장비가 없으므로 켜기 전까지 값을 바꿔도 저장 호환이 깨지지 않는다 | 도(Ⅴ단의 무게)·쾌 |
+| 라 | 운 사다리 | **보고의 사다리 그대로**(Ⅰ 200~500 … Ⅴ 1400~1800), **합계 상한 3000은 코어가 판 시작 스냅숏에서 자른다**(T8). D23 3.9의 "0~3000"은 합계로 읽는다 | 줄 하나로 상한에 닿으면 "몇 줄을 운에 쓸까"의 고민이 없다. 두세 줄이 상한이면 장신구 4칸 가운데 몇 칸의 힘을 운에 팔지 고른다 | 도 |
+| 마 | 3.5의 새 창을 옛 행에 | **명세대로.** 켰을 때 옛 행은 `legacy_windows`의 창을 쓴다(Ⅲ이 아이템 레벨 9에서 열림). `validate`는 옛 창과 새 창의 **합집합**으로 받는다 | 지금은 Ⅲ이 13부터라 3구역 정예·상자부터만 나오는데, 9부터면 2구역 수호자(11)·3구역 일반(12)에서도 나와 한 판 안에서 단이 오르는 것이 보인다. 풀의 Ⅲ~Ⅴ 행도 이 창으로 이미 계산돼 있다 | 성·보 |
+| 바 | 단이 다섯이 아닌 묶음 | **그대로 받는다.** 규칙: 단 굴림은 "그 사다리에서 지금 레벨에 열린 행" 가운데 단 몫으로 고른다. 빈 단은 건너뛴다. 단이 하나뿐인 사다리(옛 모양형 4)는 단 굴림이 늘 그 행이다 | 정수 개수(발수·파쇄 수)를 다섯 띠로 나누면 줄 하나의 힘이 커진다. 대신 높은 단은 늘 좋다는 규칙(값 범위가 겹치지 않음)은 지킨다 — 검사로 막는다(2.6) | 도 |
+| 사 | 신발 접두가 모두 조건형 | **지금대로**(갈래 상한 조건 ≤2 유지, 숫자형 접두를 더하지 않음). T1-B로 `after_dash`·`move_damage` 둘이 읽히면 신발은 접두 2 + 접미 3 = 5줄이 된다 | 신발의 정체는 "움직임"(D12 D3)이고 그 두 줄이 정체 그 자체다. 이동 속도 접두를 더하면 접미 `fleet`와 같은 줄이 둘이 된다. 상한을 3으로 올리면 신발만 조건형 셋이 되어 "써먹을 상황"이 겹친다 | 쾌(회피 뒤 한 방)·도 |
+| 아 | 이름 확정의 길 | **규칙은 이 문서가(2.9), 이름 자체는 `narrative-lead`가.** 넘길 목록: 새 사다리 23개의 이름 23개 + 옛 사다리 위 단 이름 39개(2.9의 표). 확정 전까지 풀 행의 `name`은 후보로 두고 켜지 않는다(켜기 전 남은 일 7) | 이름은 설정이 걸린 일이고 서사 담당의 영역이다. 규칙만 먼저 두면 서사 담당이 데이터를 보지 않고도 고를 수 있다 | 섹(이름의 멋) |
+| 자 | 작업 트리 두 안 | **이미 정해짐: wt-d23-cb 안**(코어를 직접 재고, 가지가 없으면 재지 않고 종료 3). `wt-d23` 트리의 다른 안(모델 패스, 최상위 `affix_pool`)은 쓰지 않는다. 그 트리는 디렉터가 정리한다 | 모델과 코어를 섞어 재면 "모델의 답"과 "코어의 값"이 구별되지 않는다 | — |
+
+같이 정한 것(보고가 묻지 않았지만 T1이 막히지 않게):
+
+| # | 물음 | 결정 | 까닭 | 요소 |
+|---|---|---|---|---|
+| 차 | 한 묶음에 사다리가 여럿일 때(`damage`는 둘, `vs_status`는 넷)의 가중 | **뽑는 단위는 사다리(`group`+`stat`)**, 가중은 그 사다리의 가장 낮은 단 행의 `weight`. 묶음은 하나 뽑히면 막힌다. 묶음 전체의 몫은 데이터가 맞춘다: `vs_status`의 네 사다리는 각 10(합 40 = 조건형 기본), `damage`의 `wrath`(100)와 `flame`(85)은 지금 끔 경로와 같은 비를 지킨다 | 코어 규칙이 단순하고(한 단계), 지금 끔 경로의 피해/화염 비와 같다. 묶음 몫을 바꾸고 싶으면 데이터만 고친다 | 도 |
+| 카 | `class_weights` | **코어가 읽지 않는다.** 행의 `weight`만 쓴다. `class_weights`는 데이터를 쓸 때의 기본값 기록으로 남긴다 | 두 번 곱하면 같은 뜻이 두 곳에 산다 | — |
+| 타 | 조건형 피해 줄끼리 | **더해서 한 배수**로 명중에 곱한다(`vs_elite` + `vs_frozen` + `vs_marked` + `after_dash` + `moving_damage` 가운데 그 순간 참인 것의 합). 합계 상한 `stat_caps.condition_damage_bps` 10000 [가설] | 서로 곱하면 다섯 칸의 조건형이 모두 참인 순간 힘이 폭증한다(꼬리). 피해 감소와 같은 이유로 상한을 둔다 | 쾌·성 |
+| 파 | `max_hp_bps` | 최대 생명 = (기본 + `max_hp_raw` + 트리) × (10000 + bps) / 10000. 장착은 지금처럼 현재 생명을 회복하지 않는다 | 생명 수치 줄(`vigor`)과 곱으로 맞물려 몸통의 정체(버팀)를 키운다 | 성 |
+
+---
+
+## 2. T1 지시서 — `gameplay-systems`에 그대로 전달
+
+### 2.0 한 줄
+
+`loot.gd`에 `affix_rolls` 굴림 가지(꺼짐 기본)를 더하고, `validate`를 새 문법까지 받게 넓히고, 피해 감소·조건형 피해의 합계 상한을 코어에 두고, 능력치 키 여덟을 읽게 한다. 꺼진 값에서 난수 소비와 골든은 한 틱도 바뀌지 않는다.
+
+### 2.1 나눔과 순서
+
+| 조각 | 내용 | 고칠 파일 | 크기 |
+|---|---|---|---|
+| **T1-A 문법** | 굴림 가지, `set_affix_rolls`, 풀 검사, `validate` 넓힘, 읽기 도우미, 켠 경로 골든 시나리오 | `chapter1/core/loot.gd`, `chapter1/core/chapter_core.gd`(의식 상자 굴림 한 줄), `chapter1/tests/test_loot.gd`, `chapter1/tests/golden_core.gd`, `chapter1/tests/support/trial_docs.gd`, `chapter1/tests/golden/*.json`(새 시나리오만 추가) | M |
+| **T1-B 키와 상한** | 합계 상한 둘, 키 여덟, 점수 가중, 능력치 판 줄 | `chapter1/core/combat_core.gd`, `chapter1/core/chapter_core.gd`, `chapter1/core/loot.gd`(`STATS_READ`·`score`), `chapter1/tests/test_combat_run.gd` 또는 `test_chapter_run.gd` | M |
+
+T1-A를 먼저 병합하고 T1-B를 잇는다. 같은 담당이 두 작업 트리로 나란히 해도 되지만 `loot.gd`의 `STATS_READ`가 겹치므로 B는 A 위에서 다시 맞춘다.
+
+### 2.2 지킬 계약
+
+1. **꺼진 스위치에서 불변.** `affix_rolls.enabled == false`(지금 데이터)이거나 `set_affix_rolls(false)`일 때 `roll_item`은 지금 코드(235~279행)를 **한 글자도 바꾸지 않은** 경로를 탄다. 켠 경로는 별도 함수(예: `_roll_lines_v2`)로 두고 분기 한 줄로만 들어간다. 끔에서 `rng` 호출의 횟수·순서·범위가 같아야 한다. 증거: 기존 골든 5건 해시 불변, `sim_loot --runs=10000`의 `LOOT_SIM` 줄이 main과 글자 단위로 같음.
+2. **합계 상한은 늘 걸린다.** 그래도 끔 경로 골든은 바뀌지 않아야 한다(지금 판에서 피해 감소 합이 7500에 닿는 일은 없을 것으로 본다 [가설]). **해시가 바뀌면 `--update` 하지 말고 멈춰서 보고한다** — 어느 판의 어느 틱에서 상한이 걸렸는지 함께.
+3. **저장 호환.** 저장 꼴(접사 항목 `id, group, stat, value`) 그대로. 스키마 번호 그대로. 켬으로 굴린 장비를 끔 상태에서 불러도 `validate`를 통과한다(아래 5). 끔으로 굴려 저장된 옛 장비는 켬에서도 통과한다.
+4. **결정론.** 켠 경로의 후보 순서는 데이터 순서(`affixes` 다음 `pool`, 사다리는 처음 나온 행의 자리)로 고정한다. 사전 순회 순서에 기대지 않는다. 줄마다 난수는 정확히 세 번: 사다리 → 단 → 값(후보가 하나여도 뽑는다).
+5. **`validate` 넓힘의 범위**(스위치와 상관없이 늘 이 규칙):
+   - 줄 수: 희귀 2~5, 마법 1~2, 전설 1~3(전설·마법은 지금과 같음).
+   - 접두·접미 상한: 희귀 3, 전설 2, 마법 1.
+   - 갈래 상한: `class_caps`(희귀 조건 ≤2·스킬 ≤1, 마법 조건 ≤1·스킬 0, 전설 조건 ≤2·스킬 ≤1). `class`가 없는 행은 세지 않는다.
+   - 접사 id는 `affixes`와 `pool`을 합친 표에서 찾는다(지금 `_affixes`에 풀 행도 넣는다. 끔 경로 굴림은 `data.affixes`만 돌므로 영향 없음).
+   - 아이템 레벨 창: 풀 행은 행의 `level~max_level`. 옛 행은 **지금 창과 `legacy_windows` 창의 합집합**.
+   - `excludes`는 `validate`에서 **검사하지 않는다** — 끔 경로는 `excludes`를 모르고 굴렸으므로 이미 저장된 전설(예: `splitting` + `volley`)이 걸린다.
+   - "코어가 읽는 키" 거름도 `validate`에서 검사하지 않는다(굴림의 규칙이지 장비의 정합이 아니다).
+6. **풀 행 검사**(`_check`에서, `affix_rolls`가 있을 때만): 블록이 틀리면 `load_file`이 실패한다(지금 `affixes`가 틀릴 때와 같음).
+   - `lines`의 키는 정수 문자열, 값 > 0, 합 > 0, 줄 수가 위 5의 범위 안. `kind_caps`·`class_caps`의 값이 0 이상.
+   - `tiers`: `tier` 1~5 오름차순, `min_level` 오름차순, `share` > 0. `tier_window` ≥ 1.
+   - 풀 행: id가 `affixes`·`pool` 전체에서 겹치지 않음, `kind`, `stat`이 `limits`에 있음, `low ≤ high`, `level ≤ max_level`, `weight > 0`, 칸 이름, `tier`가 `tiers`에 있음, `class`가 `number|shape|condition|skill`, `core_reads`가 참/거짓, `excludes`가 있으면 `limits` 키의 배열. 값이 그 능력치의 `limits` 안.
+   - 사다리(`group`+`stat`)마다: 행들의 `kind`·`class`가 같음, `tier`가 겹치지 않음, 단이 오를수록 값 범위가 내려가지 않음(위 단의 `low` ≥ 아래 단의 `high` — 끝점 공유 허용).
+   - `legacy_windows`의 id가 `affixes`에 있음, `level ≤ max_level`.
+   - 보물 등급의 선택 키 `lines_profile`이 `lines`에 있는 이름.
+7. **`core_reads`와 `STATS_READ`.** 코어가 읽는 능력치를 `loot.gd`의 상수 `STATS_READ` 하나에 적는다(지금 읽는 것: `damage_bps`, `cooldown_bps`, `max_hp_raw`, `damage_reduction_bps`, `pickup_radius_cm`, `projectiles`, `pierce`, `chain_targets`, `shatter_count`, `radius_cm`, `slow_bps`, `fire_damage_bps`, `fire_burst`, `frost_threshold`, `arc_branches`, `arc_damage_bps`, `move_speed_bps`, `dash_cooldown_bps`, `soul_gain_bps` — 받을 때 코드로 다시 확인). 켠 경로는 `stat`이 이 목록에 없는 행을 후보에서 뺀다. 키를 구현하는 패치는 **같은 패치에서** 이 목록에 키를 넣는다. 데이터의 `core_reads`는 사람이 보는 거울이고, `test_loot`가 둘이 어긋나면 실패한다.
+
+### 2.3 켠 경로의 굴림(D23 3.1 ④~⑦을 코드로)
+
+`roll_item(rng, item_level, quality, slot="", slot_weights={}, lines_profile="")` — 끝 인수 하나를 더한다(기본값이면 지금 호출이 모두 그대로). `roll_class`는 `tc.get("lines_profile","")`를 넘긴다. `chapter_core.gd` 1435행의 의식 굴림(`roll_item(...,"rare")`)은 `"rare_boss"`를 넘긴다(끔에서는 쓰이지 않는 인수라 불변).
+
+1. 등급·칸·밑바탕: 지금과 같다(같은 난수 순서).
+2. 줄 수: `profile = "rare_boss"`(희귀이고 `lines_profile == "rare_boss"`일 때) 아니면 등급 이름. `lines[profile]`에서 가중으로 하나. 키는 정수 오름차순으로 돈다. 일반·고유는 0.
+3. 줄마다 후보 사다리: 다음을 모두 만족하는 행이 하나 이상인 사다리.
+   - 칸이 `slots`에 있음 · 아이템 레벨이 창 안(옛 행은 `legacy_windows`가 있으면 그 창) · `stat`이 `STATS_READ`에 있음.
+   - 묶음이 아직 안 쓰임 · 접두/접미 수 < `kind_caps[등급]` · 갈래 수 < `class_caps[등급][class]`(정의가 있을 때).
+   - 전설이면: 전설 효과의 `stats` 키가 행의 `excludes`에 없음.
+   - 가중 = 그 사다리의 **가장 낮은 단 행**의 `weight`(열렸는지와 무관하게 고정).
+4. 단: 그 사다리에서 3의 조건을 만족하는 행들 가운데 `tiers[tier].share`로 하나.
+5. 값: 그 행의 `low~high`에서 고르게.
+6. 후보가 없으면 멈춘다. 희귀가 2줄 미만이면 지금처럼 마법·일반으로 내린다.
+7. 이름(희귀 두 낱말, 마법 "접두의 밑바탕 — 접미")은 지금 `_compose` 그대로.
+
+### 2.4 열리는 계약 — `sim_loot`와 시험 도구
+
+- `set_affix_rolls(enabled: bool) -> bool`: 메모리 안 스위치. 켜기는 블록이 있고 검사를 통과했을 때만 참, 끄기는 늘 참. 데이터 파일을 고치지 않는다. 기본값은 데이터의 `enabled`.
+- `affix_rolls_on() -> bool`.
+- 읽기 도우미(표현과 도구용, 상태를 바꾸지 않음): `affix_def(id) -> Dictionary`(풀 포함), `affix_tier(id) -> int`(없으면 0), `affix_class(id) -> String`.
+- `sim_loot.gd`는 이미 `has_method("set_affix_rolls")`로 가지를 찾는다 [코드: sim_loot 69~77행]. T1-A가 들어오면 `--affix-rolls=on`이 열린다. `--luck=N`은 `roll_class`의 `mods.luck_bps`로 넘어오는데 받는 쪽은 T8이다 — T1에서는 **받지 않고 무시**한다(지금 `mods`의 다른 키처럼). 그래서 T1이 끝나도 `--luck`의 값은 아직 뜻이 없다(3.16의 운 줄은 T8의 끝난 기준).
+
+### 2.5 켠 경로 골든 시나리오(D23 6.2 D-1의 결정: T1과 함께 만든다)
+
+- `golden_core.gd`의 `CASES`에 **여섯째 건** `[11,"chapter1.skill.frost","affix-on","","affix-on"]`을 더한다.
+- `trial_docs.gd`에 `enable_affix_rolls_problem(run) -> String`을 더해 `run.loot.set_affix_rolls(true)`를 메모리에서 켠다(데이터 파일의 `enabled`는 그대로 — `rhythm-c1`과 같은 방식).
+- 기존 다섯 건의 해시는 그대로여야 하고, 골든 파일에는 새 건만 더한다. `--both`(글 뺀 비교 포함)로 돌린다.
+- T1-B 병합 때 새 건의 해시는 바뀐다(읽는 키가 늘어 후보가 바뀜) — 그때 의도한 변경으로 밝히고 그 건만 `--update` 한다.
+
+### 2.6 T1-B — 키 여덟과 상한
+
+| 키 | 칸 | 읽는 곳 | 규칙 [가설] |
+|---|---|---|---|
+| `max_hp_bps` | 몸통 | `combat_core._hero_body` | 1절 파 |
+| `after_dash_guard_bps` | 몸통 | `_reduction_bps(extra)` | 회피가 끝난 틱부터 120틱 동안 감소에 더함. 합계 상한 안 |
+| `after_dash_bps` | 신발 | 명중 처리(아래) | 회피가 끝난 틱부터 120틱(D12 D2) |
+| `moving_damage_bps` | 신발 | 명중 처리 | 주인공이 지난 6틱 안에 움직였으면(회피 중 제외) |
+| `lowhp_cooldown_bps` | 머리 | 주문 간격 계산(`effective_skill`/`_skill_with`) | 생명 35% 이하(D6 H3)일 때 `cooldown_bps`에 더함 |
+| `vs_elite_bps` | 무기·장갑 | 명중 처리 | `_enemy_role(e) != "normal"`(정예 몸·수호자·우두머리. `e.elite`만 보면 D13의 정예 몸이 빠진다 [코드: chapter_core 597~601행]) |
+| `vs_frozen_bps` | 장갑 | 명중 처리 | `tick < e.frozen_until` |
+| `vs_marked_bps` | 장갑 | 명중 처리 | 표식이 하나 이상 살아 있는 적(표식 공명보다 앞, D12 D2) |
+
+- **명중 처리의 자리**: `chapter_core._damage_enemy`에서 R1(`_elite_bps`, 2357행 근처)과 같은 자리. 참인 조건 키의 합을 `stat_caps.condition_damage_bps`로 자른 뒤 한 번 곱한다(1절 타). 표식 공명의 몫 계산(`unmarked`)이 어긋나지 않게 그 앞에 둔다.
+- **상한**: `combat_tuning.json`에 `"stat_caps": {"damage_reduction_bps": 7500, "condition_damage_bps": 10000}`(데이터는 content-balance가 넣는다, 2.8). 블록이 없으면 상한 없음(지금과 같음).
+- **회피 끝 틱**: 회피가 끝나는 틱을 코어 상태에 하나 둔다. 스냅숏에 들어가면 골든 해시가 바뀌므로, 키가 0일 때는 스냅숏에 넣지 않거나 이미 있는 값(`_next_dash`)에서 계산한다. 끔 경로 골든 불변이 계약이다.
+- **`score` 가중**: 여덟 키에 가중을 더한다(줍기 알림·자동 장착의 판단). 값은 `damage_bps`·`max_hp_raw`의 가중과 같은 크기로 시작하되 조건형은 절반 [가설]. 끔 경로에서는 이 키를 가진 장비가 나오지 않으므로 불변.
+- **능력치 판**: `_hero_rows`의 피해 감소 줄은 자른 값을 보이고, 잘렸으면 `capped: true`를 단다(화면이 "상한"을 표시할 자리. 표시는 T7).
+- 키마다 단위 검사: "키 0이면 결과 불변, 키 > 0이면 조건이 참일 때만 바뀜". 상한 검사: 감소 합 9000짜리 장비 묶음에서 받는 피해가 7500 기준과 같음.
+
+### 2.7 검사 목록(T1-A + T1-B)
+
+| 검사 | 기대 |
+|---|---|
+| `test_loot`: 끔에서 `roll_item`을 칸×레벨(6·11·15)×4,000번 굴린 결과가 T1 전과 같다 | 같음(T1 전 결과를 고정 해시로 비교) |
+| `test_loot`: 풀 검사 — 일부러 틀린 블록 여덟 가지(id 겹침, 모르는 능력치, `low>high`, 사다리 값 역전, 없는 `tier`, 없는 `lines_profile`, 틀린 `class`, `legacy_windows`의 없는 id) | 각각 `load_file` 실패 |
+| `test_loot`: `core_reads`와 `STATS_READ`가 일치 | 일치 |
+| `test_loot`: 풀 행의 `level`·`max_level`이 창 규칙(`tier_window` 3)에서 계산한 값과 같다, 스킬형 행은 `skill_min_item_level` 이상 | 같음 |
+| `test_loot`: 켬에서 칸×레벨 굴림 — 줄 수가 `lines`의 범위, 묶음 중복 없음, 접두·접미·갈래 상한, 전설의 `excludes`, `STATS_READ` 밖의 능력치 0줄 | 위반 0 |
+| `test_loot`: 켬으로 굴린 장비 1,000개를 끔으로 바꾼 뒤 `validate` | 모두 통과 |
+| `test_loot`: `loot_compat_items.json`(옛 장비) 끔·켬 모두 `validate` | 모두 통과 |
+| `test_chapter_profile`: 켬으로 굴린 5줄 희귀를 넣은 저장을 쓰고 다시 읽음 | 통과(새 고정 파일 하나) |
+| 코어 단위 검사: 키 여덟, 상한 둘 | 2.6 |
+| 골든 `--both` | 기존 5건 불변 + 새 1건 |
+| `run_all.py`(전체) | 통과 |
+
+### 2.8 데이터 쪽(content-balance) — 함께 고칠 것
+
+T1-A와 나란히, 꺼진 값을 바꾸지 않는 범위에서:
+1. 보물 등급에 `"lines_profile": "rare_boss"`: `champion`, `boss`, `boss_g1`~`boss_g4`, `ritual_chest`(D23 3.14·4.4).
+2. `vs_status`의 네 사다리 가중을 각 40 → **10**(1절 차). 풀 행만이라 끔 불변.
+3. `combat_tuning.json`에 `stat_caps`(2.6). 이것은 끔에서도 읽히는 값이므로 **T1-B와 같은 병합**에 넣는다.
+4. T1-B 병합 때 여덟 키의 `core_reads`를 `true`로(검사가 `STATS_READ`와 맞춘다).
+5. `affix_rolls.status` 문구를 "T1이 읽음, enabled:false"로 고친다.
+6. **T1-M — 장비 묶음 측정 입구**: `sim_power.gd`에 `--gear-kit=<이름>`(장비를 메모리에서 끼고 재기, 데이터 파일 불변)과 `chapter1/tests/fixtures/gear_kits.json`(D12 P10의 `kit.d1_start`·`kit.d1_end`·`kit.d2_mid` + 새 `kit.d1_end_v1` = `kit.d1_end`의 무기를 Ⅴ단 피해 한 줄 희귀로 바꾼 것). 묶음 구성은 `sim_loot`의 착용 정책에서 뽑은 대표 착용. 시작은 지금, 끝은 T1-A 병합 뒤(풀 id가 `validate`를 통과해야 끼울 수 있다). 출력: 묶음마다 `P_crowd`·`P_single`·버팀 `S`의 기준 상태 대비 증가, 피해 감소 합과 상한에 닿았는지.
+
+### 2.9 이름 규칙(narrative-lead에 넘김)
+
+- 마법 장비 이름이 "접두의 밑바탕 — 접미"로 조립된다 [코드: `_compose`]. **접두 이름은 "~의"가 자연스러운 명사**, 접미 이름은 줄표 뒤에 홀로 서는 명사.
+- 두 글자 또는 세 글자 한자어·고유어 명사. 설명하는 말("이동 중 피해")이 아니라 멋있는 한 낱말(메모리: 이름은 풀어 쓰지 않는다).
+- 새 사다리는 **사다리 하나에 이름 하나**(단은 단 표지 Ⅰ~Ⅴ가 말한다). 옛 사다리(`wrath`·`vigor` 등)는 이미 단마다 이름이 다르므로 그 결을 이어 위 단 이름을 고른다(지금 후보 예: 격노·분노·진노 → 역린·천벌).
+- 금지: "재"가 든 낱말과 분위기 낱말(메모리의 금지 낱말), 다른 게임의 접사 이름, 희귀 이름 낱말(`rare_names`)과 같은 낱말, 같은 칸에 붙는 두 묶음의 같은 이름.
+- 넘길 목록: 새 사다리 23개(토벌·추출·혹한·작열·방전·낙인·배수·총애·유수·강건·형극·기습·쇄도·유격·분쇄·수습·행운 + `vs_status`의 넷이 각각 이름을 가짐을 확인) + 옛 사다리의 위 단 39행. 원본은 `loot.json`의 `affix_rolls.pool[].name`. 확정되면 content-balance가 데이터에 넣고 `names_status`를 지운다.
+
+### 2.10 끝난 모양
+
+```powershell
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd -- --runs=10000
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd -- --runs=10000 --affix-rolls=on
+python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --both
+python tools/dev/run_all.py
+```
+
+| 지표 | 목표(D23 3.16, 옮기지 않음) | 조건 |
+|---|---|---|
+| 끔의 `LOOT_SIM` 줄 | main과 글자 단위로 같음 | T1-A, T1-B 모두 |
+| 기존 넷(희귀·장신구·전설·고유) | `QUALITY-TARGETS` 4절, 켬·끔 모두 | |
+| 희귀 기대 줄 수(일반 / 우두머리 출처) | 3.35~3.55 / 3.6~3.8 | 켬, **T1-B 뒤**에 판정 |
+| 칸마다 희귀 5줄 | 일곱 칸 모두 > 0 | 켬, T1-B 뒤(T1-A만으로는 몸통·신발·무기·머리가 0 — 그것은 실패가 아니라 예상값으로 적는다) |
+| 판당 5줄 희귀 | 0.30~0.45 | 켬 |
+| Ⅴ단 줄이 붙은 희귀·전설이 나온 판 | 10~18% | 켬 |
+| 대박(5줄 또는 Ⅴ단)이 나온 판 | 35~50% | 켬 |
+| 골든 | 기존 5건 불변 + 새 1건 | |
+| 전체 회귀 | 통과 | |
+
+목표에 못 미치면 못 미쳤다고 적고 멈춘다. 고칠 곳은 데이터(content-balance)이지 목표가 아니다. 천장(≤5판)과 운 3000의 고유(≤0.28)는 T9·T8의 끝난 기준이다.
+
+### 2.11 병렬
+
+- T1-A(gameplay-systems) ∥ T1-M·데이터 1·2·5(content-balance) ∥ T15(ui-hud, 4절) — 서로 다른 파일.
+- T1-B는 T1-A 뒤. 데이터 3·4는 T1-B와 같은 병합.
+- 같은 작업 트리를 두 담당이 쓰지 않는다(보고 0절의 충돌). 트리 이름을 지시에 적는다: `wt-d23-t1a`, `wt-d23-t1b`, `wt-d23-t1m`.
+
+---
+
+## 3. 읽는 키를 늘리는 순서
+
+코어가 아직 읽지 않는 키 15개 [코드: grep으로 `combat_core.gd`·`chapter_core.gd`·`run_growth.gd`에서 이름이 나오지 않음을 확인. `grace_luck_bps`만 `set_grace_luck(…, gear_bps)`의 받는 자리가 있음].
+
+| 묶음 | 키 | 칸 | 언제 | 담당 | 까닭 |
+|---|---|---|---|---|---|
+| 생존·움직임 | `max_hp_bps`, `after_dash_guard_bps`, `after_dash_bps`, `moving_damage_bps`, `lowhp_cooldown_bps` | 몸통·신발·머리 | **T1-B** | gameplay-systems | 이 다섯이 없으면 몸통·신발·머리의 5줄이 막힌다. 모두 주인공 상태 하나를 보는 작은 조건 |
+| 명중 조건형(지금 있는 상태) | `vs_elite_bps`, `vs_frozen_bps`, `vs_marked_bps` | 무기·장갑 | **T1-B** | gameplay-systems | 무기 5줄에 `vs_elite`가 필요. 셋 모두 같은 명중 자리, 상태(빙결·표식·정예)가 지금 코어에 있다 |
+| 명중 조건형(반응 상태) | `vs_heated_bps`, `vs_shocked_bps` | 장갑 | **T16** — 판 안 주문 구성(`run_spells.enabled`)을 켜는 날과 함께 | gameplay-systems | 열·감전은 주문 구성이 켜졌을 때만 생긴다 [코드: chapter_core 1905·2281행]. 그 전에 켜면 죽은 줄 |
+| 반격·몰아침 | `thorns_bps`, `streak_projectiles` | 몸통·신발 | **T17**, T1-B 뒤 P2 | gameplay-systems | 가시는 `hero_hit`의 `source_id`로 가해자를 안다 [코드: combat_core 805행]. 몰아침은 처치 집계(D6 H4)가 새로 필요. 둘 다 없어도 5줄은 된다 |
+| 운 | `luck_bps`, `grace_luck_bps` | 머리·장신구 | **T8** | content-balance · gameplay-systems | 판 시작 스냅숏과 합계 상한 3000이 함께 와야 한다. `grace_luck`은 은총 등급(`grades`)이 켜져야 뜻이 있다 [코드: run_growth 646행 — 등급이 꺼지면 거절] |
+| 경제 | `essence_gain_bps` | 무기 | **T12**(D25의 정수 경제 뒤) | content-balance | 코어에 정수 획득 자체가 아직 없다 [보고] |
+
+`affix_rolls.enabled`는 T1-B까지 읽히면 켤 수 있다. T16·T17·T8·T12의 키는 켠 뒤에 하나씩 들어오고, 들어올 때마다 켠 경로 골든 한 건만 갱신한다.
+
+---
+
+## 4. 켜기 전 남은 일 — `affix_rolls.enabled`를 `true`로 바꾸는 날까지
+
+| # | 남은 일 | 담당 | 끝난 기준 |
+|---|---|---|---|
+| 1 | T1-A·T1-B 병합 | gameplay-systems | 2.7·2.10 |
+| 2 | 수치 측정 — 드랍 | content-balance | `sim_loot --affix-rolls=on --runs=10000`이 2.10 표 안 |
+| 3 | 수치 측정 — 힘 | content-balance(T1-M) | `kit.d1_end_v1`이 +130% 이하, `kit.d1_start`·`d1_end`·`d2_mid`가 D12 P10 예산 안, 피해 감소 상한에 닿는 묶음이 `kit.d2_mid`뿐 [가설]. 넘으면 풀 행 값을 고친다(1절 나·다) |
+| 4 | 화면 — 감정의 드러남(T4) | ui-hud · vfx-feel · sound-designer | 미감정에 줄 수(5줄은 "가득"), 감정 때 낮은 단부터, Ⅴ단 마지막 0.4초 뜸·표지·소리. 코어 새 이벤트는 없다 — 장비의 접사 id에서 `affix_tier`로 읽는다. 캡처를 직접 본다 |
+| 5 | 화면 — 설명 판(T7) | ui-hud | 단 표지(모양), 갈래 표지, 조건형 "조건: …" 한 줄, 피해 감소가 잘렸을 때의 "상한" 표지. 캡처를 직접 본다 |
+| 6 | 관리 툴의 풀 화면 | manager-tools(**T19**) | 카탈로그가 `affix_rolls.pool`을 사다리별로 보이고(단·창·가중·`core_reads`), 칸마다 읽는 키로 가능한 최대 줄 수를 보인다. `tools/manager` 검사 통과 |
+| 7 | 이름 확정 | narrative-lead → content-balance | 2.9의 목록이 모두 확정, `names_status` 삭제, `test_core_text` 통과 |
+| 8 | 켠 경로 골든 | gameplay-systems | 2.5의 새 건이 켠 데이터에서 그대로 재현됨(켜는 날 기존 다섯 건은 해시가 바뀐다 — 그 날 의도한 변경으로 밝히고 `--update`) |
+| 9 | 저장 호환 실측 | qa-perf | 켬 장비가 든 저장을 옛 상태(끔)와 켬 상태로 각각 읽고 쓰기 — 2.7의 프로필 검사 + 실행 파일 한 번 |
+| 10 | 사람 플레이 | 사용자 | 보고 10절의 네 질문(5줄 "깔 맛", Ⅳ·Ⅴ단 뒤 같은 구역이 너무 쉬운가, 조건형 줄이 써먹을 상황을 만드는가, 운 한 줄 고민). 모두 **미평가** |
+
+남은 일이 0이 되는 날 켠다(점검 절차의 "꺼진 채 들어온 장치" 규칙).
+
+---
+
+## 5. D23 과제표의 다음 순서
+
+상점·화폐 명세는 **D25**로 부른다(D24는 강림 세 스킬 명세가 썼다). D23 5절 T10의 "새 명세 D24 필요"는 "D25 필요"로 읽는다. 새 과제 번호: T16(반응 상태 조건형), T17(가시·몰아침), T18(예비, 쓰지 않음), T19(관리 툴 풀 화면), T1-M(장비 묶음 측정).
+
+| 차례 | 과제 | 담당 | 선행 | 왜 이 차례 | 요소 |
+|---|---|---|---|---|---|
+| 1 | **T1-A** 문법 | gameplay-systems | 없음(T2·T3 병합됨) | 모든 옵션 과제의 바닥 | 도 |
+| 1 | **T1-M** 장비 묶음 측정 | content-balance | 끝은 T1-A 뒤 | Ⅴ단·상한의 값을 정할 유일한 도구 | — |
+| 1 | **T15** 죽음의 까닭 한 줄 | ui-hud | 없음 | `hero_hit`가 이미 `source_kind`·`source_id`·`incoming_raw`를 낸다 [코드: combat_core 805행] → 표현이 마지막 3초를 모아 보이면 된다. 코어 수정 없음. "이해할 수 없는 죽음"(재미 위험 1순위)을 가장 싸게 줄인다 | 성(죽음에서 배움) |
+| 1 | **D25 명세** 상점·도박·정수 경제 | design-lead | 없음 | T10·T12가 모두 이것을 기다린다(L 과제의 앞 문) | 도·보 |
+| 2 | **T5** 분출(코어 스위치 `loot_flow.boss_spray`) | gameplay-systems → vfx-feel | T1-A 뒤(같은 담당) | 화면에서 바로 보이는 결과. T14의 선행. 코어 쪽은 작다(바닥에 놓기, 2초 뒤 끌어당김) | 쾌·보 |
+| 3 | **T1-B** 키와 상한 | gameplay-systems | T1-A | 켜기 전 필수 | 도·성 |
+| 4 | **T9** 천장 | gameplay-systems · tech-lead | tech-lead의 스키마 5 키 확인(지금 시작) | S. 가뭄 8.2%를 0으로 [모델]. 켜기와 독립 | 보 |
+| 5 | **T14** 노릴 곳 | design-lead(절 보강) → content-balance | T5 | 수호자마다 칸 가중 두 배는 데이터만. 판 밖 고르기 화면은 D25의 마을 화면과 함께 | 도·보 |
+| 6 | **T12** 잡동사니 조각 | content-balance · vfx-feel | D25의 화폐 예산, T5 | 조각의 합계를 화폐 예산이 정한다 | 보 |
+| 7 | **T10** 상점·도박 상점 | gameplay-systems · ui-hud | D25 | L. 판 밖 파밍 고리의 절반 | 도·보 |
+
+곁가지(켜기의 문): T4·T7(ui-hud, D21 W6 뒤) · T19(manager-tools, T1-A 뒤 언제든) · T8(T1-B 뒤) · T16(주문 구성 켤 때) · T17(T1-B 뒤 P2).
+
+gameplay-systems가 병목이다: T1-A → T5 → T1-B → T9 → T17 → T10 순서로 한 줄로 선다. 둘째 작업 트리를 쓸 수 있으면 T5를 T1-A와 나란히 둔다(파일이 겹치지 않음: T5는 `chapter_core.gd` 1088~1127행 근처, T1-A는 `loot.gd`).
+
+---
+
+## 6. 재미 위험
+
+| 위험 | 어디서 | 막는 것 |
+|---|---|---|
+| 선택이 하나뿐 | 조건형 피해 다섯을 모두 모으면 무조건 강함 | 조건형 합계 상한(1절 타). 칸마다 조건형이 다르다(무기 정예, 장갑 상태, 신발 움직임) |
+| 이해할 수 없는 강함/약함 | 피해 감소가 상한에 닿았는데 화면이 말하지 않음 | `capped` 표지(2.6) → T7 |
+| 죽은 줄 | 읽지 않는 키 | 켠 경로의 거름(2.2-7). 냉기가 아닌 마녀에게 `vs_frozen`은 쓸모없는 줄이 된다 — 지금 `fire_damage_bps`와 같은 "빌드를 고르는 줄"로 받아들이되, 설명 판이 "이 마녀에게는 안 걸림"을 빨강으로 보인다(T7, D23 1.3) |
+| 보상이 없는 긴 구간 | 켠 뒤에도 5줄·Ⅴ단은 천장이 없다 | 대박이 나온 판 35~50%를 목표로 잰다(2.10). 아홉 판 연속 없음 약 0.9% [모델, D23 7절] |
+
+---
+
+## 7. 직접 확인한 것과 확인하지 못한 것
+
+직접 확인:
+- 보고 전체, D23 0~8절, D12 D1~D7·P10을 읽었다.
+- `loot.gd` 전체를 읽었다: `AFFIX_COUNTS` 희귀 [2,4] → 굴림은 3 또는 4(250행), `KIND_CAPS` 희귀 2, `validate`는 `_affixes`(= `data.affixes`만)에서 id를 찾고 `max_level`·`excludes`를 모른다, `_check`는 모르는 최상위 키를 거부하지 않는다.
+- `loot.json`의 `affix_rolls`를 파이썬으로 펼쳐 봤다 [실행]: 블록 키 13개, 풀 116행, 사다리 35개(옛 사다리의 위 단 포함), `vs_status`의 네 사다리 가중 각 40, `grace_luck`은 Ⅲ~Ⅴ(레벨 10부터), `streak`은 Ⅲ·Ⅴ, `shatter_h`는 Ⅰ·Ⅳ. 보물 등급에 `lines_profile`은 아직 없다. `luck`·`pity` 블록도 아직 없다.
+- 읽지 않는 키를 코어 세 파일에서 이름으로 찾았다 [실행: grep]. 보고 5절의 "읽음" 목록에 `projectiles`·`pierce`·`chain_targets`·`fire_burst`·`frost_threshold`·`arc_*`가 빠져 있으나 코드에서는 읽힌다 — 보고의 칸별 "읽는 키만" 수(무기 접두 6)는 이것을 읽는 것으로 셌으므로 결론은 같다. `STATS_READ`(2.2-7)는 코드에서 다시 확인해 만든다.
+- 피해 감소는 `combat_core.gd` 802행(받는 피해)과 409행(능력치 판)에서 합쳐지고 자르지 않는다. 트리 몫은 `chapter_core.gd` 344행에서 0~1500으로 잘린다. 정예 몸(`grade == "elite"`)은 `e.elite`가 거짓이다(chapter_core 597~601행).
+- `sim_loot.gd`의 `set_affix_rolls` 계약(69~77행)을 읽었다.
+- `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd -- --runs=10000`을 본 저장소 main(`62f0f58` + 작업 트리의 관계없는 변경)에서 돌렸다 [실행, 10,000판, 냉기, 종료 0, 약 4분]: 판당 희귀 4.655 · 장신구 1.446 · 전설 0.38 · 고유 0.25, mismatches 없음 — 보고·D23 8절과 같다. `LOOT_AFFIX_SIM`: `core_branch:false`, 희귀 줄 수 일반 2.685 / 우두머리 출처 2.625, 칸별 최대 줄 수 몸통 2·신발 2·무기 3·머리 3·장갑 3·목걸이 4·반지 4, 5줄 희귀 0, 최장 가뭄 17판 — 보고 2절과 같다. 3.16 새 목표는 모두 밖(끔 상태라 예상대로, 강제하지 않음).
+
+확인하지 못한 것:
+- 켠 경로의 어떤 수치도 코어로 잰 적이 없다(가지가 없음). 1절의 7500·10000·+130%·35%·120틱·6틱은 모두 [가설]이다.
+- Ⅳ·Ⅴ단의 힘은 계산 모델의 답뿐이다(보고 7절). `sim_power`에 장비 입구가 없다.
+- 피해 감소 상한이 끔 경로 골든을 건드리지 않는다는 것은 짐작이다(2.2-2에서 멈춤 규칙을 둠).
+- 이름의 미감, 5줄의 깔 맛, 조건형 줄의 쓸모는 **미평가**.
+- 골든·전체 회귀는 돌리지 않았다(코드·데이터를 고치지 않았다).
