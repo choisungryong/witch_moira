@@ -1014,6 +1014,134 @@ func t1b_checks() -> void:
 	var no_block := t1b_run({"after_dash_bps":5000,"moving_damage_bps":3000},tuning_with({}));no_block._dash_until=50;no_block._last_move_tick=99
 	check(t1b_dealt(no_block,walker)==1000,"T1-B without gear_conditions the dash and movement lines never hold")
 
+## D23 T5: loot_flow.boss_spray. Guardian and boss loot lies on the floor round the kill and is pulled to the hero 120 / 150 ticks later.
+func t5_flow(on: bool) -> Dictionary:
+	return {"enabled":false,"keep_min_quality":"rare","gate_sweep_min_quality":"rare","boss_spray":{"enabled":on,"guardian_pull_ticks":120,"boss_pull_ticks":150,"arrive_ticks":30,"ring_min_cm":200,"ring_max_cm":350}}
+
+func t5_run(on: bool,zone_: int,filler: int=0) -> RefCounted:
+	var r := tuned_run({"loot_flow":t5_flow(on)})
+	clear_field(r)
+	r.zone=zone_;r.hero.position=Chapter.ZONES[zone_];r._zone_entered=true;r.zone_kills=r.tuning.seal_kills[zone_];r._spawn_wave()
+	for i in filler:r.inventory.append({"uid":9000+i,"slot":"weapon","quality":"common","stats":{},"name":"filler"})
+	return r
+
+func t5_kill(r: RefCounted) -> void:
+	r.events.clear()
+	r._damage_enemy(r._champion_id,context(r,100000000),0)
+
+## Step until the run's tick reaches `target` (stops early when the run left "playing", so a failed check cannot hang).
+func t5_to(r: RefCounted,target: int) -> void:
+	var guard := 0
+	while r.tick<target and guard<1000:
+		if r.mode=="choice":
+			var offer: Dictionary=r.get_offer()
+			r.choose(offer.token,offer.cards[0].id)
+		if r.mode!="playing":break
+		r.step(Vector2.ZERO);guard+=1
+
+func t5_events(r: RefCounted,type_: String) -> Array:
+	var list: Array=[]
+	for event in r.events:
+		if event.type==type_:list.append(event)
+	return list
+
+## The bag's pieces as comparable text (identity of the rolled gear, not of the uid).
+func t5_names(list: Array) -> Array:
+	var out: Array=[]
+	for item in list:out.append(JSON.stringify([item.get("base_id",""),item.get("quality",""),item.get("stats",{}),item.get("affixes",[])]))
+	return out
+
+func t5_checks() -> void:
+	# Off: straight into the bag, no spray event, no state.
+	var off := t5_run(false,0)
+	t5_kill(off)
+	var kept: Array=t5_names(off.inventory)
+	check(kept.size()==3 and off.items.is_empty() and t5_events(off,"loot_spray").is_empty() and not off.snapshot().chapter.has("spray"),"T5 off: guardian loot goes straight into the bag, no loot_spray, no spray state")
+	# On, guardian.
+	var on := t5_run(true,0)
+	t5_kill(on)
+	var spray_events := t5_events(on,"loot_spray")
+	check(on.inventory.is_empty() and on.items.size()==3 and spray_events.size()==1 and spray_events[0].items.size()==3,"T5 on: nothing goes to the bag, three pieces lie on the floor, one loot_spray lists them")
+	var ring_ok := true
+	var spray_origin: Vector2=spray_events[0].origin
+	for entry in spray_events[0].items:
+		var distance := spray_origin.distance_to(entry.to)
+		if distance<1.99 or distance>3.51:ring_ok=false
+	check(ring_ok,"T5 the landing places lie 2 to 3.5 m from the kill")
+	var drops_on := t5_events(on,"item_drop")
+	check(drops_on.size()==3 and drops_on[0].get("spray",false) and t5_names(on.items)==kept,"T5 on: the same gear as off was rolled (same draws), item_drop carries spray:true")
+	check(spray_events[0].pull_tick==on.tick+120 and spray_events[0].arrive_tick==on.tick+150 and on.snapshot().chapter.has("spray"),"T5 the spray announces its pull (+120) and arrival (+150) ticks; its state is in the snapshot while it waits")
+	var kill_tick: int=on.tick
+	t5_to(on,kill_tick+119)
+	check(on.inventory.is_empty() and on.items.size()==3 and t5_events(on,"loot_pull").is_empty(),"T5 before 120 ticks the loot is still on the floor")
+	on.step(Vector2.ZERO)
+	var pulls := t5_events(on,"loot_pull")
+	check(pulls.size()==1 and pulls[0].items.size()==3 and on.inventory.is_empty(),"T5 at 120 ticks loot_pull starts the pull of the three pieces still on the floor")
+	t5_to(on,kill_tick+149)
+	on.step(Vector2.ZERO)
+	var arrived := t5_events(on,"item_pickup")
+	check(on.inventory.size()==3 and on.items.is_empty() and arrived.size()==3 and arrived[0].get("by","")=="spray" and t5_names(on.inventory)==kept and not on.snapshot().chapter.has("spray"),"T5 at 150 ticks the pieces are in the bag (item_pickup by:spray), the same gear as off, the spray state is gone")
+	# Walking over a piece first.
+	var walk := t5_run(true,0)
+	t5_kill(walk)
+	var first_uid: int=int(walk.items[0].uid)
+	walk.hero.position=walk.items[0].position
+	walk.step(Vector2.ZERO)
+	check(walk.inventory.size()==1 and int(walk.inventory[0].uid)==first_uid and walk.items.size()==2,"T5 a piece picked up on foot before the pull enters the bag at once")
+	var walk_start: int=walk.tick
+	t5_to(walk,walk_start+160)
+	var walk_uids := {}
+	for item in walk.inventory:walk_uids[int(item.uid)]=true
+	check(walk.inventory.size()==3 and walk_uids.size()==3 and walk.items.is_empty(),"T5 the pull brings only what is left, nothing twice (bag %d, distinct %d, floor %d, mode %s)"%[walk.inventory.size(),walk_uids.size(),walk.items.size(),walk.mode])
+	# A full bag: the same rule as a direct reward (up to four pending, the rest counted).
+	var full_off := t5_run(false,0,64)
+	t5_kill(full_off)
+	var full_on := t5_run(true,0,64)
+	t5_kill(full_on)
+	var full_start: int=full_on.tick
+	t5_to(full_on,full_start+150)
+	check(full_on.inventory.size()==full_off.inventory.size() and full_on.pending_rewards.size()==full_off.pending_rewards.size() and int(full_on.metrics.get("overflow_items",0))==int(full_off.metrics.get("overflow_items",0)) and t5_names(full_on.pending_rewards)==t5_names(full_off.pending_rewards),"T5 with a full bag the pull keeps the direct rule: same bag, same pending rewards, same overflow count as off")
+	# The final boss: the result waits for the pull.
+	var boss_off := t5_run(false,2)
+	t5_kill(boss_off)
+	var boss_kept: Array=t5_names(boss_off.inventory)
+	check(boss_off.mode=="victory" and boss_kept.size()>=5,"T5 off: the final boss ends the run at once with the loot in the bag")
+	var boss := t5_run(true,2)
+	t5_kill(boss)
+	var boss_start: int=boss.tick
+	check(boss.mode=="playing" and boss.inventory.is_empty() and boss.items.size()==boss_kept.size() and t5_events(boss,"victory").is_empty(),"T5 on: the final boss's loot lies on the floor and the run goes on")
+	t5_to(boss,boss_start+179)
+	check(boss.mode=="playing" and boss.inventory.size()==0,"T5 on: 179 ticks after the boss fell the result has not come")
+	boss.step(Vector2.ZERO)
+	check(boss.mode=="victory" and t5_names(boss.inventory)==boss_kept and boss._elite_reward_uid!=0 and boss.history.size()>0,"T5 on: at 180 ticks (150 pull + 30 arrival) the loot is in the bag, then the result; the same gear as off")
+	var bad=Chapter.new()
+	var broken := t5_flow(true);broken.boss_spray.ring_max_cm=100
+	check(not bad.set_tuning(tuning_with({"loot_flow":broken})),"T5 a ring whose maximum is under its minimum is refused")
+	var missing := t5_flow(true);missing.boss_spray.erase("arrive_ticks")
+	check(not bad.set_tuning(tuning_with({"loot_flow":missing})),"T5 a boss_spray block without a key is refused")
+
+## D23 T15b: hero_hit carries source_key and attack_id (read from the enemy table, no state).
+func t15b_checks() -> void:
+	var r := t5_run(false,0)
+	var guardian: Dictionary=r.enemies[r._champion_id]
+	guardian.attack_kind="circle"
+	r.events.clear();r._hero_damage(1000,guardian.position,"champion",int(guardian.id))
+	var hit: Dictionary=t5_events(r,"hero_hit")[0]
+	check(hit.source_key=="enemy.champion.0.name" and hit.attack_id=="circle" and hit.source_kind=="champion" and hit.source_id==guardian.id,"T15b hero_hit of a seal guardian: source_key is its title key, attack_id its attack")
+	r.tick+=100;r._spawn("walker",Vector2(30,0));var walker: Dictionary=r.enemies[r._enemy_sequence];walker.attack_kind="circle"
+	r.events.clear();r._hero_damage(1000,walker.position,"walker",int(walker.id))
+	hit=t5_events(r,"hero_hit")[0]
+	check(hit.source_key=="" and hit.attack_id=="circle","T15b hero_hit of a walker: no text key, attack circle")
+	r.tick+=100;r.events.clear();r._hero_damage(1000,Vector2.ZERO,"boss_ward",0)
+	hit=t5_events(r,"hero_hit")[0]
+	check(hit.source_key=="" and hit.attack_id=="floor_strike","T15b hero_hit of the boss's floor strike: attack floor_strike")
+	r.tick+=100;r.events.clear();r._hero_damage(1000,Vector2.ZERO)
+	hit=t5_events(r,"hero_hit")[0]
+	check(hit.source_key=="" and hit.attack_id=="" and hit.source_kind=="hazard","T15b hero_hit of a plain hazard: both empty")
+	r.tick+=100;r.events.clear();r._hero_damage(1000,Vector2.ZERO,"ranged",987654)
+	hit=t5_events(r,"hero_hit")[0]
+	check(hit.source_key=="" and hit.attack_id=="","T15b hero_hit whose body is already gone: both empty")
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -1112,6 +1240,8 @@ func execute() -> void:
 	pressure_checks()
 	round2_checks()
 	t1b_checks()
+	t5_checks()
+	t15b_checks()
 	build_checks()
 	abandon_checks()
 	sheet_checks()

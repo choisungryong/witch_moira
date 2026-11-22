@@ -1114,6 +1114,11 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	if _rhythm_on and zone<2 and bool(tuning.rhythm.get("guardian_grace",false)):_seal_grace("guardian")
 	if zone==2:
 		chapter_hazards.clear();_boss_phase=0
+		# D23 T5: with boss_spray on the result waits until the spilled loot has been pulled in (_spray_arrive); the hero cannot be
+		# hurt in between (the kill is won).
+		if _spray_has_boss():
+			_invulnerable_until=maxi(_invulnerable_until,tick+int(_spray_rule().boss_pull_ticks)+int(_spray_rule().arrive_ticks)+1)
+			return
 		_sweep_ground_items()
 		super._on_elite_defeated(e)
 		_record("chapter_completed")
@@ -1170,12 +1175,23 @@ func _maybe_drop_item(e: Dictionary) -> void:
 		var first_kill_drops := drops.size()
 		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_))
 		var marked := false
+		var spray := _spray_enabled()
+		var spilled: Array[Dictionary]=[]
+		var notable_uid := 0
 		for index in drops.size():
 			var item: Dictionary=drops[index]
 			# The objective slot carries the most notable reward: a unique if any, else the first item.
 			var notable: bool=not marked and (item.quality=="unique" or item==drops[drops.size()-1] or not _has_unique(drops))
 			if notable:marked=true
-			_publish_item(item,e.position,true,notable,"first_kill" if index<first_kill_drops else ("boss" if boss else "champion"))
+			var source_name := "first_kill" if index<first_kill_drops else ("boss" if boss else "champion")
+			if spray:
+				# D23 T5: on the floor round the kill, never straight into the bag. The place is a function of (index, count): no draw.
+				var landing := _spray_point(e.position,index,drops.size())
+				_publish_item(item,landing,false,notable,source_name,{"spray":true,"origin":e.position})
+				if notable:notable_uid=int(item.uid)
+				spilled.append({"id":int(item.uid),"rarity":String(item.quality),"to":landing})
+			else:_publish_item(item,e.position,true,notable,source_name)
+		if spray and not spilled.is_empty():_spray_begin("boss" if boss else "champion",e.position,spilled,notable_uid,boss)
 		return
 	# A strong body (grade "elite", D13 W4-a): the elite table, on the floor like any ordinary drop; a guard opens its site after it.
 	if e.get("grade","")=="elite":
@@ -1215,11 +1231,93 @@ func _sweep_ground_items() -> void:
 func _sweep_ground_items_by_gate() -> void:
 	var left: Array[Dictionary]=[]
 	for item in items:
-		if item.quality in _gate_sweep_qualities and inventory.size()<MAX_INVENTORY:
+		if item.quality in _gate_sweep_qualities and inventory.size()<MAX_INVENTORY and not _in_spray(int(item.uid)):
 			item.collected=true;inventory.append(item);metrics.picked_items+=1
 			_emit("item_pickup",hero.position,{"item":item.duplicate(true),"swept":true,"by":"gate"})
 		else:left.append(item)
 	items=left
+
+# ---------------------------------------------------------------- D23 T5: guardian and boss loot spray (loot_flow.boss_spray)
+## The spilled loot of one kill waits as {source, start, arrive, uids, notable, boss, origin}; _spray is empty (and absent from the snapshot) while the switch is off.
+var _spray: Array[Dictionary]=[]
+var _spray_done_boss := false
+
+func _spray_rule() -> Dictionary:
+	return tuning.get("loot_flow",{}).get("boss_spray",{})
+
+func _spray_enabled() -> bool:
+	return bool(_spray_rule().get("enabled",false))
+
+func _spray_has_boss() -> bool:
+	for group in _spray:
+		if group.boss:return true
+	return false
+
+func _in_spray(uid: int) -> bool:
+	for group in _spray:
+		if uid in group.uids:return true
+	return false
+
+## Where piece `index` of `count` lands: a ring round the kill, ring_min..ring_max, angle by order, radius by index. No random draw.
+func _spray_point(origin: Vector2,index: int,count: int) -> Vector2:
+	var rule := _spray_rule()
+	var low := float(rule.ring_min_cm)/100.0
+	var high := float(rule.ring_max_cm)/100.0
+	var angle := TAU*(float(index)+.5)/float(maxi(1,count))
+	return _clamp_point(origin+Vector2.from_angle(angle)*(low+(high-low)*float(index%3)/2.0))
+
+## loot_spray {source: "champion"|"boss", origin, items:[{id (item uid), rarity (quality), to (landing point)}], pull_tick, arrive_tick}
+## starts the spill (the item_drop events of the same tick carry spray:true and origin).
+func _spray_begin(source: String,origin: Vector2,spilled: Array[Dictionary],notable_uid: int,boss: bool) -> void:
+	var rule := _spray_rule()
+	var start := tick+int(rule.boss_pull_ticks if boss else rule.guardian_pull_ticks)
+	var uids: Array[int]=[]
+	for entry in spilled:uids.append(int(entry.id))
+	_spray.append({"source":source,"start":start,"arrive":start+int(rule.arrive_ticks),"uids":uids,"notable":notable_uid,"boss":boss,"origin":origin})
+	_emit("loot_spray",origin,{"source":source,"origin":origin,"items":spilled.duplicate(true),"pull_tick":start,"arrive_tick":start+int(rule.arrive_ticks)})
+
+## At pull_tick: loot_pull {source, items:[uid still on the floor], arrive_tick} (the screen flies them to the hero). At arrive_tick the pieces
+## still on the floor go into the bag by the same rules as a direct reward (item_pickup with by:"spray"); the final boss's result follows.
+func _spray_step() -> void:
+	var waiting: Array[Dictionary]=[]
+	for group in _spray:
+		if tick==int(group.start):
+			var floor_ids: Array[int]=[]
+			for item in items:
+				if int(item.uid) in group.uids:floor_ids.append(int(item.uid))
+			_emit("loot_pull",hero.position,{"source":group.source,"items":floor_ids,"arrive_tick":int(group.arrive)})
+		if tick>=int(group.arrive):_spray_arrive(group)
+		else:waiting.append(group)
+	_spray=waiting
+	if _spray_done_boss:
+		_spray_done_boss=false
+		_sweep_ground_items()
+		_victory_now()
+		_record("chapter_completed")
+
+func _victory_now() -> void:
+	super._on_elite_defeated({})
+
+func _spray_arrive(group: Dictionary) -> void:
+	var left: Array[Dictionary]=[]
+	for item in items:
+		if not int(item.uid) in group.uids:
+			left.append(item)
+			continue
+		var boss_reward: bool=bool(item.get("objective_reward",false))
+		item.collected=true
+		if inventory.size()<MAX_INVENTORY or (boss_reward and inventory.size()<MAX_INVENTORY+1):
+			inventory.append(item);metrics.picked_items+=1
+			_emit("item_pickup",hero.position,{"item":item.duplicate(true),"by":"spray"})
+		elif pending_rewards.size()<MAX_PENDING_REWARDS:
+			pending_rewards.append(item)
+			_emit("reward_pending",hero.position,{"item":item.duplicate(true)})
+		else:metrics.overflow_items=int(metrics.get("overflow_items",0))+1
+	items=left
+	if int(group.notable)>0 and _elite_reward_uid==0:
+		for item in inventory:
+			if int(item.uid)==int(group.notable):_elite_reward_uid=int(item.uid)
+	if group.boss:_spray_done_boss=true
 
 func _has_unique(drops: Array[Dictionary]) -> bool:
 	for item in drops:
@@ -1558,6 +1656,8 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 	_step_fields()
 	if mode!="playing":return
 	_step_rituals()
+	if not _spray.is_empty() or _spray_done_boss:_spray_step()
+	if mode!="playing":return
 	if _elites_on:_step_elites()
 	if _extras_on:_step_extras()
 	var live: Array[Dictionary]=[]
@@ -1619,7 +1719,7 @@ var _gate_sweep_qualities: Array[String] = []
 
 ## D21 N2: read tuning.loot_flow. Off (or absent) leaves both lists empty and the 180 s rule untouched. The quality names must exist in loot.json.
 func _prepare_loot_flow() -> bool:
-	_kept_qualities.clear();_gate_sweep_qualities.clear()
+	_kept_qualities.clear();_gate_sweep_qualities.clear();_spray.clear();_spray_done_boss=false
 	if not tuning.has("loot_flow") or not bool(tuning.loot_flow.enabled):return true
 	if loot==null:errors.assign(["loot_flow needs the loot tables"]);return false
 	var order: Array=loot.data.qualities
@@ -2685,6 +2785,10 @@ func snapshot() -> Dictionary:
 			result.rhythm.kill_burst=window_list
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
 	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
+	if not _spray.is_empty():
+		var groups: Array=[]
+		for group in _spray:groups.append({"source":group.source,"start":group.start,"arrive":group.arrive,"uids":group.uids.duplicate(),"notable":group.notable,"boss":group.boss})
+		result.chapter.spray=groups
 	if _elites_on:result.chapter.elites={"made":_elite_made.duplicate(),"skipped":_elite_skipped}
 	if _extras_on:result.chapter.extras={"sites":_sites.duplicate(true),"buffs":_buffs.duplicate(true),"next_site_index":_site_next}
 	# The descent's state exists only in a run whose descent.json is on (D15 A6.2); a run without it keeps the old snapshot.

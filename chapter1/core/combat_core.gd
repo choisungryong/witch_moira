@@ -842,6 +842,12 @@ func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", sourc
 	hero.hp_raw = int(result.hp_after_raw)
 	_invulnerable_until = tick+iframes
 	var details := {"damage_raw":result.total_raw,"from":from,"incoming_raw":incoming,"source_kind":source_kind,"source_id":source_id,"hp_after_raw":int(hero.hp_raw)}
+	# D23 T15b: two read-only name hints for the death screen. source_key = the body's text key (the seal guardians and the final boss
+	# carry one, others ""); attack_id = the attack the body was making ("circle" slam or touch, "fan" shot, "line" charge, "frost_cross"),
+	# "floor_strike" for the boss's floor hazard, "" for any other hazard or a body already gone. Read from the enemy table: no new state.
+	var source_body: Dictionary = enemies.get(source_id,{}) if source_id > 0 else {}
+	details.source_key = String(source_body.get("title_key",""))
+	details.attack_id = "floor_strike" if source_kind == "boss_ward" else String(source_body.get("attack_kind",""))
 	if graze: details.graze = true
 	_emit("hero_hit",hero.position,details)
 	if hero.hp_raw <= 0:

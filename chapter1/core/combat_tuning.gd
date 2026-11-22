@@ -132,9 +132,22 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 			if not integer(v.gear_conditions.lowhp_bps,1,10000): issues.append("gear_conditions lowhp_bps")
 	return issues
 
+## D23 T5: loot_flow may carry one more key, "boss_spray" (guardian and boss loot spills on the floor and is pulled to the hero later).
+const BOSS_SPRAY_KEYS := ["enabled","guardian_pull_ticks","boss_pull_ticks","arrive_ticks","ring_min_cm","ring_max_cm"]
+
 static func _loot_flow_issues(b: Variant) -> Array[String]:
-	if not b is Dictionary or not GrowthCatalog.keys_match(b,LOOT_FLOW_KEYS): return ["loot_flow keys"]
+	if not b is Dictionary: return ["loot_flow keys"]
+	var base: Dictionary = b.duplicate()
+	base.erase("boss_spray")
+	if not GrowthCatalog.keys_match(base,LOOT_FLOW_KEYS): return ["loot_flow keys"]
 	var issues: Array[String] = []
+	if b.has("boss_spray"):
+		var spray: Variant = b.boss_spray
+		if not spray is Dictionary or not GrowthCatalog.keys_match(spray,BOSS_SPRAY_KEYS): issues.append("loot_flow boss_spray keys")
+		else:
+			if not spray.enabled is bool: issues.append("loot_flow boss_spray enabled")
+			if not integer(spray.guardian_pull_ticks,1,1800) or not integer(spray.boss_pull_ticks,1,1800) or not integer(spray.arrive_ticks,1,600): issues.append("loot_flow boss_spray ticks")
+			if not integer(spray.ring_min_cm,50,2000) or not integer(spray.ring_max_cm,50,2000) or int(spray.ring_max_cm) < int(spray.ring_min_cm): issues.append("loot_flow boss_spray ring")
 	if not b.enabled is bool: issues.append("loot_flow enabled")
 	for key in ["keep_min_quality","gate_sweep_min_quality"]:
 		if not b[key] is String or String(b[key]).is_empty(): issues.append("loot_flow "+key)
