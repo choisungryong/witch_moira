@@ -8,8 +8,8 @@ const PATH := "res://chapter1/tests/fixtures/gear_kits.json"
 const UID0 := 9000          ## kit item uids: far above the core's own item counter
 const BASE_HP_RAW := 120 * 256
 
-static func load_fixture() -> Dictionary:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH))
+static func load_fixture(path: String = PATH) -> Dictionary:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	return parsed if parsed is Dictionary else {}
 
 static func kit_names(fixture: Dictionary) -> Array:

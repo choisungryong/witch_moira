@@ -892,6 +892,128 @@ func sheet_checks() -> void:
 	var bad: Array[Dictionary]=[{"name":"x"}]
 	check(Chapter.sheet_for(FROST,{},bad).has("error"),"A1 sheet_for refuses invalid gear")
 
+## D23 T1-B: the eight gear stat keys and the two totals caps. Each key: 0 changes nothing, > 0 changes the result only while its condition holds.
+func t1b_caps() -> Dictionary:
+	return {"stat_caps":{"damage_reduction_bps":7500,"condition_damage_bps":10000},"gear_conditions":{"after_dash_ticks":120,"moving_ticks":6,"lowhp_bps":3500}}
+
+## The life one hit of `amount` takes off enemy `id_` (the damage line of _damage_enemy for the primary skill).
+func t1b_dealt(r: RefCounted,id_: int,amount: int=1000) -> int:
+	var before: int=r.enemies[id_].hp_raw
+	r._damage_enemy(id_,context(r,amount),0)
+	return before-int(r.enemies[id_].hp_raw)
+
+func t1b_run(extra: Dictionary={},mod: Dictionary={}) -> RefCounted:
+	var doc: Dictionary=t1b_caps() if mod.is_empty() else mod
+	var r := tuned_run(doc)
+	clear_field(r);r._spawn("walker",Vector2(5,0));r._spawn("elite",Vector2(-5,0))
+	for id_ in r.enemies:
+		r.enemies[id_].hp_raw=10000000;r.enemies[id_].max_hp_raw=10000000
+	r.tick=100
+	for key in extra:r._gear_stats[key]=extra[key]
+	return r
+
+func t1b_checks() -> void:
+	var probe := t1b_run()
+	var walker: int=probe.enemies.keys()[0];var elite: int=probe.enemies.keys()[1]
+	# Zero keys: nothing changes, whatever holds.
+	var plain := t1b_run()
+	plain.enemies[walker].frozen_until=1000;plain.enemies[walker].mark_until_a=1000;plain._dash_until=50;plain._last_move_tick=99
+	check(t1b_dealt(plain,walker)==1000 and t1b_dealt(plain,elite)==1000,"T1-B no condition key: the hit is exactly the skill damage even when every condition holds")
+	# vs_elite: strong bodies only (an elite and a D13 elite body count, a walker does not).
+	var vs_elite := t1b_run({"vs_elite_bps":2000})
+	check(t1b_dealt(vs_elite,walker)==1000 and t1b_dealt(vs_elite,elite)==1200,"T1-B vs_elite_bps: +20% on an elite, nothing on a walker")
+	var body := t1b_run({"vs_elite_bps":2000});body.enemies[walker].grade="elite"
+	check(t1b_dealt(body,walker)==1200,"T1-B vs_elite_bps counts a D13 elite body (grade elite) although its elite flag is false")
+	# vs_frozen
+	var vs_frozen := t1b_run({"vs_frozen_bps":5000})
+	check(t1b_dealt(vs_frozen,walker)==1000,"T1-B vs_frozen_bps: no change on an enemy that is not frozen")
+	vs_frozen.enemies[walker].frozen_until=vs_frozen.tick+30
+	var frozen_hit: int=t1b_dealt(vs_frozen,walker)
+	check(frozen_hit==1500,"T1-B vs_frozen_bps: +50%% on a frozen enemy (got %d)"%frozen_hit)
+	# vs_marked
+	var vs_marked := t1b_run({"vs_marked_bps":4000})
+	check(t1b_dealt(vs_marked,walker)==1000,"T1-B vs_marked_bps: no change on an unmarked enemy")
+	vs_marked.enemies[walker].mark_until_a=vs_marked.tick+30
+	check(t1b_dealt(vs_marked,walker)==1400,"T1-B vs_marked_bps: +40% on a marked enemy (a live mark of either owner)")
+	vs_marked.tick=vs_marked.tick+31
+	check(t1b_dealt(vs_marked,walker)==1000,"T1-B vs_marked_bps: the mark has lapsed")
+	# after_dash_bps: from the tick after the dash ends, for after_dash_ticks ticks.
+	var after := t1b_run({"after_dash_bps":5000})
+	after._dash_until=50
+	var in_window: int=t1b_dealt(after,walker)
+	after.tick=170;var last_tick: int=t1b_dealt(after,walker)
+	after.tick=171;var past: int=t1b_dealt(after,walker)
+	after.tick=50;var during: int=t1b_dealt(after,walker)
+	check(in_window==1500 and last_tick==1500 and past==1000 and during==1000,"T1-B after_dash_bps: +50% from the tick after the dash for 120 ticks, not during the dash and not after")
+	var never_dashed := t1b_run({"after_dash_bps":5000})
+	check(t1b_dealt(never_dashed,walker)==1000,"T1-B after_dash_bps: a run that never dashed gets nothing")
+	# moving_damage_bps: moved on foot within the last 6 ticks, never while dashing.
+	var moving := t1b_run({"moving_damage_bps":3000})
+	moving._last_move_tick=95
+	check(t1b_dealt(moving,walker)==1300,"T1-B moving_damage_bps: +30% when the hero moved 5 ticks ago")
+	moving._last_move_tick=94
+	check(t1b_dealt(moving,walker)==1000,"T1-B moving_damage_bps: nothing when the last step was 6 ticks ago")
+	moving._last_move_tick=99;moving._dash_until=110
+	check(t1b_dealt(moving,walker)==1000,"T1-B moving_damage_bps: nothing while a dash is running")
+	# The clock is really kept by step(): a step with input sets it, a step without does not.
+	var walking := tuned_run(t1b_caps());clear_field(walking)
+	walking.step(Vector2.RIGHT);var moved_at: int=walking._last_move_tick
+	walking.step(Vector2.ZERO)
+	check(moved_at==walking.tick-1 and walking._last_move_tick==moved_at,"T1-B step() keeps the tick of the last step on foot")
+	# Sum, not product; the cap cuts the sum.
+	var both := t1b_run({"vs_elite_bps":2000,"vs_frozen_bps":3000});both.enemies[elite].frozen_until=1000
+	check(t1b_dealt(both,elite)==1500,"T1-B condition lines add up to one multiplier (20% + 30% = +50%, not 56%)")
+	var huge := t1b_run({"vs_elite_bps":6000,"vs_frozen_bps":6000});huge.enemies[elite].frozen_until=1000
+	check(t1b_dealt(huge,elite)==2000,"T1-B condition_damage_bps cuts the sum at 10000 (12000 -> +100%)")
+	var uncapped := t1b_run({"vs_elite_bps":6000,"vs_frozen_bps":6000},tuning_with({}));uncapped.enemies[elite].frozen_until=1000
+	check(t1b_dealt(uncapped,elite)==2200,"T1-B without a stat_caps block there is no cap")
+	# lowhp_cooldown_bps: the cooldown shortens at or under lowhp_bps of the maximum life.
+	var low := t1b_run({"lowhp_cooldown_bps":5000})
+	var base_ticks: int=tuned_run(t1b_caps()).effective_skill("chapter1.skill.ember").effects.cooldown_ticks
+	var full_ticks: int=low.effective_skill("chapter1.skill.ember").effects.cooldown_ticks
+	low.hero.hp_raw=int(low.hero.max_hp_raw)*3500/10000
+	var low_ticks: int=low.effective_skill("chapter1.skill.ember").effects.cooldown_ticks
+	low.hero.hp_raw=int(low.hero.max_hp_raw)*3501/10000+1
+	var above_ticks: int=low.effective_skill("chapter1.skill.ember").effects.cooldown_ticks
+	check(full_ticks==base_ticks and above_ticks==base_ticks and low_ticks==maxi(12,base_ticks*10000/15000) and low_ticks<base_ticks,"T1-B lowhp_cooldown_bps: shorter interval at 35%% life or less, none above (base %d, full %d, low %d)"%[base_ticks,full_ticks,low_ticks])
+	var low_zero := t1b_run({});low_zero.hero.hp_raw=1
+	check(low_zero.effective_skill("chapter1.skill.ember").effects.cooldown_ticks==base_ticks,"T1-B lowhp_cooldown_bps 0: low life changes nothing")
+	# max_hp_bps multiplies base + gear numbers + tree.
+	var hp_run := tuned_run(t1b_caps())
+	var hp_plain: int=hp_run._hero_body({"max_hp_raw":2560}).max_hp_raw
+	var hp_bps: int=hp_run._hero_body({"max_hp_raw":2560,"max_hp_bps":1500}).max_hp_raw
+	check(hp_plain==120*256+2560 and hp_bps==hp_plain*11500/10000 and hp_run._hero_body({"max_hp_bps":0}).max_hp_raw==120*256,"T1-B max_hp_bps: (base + max_hp_raw + tree) x (10000 + bps) / 10000, 0 changes nothing")
+	# Damage reduction: one function, cut at 7500; the dash guard counts while it lasts.
+	var shield := t1b_run({"damage_reduction_bps":9000});var hp_a: int=shield.hero.hp_raw
+	shield._hero_damage(10000,Vector2.ZERO)
+	check(hp_a-int(shield.hero.hp_raw)==2500,"T1-B damage_reduction_bps 9000 is cut at 7500: a 10000 hit deals 2500")
+	var shield_free := t1b_run({"damage_reduction_bps":9000},tuning_with({}));var hp_b: int=shield_free.hero.hp_raw
+	shield_free._hero_damage(10000,Vector2.ZERO)
+	check(hp_b-int(shield_free.hero.hp_raw)==1000,"T1-B without a stat_caps block the same gear takes 10000 x (1 - 90%) = 1000")
+	var guard := t1b_run({"damage_reduction_bps":5000,"after_dash_guard_bps":1000});guard._dash_until=50;var hp_c: int=guard.hero.hp_raw
+	guard._hero_damage(10000,Vector2.ZERO)
+	check(hp_c-int(guard.hero.hp_raw)==4000,"T1-B after_dash_guard_bps adds to the reduction in the window after a dash (5000 + 1000 -> 4000 taken)")
+	var guard_off := t1b_run({"damage_reduction_bps":5000,"after_dash_guard_bps":1000});var hp_d: int=guard_off.hero.hp_raw
+	guard_off._hero_damage(10000,Vector2.ZERO)
+	check(hp_d-int(guard_off.hero.hp_raw)==5000,"T1-B after_dash_guard_bps: nothing when no dash happened")
+	var guard_cap := t1b_run({"damage_reduction_bps":7000,"after_dash_guard_bps":3000});guard_cap._dash_until=50;var hp_e: int=guard_cap.hero.hp_raw
+	guard_cap._hero_damage(10000,Vector2.ZERO)
+	check(hp_e-int(guard_cap.hero.hp_raw)==2500,"T1-B the guard is inside the cap (7000 + 3000 -> 7500)")
+	# The stat sheet shows the cut figure and says so.
+	var sheet_run := t1b_run({"damage_reduction_bps":9000})
+	var capped_row: Variant=row_of(sheet_run.stat_sheet().hero.rows,"damage_reduction")
+	check(capped_row.raw==7500 and capped_row.get("capped",false),"T1-B the stat sheet shows 7500 and capped:true for 9000 of gear")
+	var open_run := t1b_run({"damage_reduction_bps":3000})
+	var open_row: Variant=row_of(open_run.stat_sheet().hero.rows,"damage_reduction")
+	check(open_row.raw==3000 and not open_row.has("capped"),"T1-B under the cap the sheet row has no capped key")
+	# Snapshot: the two clocks exist only while gear that reads them is worn.
+	check(not t1b_run().snapshot().has("gear_clock") and t1b_run({"after_dash_bps":100}).snapshot().has("gear_clock") and t1b_run({"moving_damage_bps":100}).snapshot().has("gear_clock") and t1b_run({"after_dash_guard_bps":100}).snapshot().has("gear_clock"),"T1-B the snapshot carries gear_clock only with a dash or movement key worn")
+	# The document: both blocks are validated, a wrong one refuses the start, no block = the old behaviour.
+	var bad_caps=Chapter.new()
+	check(not bad_caps.set_tuning(tuning_with({"stat_caps":{"damage_reduction_bps":0,"condition_damage_bps":10000}})) and not bad_caps.set_tuning(tuning_with({"stat_caps":{"damage_reduction_bps":7500}})) and not bad_caps.set_tuning(tuning_with({"gear_conditions":{"after_dash_ticks":120,"moving_ticks":6}})),"T1-B stat_caps and gear_conditions: a zero cap or a missing key is refused")
+	var no_block := t1b_run({"after_dash_bps":5000,"moving_damage_bps":3000},tuning_with({}));no_block._dash_until=50;no_block._last_move_tick=99
+	check(t1b_dealt(no_block,walker)==1000,"T1-B without gear_conditions the dash and movement lines never hold")
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -989,6 +1111,7 @@ func execute() -> void:
 	check(effective.effects.pierce==original.effects.pierce+1 and effective.effects.hit_budget>original.effects.hit_budget,"Pierce gear has real hit budget")
 	pressure_checks()
 	round2_checks()
+	t1b_checks()
 	build_checks()
 	abandon_checks()
 	sheet_checks()

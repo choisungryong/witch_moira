@@ -54,6 +54,7 @@ extends SceneTree
 ##   file, no save) and compares it with the bare hero (kit "none" is always measured first, same seeds): P_crowd (crowd cell, --density, default 60) and P_single (single cell, --single-mobs default 10, pilot and stand) gain %,
 ##   the kit's summed damage / cooldown / life / damage-reduction stats, S ratio (a MODEL answer from life and damage reduction, not a measurement), and the fixture's budget verdicts. Default build: AR_4 (--builds= / --build= to change),
 ##   default --seeds=11. --kit-without=damage_bps,cooldown_bps re-measures each kit with that stat taken off every item (which knob moves P). Needs the isolated user dir like every other mode.
+##   --kits-file=_local/d23/f2_kits.json reads the kits (and what `all` means) from a file of the same shape instead of the fixture (the F2 kits of sim_loot.gd --wear). Needs --gear-kit.
 ## Last line: CHAPTER1_SIM_POWER_RESULT {...}. Writes only under _local/ (and only through --out); never reads or writes the user folder.
 const Chapter = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
@@ -1273,7 +1274,12 @@ func range_word(v: float, rng_: Variant) -> String:
 
 ## Without --gear-kit nothing here runs. Measures the bare hero ("none") and each kit with the same builds / seeds / cells and prints the gains.
 func run_gear_kits(named: Array, witches: Array, seeds: Array, secs: float, single_secs: float, warmup: float, hp_mode: String, beat: Dictionary, beat_id: String, out_path: String) -> void:
-	var fixture := GearKits.load_fixture()
+	var kits_file := arg_string("--kits-file", "")
+	if kits_file != "" and (not kits_file.begins_with("_local/") or kits_file.contains("..") or kits_file.contains(":")):
+		print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "--kits-file must be a relative path under _local/"}))
+		quit(1)
+		return
+	var fixture := GearKits.load_fixture("res://" + kits_file) if kits_file != "" else GearKits.load_fixture()
 	var loot = Loot.new()
 	if fixture.is_empty() or not loot.load_file():
 		print("CHAPTER1_SIM_POWER_RESULT ", JSON.stringify({"error": "gear kit fixture or loot data unreadable"}))

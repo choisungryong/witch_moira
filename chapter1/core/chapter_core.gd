@@ -102,6 +102,14 @@ var _grace_waited := 0
 var _beat_index := -1
 var _beat_tick := 0
 var _wave_index := -1
+## D22 R1-B threat keys (all optional; absent = the old rules, no extra random draw, no snapshot key).
+## The wave whose squad was already placed, the heading of the last wave head, the head-size roll per beat (jitter), and the
+## ranged bodies still allowed in the batch being spawned (-1 = no cap in force).
+var _squad_wave := -1
+var _wave_heading := 0.0
+var _crest_jitter: Dictionary = {}
+var _threat_on := false
+var _ranged_left := -1
 var _in_lull := false
 var _taste_done := false
 var _rest_until := 0
@@ -228,6 +236,10 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	if _build_potions>0:potions=mini(int(tuning.potion.carry_max),potions+_build_potions)
 	_rhythm_on=tuning.has("rhythm") and bool(tuning.rhythm.enabled)
 	_beat_index=-1;_beat_tick=0;_wave_index=-1;_in_lull=false;_taste_done=false;_rest_until=0;_spawn_hp_bps=10000
+	_squad_wave=-1;_wave_heading=0.0;_crest_jitter={};_threat_on=false;_ranged_left=-1
+	if _rhythm_on:
+		for beat in tuning.rhythm.beats:
+			if beat.wave is Dictionary and (beat.wave.has("squad") or int(beat.wave.crest.get("count_jitter_bps",0))>0):_threat_on=true
 	_kb_on=_rhythm_on and tuning.rhythm.has("kill_burst");_kb_list.clear()
 	_trial_phase="";_trial_until=0;_trial_clear_until=0;_trial_center=Vector2.ZERO
 	_opening_on=_rhythm_on and tuning.rhythm.has("opening") and bool(tuning.rhythm.opening.enabled)
@@ -749,7 +761,7 @@ func _rhythm_tick() -> void:
 	elif _beat_index>=0 and not _op_active and _beat_index+1<beats.size() and int(beats[_beat_index+1].zone)==int(beats[_beat_index].zone) and tick-_beat_tick>=int(beats[_beat_index].max_ticks):target=_beat_index+1
 	if target!=_beat_index:
 		if _op_active:_opening_end(false)
-		_beat_index=target;_beat_tick=tick;_wave_index=-1;_in_lull=false;_taste_done=false
+		_beat_index=target;_beat_tick=tick;_wave_index=-1;_in_lull=false;_taste_done=false;_squad_wave=-1
 		_emit("beat_started",hero.position,{"id":String(beats[target].id)})
 		if target==0 and _opening_on and not _op_done:_opening_begin()
 	if _op_active:_opening_tick()
@@ -896,31 +908,82 @@ func _trial_holds_boss() -> bool:
 		_trial_phase="done"
 	return false
 
-func _rhythm_mix_kind(rule: Dictionary) -> String:
-	var mix: Dictionary=rule.mix
-	var walker := int(mix.walker);var ranged := int(mix.ranged);var charger := int(mix.charger)
+func _rhythm_mix_kind(rule: Dictionary,mix_override: Dictionary={}) -> String:
+	var mix: Dictionary=mix_override if not mix_override.is_empty() else rule.mix
+	var walker := int(mix.get("walker",0));var ranged := int(mix.get("ranged",0));var charger := int(mix.get("charger",0))
 	var roll := _spawn_rng.randi_range(0,walker+ranged+charger-1)
 	if roll<walker:return "walker"
-	if roll<walker+ranged:return "ranged" if tick>=int(rule.get("ranged_from_ticks",0)) else "walker"
+	if roll<walker+ranged:
+		if tick<int(rule.get("ranged_from_ticks",0)):return "walker"
+		# D17 4.2: at the cap of living ranged bodies the share of ranged turns into walkers (the draw is the same).
+		if _ranged_left==0:return "walker"
+		if _ranged_left>0:_ranged_left-=1
+		return "ranged"
 	return "charger" if tick>=int(rule.get("charger_from_ticks",0)) else "walker"
+
+## Living ranged bodies of this epoch.
+func _ranged_alive() -> int:
+	var n := 0
+	for id_ in enemies:
+		var e: Dictionary=enemies[id_]
+		if e.hp_raw>0 and e.generation==_epoch and e.kind=="ranged":n+=1
+	return n
+
+## The ranged bodies a batch may still add under the beat's ranged_cap (-1 = no cap key).
+func _ranged_room(rule: Dictionary) -> int:
+	if not rule.has("ranged_cap"):return -1
+	return maxi(0,int(rule.ranged_cap)-_ranged_alive())
+
+## D22 R1-B: a guardian of zone 0 or 1 is alive (the final boss does not use the rhythm's spawn).
+func _guardian_alive() -> bool:
+	return _champion_id>0 and enemies.has(_champion_id) and enemies[_champion_id].hp_raw>0
 
 ## A pack that comes in from one direction: one angle from _spawn_rng, then every body inside the fan around it.
 func _spawn_crest(rule: Dictionary,fan: Dictionary,cap: int) -> void:
+	# count_jitter_bps (D17 4.6): the head's size is rolled once per beat and run from the spawn stream, then kept.
+	var bodies := int(fan.count)
+	var jitter := int(fan.get("count_jitter_bps",0))
+	if jitter>0:
+		var beat_id := String(rule.id)
+		if not _crest_jitter.has(beat_id):_crest_jitter[beat_id]=_spawn_rng.randi_range(-jitter,jitter)
+		bodies=maxi(1,bodies*(10000+int(_crest_jitter[beat_id]))/10000)
 	var heading := _spawn_rng.randf_range(0,TAU)
+	_wave_heading=heading
+	var mix_fan: Variant=fan.get("mix")
+	var mix: Dictionary=mix_fan if mix_fan is Dictionary else {}
 	var half := deg_to_rad(float(fan.arc_deg))*.5
 	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
 	var count := alive_count();var placed := 0
-	for i in int(fan.count):
+	_ranged_left=_ranged_room(rule)
+	for i in bodies:
 		if count>=cap:break
-		var kind := _rhythm_mix_kind(rule)
+		var kind := _rhythm_mix_kind(rule,mix)
 		var point := Vector2.ZERO;var found := false
 		for attempt in 8:
 			var angle := heading+_spawn_rng.randf_range(-half,half)
-			point=_clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_spawn_rng.randf_range(ring_min,ring_max))
+			var radius := _spawn_rng.randf_range(ring_min,ring_max)
+			# crest.mix: the chargers stand in the front half of the head (the half nearer the hero).
+			if not mix.is_empty() and kind=="charger":radius=ring_min+(radius-ring_min)*.5
+			point=_clamp_point(hero.position+Vector2(cos(angle),sin(angle))*radius)
 			if point.distance_squared_to(hero.position)>=ring_min*ring_min*.64:found=true;break
 		if not found:point=_spawn_point(ring_min,ring_max)
 		if _spawn(kind,point):count+=1;placed+=1
+	_ranged_left=-1
 	if placed>0:_emit("wave_crest",hero.position,{"beat":"trial" if _trial_phase=="hold" else String(rule.id),"direction":Vector2(cos(heading),sin(heading)),"count":placed})
+
+## D22 R1-B squad: once per wave, ranged bodies stand together on the far side from the head (heading +- 90..180 degrees),
+## inside ring_m. The patch is as wide as the ring is deep. They are the planned threat: the alive cap holds, the ranged cap does not.
+func _spawn_squad(rule: Dictionary,squad: Dictionary,cap: int) -> void:
+	var direction := _wave_heading+_spawn_rng.randf_range(PI*.5,PI*1.5)
+	var lo := float(squad.ring_m[0]);var hi := float(squad.ring_m[1])
+	var half := atan2((hi-lo)*.5,(lo+hi)*.5)
+	var count := alive_count();var placed := 0
+	for i in int(squad.count):
+		if count>=cap:break
+		var angle := direction+_spawn_rng.randf_range(-half,half)
+		var point := _clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_spawn_rng.randf_range(lo,hi))
+		if _spawn("ranged",point):count+=1;placed+=1
+	if placed>0:_emit("wave_squad",hero.position,{"beat":String(rule.id),"direction":Vector2(cos(direction),sin(direction)),"count":placed})
 
 ## Spawning under the beat table (or the trial's rule): amount per interval, a cap per beat, waves and lulls.
 func _spawn_rhythm_wave() -> void:
@@ -933,6 +996,10 @@ func _spawn_rhythm_wave() -> void:
 	var cap := mini(int(rule.alive_cap),int(tuning.alive_cap))
 	var amount := int(rule.amount)
 	var wave: Variant=null if trial else rule.wave
+	# rhythm.guardian (D17 4.3): while a guardian lives the ordinary inflow runs at steady_bps and, unless crest is true, no head or squad comes.
+	var steady := 10000;var heads := true
+	var guard: Variant=rhythm.get("guardian")
+	if guard is Dictionary and _guardian_alive():steady=int(guard.steady_bps);heads=bool(guard.get("crest",false))
 	if wave is Dictionary:
 		var relative := tick-_beat_tick
 		var period := int(wave.period_ticks)
@@ -942,20 +1009,28 @@ func _spawn_rhythm_wave() -> void:
 			if lull:_emit("lull_started",hero.position,{"beat":String(rule.id)})
 		if relative/period>_wave_index:
 			_wave_index=relative/period
-			if not lull:_spawn_crest(rule,wave.crest,cap)
+			if not lull and heads:_spawn_crest(rule,wave.crest,cap)
+		var squad: Variant=wave.get("squad")
+		if squad is Dictionary and not lull and heads and relative/period>_squad_wave and relative%period>=int(squad.at_ticks):
+			_squad_wave=relative/period
+			_spawn_squad(rule,squad,cap)
 		if lull:
 			cap=cap*int(wave.lull_cap_bps)/10000
 			if amount>0:amount=maxi(1,amount*int(wave.lull_amount_bps)/10000)
 	elif not trial and rule.get("taste_crest")!=null and not _taste_done and tick>=int(rule.taste_crest.at_ticks):
-		_taste_done=true;_spawn_crest(rule,rule.taste_crest,cap)
+		_taste_done=true
+		if heads:_spawn_crest(rule,rule.taste_crest,cap)
 	if tick<_next_spawn:return
 	_next_spawn=tick+_descent_spawn_interval(int(rule.interval_ticks))
+	if steady!=10000:amount=0 if steady<=0 else maxi(1,amount*steady/10000)
 	var count := alive_count()
 	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
+	_ranged_left=_ranged_room(rule)
 	for i in amount:
 		if count>=cap:break
 		var kind := _rhythm_mix_kind(rule)
 		if _spawn(kind,_spawn_point(ring_min,ring_max)):count+=1
+	_ranged_left=-1
 
 ## Read-only picture for the progress bar. Works with the rhythm off too (then from zone and seal progress alone).
 ## phase: "surge" | "lull" | "rest" (no spawning: gate walk, after a guardian, the trial's clearing) | "trial" | "boss".
@@ -2603,6 +2678,7 @@ func snapshot() -> Dictionary:
 	if _rhythm_on:
 		result.rhythm={"beat":_beat_index,"beat_tick":_beat_tick,"wave_index":_wave_index,"in_lull":_in_lull,"taste_done":_taste_done,"rest_until":_rest_until,
 			"hp_bps":_spawn_hp_bps,"trial":_trial_phase,"trial_until":_trial_until,"trial_clear_until":_trial_clear_until,"trial_center":_trial_center}
+		if _threat_on:result.rhythm.threat={"squad_wave":_squad_wave,"heading":_wave_heading,"jitter":_crest_jitter.duplicate()}
 		if _kb_on:
 			var window_list: Array=[]
 			for entry in _kb_list:window_list.append([int(entry.tick),int(entry.xp),int(entry.pts),entry.pos])
@@ -2631,6 +2707,19 @@ func snapshot() -> Dictionary:
 	return result
 
 
+## D23 T1-B: the sum of the worn gear's condition damage lines that hold for this enemy right now (0 without such gear).
+func _condition_bps(e: Dictionary,frozen: bool) -> int:
+	var total := 0
+	if int(_gear_stats.get("vs_elite_bps",0))>0 and _enemy_role(e)!="normal":total+=int(_gear_stats.vs_elite_bps)
+	if int(_gear_stats.get("vs_frozen_bps",0))>0 and frozen:total+=int(_gear_stats.vs_frozen_bps)
+	if int(_gear_stats.get("vs_marked_bps",0))>0:
+		for slot in _mark_owners.size():
+			if tick<int(e.get(MARK_KEYS[slot],0)):total+=int(_gear_stats.vs_marked_bps);break
+	if int(_gear_stats.get("after_dash_bps",0))>0 and _after_dash_active():total+=int(_gear_stats.after_dash_bps)
+	if int(_gear_stats.get("moving_damage_bps",0))>0 and _moving_active():total+=int(_gear_stats.moving_damage_bps)
+	var cap := int(tuning.get("stat_caps",{}).get("condition_damage_bps",0))
+	return mini(total,cap) if cap>0 else total
+
 func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if not _terminal_mode.is_empty() or not enemies.has(id_) or int(context.remaining_hits)<=0:return
 	var e: Dictionary=enemies[id_]
@@ -2648,6 +2737,10 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 		damage=maxi(1,int((damage+divisor-1)/divisor))
 	# R1: the tree's guardian bonus on the signature skill, before mark resonance.
 	if _elite_bps>0 and e.elite and context.skill_id==_primary_id:damage=damage*(10000+_elite_bps)/10000
+	# D23 T1-B: the worn gear's condition lines (elite, frozen, marked, after a dash, on the move) add up to ONE multiplier, cut at
+	# stat_caps.condition_damage_bps. It sits before the spell composition and the mark resonance, so the mark credit stays exact.
+	var condition_bps := _condition_bps(e,was_frozen)
+	if condition_bps>0:damage=damage*(10000+condition_bps)/10000
 	# Spell composition: a direct hit that finds a status another spell put on the enemy is multiplied (detonation), then a
 	# spell with vs_strong_bps deals that share to guardians. Both come before the mark so the mark credit stays exact.
 	var spell: Dictionary={}

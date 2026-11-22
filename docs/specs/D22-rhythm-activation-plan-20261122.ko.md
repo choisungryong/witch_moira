@@ -310,7 +310,7 @@ python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --scrip
 |---|---|---|---|
 | `opening_step`·`spawn.opening`·`first_of_step` | 첫 적의 눈빛, 오는 쪽 가장자리 표시, 첫 6초 HUD 덜 띄움 | 첫 6초 환경음만, 첫 적 발소리(그 방향) | 가장자리 표시 |
 | `wave_crest {direction}` | 그 방향 화면 가장자리 표시(머리가 화면 밖에서 올 때) | 머리 신호음(방향) | 예 |
-| `wave_squad`(R1) | 사격조 방향 표시(머리와 다른 색) | — | 예 |
+| `wave_squad {beat, direction, count}`(R1-B, 코어에 들어옴: `direction`은 사격조가 선 쪽의 단위 벡터(머리 방향 ±90~180°), `count`는 실제로 놓인 원거리 수, 한 파도 주기에 한 번) | 사격조 방향 표시(머리와 다른 색) | — | 예 |
 | `lull_started`·`run_progress().phase` | 골 동안의 표시(진행 막대의 빈칸 또는 화면 가장자리의 숨) | 음악의 내림 | 예 |
 | `beat_started` | 마디 이름 띠(짧게) — 이름은 narrative-lead | — | 아니오 |
 | `seal_grace {cause:"guardian"}` | 이미 `growth`와 같은 번쩍임 [본 것: `chapter_effects.gd` 280행] | — | 끝남 |

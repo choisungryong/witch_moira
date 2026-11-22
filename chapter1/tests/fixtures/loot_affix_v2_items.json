@@ -682,7 +682,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4480
+					"value": 4250
 				},
 				{
 					"group": "soul",
@@ -701,7 +701,7 @@
 			"slot": "ring",
 			"stats": {
 				"cooldown_bps": 500,
-				"fire_damage_bps": 4480,
+				"fire_damage_bps": 4250,
 				"pickup_radius_cm": 40,
 				"soul_gain_bps": 2882
 			}
@@ -1131,7 +1131,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5505
+					"value": 5300
 				},
 				{
 					"group": "area",
@@ -1155,7 +1155,7 @@
 			"required_level": 19,
 			"slot": "charm",
 			"stats": {
-				"damage_bps": 5505,
+				"damage_bps": 5300,
 				"fire_damage_bps": 1000,
 				"max_hp_raw": 15990,
 				"radius_cm": 184,
@@ -1528,7 +1528,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3592
+					"value": 3550
 				},
 				{
 					"group": "damage",
@@ -1558,7 +1558,7 @@
 			"required_level": 13,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 4192,
+				"cooldown_bps": 4150,
 				"damage_bps": 3857,
 				"pickup_radius_cm": 196,
 				"shatter_count": 1
@@ -2324,7 +2324,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5883
+					"value": 5300
 				}
 			],
 			"base_id": "chapter1.full.winter_shard",
@@ -2336,7 +2336,7 @@
 			"required_level": 24,
 			"slot": "charm",
 			"stats": {
-				"damage_bps": 5883,
+				"damage_bps": 5300,
 				"max_hp_raw": 2560,
 				"slow_bps": 1200,
 				"soul_gain_bps": 3149
@@ -2613,7 +2613,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3748
+					"value": 3550
 				},
 				{
 					"group": "chain",
@@ -2638,7 +2638,7 @@
 			"slot": "weapon",
 			"stats": {
 				"chain_targets": 2,
-				"cooldown_bps": 4948,
+				"cooldown_bps": 4750,
 				"damage_bps": 4074
 			}
 		},
@@ -4013,7 +4013,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3613
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.glass_ring",
@@ -4028,7 +4028,7 @@
 			"stats": {
 				"arc_damage_bps": -1000,
 				"chain_targets": 3,
-				"cooldown_bps": 3613,
+				"cooldown_bps": 3550,
 				"damage_bps": 5254,
 				"max_hp_raw": -2560
 			}
@@ -5196,7 +5196,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5916
+					"value": 5300
 				},
 				{
 					"group": "health",
@@ -5215,7 +5215,7 @@
 			"slot": "charm",
 			"stats": {
 				"chain_targets": 1,
-				"damage_bps": 5616,
+				"damage_bps": 5000,
 				"max_hp_raw": 13532
 			}
 		},
@@ -5368,7 +5368,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3779
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.linen_wraps",
@@ -5380,7 +5380,7 @@
 			"required_level": 17,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 3779,
+				"cooldown_bps": 3550,
 				"damage_bps": 300,
 				"pickup_radius_cm": 171,
 				"shatter_count": 1
@@ -5853,7 +5853,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5884
+					"value": 5300
 				},
 				{
 					"group": "haste",
@@ -5872,7 +5872,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 2081,
-				"damage_bps": 6184,
+				"damage_bps": 5600,
 				"shatter_count": 1
 			}
 		},
@@ -6792,7 +6792,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3620
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.linen_wraps",
@@ -6804,7 +6804,7 @@
 			"required_level": 11,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 3620,
+				"cooldown_bps": 3550,
 				"damage_bps": 300,
 				"max_hp_raw": 18573,
 				"pickup_radius_cm": 139,
@@ -7267,7 +7267,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5741
+					"value": 5300
 				},
 				{
 					"group": "health",
@@ -7292,7 +7292,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 3507,
-				"damage_bps": 6141,
+				"damage_bps": 5700,
 				"max_hp_raw": 20570
 			}
 		},
@@ -7404,7 +7404,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3713
+					"value": 3550
 				},
 				{
 					"group": "chain",
@@ -7429,7 +7429,7 @@
 			"slot": "weapon",
 			"stats": {
 				"chain_targets": 1,
-				"cooldown_bps": 3713,
+				"cooldown_bps": 3550,
 				"damage_bps": 5978,
 				"projectiles": 1
 			}
@@ -7737,7 +7737,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3609
+					"value": 3550
 				},
 				{
 					"group": "damage",
@@ -7755,7 +7755,7 @@
 			"required_level": 27,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 4209,
+				"cooldown_bps": 4150,
 				"damage_bps": 3844,
 				"max_hp_raw": 15503
 			}
@@ -8127,7 +8127,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3869
+					"value": 3550
 				},
 				{
 					"group": "ward",
@@ -8145,7 +8145,7 @@
 			"required_level": 21,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 4269,
+				"cooldown_bps": 3950,
 				"damage_reduction_bps": 1298,
 				"max_hp_raw": 14139
 			}
@@ -8528,7 +8528,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4527
+					"value": 4250
 				},
 				{
 					"group": "shatter",
@@ -8548,7 +8548,7 @@
 			"stats": {
 				"damage_reduction_bps": 500,
 				"dash_cooldown_bps": 2314,
-				"fire_damage_bps": 4527,
+				"fire_damage_bps": 4250,
 				"max_hp_raw": 18846,
 				"shatter_count": 2
 			}
@@ -8667,7 +8667,7 @@
 					"group": "damage",
 					"id": "wrath5",
 					"stat": "damage_bps",
-					"value": 7947
+					"value": 6200
 				}
 			],
 			"base_id": "chapter1.full.storm_gauntlets",
@@ -8680,7 +8680,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 3275,
-				"damage_bps": 8347,
+				"damage_bps": 6600,
 				"max_hp_raw": 15263
 			}
 		},
@@ -8724,7 +8724,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4583
+					"value": 4250
 				},
 				{
 					"group": "haste",
@@ -8744,7 +8744,7 @@
 			"stats": {
 				"chain_targets": 2,
 				"cooldown_bps": 2958,
-				"fire_damage_bps": 5583,
+				"fire_damage_bps": 5250,
 				"radius_cm": 40,
 				"soul_gain_bps": 3862
 			}
@@ -8956,7 +8956,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3601
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.ember_lens",
@@ -8968,7 +8968,7 @@
 			"required_level": 16,
 			"slot": "charm",
 			"stats": {
-				"cooldown_bps": 3601,
+				"cooldown_bps": 3550,
 				"fire_damage_bps": 1000,
 				"radius_cm": 40
 			}
@@ -8997,7 +8997,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5701
+					"value": 5300
 				}
 			],
 			"base_id": "chapter1.full.quick_loop",
@@ -9010,7 +9010,7 @@
 			"slot": "ring",
 			"stats": {
 				"cooldown_bps": 3072,
-				"damage_bps": 5701,
+				"damage_bps": 5300,
 				"damage_reduction_bps": 1315,
 				"dash_cooldown_bps": 2627,
 				"pickup_radius_cm": 40
@@ -9273,7 +9273,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5531
+					"value": 5300
 				},
 				{
 					"group": "slow",
@@ -9293,7 +9293,7 @@
 			"stats": {
 				"chain_targets": 2,
 				"cooldown_bps": 1200,
-				"damage_bps": 6031,
+				"damage_bps": 5800,
 				"projectiles": 1,
 				"slow_bps": 3074
 			}
@@ -10014,7 +10014,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3896
+					"value": 3550
 				},
 				{
 					"group": "health",
@@ -10038,7 +10038,7 @@
 			"required_level": 23,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 4396,
+				"cooldown_bps": 4050,
 				"max_hp_raw": 19983,
 				"soul_gain_bps": 4411
 			}
@@ -10580,7 +10580,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5598
+					"value": 5300
 				}
 			],
 			"base_id": "chapter1.full.ember_gloves",
@@ -10593,7 +10593,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 3091,
-				"damage_bps": 6198,
+				"damage_bps": 5900,
 				"max_hp_raw": 14371,
 				"pickup_radius_cm": 162
 			}
@@ -11443,7 +11443,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3695
+					"value": 3550
 				},
 				{
 					"group": "soul",
@@ -11461,7 +11461,7 @@
 			"required_level": 17,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 3995,
+				"cooldown_bps": 3850,
 				"max_hp_raw": 20394,
 				"soul_gain_bps": 3120
 			}
@@ -12141,7 +12141,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3680
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.ash_hood",
@@ -12153,7 +12153,7 @@
 			"required_level": 14,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 3980,
+				"cooldown_bps": 3850,
 				"damage_reduction_bps": 1261,
 				"max_hp_raw": 19372
 			}
@@ -12462,7 +12462,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3635
+					"value": 3550
 				},
 				{
 					"group": "health",
@@ -12480,7 +12480,7 @@
 			"required_level": 17,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 3635,
+				"cooldown_bps": 3550,
 				"damage_bps": 4743,
 				"max_hp_raw": 15946,
 				"pickup_radius_cm": 289
@@ -13162,7 +13162,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3843
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.ember_gloves",
@@ -13174,7 +13174,7 @@
 			"required_level": 14,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 3843,
+				"cooldown_bps": 3550,
 				"damage_bps": 600,
 				"pickup_radius_cm": 258
 			}
@@ -14073,7 +14073,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3804
+					"value": 3550
 				},
 				{
 					"group": "ward",
@@ -14091,7 +14091,7 @@
 			"required_level": 16,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 4104,
+				"cooldown_bps": 3850,
 				"damage_reduction_bps": 1236,
 				"max_hp_raw": 18780
 			}
@@ -14201,7 +14201,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4586
+					"value": 4250
 				},
 				{
 					"group": "shatter",
@@ -14228,7 +14228,7 @@
 			"stats": {
 				"arc_damage_bps": -1000,
 				"chain_targets": 3,
-				"fire_damage_bps": 5586,
+				"fire_damage_bps": 5250,
 				"max_hp_raw": 18979,
 				"radius_cm": 40,
 				"shatter_count": 2
@@ -14663,7 +14663,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4572
+					"value": 4250
 				},
 				{
 					"group": "soul",
@@ -14681,7 +14681,7 @@
 			"required_level": 22,
 			"slot": "charm",
 			"stats": {
-				"fire_damage_bps": 4572,
+				"fire_damage_bps": 4250,
 				"max_hp_raw": 2560,
 				"slow_bps": 1200,
 				"soul_gain_bps": 2930
@@ -14946,7 +14946,7 @@
 					"group": "haste",
 					"id": "haste5",
 					"stat": "cooldown_bps",
-					"value": 4516
+					"value": 4150
 				}
 			],
 			"base_id": "chapter1.full.glass_ring",
@@ -14958,7 +14958,7 @@
 			"required_level": 18,
 			"slot": "ring",
 			"stats": {
-				"cooldown_bps": 4516,
+				"cooldown_bps": 4150,
 				"damage_bps": 1200,
 				"max_hp_raw": 11041
 			}
@@ -15225,7 +15225,7 @@
 					"group": "damage",
 					"id": "flame4",
 					"stat": "fire_damage_bps",
-					"value": 4653
+					"value": 4250
 				}
 			],
 			"base_id": "chapter1.full.piercing_sceptre",
@@ -15238,7 +15238,7 @@
 			"slot": "weapon",
 			"stats": {
 				"damage_bps": 1400,
-				"fire_damage_bps": 4653,
+				"fire_damage_bps": 4250,
 				"pierce": 1
 			}
 		},
@@ -16833,7 +16833,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5572
+					"value": 5300
 				},
 				{
 					"group": "harvest",
@@ -16852,7 +16852,7 @@
 			"slot": "charm",
 			"stats": {
 				"chain_targets": 1,
-				"damage_bps": 5272,
+				"damage_bps": 5000,
 				"pickup_radius_cm": 219,
 				"slow_bps": 2095
 			}
@@ -18368,7 +18368,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3845
+					"value": 3550
 				}
 			],
 			"base_id": "chapter1.full.piercing_sceptre",
@@ -18380,7 +18380,7 @@
 			"required_level": 21,
 			"slot": "weapon",
 			"stats": {
-				"cooldown_bps": 3845,
+				"cooldown_bps": 3550,
 				"damage_bps": 1400,
 				"pierce": 1,
 				"projectiles": 1,
@@ -20958,7 +20958,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3720
+					"value": 3550
 				},
 				{
 					"group": "harvest",
@@ -20976,7 +20976,7 @@
 			"required_level": 13,
 			"slot": "ring",
 			"stats": {
-				"cooldown_bps": 3720,
+				"cooldown_bps": 3550,
 				"damage_bps": 1200,
 				"dash_cooldown_bps": 2407,
 				"fire_damage_bps": 3086,
@@ -21083,7 +21083,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3997
+					"value": 3550
 				},
 				{
 					"group": "health",
@@ -21107,7 +21107,7 @@
 			"required_level": 11,
 			"slot": "hands",
 			"stats": {
-				"cooldown_bps": 3997,
+				"cooldown_bps": 3550,
 				"damage_bps": 4851,
 				"max_hp_raw": 14264
 			}
@@ -22049,7 +22049,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5807
+					"value": 5300
 				},
 				{
 					"group": "health",
@@ -22080,7 +22080,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 2210,
-				"damage_bps": 6107,
+				"damage_bps": 5600,
 				"max_hp_raw": 22623,
 				"pickup_radius_cm": 192
 			}
@@ -22125,7 +22125,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5407
+					"value": 5300
 				},
 				{
 					"group": "health",
@@ -22144,7 +22144,7 @@
 			"slot": "charm",
 			"stats": {
 				"chain_targets": 3,
-				"damage_bps": 5107,
+				"damage_bps": 5000,
 				"max_hp_raw": 7717,
 				"pickup_radius_cm": 219
 			}
@@ -22294,7 +22294,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5545
+					"value": 5300
 				}
 			],
 			"base_id": "chapter1.full.storm_gauntlets",
@@ -22308,7 +22308,7 @@
 			"slot": "hands",
 			"stats": {
 				"cooldown_bps": 600,
-				"damage_bps": 5945,
+				"damage_bps": 5700,
 				"pickup_radius_cm": 250,
 				"pierce": 2,
 				"radius_cm": 30
@@ -22880,7 +22880,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3579
+					"value": 3550
 				},
 				{
 					"group": "slow",
@@ -22898,7 +22898,7 @@
 			"required_level": 22,
 			"slot": "weapon",
 			"stats": {
-				"cooldown_bps": 3579,
+				"cooldown_bps": 3550,
 				"damage_bps": 1400,
 				"pierce": 1,
 				"slow_bps": 2438
@@ -23059,7 +23059,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5914
+					"value": 5300
 				},
 				{
 					"group": "soul",
@@ -23077,7 +23077,7 @@
 			"required_level": 27,
 			"slot": "charm",
 			"stats": {
-				"damage_bps": 5914,
+				"damage_bps": 5300,
 				"fire_damage_bps": 1000,
 				"pickup_radius_cm": 199,
 				"radius_cm": 40,
@@ -23165,7 +23165,7 @@
 					"group": "haste",
 					"id": "haste4",
 					"stat": "cooldown_bps",
-					"value": 3760
+					"value": 3550
 				},
 				{
 					"group": "soul",
@@ -23183,7 +23183,7 @@
 			"required_level": 18,
 			"slot": "head",
 			"stats": {
-				"cooldown_bps": 4160,
+				"cooldown_bps": 3950,
 				"max_hp_raw": 2560,
 				"soul_gain_bps": 3436
 			}
@@ -23296,7 +23296,7 @@
 					"group": "damage",
 					"id": "wrath4",
 					"stat": "damage_bps",
-					"value": 5498
+					"value": 5300
 				}
 			],
 			"base_id": "chapter1.full.ember_lens",
@@ -23308,7 +23308,7 @@
 			"required_level": 16,
 			"slot": "charm",
 			"stats": {
-				"damage_bps": 5498,
+				"damage_bps": 5300,
 				"fire_damage_bps": 1000,
 				"radius_cm": 40
 			}

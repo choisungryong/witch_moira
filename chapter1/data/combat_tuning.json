@@ -58,6 +58,8 @@
   "presentation": {"arc_stripe_ticks": 24},
   "marks": {"mark_bps": 9000, "mark_ticks": 360},
   "heavy_hit": {"heavy_bps": 2000, "gap_ticks": 120, "iframe_ticks": 45, "graze_bps": 1000, "ward_gap_ticks": 60},
+  "stat_caps": {"damage_reduction_bps": 7500, "condition_damage_bps": 10000},
+  "gear_conditions": {"after_dash_ticks": 120, "moving_ticks": 6, "lowhp_bps": 3500},
   "final_level_on_boss_spawn": true,
   "hero_shot": {"spread_mrad": 160},
   "meteor": {"fall_ticks": 24, "lead_bps": 5000, "scatter_cm": 150, "radius_bps": 10000, "damage_bps": 10000},

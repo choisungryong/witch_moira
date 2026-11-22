@@ -8,6 +8,7 @@ extends SceneTree
 ##   D  with the rhythm off the snapshots do not depend on a rhythm block being present
 ##   E  the validator refuses values outside the D11 A6 ranges
 ##   F  event fields that are always attached (hit.dealt_raw, item_drop.source)
+##   R1B the optional threat keys of D22 (crest.mix, squad, ranged_cap, guardian, count_jitter_bps) and the wider crest count
 ## Marker: CHAPTER1_RHYTHM_TEST_RESULT. Writes nothing.
 const Chapter = preload("res://chapter1/core/chapter_core.gd")
 const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
@@ -659,6 +660,275 @@ func first_visit_checks() -> void:
 	check(not App.opening_first_visit_for(false, 0, returning), "R0-B profile off, opening=returning: false")
 	check(TrialDocs.TRIAL_NAMES.has("elites") and TrialDocs.switches(PackedStringArray(["--chapter1-profile-off", "--chapter1-trial=rhythm,elites"])) == ["trial:rhythm", "trial:elites"], "R0-B elites is a known trial name")
 
+# ------------------------------------------------------------------ R1-B: the threat keys (D22 4, D17 4.2 4.3 4.6)
+
+## A rhythm run whose hero stands still, casts nothing and cannot die: only the spawner acts. `mutate` edits the document.
+## Beat 0 hands over to seung1 on tick 60. Returns {run, events}.
+func threat_run(mutate: Callable, ticks: int, seed_: int = 11, setup: Callable = Callable(), purge: int = 0) -> Dictionary:
+	var doc := document(false, func(d):
+		d.rhythm.beats[0].max_ticks = 60
+		if mutate.is_valid(): mutate.call(d))
+	var run := make_run(doc, seed_)
+	for id_ in run._skill_ids: run._next_cast[id_] = 1 << 30
+	if setup.is_valid(): setup.call(run)
+	var events: Array = []
+	for i in ticks:
+		pump(run, events, purge)
+		if run.mode != "playing": break
+	return {"run": run, "events": events}
+
+## One tick; every `purge` ticks the field is emptied (the guardian, if one was set, stays) so that the alive cap never binds.
+func pump(run: RefCounted, events: Array, purge: int) -> void:
+	if purge > 0 and int(run.tick) % purge == 0:
+		for id_ in run.enemies.keys():
+			if int(id_) != int(run._champion_id): run.enemies.erase(id_)
+		run._alive = run.enemies.size()
+	run.hero.hp_raw = run.hero.max_hp_raw
+	run.step(Vector2.ZERO)
+	events.append_array(run.events.duplicate(true))
+
+func of_kind(events: Array, type: String) -> Array:
+	return events.filter(func(e): return e.type == type)
+
+## The bodies a wave_crest / wave_squad event just placed: the last `count` ordinary spawns before it.
+func placed_by(events: Array, index: int) -> Array:
+	var marker: Dictionary = events[index]
+	var out: Array = []
+	for k in range(index - 1, -1, -1):
+		var e: Dictionary = events[k]
+		if e.type == "spawn" and not e.elite: out.append(e)
+		if out.size() >= int(marker.count): break
+	return out
+
+func living_kind(run: RefCounted, kind: String) -> int:
+	var n := 0
+	for id_ in run.enemies:
+		var e: Dictionary = run.enemies[id_]
+		if e.hp_raw > 0 and e.kind == kind: n += 1
+	return n
+
+func threat_validator_checks() -> void:
+	var run = Chapter.new()
+	var ok_doc := document(false, func(d):
+		d.rhythm.beats[1].wave.crest.mix = {"charger": 30, "walker": 70}
+		d.rhythm.beats[1].wave.crest.count_jitter_bps = 1500
+		d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840}
+		d.rhythm.beats[1].ranged_cap = 4
+		d.rhythm.guardian = {"steady_bps": 4000})
+	check(run.set_tuning(ok_doc), "R1B the document with all five keys is accepted " + str(run.errors))
+	check(run.set_tuning(document(false, func(d): d.rhythm.guardian = {"steady_bps": 4000, "crest": true})), "R1B guardian with crest true is accepted")
+	check(run.set_tuning(document(false, func(d): d.rhythm.beats[3].wave.crest.count = 60)), "R1B crest count 60 is accepted (widened from 40)")
+	rejects("crest count 61", func(d): d.rhythm.beats[3].wave.crest.count = 61)
+	rejects("taste_crest count 61", func(d): d.rhythm.beats[0].taste_crest = {"at_ticks": 120, "count": 61, "arc_deg": 60})
+	rejects("crest mix not summing to 100", func(d): d.rhythm.beats[1].wave.crest.mix = {"charger": 30, "walker": 60})
+	rejects("crest mix with a stranger kind", func(d): d.rhythm.beats[1].wave.crest.mix = {"charger": 30, "walker": 60, "boss": 10})
+	rejects("crest mix empty", func(d): d.rhythm.beats[1].wave.crest.mix = {})
+	rejects("crest mix share 101", func(d): d.rhythm.beats[1].wave.crest.mix = {"walker": 101})
+	rejects("count_jitter_bps 3001", func(d): d.rhythm.beats[1].wave.crest.count_jitter_bps = 3001)
+	rejects("count_jitter_bps -1", func(d): d.rhythm.beats[1].wave.crest.count_jitter_bps = -1)
+	rejects("crest with a stranger key", func(d): d.rhythm.beats[1].wave.crest.extra = 1)
+	rejects("squad count 9", func(d): d.rhythm.beats[1].wave.squad = {"count": 9, "ring_m": [9, 12], "at_ticks": 840})
+	rejects("squad ring_m below 6", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [5, 12], "at_ticks": 840})
+	rejects("squad ring_m above 14", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 15], "at_ticks": 840})
+	rejects("squad ring_m reversed", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [12, 9], "at_ticks": 840})
+	rejects("squad ring_m of three", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 10, 12], "at_ticks": 840})
+	rejects("squad at_ticks inside the lull", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 1700})
+	rejects("squad at_ticks negative", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": -1})
+	rejects("squad without at_ticks", func(d): d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12]})
+	rejects("ranged_cap 41", func(d): d.rhythm.beats[1].ranged_cap = 41)
+	rejects("ranged_cap -1", func(d): d.rhythm.beats[1].ranged_cap = -1)
+	rejects("guardian steady_bps 10001", func(d): d.rhythm.guardian = {"steady_bps": 10001})
+	rejects("guardian without steady_bps", func(d): d.rhythm.guardian = {"crest": true})
+	rejects("guardian crest as a number", func(d): d.rhythm.guardian = {"steady_bps": 4000, "crest": 1})
+	rejects("guardian with a stranger key", func(d): d.rhythm.guardian = {"steady_bps": 4000, "x": 1})
+
+func threat_checks() -> void:
+	threat_validator_checks()
+	# 1. crest.mix: the head takes the mix, and its chargers stand in the front half (the ring's near half)
+	var ring_min := 7.5
+	var ring_max := 10.5
+	var mid := ring_min + (ring_max - ring_min) * .5
+	var _m1 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].charger_from_ticks = 0
+		d.rhythm.beats[1].wave.crest.count = 60
+		d.rhythm.beats[1].wave.crest.mix = {"charger": 40, "walker": 60}
+	var mixed := threat_run(_m1, 400)
+	var crests := of_kind(mixed.events, "wave_crest")
+	check(crests.size() >= 1, "R1B mix: a head came")
+	if crests.size() >= 1:
+		var index: int = mixed.events.find(crests[0])
+		var bodies := placed_by(mixed.events, index)
+		var chargers := bodies.filter(func(b): return b.kind == "charger")
+		var walkers := bodies.filter(func(b): return b.kind == "walker")
+		check(bodies.size() == int(crests[0].count) and int(crests[0].count) == 60, "R1B mix: the head has its 60 bodies (%d)" % bodies.size())
+		check(chargers.size() + walkers.size() == bodies.size() and chargers.size() > 12 and chargers.size() < 36, "R1B mix: about 40 percent chargers, the rest walkers, no ranged (%d / %d)" % [chargers.size(), walkers.size()])
+		var near_ok := chargers.all(func(b): return (b.position - mixed.run.hero.position).length() <= mid + 0.02)
+		var far_walker := walkers.any(func(b): return (b.position - mixed.run.hero.position).length() > mid + 0.2)
+		check(near_ok and far_walker, "R1B mix: every charger stands within %.2f m (the near half of the ring), walkers fill the whole ring" % mid)
+	# a doc without the key puts the beat's own mix (ranged and chargers by the beat's shares) and no half-ring rule
+	var _m2 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].charger_from_ticks = 0
+		d.rhythm.beats[1].wave.crest.count = 60
+	var plain := threat_run(_m2, 400)
+	var plain_crest: Dictionary = of_kind(plain.events, "wave_crest")[0]
+	var plain_bodies := placed_by(plain.events, plain.events.find(plain_crest))
+	check(plain_bodies.any(func(b): return b.kind == "ranged") or plain_bodies.any(func(b): return b.kind == "charger"), "R1B mix: without the key the head follows the beat's mix")
+	# 2. ranged_cap: living ranged bodies stay at the cap, the surplus share is walkers; a cap above the need changes nothing
+	var _m3 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].ranged_from_ticks = 0
+		d.rhythm.beats[1].mix = {"walker": 10, "ranged": 90, "charger": 0}
+		d.rhythm.beats[1].ranged_cap = 3
+	var capped := threat_run(_m3, 900)
+	var _m4 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].ranged_from_ticks = 0
+		d.rhythm.beats[1].mix = {"walker": 10, "ranged": 90, "charger": 0}
+	var uncapped := threat_run(_m4, 900)
+	var ranged_alive := living_kind(capped.run, "ranged")
+	check(ranged_alive == 3, "R1B ranged_cap 3: exactly 3 living ranged bodies after 900 ticks (%d)" % ranged_alive)
+	check(living_kind(uncapped.run, "ranged") > 8, "R1B without ranged_cap the same doc fills with ranged bodies (%d)" % living_kind(uncapped.run, "ranged"))
+	check(living_kind(capped.run, "walker") > living_kind(uncapped.run, "walker"), "R1B ranged_cap: the surplus ranged share turned into walkers (%d vs %d)" % [living_kind(capped.run, "walker"), living_kind(uncapped.run, "walker")])
+	var worst := 0
+	var _m5 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].ranged_from_ticks = 0
+		d.rhythm.beats[1].mix = {"walker": 10, "ranged": 90, "charger": 0}
+		d.rhythm.beats[1].ranged_cap = 3
+	var probe := threat_run(_m5, 1)
+	for i in 900:
+		probe.run.hero.hp_raw = probe.run.hero.max_hp_raw
+		probe.run.step(Vector2.ZERO)
+		worst = maxi(worst, living_kind(probe.run, "ranged"))
+	check(worst <= 3, "R1B ranged_cap 3: never more than 3 living ranged at any tick (%d)" % worst)
+	var _m6 := func(d):
+		d.rhythm.beats[1].ranged_cap = 40
+	var roomy := threat_run(_m6, 1500)
+	var none := threat_run(Callable(), 1500)
+	check(JSON.stringify(roomy.run.snapshot()).sha256_text() == JSON.stringify(none.run.snapshot()).sha256_text(), "R1B ranged_cap 40 that never binds leaves the run exactly as it was (same snapshot)")
+	# 3. squad: once per wave, away from the head, inside the ring, ranged; the wave_squad event carries {beat, direction, count}
+	var squad_doc := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840}
+	var squad := threat_run(squad_doc, 60 + 2400 * 2 + 200, 11, Callable(), 300)
+	var squads := of_kind(squad.events, "wave_squad")
+	var heads := of_kind(squad.events, "wave_crest")
+	check(squads.size() == 2 and heads.size() >= 2, "R1B squad: one squad per wave period (%d squads, %d heads)" % [squads.size(), heads.size()])
+	check(squads.all(func(e): return e.has_all(["beat", "direction", "count"]) and String(e.beat) == "seung1" and e.direction is Vector2 and int(e.count) == 4), "R1B squad: wave_squad carries {beat, direction, count}")
+	for k in mini(squads.size(), 2):
+		var s_event: Dictionary = squads[k]
+		var members := placed_by(squad.events, squad.events.find(s_event))
+		check(members.size() == 4 and members.all(func(b): return b.kind == "ranged"), "R1B squad %d: four ranged bodies" % k)
+		var distances := members.map(func(b): return (b.position - squad.run.hero.position).length())
+		check(distances.all(func(dist): return dist >= 8.99 and dist <= 12.01), "R1B squad %d: all inside ring_m 9..12 (%s)" % [k, str(distances.map(func(x): return snappedf(x, 0.1)))])
+		var spread := 0.0
+		for a in members:
+			for b in members: spread = maxf(spread, (a.position - b.position).length())
+		check(spread < 6.5, "R1B squad %d: they stand together (widest gap %.1f m)" % [k, spread])
+		var head_event: Dictionary = {}
+		for h in heads:
+			if int(h.tick) <= int(s_event.tick): head_event = h
+		var turn: float = absf(angle_difference(s_event.direction.angle(), head_event.direction.angle()))
+		check(turn >= deg_to_rad(90.0) - 0.001, "R1B squad %d: %.0f degrees from the head's heading (90..180)" % [k, rad_to_deg(turn)])
+		var toward: float = (members[0].position - squad.run.hero.position).angle()
+		check(absf(angle_difference(toward, s_event.direction.angle())) < deg_to_rad(25.0), "R1B squad %d: the bodies stand on the event's direction" % k)
+	var first_beat: int = int(of_kind(squad.events, "beat_started").filter(func(e): return e.id == "seung1")[0].tick)
+	check(squads.size() > 0 and int(squads[0].tick) - first_beat >= 840 and int(squads[0].tick) - first_beat < 900, "R1B squad: it comes at_ticks (840) into the period (%d)" % (int(squads[0].tick) - first_beat if squads.size() > 0 else -1))
+	var squad_again := threat_run(squad_doc, 60 + 2400 * 2 + 200, 11, Callable(), 300)
+	check(JSON.stringify(squad_again.run.snapshot()) == JSON.stringify(squad.run.snapshot()) and JSON.stringify(of_kind(squad_again.events, "wave_squad")) == JSON.stringify(squads), "R1B squad: the same seed gives the same squads and the same snapshot")
+	check(squad.run.snapshot().rhythm.has("threat") and not none.run.snapshot().rhythm.has("threat"), "R1B squad: the snapshot carries the threat state only when a key is on")
+	check(of_kind(none.events, "wave_squad").is_empty(), "R1B squad: no wave_squad without the key")
+	# the squad respects the alive cap
+	var _m7 := func(d):
+		d.rhythm.beats[1].alive_cap = 14
+		d.rhythm.beats[1].wave.squad = {"count": 8, "ring_m": [9, 12], "at_ticks": 840}
+	var tight := threat_run(_m7, 60 + 2400 + 300)
+	check(int(tight.run.alive_count()) <= 14, "R1B squad: the alive cap holds (%d alive, cap 14)" % tight.run.alive_count())
+	# 4. guardian: while one lives the inflow runs at steady_bps and, without crest, no head or squad comes
+	var make_guard := func(run):
+		run._spawn("elite", Vector2(14, 0))
+		run._champion_id = run._enemy_sequence
+		run.enemies[run._champion_id].title_key = "enemy.champion.0.name"
+		run.enemies[run._champion_id].definition.speed = 0.0
+	var wide := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840}
+	var guard_plain := threat_run(wide, 1300, 11, make_guard, 300)
+	var _m8 := func(d):
+		wide.call(d)
+		d.rhythm.guardian = {"steady_bps": 4000}
+	var guard_slow := threat_run(_m8, 1300, 11, make_guard, 300)
+	var _m9 := func(d):
+		wide.call(d)
+		d.rhythm.guardian = {"steady_bps": 4000, "crest": true}
+	var guard_heads := threat_run(_m9, 1300, 11, make_guard, 300)
+	var count_spawns := func(events: Array): return of_kind(events, "spawn").filter(func(e): return not e.elite).size()
+	var inflow_plain: int = count_spawns.call(guard_plain.events) - of_kind(guard_plain.events, "wave_crest").map(func(e): return int(e.count)).reduce(func(a, b): return a + b, 0) - of_kind(guard_plain.events, "wave_squad").map(func(e): return int(e.count)).reduce(func(a, b): return a + b, 0)
+	var inflow_slow: int = count_spawns.call(guard_slow.events)
+	check(of_kind(guard_plain.events, "wave_crest").size() >= 1 and of_kind(guard_plain.events, "wave_squad").size() >= 1, "R1B guardian: without the key a guardian changes nothing (heads and squads come)")
+	check(of_kind(guard_slow.events, "wave_crest").is_empty() and of_kind(guard_slow.events, "wave_squad").is_empty(), "R1B guardian: steady_bps without crest: no head and no squad while the guardian lives")
+	check(inflow_slow > 0 and inflow_slow * 10 <= inflow_plain * 5, "R1B guardian: the plain inflow runs at 40 percent (%d against %d)" % [inflow_slow, inflow_plain])
+	check(of_kind(guard_heads.events, "wave_crest").size() >= 1 and of_kind(guard_heads.events, "wave_squad").size() >= 1, "R1B guardian: with crest true the heads and squads go on")
+	var _m10 := func(d):
+		wide.call(d)
+		d.rhythm.guardian = {"steady_bps": 4000}
+	var idle_guard := threat_run(_m10, 1300)
+	var idle_none := threat_run(wide, 1300)
+	check(JSON.stringify(idle_guard.run.snapshot()) == JSON.stringify(idle_none.run.snapshot()), "R1B guardian: with no guardian alive the key changes nothing (same snapshot)")
+	var _m11 := func(d):
+		wide.call(d)
+		d.rhythm.guardian = {"steady_bps": 4000}
+	var gone := threat_run(_m11, 700, 11, make_guard, 300)
+	gone.run.enemies[gone.run._champion_id].hp_raw = 0
+	var after := 0
+	var tail: Array = []
+	for i in 2400: pump(gone.run, tail, 300)
+	after = of_kind(tail, "wave_crest").size()
+	check(after >= 1, "R1B guardian: once the guardian is dead the heads come again")
+	# 5. count_jitter_bps: rolled once per beat from the spawn stream, same seed same roll, other seeds other rolls
+	var jit := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.crest.count = 20
+		d.rhythm.beats[1].wave.crest.count_jitter_bps = 1500
+	var rolled := threat_run(jit, 60 + 2400 * 2 + 100, 11, Callable(), 300)
+	var sizes := of_kind(rolled.events, "wave_crest").map(func(e): return int(e.count))
+	check(sizes.size() >= 2 and sizes.all(func(n): return n == sizes[0]) and sizes[0] >= 17 and sizes[0] <= 23, "R1B jitter: every head of the beat has the one rolled size, within 20 +- 15 percent (%s)" % str(sizes))
+	var rolled_again := threat_run(jit, 60 + 2400 * 2 + 100, 11, Callable(), 300)
+	check(JSON.stringify(of_kind(rolled_again.events, "wave_crest")) == JSON.stringify(of_kind(rolled.events, "wave_crest")) and JSON.stringify(rolled_again.run.snapshot()) == JSON.stringify(rolled.run.snapshot()), "R1B jitter: the same seed gives the same heads and snapshot")
+	var seen := {}
+	for seed_ in [11, 12, 13, 14, 15, 16, 17, 18]:
+		var r := threat_run(jit, 200, seed_)
+		var h := of_kind(r.events, "wave_crest")
+		if h.size() > 0: seen[int(h[0].count)] = true
+	check(seen.size() >= 3, "R1B jitter: other seeds roll other sizes (%s)" % str(seen.keys()))
+	var _m12 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.crest.count = 20
+	var steady := threat_run(_m12, 200)
+	check(int(of_kind(steady.events, "wave_crest")[0].count) == 20, "R1B jitter: without the key the head is exactly its count (20)")
+	var _m13 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.crest.count = 20
+		d.rhythm.beats[1].wave.crest.count_jitter_bps = 0
+	var zero := threat_run(_m13, 1500)
+	var _m14 := func(d):
+		d.rhythm.beats[1].alive_cap = 100
+		d.rhythm.beats[1].wave.crest.count = 20
+	var base := threat_run(_m14, 1500)
+	check(JSON.stringify(zero.run.snapshot()) == JSON.stringify(base.run.snapshot()), "R1B jitter: 0 draws nothing (same snapshot as no key)")
+	# the keys do not touch a run with the rhythm off
+	var off_doc := shipped()
+	off_doc.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840}
+	off_doc.rhythm.guardian = {"steady_bps": 4000}
+	var off_run := make_run(off_doc)
+	var off_ref := make_run(shipped())
+	for i in 600:
+		off_run.step(Vector2.ZERO)
+		off_ref.step(Vector2.ZERO)
+	check(JSON.stringify(off_run.snapshot()) == JSON.stringify(off_ref.snapshot()) and not off_run.snapshot().has("rhythm"), "R1B the keys in a document with the rhythm off change nothing")
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -678,5 +948,6 @@ func execute() -> void:
 	opening_checks()
 	opening_off_checks()
 	first_visit_checks()
+	threat_checks()
 	print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

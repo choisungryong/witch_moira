@@ -49,29 +49,29 @@
       ]
     },
     "kit.d1_end_v1": {
-      "what": "kit.d1_end with the weapon's damage line replaced by a tier V line at the TOP of the shipped range (wrath5 8000, D23 1 'da'); item level 15 (the row opens at 15)",
+      "what": "kit.d1_end with the weapon's damage line replaced by a tier V line at the TOP of the shipped range (wrath5 6200 = top of the range after D23 T1 appendix A.4, D23 1 'da'); item level 15 (the row opens at 15)",
       "from": "kit.d1_end",
       "judge": {"p_gain_pct_max": 130, "against": "D12 P10 kit.d2_mid top end"},
       "needs": ["pool"],
       "replace": {
-        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 8000], ["haste2", 1600], ["binding", 1000]]}
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 6200], ["haste2", 1600], ["binding", 1000]]}
       }
     },
     "kit.d1_end_v1_narrow": {
-      "what": "the narrowed range of D23 1 'da' (6000-7000): the same weapon with wrath5 at the top of the narrowed range, 7000",
+      "what": "the middle of the tier V range (wrath5 5750; the range is 5300-6200 since appendix A.4)",
       "from": "kit.d1_end",
       "judge": {"p_gain_pct_max": 130, "against": "D12 P10 kit.d2_mid top end"},
       "needs": ["pool"],
       "replace": {
-        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 7000], ["haste2", 1600], ["binding", 1000]]}
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 5750], ["haste2", 1600], ["binding", 1000]]}
       }
     },
     "kit.d1_end_v1_low": {
-      "what": "the bottom of the tier V range (wrath5 6000), for the spread between the ends",
+      "what": "the bottom of the tier V range (wrath5 5300), for the spread between the ends",
       "from": "kit.d1_end",
       "needs": ["pool"],
       "replace": {
-        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 6000], ["haste2", 1600], ["binding", 1000]]}
+        "weapon": {"equip": "weapon", "slot": "weapon", "quality": "rare", "base": "cinder_staff", "item_level": 15, "affixes": [["wrath5", 5300], ["haste2", 1600], ["binding", 1000]]}
       }
     }
   }

@@ -78,6 +78,8 @@ var _inventory_open := false
 var _terminal_mode := ""
 var _dash_direction := Vector2.ZERO
 var _dash_until := 0
+## D23 T1-B: the last tick the hero moved on foot (not in a dash), for the moving-damage condition. -1 = not yet.
+var _last_move_tick := -1
 var _next_dash := 0
 var _invulnerable_until := 0
 var _gear_stats: Dictionary = {}
@@ -162,6 +164,7 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_terminal_mode = ""
 	_dash_direction = Vector2.ZERO
 	_dash_until = 0
+	_last_move_tick = -1
 	_next_dash = 0
 	_invulnerable_until = 0
 	_gear_stats.clear()
@@ -354,11 +357,43 @@ func _gear_totals(equip_map: Dictionary) -> Dictionary:
 
 ## Pure: the hero's gear-and-build body values for the given gear totals.
 func _hero_body(gear: Dictionary) -> Dictionary:
-	return {"max_hp_raw":120*UNIT+int(gear.get("max_hp_raw",0))+_build_max_hp*UNIT,
+	var max_hp := 120*UNIT+int(gear.get("max_hp_raw",0))+_build_max_hp*UNIT
+	# D23 T1-B: max_hp_bps multiplies the whole sum (base + gear numbers + tree).
+	if int(gear.get("max_hp_bps",0)) != 0: max_hp = max_hp*(10000+int(gear.get("max_hp_bps",0)))/10000
+	return {"max_hp_raw":max_hp,
 		"speed":BASE_SPEED*float(10000+int(gear.get("move_speed_bps",0)))/10000.0}
 
 func effective_skill(id_: String) -> Dictionary:
-	return _skill_with(id_,_gear_stats)
+	return _skill_with(id_,_gear_with_conditions())
+
+## D23 T1-B: the worn gear totals, with the low-health cooldown bonus (lowhp_cooldown_bps) added to cooldown_bps while the hero's
+## life is at or under gear_conditions.lowhp_bps of the maximum. Without the key it is the very dictionary of _gear_stats.
+func _gear_with_conditions() -> Dictionary:
+	var bonus := int(_gear_stats.get("lowhp_cooldown_bps",0))
+	var limit := int(tuning.get("gear_conditions",{}).get("lowhp_bps",0))
+	if bonus <= 0 or limit <= 0 or int(hero.hp_raw)*10000 > limit*int(hero.max_hp_raw): return _gear_stats
+	var gear: Dictionary = _gear_stats.duplicate()
+	gear.cooldown_bps = int(gear.get("cooldown_bps",0))+bonus
+	return gear
+
+## D23 T1-B: true from the tick after a dash ends for gear_conditions.after_dash_ticks ticks.
+func _after_dash_active() -> bool:
+	var ticks := int(tuning.get("gear_conditions",{}).get("after_dash_ticks",0))
+	return ticks > 0 and _dash_until > 0 and tick > _dash_until and tick <= _dash_until+ticks
+
+## D23 T1-B: true when the hero moved on foot within the last gear_conditions.moving_ticks ticks and is not dashing now.
+func _moving_active() -> bool:
+	var ticks := int(tuning.get("gear_conditions",{}).get("moving_ticks",0))
+	return ticks > 0 and _last_move_tick >= 0 and tick > _dash_until and tick-_last_move_tick < ticks
+
+## D23 T1-B: the hero's damage reduction in ten-thousandths: gear + tree + (with `live`) the guard that follows a dash, cut at
+## stat_caps.damage_reduction_bps when the document has one. The hit and the stat sheet both read this one function. Shrine
+## buffs are already inside `gear` (_apply_buff_stats), the dash guard is not (it is a state of the tick, not of the gear).
+func _reduction_bps(gear: Dictionary, live: bool = false) -> int:
+	var total := int(gear.get("damage_reduction_bps",0))+_build_reduction_bps
+	if live and int(gear.get("after_dash_guard_bps",0)) > 0 and _after_dash_active(): total += int(gear.after_dash_guard_bps)
+	var cap := int(tuning.get("stat_caps",{}).get("damage_reduction_bps",0))
+	return mini(total,cap) if cap > 0 else total
 
 ## Pure: the skill's final effect for the given gear totals.
 func _skill_with(id_: String, gear: Dictionary) -> Dictionary:
@@ -406,14 +441,17 @@ func _skill_block(id_: String, gear: Dictionary, primary: bool) -> Dictionary:
 
 func _hero_rows(gear: Dictionary) -> Array[Dictionary]:
 	var body := _hero_body(gear)
-	var reduction := int(gear.get("damage_reduction_bps",0))+_build_reduction_bps
+	var reduction := _reduction_bps(gear)
 	var dash := maxi(60,180*10000/(10000+int(gear.get("dash_cooldown_bps",0))))
 	var pickup := int(gear.get("pickup_radius_cm",0))
 	var soul := int(gear.get("soul_gain_bps",0))
 	var speed_bps := 10000+int(gear.get("move_speed_bps",0))
 	var rows: Array[Dictionary] = []
 	rows.append(_row("max_hp",int(body.max_hp_raw),float(body.max_hp_raw)/UNIT,"","higher",0))
-	rows.append(_row("damage_reduction",reduction,float(reduction)/100.0,"pct","higher",1))
+	var reduction_row := _row("damage_reduction",reduction,float(reduction)/100.0,"pct","higher",1)
+	# D23 T1-B: the sheet says when the cap cut the figure (the screen words it).
+	if int(gear.get("damage_reduction_bps",0))+_build_reduction_bps > reduction: reduction_row["capped"] = true
+	rows.append(reduction_row)
 	rows.append(_row("speed",speed_bps,float(body.speed),"m_per_s","higher",2))
 	rows.append(_row("dash_cooldown",dash,float(dash)/HZ,"s","lower",2))
 	rows.append(_row("pickup_radius",pickup,1.3+float(pickup)/100.0,"m","higher",1))
@@ -524,6 +562,7 @@ func step(move: Vector2 = Vector2.ZERO) -> void:
 	if not move.is_finite(): move = Vector2.ZERO
 	var direction := move.limit_length(1.0)
 	if direction.length_squared() > .001: hero.direction = direction.normalized()
+	if direction.length_squared() > .001 and tick > _dash_until: _last_move_tick = tick
 	var displacement: Vector2 = direction*float(hero.speed)*STEP
 	if tick <= _dash_until: displacement = _dash_direction*13.5*STEP
 	hero.position = _clamp_hero(hero.position+displacement)
@@ -799,7 +838,7 @@ func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", sourc
 			graze = true
 			raw = raw*int(heavy_rule.graze_bps)/10000
 		else: _last_heavy_tick = tick
-	var result: Dictionary = Resolver.damage(raw,int(hero.hp_raw),0,int(_gear_stats.get("damage_reduction_bps",0))+_build_reduction_bps)
+	var result: Dictionary = Resolver.damage(raw,int(hero.hp_raw),0,_reduction_bps(_gear_stats,true))
 	hero.hp_raw = int(result.hp_after_raw)
 	_invulnerable_until = tick+iframes
 	var details := {"damage_raw":result.total_raw,"from":from,"incoming_raw":incoming,"source_kind":source_kind,"source_id":source_id,"hp_after_raw":int(hero.hp_raw)}
@@ -1399,6 +1438,9 @@ func snapshot() -> Dictionary:
 		"inventory":inventory.duplicate(true),"equipped":equipped.duplicate(true),"growth":growth.snapshot(),
 		"metrics":metrics.duplicate(true),"elite_spawned":_elite_spawned,"elite_killed":_elite_killed,
 		"next_dash_tick":_next_dash,"epoch":_epoch,"elite_reward_uid":_elite_reward_uid}
+	# D23 T1-B: the two clocks of the dash and movement conditions exist only while gear that reads them is worn (no key otherwise).
+	if int(_gear_stats.get("after_dash_bps",0)) > 0 or int(_gear_stats.get("moving_damage_bps",0)) > 0 or int(_gear_stats.get("after_dash_guard_bps",0)) > 0:
+		result.gear_clock = {"dash_until":_dash_until,"last_move":_last_move_tick}
 	# D20: the booked falls, only while one is in the air.
 	if not _meteors.is_empty(): result.meteors = _meteors.duplicate(true)
 	return result

@@ -20,7 +20,7 @@ const AFFIX_CLASSES := ["number","shape","condition","skill"]
 const LINE_PROFILES := {"magic":"magic","rare":"rare","rare_boss":"rare","legendary":"legendary"}
 ## The stat keys the running core reads (D23 T1 2.2-7). The affix_rolls roll draws no row whose stat is not listed here. A patch that
 ## makes the core read one more key adds it HERE in the same patch; the data's `core_reads` flag is a mirror that test_loot compares.
-const STATS_READ := ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","pickup_radius_cm","projectiles","pierce","chain_targets","shatter_count","radius_cm","slow_bps","fire_damage_bps","fire_burst","frost_threshold","arc_branches","arc_damage_bps","move_speed_bps","dash_cooldown_bps","soul_gain_bps"]
+const STATS_READ := ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","pickup_radius_cm","projectiles","pierce","chain_targets","shatter_count","radius_cm","slow_bps","fire_damage_bps","fire_burst","frost_threshold","arc_branches","arc_damage_bps","move_speed_bps","dash_cooldown_bps","soul_gain_bps","max_hp_bps","after_dash_guard_bps","after_dash_bps","moving_damage_bps","lowhp_cooldown_bps","vs_elite_bps","vs_frozen_bps","vs_marked_bps"]
 
 var data: Dictionary = {}
 var errors: Array[String] = []
@@ -656,7 +656,7 @@ func dress(item: Dictionary) -> Dictionary:
 ## Rough worth of an item for a given signature skill. Used only to decide whether
 ## a pickup deserves a prompt; it never changes combat.
 func score(item: Dictionary, primary: String = "") -> float:
-	var weights := {"damage_bps":.006,"cooldown_bps":.008,"max_hp_raw":.001,"damage_reduction_bps":.01,"pickup_radius_cm":.03,"projectiles":16.0,"pierce":7.0,"radius_cm":.02,"move_speed_bps":.006,"dash_cooldown_bps":.003,"soul_gain_bps":.004}
+	var weights := {"damage_bps":.006,"cooldown_bps":.008,"max_hp_raw":.001,"damage_reduction_bps":.01,"pickup_radius_cm":.03,"projectiles":16.0,"pierce":7.0,"radius_cm":.02,"move_speed_bps":.006,"dash_cooldown_bps":.003,"soul_gain_bps":.004,"max_hp_bps":.006,"after_dash_guard_bps":.005,"lowhp_cooldown_bps":.004,"after_dash_bps":.003,"moving_damage_bps":.003,"vs_elite_bps":.003,"vs_frozen_bps":.003,"vs_marked_bps":.003}
 	var own := {"chapter1.skill.ember":{"fire_damage_bps":.006,"fire_burst":25.0},"chapter1.skill.frost":{"slow_bps":.004,"shatter_count":6.0,"frost_threshold":25.0},"chapter1.skill.arc":{"chain_targets":10.0,"arc_branches":25.0,"arc_damage_bps":.006}}
 	var total := 0.0
 	for stat in item.stats:

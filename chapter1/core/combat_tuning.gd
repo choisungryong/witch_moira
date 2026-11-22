@@ -16,15 +16,19 @@ const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
 const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
 const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
 const OPENING_STEP_KEYS := ["id","max_ticks","kills","amount","interval_ticks","alive_cap","ring_m","heading","speed_bps","acquire_m","orb_pull_m","crest","mix","first_visit_only"]
-const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest","xp_bps"]
+const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest","xp_bps","ranged_cap"]
 ## D19 C1: optional keys of the rhythm block (a level table of its own, seal kills, the guardian's grace, the sweep bonus). Absent = the old rules.
-const RHYTHM_C1 := ["xp_thresholds","seal_kills","guardian_grace","kill_burst"]
+const RHYTHM_C1 := ["xp_thresholds","seal_kills","guardian_grace","kill_burst","guardian"]
 const KILL_BURST_KEYS := ["window_ticks","min_kills","xp_bonus_bps","descent_bonus_bps"]
 const PACE_KEYS := ["soft_after_ticks","ramp_bps_per_s","max_bps"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
 ## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
-const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow"]
+const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow","stat_caps","gear_conditions"]
+## D23 T1-B: totals the core cuts whatever the equipment says (absent block = no cap), and the three windows of the gear condition
+## lines (absent block = those lines never hold).
+const STAT_CAPS_KEYS := ["damage_reduction_bps","condition_damage_bps"]
+const GEAR_CONDITIONS_KEYS := ["after_dash_ticks","moving_ticks","lowhp_bps"]
 ## D20: the evolved ember falls from the sky instead of flying. Absent block = it flies as before.
 const METEOR_KEYS := ["fall_ticks","lead_bps","scatter_cm","radius_bps","damage_bps"]
 ## D21 N2: gear of a high enough quality stays on the ground and is gathered when a gate opens. Absent block or "enabled": false = the old 180 s rule.
@@ -115,6 +119,17 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 	if v.has("elites"): issues.append_array(_elites_issues(v.elites))
 	if v.has("extras"): issues.append_array(_extras_issues(v.extras))
 	if v.has("loot_flow"): issues.append_array(_loot_flow_issues(v.loot_flow))
+	if v.has("stat_caps"):
+		if not v.stat_caps is Dictionary or not GrowthCatalog.keys_match(v.stat_caps,STAT_CAPS_KEYS): issues.append("stat_caps keys")
+		else:
+			if not integer(v.stat_caps.damage_reduction_bps,1,10000): issues.append("stat_caps damage_reduction_bps")
+			if not integer(v.stat_caps.condition_damage_bps,1,100000): issues.append("stat_caps condition_damage_bps")
+	if v.has("gear_conditions"):
+		if not v.gear_conditions is Dictionary or not GrowthCatalog.keys_match(v.gear_conditions,GEAR_CONDITIONS_KEYS): issues.append("gear_conditions keys")
+		else:
+			if not integer(v.gear_conditions.after_dash_ticks,1,3600): issues.append("gear_conditions after_dash_ticks")
+			if not integer(v.gear_conditions.moving_ticks,1,600): issues.append("gear_conditions moving_ticks")
+			if not integer(v.gear_conditions.lowhp_bps,1,10000): issues.append("gear_conditions lowhp_bps")
 	return issues
 
 static func _loot_flow_issues(b: Variant) -> Array[String]:
@@ -356,8 +371,35 @@ static func _mix_valid(mix: Variant) -> bool:
 		if not integer(mix[kind],0,100): return false
 	return int(mix.walker)+int(mix.ranged)+int(mix.charger) >= 1
 
+## D22 R1-B: a wave's crest is a fan with two optional keys: mix (kinds of the head, sum 100) and count_jitter_bps.
+static func _crest_issues(crest: Variant,tag: String) -> Array[String]:
+	var issues: Array[String] = []
+	if not crest is Dictionary: return [tag+"wave crest"]
+	var base: Dictionary=crest.duplicate()
+	base.erase("mix");base.erase("count_jitter_bps")
+	if not _fan_valid(base,["count","arc_deg"]): issues.append(tag+"wave crest")
+	if crest.has("count_jitter_bps") and not integer(crest.count_jitter_bps,0,3000): issues.append(tag+"wave crest count_jitter_bps")
+	if crest.has("mix"):
+		var mix: Variant=crest.mix
+		var ok: bool = mix is Dictionary and not mix.is_empty()
+		var total := 0
+		if ok:
+			for kind in mix:
+				if not kind in KINDS or not integer(mix[kind],0,100): ok = false;break
+				total += int(mix[kind])
+		if not ok or total != 100: issues.append(tag+"wave crest mix")
+	return issues
+
+## squad {count 0..8, ring_m [lo, hi] inside 6..14, at_ticks inside the part of the period before the lull}.
+static func _squad_valid(sq: Variant, w: Dictionary) -> bool:
+	if not sq is Dictionary or not GrowthCatalog.keys_match(sq,["count","ring_m","at_ticks"]): return false
+	if not integer(sq.count,0,8) or not sq.ring_m is Array or sq.ring_m.size() != 2: return false
+	if not number(sq.ring_m[0],6.0,14.0) or not number(sq.ring_m[1],6.0,14.0) or float(sq.ring_m[0]) > float(sq.ring_m[1]): return false
+	if not integer(w.period_ticks,60,36000) or not integer(w.lull_ticks,0,36000): return false
+	return integer(sq.at_ticks,0,int(w.period_ticks)-int(w.lull_ticks)-1)
+
 static func _fan_valid(entry: Variant, keys: Array) -> bool:
-	return entry is Dictionary and GrowthCatalog.keys_match(entry,keys) and integer(entry.count,1,40) and integer(entry.arc_deg,10,360)
+	return entry is Dictionary and GrowthCatalog.keys_match(entry,keys) and integer(entry.count,1,60) and integer(entry.arc_deg,10,360)
 
 ## D11 A6 ranges. Every problem is one short path; an empty list means the block is usable.
 static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
@@ -400,13 +442,17 @@ static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
 		for key in ["ranged_from_ticks","charger_from_ticks"]:
 			if b.has(key) and not integer(b[key],0,108000): issues.append(tag+key)
 		if b.has("xp_bps") and not integer(b.xp_bps,1000,50000): issues.append(tag+"xp_bps")
+		if b.has("ranged_cap") and not integer(b.ranged_cap,0,40): issues.append(tag+"ranged_cap")
 		if b.has("taste_crest") and not (_fan_valid(b.taste_crest,["at_ticks","count","arc_deg"]) and integer(b.taste_crest.at_ticks,0,108000)): issues.append(tag+"taste_crest")
 		if b.wave != null:
 			var w: Variant = b.wave
-			if not w is Dictionary or not GrowthCatalog.keys_match(w,["period_ticks","lull_ticks","lull_amount_bps","lull_cap_bps","crest"]): issues.append(tag+"wave keys");continue
+			var wave_base: Variant=w.duplicate() if w is Dictionary else w
+			if wave_base is Dictionary: wave_base.erase("squad")
+			if not w is Dictionary or not GrowthCatalog.keys_match(wave_base,["period_ticks","lull_ticks","lull_amount_bps","lull_cap_bps","crest"]): issues.append(tag+"wave keys");continue
 			if not integer(w.period_ticks,60,36000) or not integer(w.lull_ticks,0,36000) or int(w.period_ticks) <= int(w.lull_ticks): issues.append(tag+"wave period/lull")
 			if not integer(w.lull_amount_bps,0,10000) or not integer(w.lull_cap_bps,0,10000): issues.append(tag+"wave lull bps")
-			if not _fan_valid(w.crest,["count","arc_deg"]): issues.append(tag+"wave crest")
+			issues.append_array(_crest_issues(w.crest,tag))
+			if w.has("squad") and not _squad_valid(w.squad,w): issues.append(tag+"wave squad")
 	var t: Variant = r.trial
 	var trial_base: Variant = t
 	if t is Dictionary and t.has("xp_bps"):
@@ -447,6 +493,11 @@ static func _rhythm_c1_issues(r: Dictionary) -> Array[String]:
 			if table[0] != 0: issues.append("rhythm xp_thresholds start at zero")
 	if r.has("seal_kills") and not int_array(r.seal_kills,3,1,5000): issues.append("rhythm seal_kills")
 	if r.has("guardian_grace") and not r.guardian_grace is bool: issues.append("rhythm guardian_grace")
+	if r.has("guardian"):
+		var g: Variant=r.guardian
+		var g_base: Variant=g.duplicate() if g is Dictionary else g
+		if g_base is Dictionary: g_base.erase("crest")
+		if not g is Dictionary or not GrowthCatalog.keys_match(g_base,["steady_bps"]) or not integer(g.steady_bps,0,10000) or (g.has("crest") and not g.crest is bool): issues.append("rhythm guardian")
 	if r.has("kill_burst"):
 		var k: Variant = r.kill_burst
 		if not k is Dictionary or not GrowthCatalog.keys_match(k,KILL_BURST_KEYS) or not integer(k.window_ticks,6,120) or not integer(k.min_kills,3,40) 			or not integer(k.xp_bonus_bps,0,20000) or not integer(k.descent_bonus_bps,0,20000): issues.append("rhythm kill_burst")
