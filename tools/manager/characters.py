@@ -5,7 +5,7 @@
 - 이동 속도·카메라 같은 코드 상수는 글로 읽는다. 못 읽으면 값을 지어내지 않고 오류 글을 낸다(화면에 「읽지 못함」).
 - 계산 식은 tools/art/motion_math.py 의 것을 부른다(같은 식을 여기에 다시 쓰지 않는다).
 """
-import json, os, re, struct
+import json, os, re, struct, time
 from pathlib import Path
 
 try:
@@ -157,6 +157,11 @@ def media_registry(line_id, root=ROOT, work=None):
     if idle.is_dir():
         for i, p in enumerate(sorted(idle.glob(fk + '_idle_*_pingpong.mp4'))[:6]):
             add('idle_video_%d' % (i + 1), p, 'video', '대기 영상 ' + p.stem)
+    ins, outs = tripo_files(line_id, root, work)
+    for i, (name, p) in enumerate(ins):
+        add(tripo_key('tripo_in', i), p, 'image', '보낼 그림 ' + name)
+    for i, (name, p) in enumerate(outs):
+        add(tripo_key('tripo_out', i), p, 'glb', '받은 모델 ' + name)
     return reg
 
 
@@ -213,3 +218,185 @@ def detail(line_id, root=ROOT, work=None):
         'foot_bone_names': list(FOOT_NAMES),
         'warnings': warnings, 'slots_error': err,
     }
+
+
+# ---------------------------------------------------------------- 3D 만들기(수동): 보낼 그림과 받은 모델
+# 작업 뿌리의 pipeline/<id>/tripo_in (보낼 그림) 과 tripo_out (받은 모델). 경로는 (줄 id, 고정 낱말)로만 만든다. URL에서 경로를 받지 않는다.
+TRIPO_FOLDERS = ('tripo_in', 'tripo_out')
+GLB_LIMIT = 300 * 1024 * 1024
+MAX_TRIPO_FILES = 24
+NAME_KEEP = re.compile(r'[^A-Za-z0-9_-]')
+
+
+def tripo_dir(line_id, which, root=ROOT, work=None):
+    """폴더 경로(있든 없든). 줄 id 가 목록에 없거나 which 가 고정 낱말이 아니면 None."""
+    if which not in TRIPO_FOLDERS:
+        return None
+    slots, _ = _slot_lines(root)
+    if line_id not in slots:
+        return None
+    return (work or work_root()) / 'pipeline' / line_id / which
+
+
+def safe_name(name):
+    """올린 파일 이름 -> 영숫자·-·_ 만 남기고 나머지는 _ (확장자 뺌, 60자, 비면 model)."""
+    stem = str(name or '').replace('\\', '/').split('/')[-1]
+    if stem.lower().endswith('.glb'):
+        stem = stem[:-4]
+    stem = NAME_KEEP.sub('_', stem)[:60]
+    return stem or 'model'
+
+
+def png_size(path):
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(24)
+        if head[:8] == b'\x89PNG\r\n\x1a\n' and head[12:16] == b'IHDR':
+            return struct.unpack('>II', head[16:24])
+    except OSError:
+        pass
+    return None
+
+
+def glb_facts(path):
+    """glb 머리의 JSON 칸에서 삼각형 수·질감·뼈대 유무. 읽지 못한 것은 None."""
+    try:
+        with open(path, 'rb') as f:
+            if f.read(4) != b'glTF':
+                return {'error': 'glb 머리가 아님'}
+            f.read(8)
+            length, ctype = struct.unpack('<II', f.read(8))
+            if ctype != 0x4E4F534A or length > 64 * 1024 * 1024:
+                return {'error': '머리 JSON 칸을 읽지 못함'}
+            doc = json.loads(f.read(length).decode('utf-8'))
+    except (OSError, ValueError, struct.error) as e:
+        return {'error': str(e)}
+    tris, ok = 0, True
+    accessors = doc.get('accessors', [])
+    for mesh in doc.get('meshes', []):
+        for prim in mesh.get('primitives', []):
+            if prim.get('mode', 4) != 4:
+                ok = False
+                continue
+            try:
+                idx = prim.get('indices')
+                n = accessors[idx]['count'] if idx is not None else accessors[prim['attributes']['POSITION']]['count']
+                tris += n // 3
+            except (KeyError, IndexError, TypeError):
+                ok = False
+    return {'triangles': tris if ok else None, 'has_texture': bool(doc.get('images') or doc.get('textures')),
+            'has_skin': bool(doc.get('skins')), 'animations': len(doc.get('animations', []))}
+
+
+def tripo_files(line_id, root=ROOT, work=None):
+    """(보낼 그림 [(이름, 경로)], 받은 모델 [(이름, 경로)]), 이름순."""
+    out = []
+    for which, suffix in (('tripo_in', '.png'), ('tripo_out', '.glb')):
+        d = tripo_dir(line_id, which, root, work)
+        files = []
+        if d is not None and d.is_dir():
+            files = sorted((p for p in d.iterdir() if p.is_file() and p.suffix.lower() == suffix), key=lambda p: p.name)[:MAX_TRIPO_FILES]
+        out.append([(p.name, p) for p in files])
+    return out[0], out[1]
+
+
+def tripo_key(which, i):
+    return ('tin_%d' if which == 'tripo_in' else 'tout_%d') % i
+
+
+def tripo_info(line_id, root=ROOT, work=None):
+    work = work or work_root()
+    din = tripo_dir(line_id, 'tripo_in', root, work)
+    if din is None:
+        return None
+    dout = tripo_dir(line_id, 'tripo_out', root, work)
+    ins, outs = tripo_files(line_id, root, work)
+    fwd = lambda p: str(p).replace('\\', '/')
+    rows_in = []
+    for i, (name, p) in enumerate(ins):
+        size = png_size(p)
+        key = tripo_key('tripo_in', i)
+        rows_in.append({'name': name, 'key': key, 'url': '/media/%s/%s' % (line_id, key),
+                        'width': size[0] if size else None, 'height': size[1] if size else None, 'bytes': p.stat().st_size, 'path': fwd(p)})
+    rows_out = []
+    for i, (name, p) in enumerate(outs):
+        st = p.stat()
+        key = tripo_key('tripo_out', i)
+        row = {'name': name, 'key': key, 'url': '/media/%s/%s' % (line_id, key), 'bytes': st.st_size,
+               'received': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(st.st_mtime)), 'path': fwd(p)}
+        row.update(glb_facts(p))
+        rows_out.append(row)
+    return {'work_root': fwd(work), 'work_found': work.is_dir(), 'in_path': fwd(din), 'out_path': fwd(dout),
+            'in_exists': din.is_dir(), 'out_exists': dout.is_dir(), 'inputs': rows_in, 'outputs': rows_out, 'limit_bytes': GLB_LIMIT,
+            'split_cmd': 'python tools/art/sheet_split.py <시트.png> --out %s --names front,left,back --square' % fwd(din),
+            'rule': '작업 뿌리는 환경 변수 MOIRA_WORK_ROOT, 없으면 D:/Project/witch-moira-work. 그 아래 pipeline/<캐릭터>/tripo_in(보낼 그림)·tripo_out(받은 모델).'}
+
+
+class UploadError(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+def receive_glb(line_id, filename, stream, length, root=ROOT, work=None, limit=None):
+    """받은 glb 를 tripo_out 에 저장한다. 덮어쓰지 않고, 임시 파일에 쓴 뒤 이름을 붙인다. 저장된 파일 이름을 돌려준다."""
+    limit = GLB_LIMIT if limit is None else limit
+    work = work or work_root()
+    d = tripo_dir(line_id, 'tripo_out', root, work)
+    if d is None:
+        raise UploadError(404, '알 수 없는 캐릭터 줄')
+    if not isinstance(filename, str) or not filename.lower().endswith('.glb'):
+        raise UploadError(400, '.glb 파일만 받습니다')
+    if not isinstance(length, int) or length <= 0:
+        raise UploadError(411, '파일 크기를 알 수 없습니다')
+    if length > limit:
+        raise UploadError(413, '파일이 너무 큽니다(상한 %d MB)' % (limit // (1024 * 1024)))
+    if not work.is_dir():
+        raise UploadError(404, '작업 폴더를 찾지 못함')
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / ('.incoming-%d-%d.tmp' % (os.getpid(), time.time_ns()))
+    left, first = length, True
+    try:
+        with tmp.open('wb') as f:
+            while left > 0:
+                chunk = stream.read(min(1024 * 1024, left))
+                if not chunk:
+                    raise UploadError(400, '파일이 중간에 끊겼습니다')
+                if first:
+                    if chunk[:4] != b'glTF':
+                        raise UploadError(400, 'glb 파일이 아닙니다(머리 4글자가 glTF가 아님)')
+                    first = False
+                f.write(chunk)
+                left -= len(chunk)
+            f.flush()
+            os.fsync(f.fileno())
+        base = time.strftime('%Y%m%d-%H%M%S') + '_' + safe_name(filename)
+        n = 1
+        while True:
+            final = d / (base + ('' if n == 1 else '-%d' % n) + '.glb')
+            try:
+                os.link(tmp, final)          # 이미 있으면 FileExistsError: 덮어쓰지 않는다
+                break
+            except FileExistsError:
+                n += 1
+        return final.name
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+
+
+def _startfile(path):
+    os.startfile(str(path))   # Windows 탐색기
+
+
+def open_folder(line_id, which, root=ROOT, work=None):
+    """(열렸나, 글). 폴더가 없으면 만들지 않고 없음을 답한다."""
+    d = tripo_dir(line_id, which, root, work)
+    if d is None:
+        raise ValueError('알 수 없는 줄이나 폴더 낱말')
+    if not d.is_dir():
+        return False, '폴더가 아직 없습니다'
+    _startfile(d)
+    return True, str(d)

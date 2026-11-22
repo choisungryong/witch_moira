@@ -19,6 +19,7 @@
   let open = false, lines = null, lineId = '', detail = null, picks = null, T = null, loaders = null;
   let gltfs = {}, state = null, cells = {}, raf = 0, last = 0, frames = 0, webgl = false, loadError = '', rig = null, building = 0, pendingRefresh = false;
   let saving = false;
+  let tripo = null, tripoView = '', tripoWant = '', tv = null, tripoBusy = false;
 
   async function call(url, options) {
     const r = await fetch(url, options);
@@ -50,6 +51,7 @@
     q.set('a', cellText(state.a)); q.set('b', cellText(state.b));
     q.set('v', String(Number(state.v.toFixed(2))));
     q.set('cam', state.cam === 'game' ? String(detail.game.camera.size) : state.cam === 'cand' ? String(detail.game.camera.size_candidate) : 'free');
+    if (tripoView) q.set('tripo', tripoView);
     history.replaceState(null, '', '#character/' + encodeURIComponent(lineId) + '?' + q.toString());
     const box = $('#ch-url');
     if (box) box.value = location.href;
@@ -321,9 +323,128 @@
 <h4 style="margin-top:12px">이 줄의 기록</h4><ul class="ch-records" id="ch-records"></ul></section>
 <section class="ch-pick" aria-label="바로 가는 주소"><h3>바로 가는 주소</h3><div class="ch-link"><input id="ch-url" readonly aria-label="지금 상태의 주소"><button type="button" id="ch-copy">주소 복사</button><span class="bl-help" id="ch-copy-msg"></span></div></section>
 <section class="ch-pick" aria-label="그림과 영상"><h3>그림과 영상</h3><div id="ch-media"></div></section>
+<details class="ch-pick" id="ch-tripo" aria-label="3D 만들기(수동)"><summary><b>3D 만들기(수동)</b></summary><div id="ch-tripo-body"><p class="bl-help">읽는 중…</p></div></details>
 <section class="ch-pick" aria-label="단계"><h3>단계</h3><p class="bl-help">${esc(detail.stages_note)}</p></section>`;
     $('#ch-ticks').innerHTML = gs.value ? `<span style="left:${(gs.value - SPEED_MIN) / (SPEED_MAX - SPEED_MIN) * 100}%">▲ 게임 ${gs.value}</span>` : '';
     renderMedia();
+    loadTripo();
+  }
+
+  // ---------------------------------------------------------------- 3D 만들기(수동): 보낼 그림, 받은 모델
+  const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  async function loadTripo() {
+    const body = $('#ch-tripo-body'), id = lineId;
+    try { tripo = await call('/api/characters/' + encodeURIComponent(id) + '/tripo'); } catch (e) { if (body) body.innerHTML = `<p class="alert warn">불러오지 못했습니다. ${esc(e.message)}</p>`; return; }
+    if (id !== lineId || !$('#ch-tripo-body')) return;
+    renderTripo();
+    const root = $('#character');
+    root.setAttribute('data-tripo-inputs', tripo.inputs.map(r => r.name + ':' + r.width + 'x' + r.height).join(','));
+    root.setAttribute('data-tripo-outputs', tripo.outputs.length);
+    if (tripoWant) {
+      const row = tripo.outputs.find(r => r.name === tripoWant);
+      tripoWant = '';
+      if (row) { $('#ch-tripo').open = true; viewGlb(row); }
+    }
+  }
+  function renderTripo() {
+    const t = tripo, body = $('#ch-tripo-body');
+    if (!t.work_found) { body.innerHTML = `<p class="alert warn">작업 폴더를 찾지 못함: ${esc(t.work_root)}</p><p class="bl-help">${esc(t.rule)}</p>`; return; }
+    const imgs = t.inputs.map(r => `<figure><img loading="lazy" src="${esc(r.url)}" alt="${esc(r.name)}"><figcaption>${esc(r.name)}<br>${r.width ? r.width + '×' + r.height + ' 화소' : '크기 모름'} · ${kb(r.bytes)}</figcaption>
+<div class="ch-group"><a class="ch-dl" href="${esc(r.url)}" download="${esc(r.name)}">내려받기</a><button type="button" data-tripo="copy" data-path="${esc(r.path)}">경로 복사</button></div></figure>`).join('');
+    const outs = t.outputs.map(r => `<tr><td>${esc(r.name)}</td><td>${kb(r.bytes)}</td><td>${esc(r.received)}</td><td>${r.error ? esc(r.error) : (r.triangles === null || r.triangles === undefined ? '삼각형 수 모름' : r.triangles.toLocaleString() + '개') + ' · 질감 ' + (r.has_texture ? '있음' : '없음') + ' · 뼈대 ' + (r.has_skin ? '있음' : '없음')}</td><td><button type="button" data-tripo="view" data-key="${esc(r.key)}">돌려 보기</button></td></tr>`).join('');
+    body.innerHTML = `<h4>보낼 그림</h4><p class="bl-help">${esc(t.in_path)}</p>
+${imgs ? `<div class="ch-media">${imgs}</div>` : `<p class="bl-help">${t.in_exists ? '이 폴더가 비어 있습니다.' : '이 폴더가 아직 없습니다.'} 한 장에 여러 면이 든 시트가 있으면 아래 명령으로 나눕니다(이 화면이 실행하지는 않습니다).</p><pre class="ch-cmd">${esc(t.split_cmd)}</pre>`}
+<div class="ch-group" style="margin:8px 0"><button type="button" data-tripo="open" data-folder="tripo_in">폴더 열기</button><span class="bl-help" id="ch-tripo-open-in"></span></div>
+<h4>받은 모델</h4><p class="bl-help">${esc(t.out_path)} · 받은 .glb 는 이름에 시각을 붙여 저장하고 덮어쓰지 않습니다(상한 ${Math.round(t.limit_bytes / 1048576)} MB). 지우는 것은 탐색기에서 합니다.</p>
+<label class="ch-drop" id="ch-drop" tabindex="0">.glb 파일을 여기에 끌어다 놓거나 눌러서 고르세요<input type="file" id="ch-tripo-file" accept=".glb" hidden></label>
+<p class="bl-help" id="ch-tripo-msg" role="status" aria-live="polite"></p>
+${outs ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>이름</th><th>크기</th><th>받은 때</th><th>머리에서 읽은 것</th><th></th></tr></thead><tbody>${outs}</tbody></table></div>` : '<p class="bl-help">받은 모델이 아직 없습니다.</p>'}
+<div class="ch-group" style="margin:8px 0"><button type="button" data-tripo="open" data-folder="tripo_out">폴더 열기</button><span class="bl-help" id="ch-tripo-open-out"></span></div>
+<div class="ch-stage" id="ch-tripo-stage" hidden><p class="ch-note" id="ch-tripo-note"></p></div>
+<details><summary>손으로 하는 순서</summary><ol class="ch-steps">
+<li>Tripo에서 여러 면으로 만들기를 고르고, 정면 칸에 front, 뒤 칸에 back, 왼쪽 칸에 left 그림을 넣습니다. 오른쪽 칸은 비웁니다.</li>
+<li>쿼드, 면 수 20000~25000, 공개 설정은 비공개로 합니다.</li>
+<li>내보내기 전에 돌려서 봅니다: 땋은 머리가 목덜미에서 시작하는가, 등에 머리 덩어리가 없는가, 치마와 다리 사이가 막히지 않았는가, 머리핀이 한쪽에 하나인가, 팔이 몸통에 붙지 않았는가.</li>
+<li>무료 재시도는 내보내기 전에 씁니다. 내보내면 재시도가 사라집니다. 한 번에 여러 개를 뽑았으면 얼굴(두 눈의 크기와 높이, 입의 자리)을 보고 고릅니다.</li>
+<li>텍스처는 정면·뒤 두 장으로, 해상도는 높게(8K 체험이 있으면 그것으로). 얼굴이 어긋나면 해상도가 가장 크게 듣습니다.</li>
+<li>텍스처를 입힌 뒤 GLB로 내보내 이 칸에 넣습니다. 리깅은 아직 하지 않습니다.</li>
+<li>좌우가 뒤집혀 나오면 옆 그림을 오른쪽 칸으로 옮겨 다시 만듭니다.</li></ol></details>`;
+  }
+  function disposeTripoViewer() {
+    if (!tv) return;
+    if (tv.raf) cancelAnimationFrame(tv.raf);
+    if (tv.ro) tv.ro.disconnect();
+    if (tv.controls) tv.controls.dispose();
+    if (tv.renderer) tv.renderer.dispose();
+    if (tv.canvas) tv.canvas.remove();
+    tv = null;
+  }
+  async function viewGlb(row) {
+    const stage = $('#ch-tripo-stage'), note = $('#ch-tripo-note'), root = $('#character');
+    if (!stage) return;
+    stage.hidden = false; disposeTripoViewer(); tripoView = row.name; writeHash();
+    note.textContent = '불러오는 중…'; root.setAttribute('data-tripo-viewer', 'loading');
+    try {
+      if (!T) await loadThree();
+      const canvas = document.createElement('canvas'); stage.prepend(canvas);
+      const renderer = new T.WebGLRenderer({canvas, antialias: true, preserveDrawingBuffer: true});
+      renderer.setPixelRatio(1); renderer.setClearColor(0x0c0f10, 1);
+      tv = {canvas, renderer};
+      const scene = new T.Scene();
+      const grid = new T.GridHelper(10, 20, 0x475660, 0x2d373c); scene.add(grid);
+      scene.add(new T.HemisphereLight(0xffffff, 0x445055, 1.4));
+      const key = new T.DirectionalLight(0xffffff, 2.2); key.position.set(3, 6, 4); scene.add(key);
+      const g = await new loaders.GLTFLoader().loadAsync(row.url);
+      const obj = g.scene;
+      let box = new T.Box3().setFromObject(obj); const size = box.getSize(new T.Vector3());
+      const k = size.y > 1e-6 ? 2 / size.y : 1; obj.scale.setScalar(k);
+      box = new T.Box3().setFromObject(obj); const c = box.getCenter(new T.Vector3());
+      obj.position.set(-c.x, -box.min.y, -c.z); scene.add(obj);
+      const camera = new T.PerspectiveCamera(30, 16 / 9, 0.1, 100); camera.position.set(2.6, 1.7, 4.2);
+      const controls = new loaders.OrbitControls(camera, canvas); controls.target.set(0, 1, 0); controls.update();
+      Object.assign(tv, {scene, camera, controls});
+      const fit = () => { const w = Math.max(10, stage.clientWidth), h = Math.max(10, stage.clientHeight); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+      tv.ro = new ResizeObserver(fit); tv.ro.observe(stage); fit();
+      const loop = () => { if (!tv) return; tv.raf = requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); };
+      loop();
+      note.textContent = row.name + ' · 선 자세(동작 없음), 돌려 볼 수 있습니다. 원래 높이 ' + size.y.toFixed(2) + ' 를 2 로 맞춰 보입니다.';
+      root.setAttribute('data-tripo-viewer', 'loaded'); root.setAttribute('data-tripo-name', row.name);
+      root.setAttribute('data-tripo-height', size.y.toFixed(3));
+    } catch (e) {
+      note.textContent = '돌려 보지 못했습니다: ' + e.message;
+      root.setAttribute('data-tripo-viewer', 'error');
+    }
+  }
+  async function uploadGlb(file) {
+    const msg = $('#ch-tripo-msg');
+    if (tripoBusy || !file) return;
+    if (!file.name.toLowerCase().endsWith('.glb')) { msg.textContent = '.glb 파일만 받습니다.'; return; }
+    if (file.size > tripo.limit_bytes) { msg.textContent = '파일이 너무 큽니다(상한 ' + Math.round(tripo.limit_bytes / 1048576) + ' MB).'; return; }
+    tripoBusy = true; msg.textContent = '올리는 중… (' + kb(file.size) + ')';
+    try {
+      const d = await call('/api/characters/' + encodeURIComponent(lineId) + '/tripo_out?name=' + encodeURIComponent(file.name),
+        {method: 'POST', headers: {'Content-Type': 'application/octet-stream'}, body: file});
+      tripo = d.tripo; disposeTripoViewer(); renderTripo();
+      $('#ch-tripo-msg').textContent = '저장했습니다: ' + d.saved;
+      $('#character').setAttribute('data-tripo-saved', d.saved);
+    } catch (e) { msg.textContent = '저장하지 못했습니다. ' + e.message; }
+    tripoBusy = false;
+  }
+  async function tripoClick(el) {
+    const act = el.dataset.tripo;
+    if (act === 'copy') {
+      const done = () => { el.textContent = '복사함'; setTimeout(() => { el.textContent = '경로 복사'; }, 1500); };
+      (navigator.clipboard ? navigator.clipboard.writeText(el.dataset.path) : Promise.reject()).then(done, () => { el.textContent = el.dataset.path; });
+    } else if (act === 'open') {
+      const f = el.dataset.folder, out = $(f === 'tripo_in' ? '#ch-tripo-open-in' : '#ch-tripo-open-out');
+      try {
+        const d = await call('/api/characters/' + encodeURIComponent(lineId) + '/open', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({folder: f})});
+        out.textContent = d.opened ? '탐색기로 열었습니다.' : '없음: ' + d.reason;
+      } catch (e) { out.textContent = '열지 못했습니다. ' + e.message; }
+    } else if (act === 'view') {
+      const row = tripo.outputs.find(r => r.key === el.dataset.key);
+      if (row) viewGlb(row);
+    }
   }
   function renderMedia() {
     const m = detail.media, order = ['main', 'apose_front', 'apose_back', 'apose_side'];
@@ -518,7 +639,7 @@
   // ---------------------------------------------------------------- 열기
   async function openLine(id, q) {
     const gen = ++building;
-    stopLoop(); disposeCells();
+    stopLoop(); disposeCells(); disposeTripoViewer(); tripoView = ''; tripoWant = (q && q.get('tripo')) || '';
     $('#character').removeAttribute('data-ready');
     $('#character').innerHTML = '<p class="empty">캐릭터를 읽는 중…</p>';
     try {
@@ -563,7 +684,7 @@
     document.body.classList.toggle('character-mode', on);
     $('#character').hidden = !on;
     $('#open-character').classList.toggle('active', on);
-    if (!on) { stopLoop(); return; }
+    if (!on) { stopLoop(); disposeTripoViewer(); return; }
     document.dispatchEvent(new CustomEvent('view-open', {detail: 'character'}));
     document.querySelectorAll('[data-category],[data-all]').forEach(b => b.classList.remove('active'));
     if (detail && lines) { startLoop(); return; }
@@ -585,6 +706,8 @@
     if (t.closest('#open-character')) return show(true);
     if (!open) return;
     if (t.closest('[data-category],[data-all]')) return show(false);
+    const tr = t.closest('[data-tripo]');
+    if (tr) return tripoClick(tr);
     const act = t.closest('[data-act]');
     if (act) {
       const k = act.dataset.k, c = state[k], n = cellNumbers(k);
@@ -625,8 +748,16 @@
     if (!open) return;
     const t = ev.target;
     if (t.id === 'ch-line') { openLine(t.value, null); return; }
+    if (t.id === 'ch-tripo-file') { const f = t.files && t.files[0]; t.value = ''; uploadGlb(f); return; }
     if (t.dataset && t.dataset.f === 'src') { const k = t.dataset.k; state[k].src = t.value; state[k].rate = null; const names = clipNames(t.value); if (!names.includes(state[k].clip)) state[k].clip = names[0]; fillClipSelect(k); refresh(); return; }
     if (t.dataset && t.dataset.f === 'clip') { const k = t.dataset.k; state[k].clip = t.value; state[k].rate = null; refresh(); }
+  });
+  document.addEventListener('dragover', ev => { if (open && ev.target.closest && ev.target.closest('#ch-drop')) { ev.preventDefault(); $('#ch-drop').classList.add('over'); } });
+  document.addEventListener('dragleave', ev => { const d = $('#ch-drop'); if (d) d.classList.remove('over'); });
+  document.addEventListener('drop', ev => {
+    if (!open || !ev.target.closest || !ev.target.closest('#ch-drop')) return;
+    ev.preventDefault(); $('#ch-drop').classList.remove('over');
+    uploadGlb(ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]);
   });
   window.addEventListener('hashchange', () => {
     const h = parseHash();

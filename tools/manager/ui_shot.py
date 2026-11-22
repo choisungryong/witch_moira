@@ -9,6 +9,8 @@
   --out 은 _local/ 아래만 허용한다. 임시 프로필도 _local/ 아래에 두고 끝나면 지운다(사용자의 Edge 프로필은 건드리지 않는다).
 WebGL 이 안 뜨면(data-webgl="0") --use-angle=swiftshader 깃발로 한 번 더 시도하고, 끝내 안 되면 그렇다고 찍는다.
 이 도구가 띄운 Edge 프로세스만 정리한다.
+기본은 DevTools 로 화면이 data-ready 가 될 때까지 실제 시간으로 기다린 뒤 수치(--dump-dom)와 PNG(--out)를 같은 창에서 얻는다(--eval 로 클릭·올리기 같은 조작도 가능).
+--virtual 은 옛 방식(가상 시간 예산)이며, 이 Edge 에서 모델을 읽는 화면이 예산 안에 끝나지 않는 일이 있어 기본에서 뺐다(2026-11-23 확인).
 """
 import argparse, html.parser, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -150,13 +152,19 @@ def free_port():
         return s.getsockname()[1]
 
 
-def eval_in_page(a, profile, url, script, extra):
-    """화면을 열고 data-ready 를 기다린 뒤 script 를 실행해 결과를 돌려준다(클릭·저장 같은 조작 시험용)."""
-    import urllib.request
+def eval_in_page(a, profile, url, script, extra, shot=None, want_attrs=False, netlog=None):
+    """화면을 열고 data-ready 를 기다린 뒤(실제 시간) script 를 실행하고, 요청이 있으면 data-* 속성과 PNG 를 같은 창에서 얻는다.
+    DevTools 로 조작하므로 가상 시간 예산에 기대지 않는다. 결과 {'eval', 'attrs', 'png_bytes'}."""
+    import base64, urllib.request
     port = free_port()
     w, h = a.size.split('x')
-    args = [str(EDGE), '--headless=new', '--no-first-run', '--disable-extensions', '--disable-background-networking', '--mute-audio',
-            '--user-data-dir=' + str(profile), '--window-size=%s,%s' % (w, h), '--remote-debugging-port=%d' % port] + extra + [url]
+    args = [str(EDGE), '--headless=new', '--no-first-run', '--disable-extensions', '--disable-background-networking', '--mute-audio', '--hide-scrollbars',
+            '--user-data-dir=' + str(profile), '--window-size=%s,%s' % (w, h), '--remote-debugging-port=%d' % port] + extra
+    if a.offline:
+        args.append(OFFLINE_RULE)
+    if netlog:
+        args.append('--log-net-log=' + str(netlog))
+    args.append(url)
     proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         ws, deadline = None, time.time() + 40
@@ -177,10 +185,23 @@ def eval_in_page(a, profile, url, script, extra):
             time.sleep(0.5)
         else:
             raise ShotError('화면이 data-ready 가 되지 않았습니다.')
-        res = ws.call('Runtime.evaluate', {'expression': script, 'awaitPromise': True, 'returnByValue': True})
-        if 'exceptionDetails' in res:
-            raise ShotError('스크립트 예외: %s' % json.dumps(res['exceptionDetails'], ensure_ascii=False)[:300])
-        return res.get('result', {}).get('value')
+        out = {}
+        if script:
+            res = ws.call('Runtime.evaluate', {'expression': script, 'awaitPromise': True, 'returnByValue': True})
+            if 'exceptionDetails' in res:
+                raise ShotError('스크립트 예외: %s' % json.dumps(res['exceptionDetails'], ensure_ascii=False)[:300])
+            out['eval'] = res.get('result', {}).get('value')
+        time.sleep(a.settle)            # 비동기로 채워지는 칸(받은 모델 목록 등)과 몇 프레임을 기다린다
+        if want_attrs:
+            expr = "(() => { const e = document.querySelector('#%s'); if (!e) return null; const o = {}; for (const x of e.attributes) if (x.name.startsWith('data-')) o[x.name.slice(5)] = x.value; return o; })()" % a.element
+            out['attrs'] = ws.call('Runtime.evaluate', {'expression': expr, 'returnByValue': True}).get('result', {}).get('value')
+        if shot:
+            data = ws.call('Page.captureScreenshot', {'format': 'png'}).get('data')
+            if not data:
+                raise ShotError('PNG 가 만들어지지 않았습니다.')
+            Path(shot).write_bytes(base64.b64decode(data))
+            out['png_bytes'] = Path(shot).stat().st_size
+        return out
     finally:
         subprocess.run(['taskkill', '/PID', str(proc.pid), '/T', '/F'], capture_output=True)
 
@@ -207,6 +228,8 @@ def main(argv=None):
     ap.add_argument('--budget', type=int, default=30000, help='가상 시간 예산(ms)')
     ap.add_argument('--timeout', type=int, default=150)
     ap.add_argument('--element', default='character')
+    ap.add_argument('--virtual', action='store_true', help='옛 방식(가상 시간 예산, --dump-dom/--screenshot 깃발). 기본은 DevTools 로 실제 시간 동안 기다린다')
+    ap.add_argument('--settle', type=float, default=1.5, help='data-ready 뒤 더 기다릴 초')
     ap.add_argument('--eval', default=None, help='화면이 준비된 뒤 실행할 자바스크립트 식(클릭·저장 시험용). 결과를 result.eval 로 찍는다')
     a = ap.parse_args(argv)
     if not re.fullmatch(r'\d+x\d+', a.size):
@@ -227,6 +250,23 @@ def main(argv=None):
     profile = Path(tempfile.mkdtemp(prefix='p-', dir=str(base)))
     result = {'url': url, 'size': a.size, 'offline': a.offline}
     try:
+        if not a.virtual:
+            if out and out.exists():
+                out.unlink()
+            r = eval_in_page(a, profile, url, a.eval, [], shot=out, want_attrs=a.dump_dom, netlog=netlog)
+            if a.eval:
+                result['eval'] = r.get('eval')
+            if a.dump_dom:
+                result['dom_found'] = r.get('attrs') is not None
+                result['attrs'] = r.get('attrs') or {}
+            if out:
+                result['png'] = str(out)
+                result['png_bytes'] = r.get('png_bytes')
+            if netlog:
+                time.sleep(1)
+                result['net_hosts'] = hosts_from_netlog(netlog)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         flavors = [('default', []), ('swiftshader', SWIFTSHADER)]
         attrs, used = None, None
         for name, extra in flavors:

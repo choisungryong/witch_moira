@@ -197,6 +197,39 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
                 left -= len(chunk)
 
+    def handle_tripo_post(self, line, action, query):
+        """POST /api/characters/<줄>/tripo_out?name=<파일 이름> (본문 = glb 바이트) 와 POST /api/characters/<줄>/open ({"folder": "tripo_in|tripo_out"}).
+        경로는 URL에서 받지 않는다: (줄 id, 고정 낱말)만 받아 characters 가 스스로 만든다."""
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            length = 0
+        try:
+            if action == 'open':
+                if self.headers.get('Content-Type', '').split(';')[0] != 'application/json' or not 0 < length <= 4096:
+                    return self.send_json(400, {'error': 'application/json required'})
+                payload = json.loads(self.rfile.read(length))
+                if not isinstance(payload, dict) or set(payload) != {'folder'}:
+                    return self.send_json(400, {'error': 'Expected folder'})
+                try:
+                    opened, text = characters.open_folder(line, payload['folder'])
+                except ValueError as e:
+                    return self.send_json(404, {'error': str(e)})
+                return self.send_json(200, {'opened': opened, 'reason' if not opened else 'path': text})
+            name = (parse_qs(query).get('name') or [''])[0]
+            if self.headers.get('Content-Type', '').split(';')[0] != 'application/octet-stream':
+                return self.send_json(415, {'error': 'application/octet-stream required'})
+            try:
+                saved = characters.receive_glb(line, name, self.rfile, length)
+            except characters.UploadError as e:
+                self.close_connection = True       # 본문을 다 읽지 않았을 수 있다
+                return self.send_json(e.status, {'error': str(e)})
+            return self.send_json(200, {'saved': saved, 'tripo': characters.tripo_info(line)})
+        except (ValueError, UnicodeError) as e:
+            self.send_json(400, {'error': str(e)})
+        except OSError as e:
+            self.send_json(500, {'error': 'Could not write the file: %s' % e.__class__.__name__})
+
     def send_draft(self, rest):
         # /drafts/<thumb|full|prompt>/<id> ; only ids present in the current index are served
         kind, _, raw_id = unquote(rest).partition('/')
@@ -250,6 +283,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, picks.load())
         if route == '/api/characters':
             return self.send_json(200, characters.list_lines())
+        m = re.fullmatch(r'/api/characters/([^/]+)/tripo', route)
+        if m:
+            info = characters.tripo_info(unquote(m.group(1)))
+            return self.send_json(200, info) if info is not None else self.send_json(404, {'error': 'Unknown character line'})
         if route.startswith('/api/characters/'):
             d = characters.detail(unquote(route[len('/api/characters/'):]))
             return self.send_json(200, d) if d is not None else self.send_json(404, {'error': 'Unknown character line'})
@@ -283,6 +320,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not trusted_request(self.headers.get('Host'), self.headers.get('Origin'), self.server.server_port):
             return self.send_json(403, {'error': 'Untrusted Host or Origin'})
+        up = re.fullmatch(r'/api/characters/([^/?]+)/(tripo_out|open)(?:\?(.*))?', self.path)
+        if up:
+            return self.handle_tripo_post(unquote(up.group(1)), up.group(2), up.group(3) or '')
         if self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
                          '/api/balance/run', '/api/balance/experiments', '/api/balance/export', '/api/audit/run', '/api/picks'):
             return self.send_json(404, {'error': 'Unknown route'})

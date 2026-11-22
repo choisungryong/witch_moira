@@ -466,6 +466,15 @@ small.bl-badt{display:block;font-size:var(--fs-xs)}
 .ch-records li{padding:var(--s-1) 0;border-bottom:1px solid var(--c-line);overflow-wrap:anywhere}
 .ch-badge{display:inline-block;font-size:var(--fs-xs);padding:0 6px;border-radius:var(--r-pill);border:1px solid var(--c-line-strong);margin-right:var(--s-1)}
 .ch-warn{color:var(--warn)}
+#ch-tripo>summary{cursor:pointer;font-size:var(--fs-l)}
+#ch-tripo h4{margin:var(--s-3) 0 var(--s-1)}
+.ch-drop{display:block;border:1px dashed var(--c-line-strong);border-radius:var(--r-m);padding:var(--s-4);text-align:center;color:var(--c-text-2);cursor:pointer;margin:var(--s-2) 0}
+.ch-drop:hover,.ch-drop.over,.ch-drop:focus-visible{border-color:var(--brass);background:var(--brass-soft);color:var(--c-text)}
+.ch-cmd{background:var(--c-sunken);border:1px solid var(--c-line);border-radius:var(--r-s);padding:var(--s-2) var(--s-3);overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-xs)}
+.ch-steps{margin:var(--s-2) 0;padding-left:var(--s-5);font-size:var(--fs-s);line-height:1.6}
+.ch-dl{display:inline-flex;align-items:center;min-height:36px;padding:6px 14px;border:1px solid var(--c-line-strong);border-radius:var(--r-s);background:var(--c-raised);color:var(--c-text);text-decoration:none}
+.ch-dl:hover{background:var(--c-hover)}
+#ch-tripo .table-wrap{max-width:100%;overflow-x:auto}
 @media(max-width:900px){.ch-pair{grid-template-columns:minmax(0,1fr)}}
 
 /* ---------- 좁은 창 ---------- */
