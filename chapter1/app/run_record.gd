@@ -25,6 +25,8 @@ const ATTRIBUTE_BACK_SECONDS := 3
 const ATTRIBUTE_DISTANCE_SQ := 0.05
 ## The "recent damage per second" of summary() looks this many seconds back from the end of the run.
 const RECENT_SECONDS := 60
+## The span of the "last blows" line of the defeat box.
+const RECENT_HIT_SECONDS := 3
 
 var depth := "d1"
 var _begun := false
@@ -413,6 +415,10 @@ func _loss_material() -> Dictionary:
 	var attributed := 0
 	var window_taken := 0
 	var last_hit := {}
+	var big_hit := {}
+	var recent_taken := 0
+	var recent_by_kind := {}
+	var recent_from := _ticks - RECENT_HIT_SECONDS * _hz
 	var hp_low_bps := -1
 	for hit in _hero_hits:
 		if int(hit[0]) < from_tick:
@@ -431,6 +437,12 @@ func _loss_material() -> Dictionary:
 		if kind != "unattributed":
 			attributed += 1
 		last_hit = {"ticks_before_end": _ticks - int(hit[0]), "life": int(hit[1]) / _unit, "source": kind}
+		# Biggest single blow of the window (the earlier one wins a tie), and the last RECENT_HIT_SECONDS by kind.
+		if big_hit.is_empty() or int(hit[1]) > int(big_hit.raw):
+			big_hit = {"raw": int(hit[1]), "ticks_before_end": _ticks - int(hit[0]), "source": kind}
+		if int(hit[0]) >= recent_from:
+			recent_taken += int(hit[1])
+			recent_by_kind[kind] = int(recent_by_kind.get(kind, 0)) + int(hit[1])
 	var window_hits := 0
 	for kind in by_kind:
 		by_kind[kind].life = int(by_kind[kind].raw) / _unit
@@ -442,7 +454,15 @@ func _loss_material() -> Dictionary:
 		if int(sample[0]) >= from_tick:
 			trend.append({"ticks_before_end": _ticks - int(sample[0]), "alive": int(sample[1]), "hp_bps": int(sample[2])})
 			alive_peak = maxi(alive_peak, int(sample[1]))
-	return {"window_ticks": _window_ticks, "taken": window_taken / _unit, "hits": window_hits, "by_source": by_kind,
+	if not big_hit.is_empty():
+		big_hit["life"] = int(big_hit.raw) / _unit
+		big_hit.erase("raw")
+	var recent_top: Array = []
+	var recent_kinds: Array = recent_by_kind.keys()
+	recent_kinds.sort_custom(func(a, b): return int(recent_by_kind[a]) > int(recent_by_kind[b]) or (int(recent_by_kind[a]) == int(recent_by_kind[b]) and String(a) < String(b)))
+	for kind in recent_kinds.slice(0, 2):
+		recent_top.append({"source": kind, "life": int(recent_by_kind[kind]) / _unit})
+	return {"window_ticks": _window_ticks, "big_hit": big_hit, "recent": {"seconds": RECENT_HIT_SECONDS, "taken": recent_taken / _unit, "top": recent_top}, "taken": window_taken / _unit, "hits": window_hits, "by_source": by_kind,
 		"attributed_bps": attributed * 10000 / maxi(1, window_hits), "alive_trend": trend, "alive_peak": alive_peak, "last_hit": last_hit, "hp_low_bps": hp_low_bps}
 
 func _kind_of(tick: int, from: Variant) -> String:

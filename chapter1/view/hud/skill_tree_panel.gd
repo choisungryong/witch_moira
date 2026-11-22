@@ -298,7 +298,7 @@ func _block_lines(block: Dictionary, per_rank: bool) -> Array:
 	if hero.has("max_hp"): out.append("최대 생명 +%d" % int(hero.max_hp))
 	if hero.has("damage_reduction_bps"): out.append("받는 피해 −%d%%" % (int(hero.damage_reduction_bps)/100))
 	if hero.has("potion_start"): out.append("시작 회복약 +%d" % int(hero.potion_start))
-	if rules.has("grace_rerolls"): out.append("은총 다시 빌기 %d회" % int(rules.grace_rerolls))
+	if rules.has("grace_rerolls"): out.append("권능 다시 청하기 %d회" % int(rules.grace_rerolls))
 	if rules.has("start_rank"): out.append("아이스 스피어 랭크 %d로 시작" % int(rules.start_rank))
 	if bool(rules.get("evolve_without_passive",false)): out.append("하갈라즈 룬 없이 진화")
 	return out

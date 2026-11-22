@@ -426,7 +426,7 @@ msgstr "지대 감속 {v}%"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.rerolls"
-msgstr "은총 다시 빌기 {n}회"
+msgstr "권능 다시 청하기 {n}회"
 
 #. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
 msgid "tree.effect.start_rank"
@@ -926,6 +926,18 @@ msgstr "실선: 살아 있는 적 · 점선: 생명 ({from}% → {to}%)"
 msgid "record.loss.last"
 msgstr "마지막에 맞은 것: {source} {life} ({sec}초 전)"
 
+#. Defeat box (T15). The biggest single blow of the window. {source}: kind name, {life}: number, {sec}: seconds with one decimal
+msgid "record.loss.big"
+msgstr "가장 큰 한 방: {source} {life} ({sec}초 전)"
+
+#. Defeat box (T15). The last seconds before the fall. {sec}: seconds, {life}: number, {parts}: up to two sources
+msgid "record.loss.recent"
+msgstr "마지막 {sec}초 동안 받은 피해 {life} ({parts})"
+
+#. Defeat box (T15). One source of the line above. {source}: kind name, {life}: number
+msgid "record.loss.recent_part"
+msgstr "{source} {life}"
+
 #. Kind of attacker in the defeat box
 msgid "record.source.walker"
 msgstr "걸어 다니는 적"
@@ -1262,11 +1274,11 @@ msgstr[0] "{n}마리 처치"
 
 #. Title plate of the grace screen
 msgid "grace.screen.title"
-msgstr "은총"
+msgstr "권능"
 
 #. Title plate of the last offer of a run
 msgid "grace.screen.title_last"
-msgstr "마지막 은총"
+msgstr "마지막 권능"
 
 #. Band along the bottom: the spells owned
 msgid "grace.screen.owned"
@@ -1274,7 +1286,7 @@ msgstr "가진 주문"
 
 #. Band along the bottom: the grace slots
 msgid "grace.screen.graces"
-msgstr "은총"
+msgstr "받은 권능"
 
 #. Card row: the pair this card forms
 msgid "grace.screen.combo"
@@ -1282,7 +1294,7 @@ msgstr "조합"
 
 #. Knob name: throw the standing offer away for a new one
 msgid "grace.screen.reroll"
-msgstr "다시 빌기"
+msgstr "다시 청하기"
 
 #. Knob name: take the focused card out of this run's pool
 msgid "grace.screen.exclude"

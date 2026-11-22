@@ -305,7 +305,29 @@ func _loss(loss: Dictionary) -> Control:
 		var kind := String(last_hit.get("source",SOURCE_UNKNOWN))
 		var source := Loc.t("record.loss.unknown") if kind==SOURCE_UNKNOWN else source_name(kind)
 		column.add_child(_label(Loc.t("record.loss.last",{"source":source,"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}),BODY,Palette.INK))
+	for line in death_lines(loss).slice(1):column.add_child(_wrap(line,BODY,Palette.INK))
 	return box
+
+static func _loss_source(kind: String) -> String:
+	return Loc.t("record.loss.unknown") if kind==SOURCE_UNKNOWN else source_name(kind)
+
+## T15: the reasons of a fall as lines, from the loss material of run_record: [last blow, biggest blow (only when it is a different
+## blow), damage of the last seconds by source]. A line is left out when its numbers are not in the material (an older record).
+## The result window of a defeat shows all of them; the record page shows the same lines under its chart.
+static func death_lines(loss: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var last_hit: Dictionary=loss.get("last_hit",{})
+	if last_hit.is_empty():return lines
+	lines.append(Loc.t("record.loss.last",{"source":_loss_source(String(last_hit.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(last_hit.get("life",0))),"sec":Loc.dec(float(last_hit.get("ticks_before_end",0))/float(HZ),1)}))
+	var big_hit: Dictionary=loss.get("big_hit",{})
+	if not big_hit.is_empty() and (int(big_hit.get("ticks_before_end",-1))!=int(last_hit.get("ticks_before_end",-2))):
+		lines.append(Loc.t("record.loss.big",{"source":_loss_source(String(big_hit.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(big_hit.get("life",0))),"sec":Loc.dec(float(big_hit.get("ticks_before_end",0))/float(HZ),1)}))
+	var recent: Dictionary=loss.get("recent",{})
+	if int(recent.get("taken",0))>0:
+		var names: Array=[]
+		for part in recent.get("top",[]):names.append(Loc.t("record.loss.recent_part",{"source":_loss_source(String(part.get("source",SOURCE_UNKNOWN))),"life":Loc.num(int(part.get("life",0)))}))
+		lines.append(Loc.t("record.loss.recent",{"sec":Loc.num(int(recent.get("seconds",3))),"life":Loc.num(int(recent.taken)),"parts":" · ".join(names)}))
+	return lines
 
 func _pairs(pairs: Array) -> Control:
 	var column := VBoxContainer.new();column.name="RecordPairs";column.add_theme_constant_override("separation",6)

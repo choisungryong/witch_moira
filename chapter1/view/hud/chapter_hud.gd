@@ -2114,6 +2114,15 @@ func _add_flow_actions(run: RefCounted) -> void:
 		push_error("result window layout changed: flow buttons not added");return
 	if _result_reason=="abandoned":title.text=Loc.t("result.title.abandoned")
 	actions.remove_child(old_retry);old_retry.queue_free()
+	# T15: what the fall was, at the top of the right column of a defeat (not shown for a victory or an abandoned run).
+	# The right column is the emptier one, so the window keeps its height.
+	if run!=null and run.mode=="defeat" and _result_reason!="abandoned" and box.get_child_count()>2 and box.get_child(2) is HBoxContainer and box.get_child(2).get_child_count()>1:
+		var right := (box.get_child(2) as HBoxContainer).get_child(1) as VBoxContainer
+		if right!=null:
+			var at := 0
+			for line in CombatRecordView.death_lines(run_record.get("loss",{})):
+				var reason := _label(line,17,Palette.INK);reason.name="DeathReason%d"%(at+1);reason.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+				right.add_child(reason);right.move_child(reason,at);at+=1
 	var retry_button := _button(Loc.t("result.button.retry"),func():_leave("retry"));retry_button.name="RetrySameWitch"
 	retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
 	var second := HBoxContainer.new();second.name="ResultFlowActions";second.add_theme_constant_override("separation",14);box.add_child(second)

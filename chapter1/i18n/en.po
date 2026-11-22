@@ -421,7 +421,7 @@ msgstr "Field slow {v}%"
 
 #. Skill tree effect line. {n}: count
 msgid "tree.effect.rerolls"
-msgstr "Grace rerolls: {n}"
+msgstr "Power re-asks: {n}"
 
 #. Skill tree effect line. {rank}: number. The Korean text keeps its old particle (known issue, L2)
 msgid "tree.effect.start_rank"
@@ -921,6 +921,18 @@ msgstr "Solid: living enemies · dotted: life ({from}% → {to}%)"
 msgid "record.loss.last"
 msgstr "Last hit: {source} {life} ({sec} s before the end)"
 
+#. Defeat box (T15). The biggest single blow of the window. {source}: kind name, {life}: number, {sec}: seconds with one decimal
+msgid "record.loss.big"
+msgstr "Biggest blow: {source} {life} ({sec} s before the end)"
+
+#. Defeat box (T15). The last seconds before the fall. {sec}: seconds, {life}: number, {parts}: up to two sources
+msgid "record.loss.recent"
+msgstr "Damage taken in the last {sec} s: {life} ({parts})"
+
+#. Defeat box (T15). One source of the line above. {source}: kind name, {life}: number
+msgid "record.loss.recent_part"
+msgstr "{source} {life}"
+
 #. Kind of attacker in the defeat box
 msgid "record.source.walker"
 msgstr "Walking enemy"
@@ -1258,11 +1270,11 @@ msgstr[1] "{n} kills"
 
 #. Title plate of the grace screen
 msgid "grace.screen.title"
-msgstr "Grace"
+msgstr "Power"
 
 #. Title plate of the last offer of a run
 msgid "grace.screen.title_last"
-msgstr "Last grace"
+msgstr "Last Power"
 
 #. Band along the bottom: the spells owned
 msgid "grace.screen.owned"
@@ -1270,7 +1282,7 @@ msgstr "Spells"
 
 #. Band along the bottom: the grace slots
 msgid "grace.screen.graces"
-msgstr "Graces"
+msgstr "Powers held"
 
 #. Card row: the pair this card forms
 msgid "grace.screen.combo"
@@ -1278,7 +1290,7 @@ msgstr "Combo"
 
 #. Knob name: throw the standing offer away for a new one
 msgid "grace.screen.reroll"
-msgstr "Reroll"
+msgstr "Ask again"
 
 #. Knob name: take the focused card out of this run's pool
 msgid "grace.screen.exclude"

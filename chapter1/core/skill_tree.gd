@@ -589,7 +589,7 @@ static func describe_block(block: Dictionary) -> Array[String]:
 	if int(field_add.get("slow_bps_at_least", 0)) != 0:
 		lines.append("지대 감속 %s%%" % _hundredths(int(field_add.slow_bps_at_least)))
 	if int(rules.get("grace_rerolls", 0)) != 0:
-		lines.append("은총 다시 빌기 %d회" % int(rules.grace_rerolls))
+		lines.append("권능 다시 청하기 %d회" % int(rules.grace_rerolls))
 	if rules.has("start_rank"):
 		lines.append("아이스 스피어 랭크 %d으로 시작" % int(rules.start_rank))
 	if rules.get("evolve_without_passive", false):
