@@ -873,7 +873,7 @@ func combo_checks() -> void:
 		var called := of_type(base.events, "descent_called")
 		check(called.size() == 1 and int(called[0].strongs_in_reach) >= 1, "J %s: the guard counts among the strong enemies in reach" % element)
 		check(base.release_descent(), "J %s: released" % element)
-		var sweep := tick_run(base, int(base.descent.elements[element].sweep_ticks) + 2)
+		var sweep := tick_run(base, int(base.descent.ultimates[element].sweep_ticks) + 2)
 		var strikes := of_type(sweep, "descent_strike").filter(func(x): return int(site.elite_id) in x.target_ids)
 		check(not strikes.is_empty(), "J %s: the sweep struck the guard" % element)
 		var taken: int = max_life - int(body.hp_raw)

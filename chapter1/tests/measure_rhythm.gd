@@ -250,6 +250,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	var all_types: Dictionary = {}
 	var level_first := -1.0
 	var descent_ends: Array = []
+	var descent_calls: Array = []
 	var ex := {"born": {}, "engaged": {}, "walk_in_s": [], "guard_fight_s": [], "guard_placed_s": [], "guard_unlocked_s": [], "taken_s": [], "chest_s": [], "expired": 0, "locked_expired": 0}
 	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
 		if policy_name != "" and policy_name != "pilot":
@@ -293,8 +294,10 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				"opening_step": marks.append("%.1fs open:%s" % [esec, String(ev.get("id", ""))])
 				"opening_end": marks.append("%.1fs open:end" % esec)
 				"descent_ready": marks.append("%.0fs descent ready" % esec)
-				"descent_called": marks.append("%.0fs descent used" % esec)
-				"descent_end": descent_ends.append({"tick": int(ev.tick), "kills": int(ev.kills), "strong_hits": int(ev.strong_hits), "strong_damage_raw": int(ev.strong_damage_raw), "marks_taken": int(ev.marks_taken), "refund": int(ev.refund)})
+				"descent_called":
+					marks.append("%.0fs descent used" % esec)
+					descent_calls.append({"tick": int(ev.tick), "normals": int(ev.get("normals_in_reach", 0)), "strongs": int(ev.get("strongs_in_reach", 0)), "alive": int(run.alive_count())})
+				"descent_end": descent_ends.append({"tick": int(ev.tick), "kills": int(ev.kills), "strong_hits": int(ev.strong_hits), "strong_damage_raw": int(ev.strong_damage_raw), "marks_taken": int(ev.marks_taken), "refund": int(ev.refund), "boss_share_bps": int(ev.get("boss_share_bps", 0))})
 				"level_choice":
 					if level_first < 0.0:
 						level_first = esec
@@ -365,7 +368,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"hits_total": hit_total, "events_dropped": int(run.metrics.get("events_dropped", 0)), "event_types": all_types}
 	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
-		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "view": run.descent_view()},
+		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "calls": descent_calls, "view": run.descent_view()},
 		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim)}
 
@@ -700,7 +703,15 @@ func print_run(r: Dictionary) -> void:
 	if r.descent.policy != "":
 		var dm: Dictionary = r.descent.metrics
 		var dk := 0
-		for d in r.descent.ends: dk += int(d.kills)
+		var kill_list: Array = []
+		var boss_bps := 0
+		for d in r.descent.ends:
+			dk += int(d.kills)
+			kill_list.append(int(d.kills))
+			boss_bps += int(d.get("boss_share_bps", 0))
+		kill_list.sort()
+		print("  descent bodies on screen at the call (normals/strongs/alive)=%s" % str(r.descent.calls.map(func(c): return "%d/%d/%d" % [int(c.normals), int(c.strongs), int(c.alive)])))
+		print("  descent kills per use=%s median=%s boss_share_bps_total=%d (D24 Q-D5/Q-D6: median 45..120, boss share per run <= 2500)" % [str(kill_list), str(kill_list[kill_list.size() / 2]) if kill_list.size() > 0 else "-", boss_bps])
 		print("  descent[%s]: uses=%d ready_at=%s used_at=%s kills_by_descent=%d gauge_in=%d wasted=%d refunded=%d strong_dmg_raw=%d" % [r.descent.policy, int(dm.get("uses", 0)),
 			str(dm.get("ready_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), str(dm.get("call_ticks", []).map(func(t): return snappedf(float(t) / 60.0, 0.1))), dk,
 			int(dm.get("gauge_in", 0)), int(dm.get("wasted", 0)), int(dm.get("refunded", 0)), int(dm.get("strong_damage_raw", 0))])

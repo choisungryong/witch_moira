@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "provenance": "independent_design",
-  "balance_status": "가설. 균형 뒤 확정 (D15 A3·A4)",
+  "balance_status": "가설 (D24). 균형 뒤 확정",
   "enabled": false,
   "cost": [3000, 8000, 10000],
   "points": {
@@ -12,15 +12,20 @@
     "vs_cc_hit": 20, "detonate": 30, "combo_cap_per_tick": 300,
     "marks_refund_per_stack": 6, "marks_refund_cap": 1500
   },
-  "reach_m": 13.0,
-  "normal": {"trial_kill_cap": 40},
-  "strong": {"elite_bps": 3500, "champion_bps": 1200, "boss_bps": 800, "per_mark_bps": 150, "marks_cap_bps": 600, "cut_windup_ticks": 30},
-  "after": {"iframe_ticks": 30, "spawn_pause_ticks": 60},
-  "elements": {
-    "ember": {"sweep_ticks": 60, "heading_deg": -38.2, "burn_ticks": 150, "burn_every_ticks": 30, "burn_heat": 1},
-    "frost": {"sweep_ticks": 45, "break_at_ticks": 45, "normal_after_freeze_ticks": 90, "strong_freeze_ticks": 30},
-    "arc":   {"sweep_ticks": 60, "round_ticks": 6, "per_round": 12, "spread_m": 3.0, "spread_count": 2, "normal_stun_ticks": 60, "strong_stun_ticks": 12}
+  "area": {"shape": "screen", "right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4, "edge_m": 1.0},
+  "normal": {"trial_kill_cap": 180},
+  "strong": {"elite_bps": 5000, "champion_bps": 2000, "boss_bps": 1200, "per_mark_bps": 150, "marks_cap_bps": 600,
+             "cut_windup_ticks": 30, "champion_stun_ticks": 45, "boss_stagger_ticks": 45},
+  "after": {"iframe_ticks": 30, "spawn_pause_ticks": 90},
+  "ultimates": {
+    "ember": {"sweep_ticks": 132, "grid": [4, 3], "aimed": 2, "big_count": 5, "big_radius_m": 4.5, "small_radius_m": 3.0,
+              "first_land_step": 30, "gap_ticks": [4, 8], "last_land_step": 126, "first_hit_share_bps": 6000, "next_hit_share_bps": 2000,
+              "burn_ticks": 180, "burn_every_ticks": 30, "burn_heat": 1},
+    "frost": {"sweep_ticks": 150, "onset_step": 18, "pulse_from_step": 30, "pulse_every_ticks": 15, "pulse_count": 8,
+              "pulse_share_bps": 625, "strong_freeze_ticks": 30, "after_freeze_ticks": 30, "ground_ticks": 180, "ground_chill": 1, "ground_slow_bps": 3000},
+    "arc":   {"sweep_ticks": 120, "bolts": 40, "first_step": 4, "gap_ticks": [0, 5], "last_step": 114, "min_apart_m": 5.0, "retries": 4,
+              "snap_m": 3.5, "splash_m": 1.6, "forks": 3, "fork_m": 5.0, "touch_share_bps": 2500, "normal_stun_ticks": 60, "strong_stun_ticks": 12}
   },
   "blocked_phases": [],
-  "crown": {"charge_bps": [1000, 2000, 3000], "power_bps": 12000, "reach_add_m": 1.0}
+  "crown": {"charge_bps": [1000, 2000, 3000], "power_bps": 12000}
 }
