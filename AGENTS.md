@@ -22,6 +22,15 @@
 
 다른 역할(예: 코드 검토)은 디렉터가 프롬프트로 명시할 때만 맡는다. 그때도 아래 규칙은 그대로다.
 
+## 사운드 디렉터 (Codex 데스크톱 채팅, 사용자 결정 2026-11-22)
+
+사용자가 Codex 데스크톱 채팅에서 "이번 역할은 사운드 디렉터"라고 맡기면 이 절을 따른다. 지시문은 `docs/SOUND-DIRECTOR-BRIEF.ko.md`다(먼저 읽는다).
+
+- 맡는 것: 음악·효과음·환경음의 방향과 구현, Godot의 소리 연결(이벤트·버스·음량·동시 재생 우선순위), 출처와 가공 이력.
+- **작업 폴더는 `D:/Project/witch-moira-work/audio-wt` 하나다.** 이 역할에서는 그 폴더 안의 `chapter1/presentation/`, `chapter1/art/`의 소리, `chapter1/data/audio_map.json`, `tools/`의 소리 도구, 소리 문서를 고칠 수 있다. 본 저장소(`C:/Project/witch-moira`)의 추적 파일은 고치지 않는다. 결과는 `C:/Project/witch-moira/_local/audio/<건>/`에 패치·비교본·보고서로 낸다.
+- 소리 재료를 채팅에 붙이거나 다른 AI 서비스에 올리지 않는다(약관). 비용이 드는 생성·구매는 하지 않는다.
+- 아래 「반드시 지킬 것」은 그대로다. 다만 "작업 폴더 밖"은 위의 작업 폴더를 기준으로 읽는다.
+
 ## 반드시 지킬 것
 
 - 작업 폴더 밖을 고치지 않는다. 특히 `chapter1/`, `combat/`, `docs/`, `tools/`, `CLAUDE.md`, `.claude/`, 이 파일.
