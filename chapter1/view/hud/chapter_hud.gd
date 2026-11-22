@@ -1372,7 +1372,7 @@ func _compose_frame(run: RefCounted) -> void:
 	var minutes: String="%02d:%02d"%[run.tick/3600,(run.tick/60)%60]
 	# Goal plate.
 	var objective_text: String
-	if champion_live:
+	if champion_live and String(goal.kind)!="boss":
 		objective_text=Loc.t("hud.objective.champion_status",{"title":_champion_title(champion,Loc.t("hud.champion.fallback")),"time":minutes,"hp":str(ceili(float(champion.hp_raw)/256)),"max":str(ceili(float(champion.max_hp_raw)/256))})
 	else:
 		objective_text="%s · %s\n%s"%[_goal_title(goal),minutes,_goal_text(goal)]
@@ -1419,13 +1419,16 @@ func _champion_title(champion: Dictionary,fallback: String) -> String:
 
 ## The goal plate title and line from objective() (kind, numbers, title_key). The core makes no sentence.
 func _goal_title(goal: Dictionary) -> String:
-	if String(goal.kind)=="champion" and not String(goal.title_key).is_empty():return Loc.t(String(goal.title_key))
+	var kind := String(goal.kind)
+	if kind=="trial":return Loc.t("hud.objective.trial.title")
+	if (kind=="champion" or kind=="boss") and not String(goal.title_key).is_empty():return Loc.t(String(goal.title_key))
 	return Loc.t("zone.%d.name"%int(goal.zone))
 
 func _goal_text(goal: Dictionary) -> String:
 	match String(goal.kind):
 		"move":return Loc.t("hud.objective.move")
-		"champion":return "%d / %d"%[int(goal.hp),int(goal.hp_max)]
+		"champion","boss":return "%d / %d"%[int(goal.hp),int(goal.hp_max)]
+		"trial":return Loc.t("hud.objective.trial_left",{"sec":str(ceili(float(goal.done)/60.0))})
 	return Loc.t("hud.objective.seal_kills",{"done":str(int(goal.done)),"total":str(int(goal.total))})
 
 func _sync_chrome(run: RefCounted) -> void:

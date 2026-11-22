@@ -299,6 +299,14 @@ msgstr "Follow the open east corridor to the next courtyard"
 msgid "hud.objective.seal_kills"
 msgstr "Kills around the seal {done} / {total}"
 
+#. Goal plate title while the hold (trial) is running. Provisional name, narrative-lead decides
+msgid "hud.objective.trial.title"
+msgstr "Ordeal"
+
+#. Goal line of the hold. {sec}: seconds left (plain number)
+msgid "hud.objective.trial_left"
+msgstr "{sec} s left"
+
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
 msgstr "Fireball"

@@ -304,6 +304,14 @@ msgstr "열린 동쪽 회랑을 따라 다음 마당으로 이동"
 msgid "hud.objective.seal_kills"
 msgstr "봉인 주변 처치 {done} / {total}"
 
+#. Goal plate title while the hold (trial) is running. Provisional name, narrative-lead decides
+msgid "hud.objective.trial.title"
+msgstr "시련"
+
+#. Goal line of the hold. {sec}: seconds left (plain number)
+msgid "hud.objective.trial_left"
+msgstr "남은 {sec}초"
+
 #. Skill name (source: growth data)
 msgid "skill.chapter1.skill.ember.name"
 msgstr "파이어볼"
