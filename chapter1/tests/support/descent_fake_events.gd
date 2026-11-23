@@ -48,6 +48,11 @@ func in_area(point: Vector2, c: Vector2, margin: float = EDGE) -> bool:
 	var d := point - c
 	return absf(d.dot(right)) <= float(AREA.half_w_m) + margin and absf(d.dot(down)) <= float(AREA.half_h_m) + margin
 
+## A fresh sequence number, for hand-made events that have to sit in order with the fake's own.
+func next_seq() -> int:
+	seq += 1
+	return seq
+
 func _event(type_: String, at: Vector2, tick_: int, fields: Dictionary) -> Dictionary:
 	seq += 1
 	var e := fields.duplicate(true)

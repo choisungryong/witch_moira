@@ -389,6 +389,84 @@ func fake_part() -> void:
 		var calm := fake_run_one(element, false, 1.0, true)
 		check(int(calm.kicks) == 0, "fake %s: reduced motion means no impulse (%d)" % [element, int(calm.kicks)])
 
+## The end signal in every bad order (A11 fix): late (after the sweep's tail has run out), twice, with no release before it, and with the core's
+## ticks and the presenter's clock far apart (the 12x window). None may leave a script error or rebuild the sweep state by itself.
+func end_event(seq_: int, kills: int) -> Dictionary:
+	return {"type": "descent_end", "seq": seq_, "tick": 0, "kills": kills, "kills_total": kills, "position": Vector2.ZERO}
+
+func end_part() -> void:
+	for element in ["ember", "frost", "arc"]:
+		var tag := "end %s" % element
+		var run := make_run(element, true)
+		var stage := make_stage()
+		var fx = new_fx()
+		fx.setup(stage)
+		var enemies := PackedVector2Array()
+		var gen = Fake.new(element, 11, enemies)
+		# 1) an end with no release at all: nothing happens (no sweep, no number, no impulse)
+		fx.consume([end_event(gen.next_seq(), 7)])
+		fx.sync(run, 1.0 / 60.0)
+		check(fx.sw.is_empty() and stage.world.kicks == 0, tag + ": an end with no release is ignored")
+		play(run, fx, 5)
+		fx.consume([end_event(gen.next_seq(), 7)])
+		fx.sync(run, 1.0 / 60.0)
+		check(fx.sw.is_empty() and stage.world.kicks == 0, tag + ": an end before any release is ignored (built or not)")
+		# the sweep itself
+		for i in 40:
+			enemies.append(run.hero.position + Vector2(gen.h(9, i, 0) * 30.0 - 15.0, gen.h(9, i, 1) * 24.0 - 12.0))
+		gen.enemies = enemies
+		fx.consume(gen.release(run.hero.position, int(run.tick)))
+		check(not fx.sw.is_empty(), tag + ": the release opens the sweep")
+		# 2) an end early, in the middle of the sweep, twice (new seq each time): ended_at is set once and the kick comes once
+		for s in range(1, 20):
+			fx.consume(gen.step(s))
+			fx.sync(run, 1.0 / 60.0)
+		var kicks0: int = stage.world.kicks
+		fx.consume([end_event(gen.next_seq(), 5)])
+		var ended_at := float(fx.sw.ended_at)
+		check(ended_at >= 0.0 and int(fx.sw.kills) == 5, tag + ": the early end marks the sweep")
+		var dup := end_event(gen.next_seq(), 9)
+		fx.consume([dup])
+		fx.consume([dup])   # the same event again (same seq)
+		check(is_equal_approx(float(fx.sw.ended_at), ended_at) and int(fx.sw.kills) == 5, tag + ": a second end does not rewrite the sweep")
+		check(stage.world.kicks == kicks0 + 1, tag + ": the end kicks once, not per copy (%d)" % (stage.world.kicks - kicks0))
+		# 3) the clocks apart: the presenter runs 12 s of frames at 12x with no core event; the sweep must run out cleanly
+		for i in 600:
+			fx.sync(run, 12.0 / 60.0)
+		check(fx.sw.is_empty(), tag + ": the sweep ran out on the presenter's own clock")
+		# 4) another end after the tail (same sweep): ignored; sync stays clean
+		fx.consume([end_event(gen.next_seq(), 3)])
+		for i in 5:
+			fx.sync(run, 12.0 / 60.0)
+		check(fx.sw.is_empty(), tag + ": a copy of the end after the tail does not rebuild the sweep")
+		stage.queue_free()
+		# 5) the end FIRST arrives after the tail has run out (nothing came before): the number shows, the sweep is not rebuilt
+		var run2 := make_run(element, true)
+		var stage2 := make_stage()
+		var fx2 = new_fx()
+		fx2.setup(stage2)
+		play(run2, fx2, 5)
+		var gen2 = Fake.new(element, 11, enemies)
+		fx2.consume(gen2.release(run2.hero.position, int(run2.tick)))
+		for i in 600:
+			fx2.sync(run2, 12.0 / 60.0)
+		check(fx2.sw.is_empty(), tag + ": late end: the tail ran out first")
+		fx2.consume([end_event(gen2.next_seq(), 11)])
+		for i in 5:
+			fx2.sync(run2, 1.0 / 60.0)
+		check(fx2.sw.is_empty(), tag + ": late end: no sweep state appears")
+		check(fx2._kill_label != null and String(fx2._kill_label.text).contains("11"), tag + ": late end: the number is still shown")
+		check(not bool(fx2.status().sweep), tag + ": late end: status idle")
+		# 6) strike and book after the tail: ignored
+		fx2.consume(gen2.step(30))
+		fx2.sync(run2, 1.0 / 60.0)
+		check(fx2.sw.is_empty(), tag + ": a strike after the tail is ignored")
+		# 7) a new sweep after a reset takes its own end
+		fx2.reset()
+		fx2.consume([end_event(gen2.next_seq(), 4)])
+		check(fx2.sw.is_empty(), tag + ": an end right after a reset is ignored")
+		stage2.queue_free()
+
 ## A11 VFX-B: the band's timetable, the cut-scene's rules (hold limit, lock and skip, the fall-back), the HUD hooks. The video itself is not decoded in a headless run, so the video-only
 ## rules are checked on a hand-made cut state (the real video and a real key press are checked by descent_fx_shots.gd in a window).
 func band_part() -> void:
@@ -479,5 +557,6 @@ func execute() -> void:
 	settings_part()
 	sigil_part()
 	fake_part()
+	end_part()
 	print("CHAPTER1_DESCENT_FX_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

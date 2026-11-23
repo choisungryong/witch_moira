@@ -118,6 +118,7 @@ var holder: Node3D
 var tint := Color.WHITE
 var hero := Vector2.ZERO
 var sw: Dictionary = {}
+var _end_sweep := 0   # stats.sweeps at the last end that was taken (one end per sweep)
 ## The render frame's delta (capped), also while a hit-stop holds the sweep's own clock: flashes decay on this one, so a freeze frame never holds a white screen.
 var wall_dt := 0.0
 
@@ -195,6 +196,7 @@ func reset() -> void:
 	_preopen_done = false
 	_bonus = 0.0
 	sw = {}
+	_end_sweep = int(stats.sweeps)   # an end with no release since this reset is stale
 	_aura = 0.0
 	_aura_pulse = 0.0
 	_pulse = 0.0
@@ -341,6 +343,7 @@ func hash1(a: float) -> float:
 
 ## A world point on the sweep's screen rectangle? (D24 4.1) u along the screen's right, v along its down.
 func in_area(point: Vector2, margin: float = 0.0) -> bool:
+	if sw.is_empty(): return false
 	var a: Dictionary = sw.get("area", DEFAULT_AREA)
 	var d := point - (sw.center as Vector2)
 	var rad := deg_to_rad(float(a.right_deg))
@@ -456,10 +459,15 @@ func _on_strike(event: Dictionary) -> void:
 
 func _on_end(event: Dictionary) -> void:
 	if not _built: return
+	# One end per sweep: a second end, or an end with no release before it, changes nothing (the core sends one, but the picture must not trust the order).
+	if int(stats.sweeps) <= _end_sweep: return
+	_end_sweep = int(stats.sweeps)
 	# kills_total (the core's later field: the whole sweep, entrants included) when it is there, else kills
 	var shown := int(event.get("kills_total", event.get("kills", 0)))
-	sw["kills"] = shown
-	if not sw.is_empty(): sw["ended_at"] = float(sw.t)
+	# the end can come after the sweep's tail has already run out (sw = {}): the number is still shown, the sweep state is not rebuilt
+	if not sw.is_empty():
+		sw["kills"] = shown
+		if float(sw.ended_at) < 0.0: sw["ended_at"] = float(sw.t)
 	kick(0.25)
 	if numbers_on and shown > 0 and _kill_label != null:
 		_kill_total = shown
