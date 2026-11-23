@@ -35,9 +35,9 @@ var dump_out := ""
 ## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
 ## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
 ## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes). The sixth is the
-## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off).
+## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start().
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"]]
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -84,6 +84,10 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 	if not run.start(seed_,primary):
 		if observe:probe.finish(primary,run,"start rejected: "+str(run.errors))
 		return {"error":"start rejected: "+str(run.errors)}
+	# D23 T17: the gear kit goes on right after start() succeeded and before the first step (the town-to-run path).
+	if setup=="gear-t17":
+		var gear_problem := TrialDocs.wear_fixture_kit_problem(run,"kit.golden.t17")
+		if not gear_problem.is_empty():return {"error":"setup rejected: "+gear_problem}
 	if observe:probe.begin()
 	var checkpoints: Array[String]=[]
 	var checkpoints_textless: Array[String]=[]

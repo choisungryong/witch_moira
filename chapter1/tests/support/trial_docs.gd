@@ -10,6 +10,7 @@ const RunSpellsDoc := preload("res://chapter1/core/run_spells.gd")
 const DescentDoc := preload("res://chapter1/core/descent.gd")
 const TrialPace := preload("res://chapter1/app/trial_pace.gd")
 const LootTables := preload("res://chapter1/core/loot.gd")
+const GearKits := preload("res://chapter1/tests/support/gear_kits.gd")
 
 ## The names `--chapter1-trial=` knows (chapter_one.gd `_apply_trial`). Anything else is a typo that the app drops without a word.
 const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace", "grace", "elites"]
@@ -67,6 +68,23 @@ static func enable_pity_problem(run: RefCounted) -> String:
 	if not tables.set_pity(true): return "pity block refused"
 	run.loot = tables
 	run.drop_dry_runs = tables.pity_runs()
+	return ""
+
+## D23 T17: wears a fixed kit of tests/fixtures/golden_gear.json on a run that was just started (tick 0, empty bag), through the same
+## import_starting_gear a run from town uses. Call it right after start() succeeded and before the first step. "" when it worked, else one sentence.
+const GOLDEN_GEAR_PATH := "res://chapter1/tests/fixtures/golden_gear.json"
+static func wear_fixture_kit_problem(run: RefCounted, kit_id: String) -> String:
+	var fixture: Dictionary = GearKits.load_fixture(GOLDEN_GEAR_PATH)
+	if fixture.is_empty(): return "golden_gear.json could not be read"
+	var built: Dictionary = GearKits.items(run.loot, fixture, kit_id)
+	if not bool(built.ok): return "kit refused: " + str(built.errors)
+	var gear: Array[Dictionary] = []
+	for entry in built.items:
+		var item: Dictionary = entry.item.duplicate(true)
+		item["storage_id"] = int(item.uid)
+		item["equip_slot"] = String(entry.equip)
+		gear.append(item)
+	if not run.import_starting_gear(gear): return "import_starting_gear refused the kit " + kit_id
 	return ""
 
 ## The `--chapter1-trial=` parts of an argument list, in the order given. Empty when the argument is absent.

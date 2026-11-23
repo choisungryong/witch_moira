@@ -125,6 +125,12 @@ var _hostile_src: Dictionary = {}
 ## The descent (D15 A) holds the core still between request_descent() and release_descent(): mode "descent", no tick.
 ## Always false in a run whose descent.json is off.
 var _descent_hold := false
+## D23 T17: thorns owed for the hit of this tick ({id, amount, kind}); written by _hero_damage, paid by _resolve_thorns() after the
+## projectile step. Never in the snapshot (empty at the end of every step).
+var _thorns_pending: Array[Dictionary] = []
+## D23 T17: kill ticks inside the streak window, and the projectiles the next primary cast gets (0 = not armed).
+var _streak_kills: Array[int] = []
+var _streak_charge := 0
 
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
@@ -176,6 +182,9 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_meteor_sequence = 0
 	_ring_pending.clear()
 	_hostile_src.clear()
+	_thorns_pending.clear()
+	_streak_kills.clear()
+	_streak_charge = 0
 	_friendly_tick = -1
 	_last_heavy_tick = -1
 	_guaranteed_drops = 0
@@ -558,6 +567,7 @@ func compare_item(uid: int) -> Dictionary:
 func step(move: Vector2 = Vector2.ZERO) -> void:
 	if mode != "playing": return
 	events.clear()
+	_thorns_pending.clear()
 	tick += 1
 	if not move.is_finite(): move = Vector2.ZERO
 	var direction := move.limit_length(1.0)
@@ -572,6 +582,7 @@ func step(move: Vector2 = Vector2.ZERO) -> void:
 	_rebuild_grid()
 	_auto_casts()
 	_step_projectiles()
+	_resolve_thorns()
 	if not _terminal_mode.is_empty():
 		_update_metrics()
 		return
@@ -850,10 +861,59 @@ func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", sourc
 	details.attack_id = "floor_strike" if source_kind == "boss_ward" else String(source_body.get("attack_kind",""))
 	if graze: details.graze = true
 	_emit("hero_hit",hero.position,details)
+	# D23 T17: thorns give back thorns_bps of the hit as it was after the graze and before the reduction. Only a body that did the hit
+	# (source_id > 0) is paid, and not when this hit finished the hero. It is only written down here (see _resolve_thorns).
+	var thorns_bps := int(_gear_stats.get("thorns_bps",0))
+	if thorns_bps > 0 and source_id > 0 and hero.hp_raw > 0:
+		_thorns_pending.append({"id":source_id,"amount":maxi(1,raw*thorns_bps/10000),"kind":source_kind})
 	if hero.hp_raw <= 0:
 		_terminal_mode = "defeat"
 		_refresh_mode()
 		_emit("defeat",hero.position)
+
+## D23 T17: pays the thorns written by _hero_damage in this tick: one `thorns` event, then one blow through _damage_enemy with
+## skill_id "gear.thorns" and reflect:true (the chapter core leaves the condition lines out of a reflect). The giver must still be
+## alive and of this run. Called from step() after the projectile step and before the end check, so a boss that dies of it closes the run.
+func _resolve_thorns() -> void:
+	if _thorns_pending.is_empty(): return
+	var owed: Array[Dictionary] = _thorns_pending.duplicate()
+	_thorns_pending.clear()
+	for entry in owed:
+		var id_ := int(entry.id)
+		if not _terminal_mode.is_empty() or not enemies.has(id_): continue
+		var e: Dictionary = enemies[id_]
+		if e.hp_raw <= 0 or e.generation != _epoch: continue
+		var amount := int(entry.amount)
+		if not metrics.has("thorns"): metrics.thorns = {"hits":0,"raw":0,"kills":0}
+		metrics.thorns.hits = int(metrics.thorns.hits)+1
+		metrics.thorns.raw = int(metrics.thorns.raw)+amount
+		_emit("thorns",e.position,{"target_id":id_,"amount_raw":amount,"source_kind":String(entry.kind),"from":hero.position})
+		_cast_sequence += 1
+		var effects := {"damage_raw":amount,"proc_depth":0,"death_burst":0,"shatter_count":0,"radius_cm":0,"slow_bps":0,"freeze_stacks":0,"pierce":0,"hit_budget":1,"cooldown_ticks":0,"projectiles":0,"chain_targets":0,"branches":0}
+		var context := {"uid":_cast_sequence,"skill_id":"gear.thorns","effects":effects,"remaining_hits":1,"hit_ids":[],"evolved":false,"reflect":true}
+		var before := kills
+		_damage_enemy(id_,context,0)
+		if kills > before: metrics.thorns.kills = int(metrics.thorns.kills)+(kills-before)
+
+## D23 T17: counts one kill for the streak (gear streak_projectiles, window and threshold from tuning.gear_conditions). A descent's
+## kill is not counted. Reaching the threshold arms the next primary cast; while armed nothing is counted.
+func _streak_note(details: Dictionary) -> void:
+	var gain := int(_gear_stats.get("streak_projectiles",0))
+	if gain <= 0 or _streak_charge > 0: return
+	var rule: Dictionary = tuning.get("gear_conditions",{})
+	var need := int(rule.get("streak_kills",0))
+	var window := int(rule.get("streak_window_ticks",0))
+	if need <= 0 or window <= 0: return
+	if String(details.get("skill_id","")).begins_with("descent."): return
+	_streak_kills.append(tick)
+	while not _streak_kills.is_empty() and tick-_streak_kills[0] >= window: _streak_kills.pop_front()
+	if _streak_kills.size() < need: return
+	_streak_charge = mini(4,gain)
+	var counted := _streak_kills.size()
+	_streak_kills.clear()
+	if not metrics.has("streak"): metrics.streak = {"armed":0,"casts":0,"extra":0}
+	metrics.streak.armed = int(metrics.streak.armed)+1
+	_emit("streak_ready",hero.position,{"charge":_streak_charge,"kills":counted})
 
 func _enemy_projectiles(e: Dictionary) -> void:
 	var hostile := 0
@@ -917,6 +977,13 @@ func _auto_casts() -> void:
 		var nearest := _near(hero.position,_acquire_m())
 		if nearest.is_empty(): continue
 		var target: Dictionary = enemies[nearest[0]]
+		# D23 T17: an armed streak adds its projectiles (an arc: chain targets) to this one primary cast only.
+		var streak := 0
+		if id_ == _primary_id and _streak_charge > 0:
+			streak = _streak_charge
+			var streak_gear: Dictionary = _gear_with_conditions().duplicate()
+			streak_gear.projectiles = int(streak_gear.get("projectiles",0))+streak
+			skill = _skill_with(id_,streak_gear)
 		# With the spell composition a basic spell may aim at a far shooter or a controlled enemy first (I0, I1); without it
 		# this stays the nearest enemy and nothing below changes.
 		var aim := ""
@@ -939,15 +1006,22 @@ func _auto_casts() -> void:
 		_contexts[context.uid] = context
 		_next_cast[id_] = tick+int(effects.cooldown_ticks)
 		metrics.casts[id_] = int(metrics.casts.get(id_,0))+1
+		if streak > 0:
+			_streak_charge = 0
+			if not metrics.has("streak"): metrics.streak = {"armed":0,"casts":0,"extra":0}
+			metrics.streak.casts = int(metrics.streak.casts)+1
+			metrics.streak.extra = int(metrics.streak.extra)+streak
 		if id_ == "chapter1.skill.arc":
 			var positions := _chain(target,context)
 			var arc_details := {"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":positions,"segments":context.get("arc_segments",[]),"evolved":skill.evolved}
+			if streak > 0: arc_details.streak = streak
 			if aim == "kind": arc_details.prefer = "kind"
 			_emit("cast",hero.position,arc_details)
 			# A chain that left child projectiles behind keeps its context for them.
 			if not _children_pending_for(int(context.uid)): _contexts.erase(context.uid)
 		else:
 			var shot_details := {"skill_id":id_,"direction":direction,"effects":effects.duplicate(true),"targets":[],"evolved":skill.evolved}
+			if streak > 0: shot_details.streak = streak
 			if aim == "kind": shot_details.prefer = "kind"
 			_emit("cast",hero.position,shot_details)
 			var count: int = effects.projectiles
@@ -1437,6 +1511,7 @@ func _emit(type: String, position: Vector2, details: Dictionary = {}) -> void:
 		events.pop_front()
 		metrics.events_dropped = int(metrics.get("events_dropped",0))+1
 	events.append(event)
+	if type == "death": _streak_note(details)
 
 func snapshot() -> Dictionary:
 	var result := {"mode":mode,"tick":tick,"kills":kills,"hero":hero.duplicate(true),"enemies":enemies.duplicate(true),
@@ -1447,6 +1522,9 @@ func snapshot() -> Dictionary:
 	# D23 T1-B: the two clocks of the dash and movement conditions exist only while gear that reads them is worn (no key otherwise).
 	if int(_gear_stats.get("after_dash_bps",0)) > 0 or int(_gear_stats.get("moving_damage_bps",0)) > 0 or int(_gear_stats.get("after_dash_guard_bps",0)) > 0:
 		result.gear_clock = {"dash_until":_dash_until,"last_move":_last_move_tick}
+	# D23 T17: the streak's kill window and charge exist only while streak gear is worn or a charge is waiting.
+	if int(_gear_stats.get("streak_projectiles",0)) > 0 or _streak_charge > 0:
+		result.streak = {"kills":_streak_kills.duplicate(),"charge":_streak_charge}
 	# D20: the booked falls, only while one is in the air.
 	if not _meteors.is_empty(): result.meteors = _meteors.duplicate(true)
 	return result

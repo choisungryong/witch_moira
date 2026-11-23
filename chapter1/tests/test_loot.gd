@@ -497,7 +497,7 @@ func affix_checks(loot: RefCounted) -> void:
 # ROLL_HASH: if the data or the roll order changes ON PURPOSE, run this test, copy the "got" value from the failing line and update it
 # in the same commit (say so in the message). An unplanned change of the hash is the finding.
 const ROLL_SEED := 20261124
-const ROLL_HASH := "c25fe62b663291dd85e7681213d848b683a928007ff25a9ef97445616eddc103"
+const ROLL_HASH := "ec0e18ce172ddd5004e139aaef7cd6bafb631b0f206cb2f892f8a0a4f9e67cea"
 const SIGMAS := 5.0
 
 func sigma_ok(observed: int, n: int, p: float) -> bool:

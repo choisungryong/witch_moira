@@ -29,6 +29,8 @@ const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow",
 ## lines (absent block = those lines never hold).
 const STAT_CAPS_KEYS := ["damage_reduction_bps","condition_damage_bps"]
 const GEAR_CONDITIONS_KEYS := ["after_dash_ticks","moving_ticks","lowhp_bps"]
+## D23 T17: optional, both or neither.
+const GEAR_CONDITIONS_STREAK_KEYS := ["streak_kills","streak_window_ticks"]
 ## D20: the evolved ember falls from the sky instead of flying. Absent block = it flies as before.
 const METEOR_KEYS := ["fall_ticks","lead_bps","scatter_cm","radius_bps","damage_bps"]
 ## D21 N2: gear of a high enough quality stays on the ground and is gathered when a gate opens. Absent block or "enabled": false = the old 180 s rule.
@@ -125,7 +127,19 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 			if not integer(v.stat_caps.damage_reduction_bps,1,10000): issues.append("stat_caps damage_reduction_bps")
 			if not integer(v.stat_caps.condition_damage_bps,1,100000): issues.append("stat_caps condition_damage_bps")
 	if v.has("gear_conditions"):
-		if not v.gear_conditions is Dictionary or not GrowthCatalog.keys_match(v.gear_conditions,GEAR_CONDITIONS_KEYS): issues.append("gear_conditions keys")
+		# D23 T17: streak_kills and streak_window_ticks are optional and come together (both or neither); the three required keys stay exact.
+		var gear_conditions_ok: bool = v.gear_conditions is Dictionary
+		if gear_conditions_ok:
+			var streak_keys := 0
+			var required := {}
+			for key in v.gear_conditions:
+				if key in GEAR_CONDITIONS_STREAK_KEYS: streak_keys += 1
+				else: required[key] = v.gear_conditions[key]
+			gear_conditions_ok = streak_keys != 1 and GrowthCatalog.keys_match(required,GEAR_CONDITIONS_KEYS)
+			if gear_conditions_ok and streak_keys == 2:
+				if not integer(v.gear_conditions.streak_kills,1,200): issues.append("gear_conditions streak_kills")
+				if not integer(v.gear_conditions.streak_window_ticks,1,3600): issues.append("gear_conditions streak_window_ticks")
+		if not gear_conditions_ok: issues.append("gear_conditions keys")
 		else:
 			if not integer(v.gear_conditions.after_dash_ticks,1,3600): issues.append("gear_conditions after_dash_ticks")
 			if not integer(v.gear_conditions.moving_ticks,1,600): issues.append("gear_conditions moving_ticks")

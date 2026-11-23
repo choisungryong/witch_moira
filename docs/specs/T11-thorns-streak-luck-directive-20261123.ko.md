@@ -251,15 +251,15 @@
 
 | # | 기대 |
 |---|---|
-| U1 | 운 블록의 틀린 꼴 여섯 가지가 각각 `load_file` 실패: 키 빠짐, 키 더함, `enabled` 문자열, `cap_bps` 0, `k.rare` 0, `snapshot` 다른 값. 블록이 없으면 불러지고 `set_luck(true)`는 거절된다 |
-| U2 | `quality_weights`: `mods` 없음 = `{}` = `{luck_bps:0}` = 운 끔 상태의 `{luck_bps:3000}`. 넷 모두 데이터의 `quality` 그대로 |
-| U3 | 운 켬, `luck_bps` 3000: 일반 등급의 희귀·전설·고유 가중이 L3 공식값과 정수까지 같다(K는 데이터에서 읽는다). 마법·일반은 그대로다. 사당 `quality_bps`와 함께 줄 때는 사당을 먼저 곱한다 |
-| U4 | `luck_bps` 9000을 줘도 3000과 같은 가중이다(상한) |
-| U5 | 동일성: 운 끔 상태에서 `{luck_bps:3000}`을 준 `roll_class`가 `mods` 없는 호출과 같은 결과다(6등급 × 300번 해시, T9 794행과 같은 방식) |
-| U6 | 분포: 운 켬, 고정 시드, `roll_class("normal", 8)` 20만 번. 무작위 줄의 등급 비율이 L3 공식의 비율과 5시그마 안. 같은 시드의 운 0보다 희귀·전설·고유가 모두 많다 |
-| U7 | 보장 줄 불변: `roll_class("boss", …, {luck_bps:3000})`의 첫 줄 등급 분포가 운 0과 같다(보장 희귀) |
-| U8 | 데이터 정합: `affix_rolls.enabled`가 참이면 `luck.enabled`도 참이다. 운 줄만 구르고 효과가 없는 상태를 막는다. 지금은 둘 다 거짓이라 통과한다 |
-| U9 | `core_reads`↔`STATS_READ` 일치(기존 검사). `grace_luck_*`는 `false`이고 `STATS_READ`에 없다 |
+| LK1 | 운 블록의 틀린 꼴 여섯 가지가 각각 `load_file` 실패: 키 빠짐, 키 더함, `enabled` 문자열, `cap_bps` 0, `k.rare` 0, `snapshot` 다른 값. 블록이 없으면 불러지고 `set_luck(true)`는 거절된다 |
+| LK2 | `quality_weights`: `mods` 없음 = `{}` = `{luck_bps:0}` = 운 끔 상태의 `{luck_bps:3000}`. 넷 모두 데이터의 `quality` 그대로 |
+| LK3 | 운 켬, `luck_bps` 3000: 일반 등급의 희귀·전설·고유 가중이 L3 공식값과 정수까지 같다(K는 데이터에서 읽는다). 마법·일반은 그대로다. 사당 `quality_bps`와 함께 줄 때는 사당을 먼저 곱한다 |
+| LK4 | `luck_bps` 9000을 줘도 3000과 같은 가중이다(상한) |
+| LK5 | 동일성: 운 끔 상태에서 `{luck_bps:3000}`을 준 `roll_class`가 `mods` 없는 호출과 같은 결과다(6등급 × 300번 해시, T9 794행과 같은 방식) |
+| LK6 | 분포: 운 켬, 고정 시드, `roll_class("normal", 8)` 20만 번. 무작위 줄의 등급 비율이 L3 공식의 비율과 5시그마 안. 같은 시드의 운 0보다 희귀·전설·고유가 모두 많다 |
+| LK7 | 보장 줄 불변: `roll_class("boss", …, {luck_bps:3000})`의 첫 줄 등급 분포가 운 0과 같다(보장 희귀) |
+| LK8 | 데이터 정합: `affix_rolls.enabled`가 참이면 `luck.enabled`도 참이다. 운 줄만 구르고 효과가 없는 상태를 막는다. 지금은 둘 다 거짓이라 통과한다 |
+| LK9 | `core_reads`↔`STATS_READ` 일치(기존 검사). `grace_luck_*`는 `false`이고 `STATS_READ`에 없다 |
 
 `test_chapter_run.gd`:
 
@@ -336,7 +336,7 @@
 | 3 | 표현이 모르는 `skill_id`(`gear.thorns`)를 받아도 오류가 없는지. `hud_dump`를 가시 묶음으로 한 판 돌리는 길이 지금은 없다 | qa-perf |
 | 4 | 이름 확정(형극·쇄도·행운 후보, D23-T1 2.9) | narrative-lead → content-balance |
 | 5 | 수치 판정(6절의 design-lead 몫이 정해진 뒤) | content-balance |
-| 6 | `luck.enabled`를 `affix_rolls.enabled`와 같은 날 켠다(U8 검사가 막는다) | 디렉터 |
+| 6 | `luck.enabled`를 `affix_rolls.enabled`와 같은 날 켠다(LK8 검사가 막는다) | 디렉터 |
 | 7 | 은총 등급을 켜는 날 `grace_luck_bps`를 `STATS_READ`에 넣고 `grace_luck_*`의 `core_reads`를 켠다 | gameplay-systems |
 | 8 | 사람 플레이: 운 한 줄을 힘 대신 골랐나, 가시가 "맞아도 좋은" 맛을 줬나, 몰아침이 터지는 순간을 알아봤나. 모두 **미평가** | 사용자 |
 
@@ -378,7 +378,7 @@ python tools/dev/run_all.py
 
 7.1과 같은 명령을 돌린다. 기대는 다음과 같다.
 - 골든: `affix-on`을 뺀 **일곱 건 불변**(꺼진 다섯 + `pity-armed` + `gear-t17`). 새 `luck-on` 추가.
-- `test_loot` U1~U9와 `test_chapter_run` R1~R7이 통과한다. `ROLL_HASH`는 한 번 갱신한다.
+- `test_loot` LK1~LK9와 `test_chapter_run` R1~R7이 통과한다. `ROLL_HASH`는 한 번 갱신한다.
 - `sim_loot` 끔은 글자 단위로 같다.
 - `--luck`의 판정은 7.3의 B5가 들어간 뒤 content-balance가 한다.
 
@@ -413,7 +413,7 @@ python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_
 | 조각 | 패치 | 보고서 |
 |---|---|---|
 | T17 | `_local/d23-t17/t17.patch` | `_local/d23-t17/REPORT.txt`(명령별 원문 출력 꼬리, 골든 `mismatches` 원문, `ROLL_HASH` 전후, 3.16 표 전후) |
-| T8 | `_local/d23-t8/t8.patch` | `_local/d23-t8/REPORT.txt`(같은 꼴 + U6 분포 표) |
+| T8 | `_local/d23-t8/t8.patch` | `_local/d23-t8/REPORT.txt`(같은 꼴 + LK6 분포 표) |
 | B5 | `_local/d23-t8/b5.patch` | `_local/d23-t8/B5-REPORT.txt` |
 | T8-M | — | `_local/d23-t8/T8M-REPORT.txt` |
 

@@ -1186,6 +1186,290 @@ func t9_core_checks() -> void:
 		for item in g.inventory:(kept_on if armed_state else kept_off).append(JSON.stringify([item.base_id,item.quality,item.stats]))
 	check(kept_on==kept_off and kept_on.size()==3,"T9 a seal guardian's three pieces are the same with the pity armed")
 
+## D23 T17: gear thorns_bps and streak_projectiles. The pieces are called directly where one rule is meant (_hero_damage then
+## _resolve_thorns is what step() does in one tick), and through step() where the ordering or the real hit is the point.
+func t17_caps(streak: bool=true) -> Dictionary:
+	var rule := {"after_dash_ticks":120,"moving_ticks":6,"lowhp_bps":3500}
+	if streak:
+		rule.streak_kills=20;rule.streak_window_ticks=180
+	return {"stat_caps":{"damage_reduction_bps":7500,"condition_damage_bps":10000},"gear_conditions":rule}
+
+## A quiet field: no spawns, the hero's own spells held back (their next cast is far away), gear keys set after the start.
+func t17_run(gear: Dictionary,mod: Dictionary={},primary: String=EMBER) -> RefCounted:
+	var r := tuned_run(t17_caps() if mod.is_empty() else mod,primary)
+	clear_field(r)
+	for id_ in r._skill_ids:r._next_cast[id_]=10000000
+	for key in gear:r._gear_stats[key]=gear[key]
+	r.tick=100
+	return r
+
+func t17_thorns(r: RefCounted) -> Array:
+	var found: Array=[]
+	for event in r.events:
+		if event.type=="thorns":found.append(event)
+	return found
+
+## One hit on the hero the way a body does it, paid in the same call: returns the life the giver lost.
+func t17_hit(r: RefCounted,giver: int,raw: int=10000,kind: String="walker") -> int:
+	var before: int=r.enemies[giver].hp_raw if r.enemies.has(giver) else 0
+	r._hero_damage(raw,Vector2.ZERO,kind,giver)
+	r._resolve_thorns()
+	return before-int(r.enemies[giver].hp_raw) if r.enemies.has(giver) else 0
+
+## Deaths of one kind at consecutive ticks (the streak counts death events).
+func t17_death(r: RefCounted,skill_id: String="chapter1.skill.ember") -> void:
+	r._emit("death",Vector2(5,0),{"target_id":0,"kind":"walker","elite":false,"skill_id":skill_id,"role":"normal"})
+
+func t17_checks() -> void:
+	# K1: no thorns gear. A real walker hit changes nothing about the walker and leaves no trace.
+	var none := t17_run({})
+	var w0: Dictionary=tough(none,"walker",Vector2(.5,0))
+	var seen_hit := false;var any_thorns := false
+	for i in 400:
+		none.step(Vector2.ZERO)
+		if event_count(none,"hero_hit")>0:seen_hit=true
+		if event_count(none,"thorns")>0:any_thorns=true
+		if seen_hit:break
+	check(seen_hit and not any_thorns and w0.hp_raw==1000000*256 and not none.metrics.has("thorns") and not none.metrics.has("streak") and not none.snapshot().has("streak"),"T17 K1 no thorns/streak gear: the walker's hit leaves its life, events, metrics and snapshot as they were")
+	# K2: through step(): the same tick has hero_hit, thorns and a hit with skill_id gear.thorns; the giver loses exactly the amount.
+	var real := t17_run({"thorns_bps":3000})
+	var w1: Dictionary=tough(real,"walker",Vector2(.5,0))
+	var done := false;var k2_ok := false
+	for i in 400:
+		real.step(Vector2.ZERO)
+		if event_count(real,"hero_hit")>0:
+			var hit_event: Dictionary=event_of(real,"hero_hit");var thorn: Dictionary=event_of(real,"thorns")
+			var reflected: Dictionary={}
+			for event in real.events:
+				if event.type=="hit" and event.skill_id=="gear.thorns":reflected=event
+			var amount: int=int(hit_event.incoming_raw)*3000/10000
+			k2_ok=not thorn.is_empty() and int(thorn.amount_raw)==amount and not reflected.is_empty() and int(reflected.damage_raw)==amount and int(thorn.tick)==int(hit_event.tick) and int(thorn.target_id)==int(w1.id) and w1.hp_raw==1000000*256-amount
+			done=true
+		if done:break
+	check(done and k2_ok,"T17 K2 a walker's real hit: hero_hit, thorns and a gear.thorns hit in one tick, the giver loses 30%% of the hit")
+	check(real.metrics.has("thorns") and real.metrics.thorns.hits==1 and real.metrics.thorns.kills==0 and real.metrics.hits.get("gear.thorns",0)==1,"T17 G10 metrics.thorns exists once thorns fired (hits 1, kills 0)")
+	# K2 with the plain numbers: raw 10000, 3000 bps -> exactly 3000.
+	var plain := t17_run({"thorns_bps":3000});var giver: int=tough(plain,"walker",Vector2(.5,0)).id
+	var lost: int=t17_hit(plain,giver)
+	var thorn_event: Dictionary=event_of(plain,"thorns")
+	var hit_skill := ""
+	for event in plain.events:
+		if event.type=="hit":hit_skill=String(event.skill_id)
+	check(lost==3000 and int(thorn_event.amount_raw)==3000 and hit_skill=="gear.thorns" and thorn_event.source_kind=="walker" and thorn_event.from==plain.hero.position,"T17 K2 raw 10000 at 3000 bps: the giver loses exactly 3000, the event says so")
+	var small := t17_run({"thorns_bps":300});var s_giver: int=tough(small,"walker",Vector2(.5,0)).id
+	check(t17_hit(small,s_giver,1)==1,"T17 G1 a tiny hit still gives back 1 (max 1)")
+	# K3: reduction does not shrink it.
+	var reduced := t17_run({"thorns_bps":3000,"damage_reduction_bps":7500});var r_giver: int=tough(reduced,"walker",Vector2(.5,0)).id
+	var hp_r: int=reduced.hero.hp_raw
+	var lost_r: int=t17_hit(reduced,r_giver)
+	check(lost_r==3000 and hp_r-int(reduced.hero.hp_raw)==2500,"T17 K3 reduction 7500: the hero takes 2500, the giver still loses 3000 (the hit before the reduction)")
+	# K4: a graze gives back the share of the grazed hit.
+	var graze := t17_run({"thorns_bps":3000},tuning_with({"heavy_hit":{"heavy_bps":2000,"gap_ticks":120,"iframe_ticks":45,"graze_bps":5000,"ward_gap_ticks":0}}))
+	clear_field(graze);for id_ in graze._skill_ids:graze._next_cast[id_]=10000000
+	graze._gear_stats.thorns_bps=3000;graze.tick=100
+	var g_giver: int=tough(graze,"walker",Vector2(.5,0)).id
+	var first_lost: int=t17_hit(graze,g_giver)
+	graze.tick=146;graze.events.clear()
+	var second_lost: int=t17_hit(graze,g_giver)
+	check(first_lost==3000 and bool(event_of(graze,"hero_hit").get("graze",false)) and second_lost==1500,"T17 K4 a grazed hit (50%% of 10000) gives back 30%% of 5000 = 1500 (first %d, second %d)"%[first_lost,second_lost])
+	# K5: no condition multiplier on the way back.
+	var cond := t17_run({"thorns_bps":3000,"vs_elite_bps":5000});var elite_giver: int=tough(cond,"elite",Vector2(2,0)).id
+	check(t17_hit(cond,elite_giver,10000,"elite")==3000,"T17 K5 vs_elite_bps 5000 worn: an elite's thorns are still exactly 3000 (reflect takes no condition line)")
+	check(t1b_dealt(cond,elite_giver,1000)==1500,"T17 K5 the same gear still raises an ordinary hit on the elite by 50%")
+	# K6: no one to pay, blocked hit, lethal hit.
+	var floor_hit := t17_run({"thorns_bps":3000})
+	floor_hit._hero_damage(10000,Vector2.ZERO,"hazard",0);floor_hit._resolve_thorns()
+	check(t17_thorns(floor_hit).is_empty() and not floor_hit.metrics.has("thorns"),"T17 K6 source_id 0 (a floor danger) pays nothing")
+	var blocked := t17_run({"thorns_bps":3000});var b_giver: int=tough(blocked,"walker",Vector2(.5,0)).id
+	t17_hit(blocked,b_giver);blocked.events.clear()
+	var hp_b: int=blocked.hero.hp_raw
+	blocked._hero_damage(10000,Vector2.ZERO,"walker",b_giver);blocked._resolve_thorns()
+	check(hp_b==blocked.hero.hp_raw and t17_thorns(blocked).is_empty() and event_count(blocked,"hero_hit")==0,"T17 K6 a hit blocked by invulnerability pays nothing and makes no event")
+	var lethal := t17_run({"thorns_bps":3000});var l_giver: int=tough(lethal,"walker",Vector2(.5,0)).id
+	lethal.hero.hp_raw=100
+	var hp_g: int=lethal.enemies[l_giver].hp_raw
+	lethal._hero_damage(10000,Vector2.ZERO,"walker",l_giver);lethal._resolve_thorns()
+	check(lethal.mode=="defeat" and t17_thorns(lethal).is_empty() and lethal.enemies[l_giver].hp_raw==hp_g,"T17 K6 the hit that ends the hero pays nothing")
+	# G3: a giver that is gone or dead gets nothing; a giver from an older run (generation) gets nothing.
+	var gone := t17_run({"thorns_bps":3000});var gone_id: int=tough(gone,"walker",Vector2(.5,0)).id
+	gone.enemies[gone_id].hp_raw=0;gone.enemies[gone_id].state="dead"
+	gone._hero_damage(10000,Vector2.ZERO,"walker",gone_id);gone._resolve_thorns()
+	check(t17_thorns(gone).is_empty(),"T17 G3 a dead giver is not paid")
+	var old_gen := t17_run({"thorns_bps":3000});var old_id: int=tough(old_gen,"walker",Vector2(.5,0)).id
+	old_gen.enemies[old_id].generation=old_gen._epoch-1
+	old_gen._hero_damage(10000,Vector2.ZERO,"walker",old_id);old_gen._resolve_thorns()
+	check(t17_thorns(old_gen).is_empty(),"T17 G3 a body of an older run is not paid")
+	# G5: step() drops what was written but not paid (a hit made outside step) so nothing leaks into the next tick.
+	var leak := t17_run({"thorns_bps":3000});var leak_id: int=tough(leak,"walker",Vector2(20,0)).id
+	leak._hero_damage(10000,Vector2.ZERO,"walker",leak_id)
+	leak.step(Vector2.ZERO)
+	check(t17_thorns(leak).is_empty() and leak._thorns_pending.is_empty(),"T17 G5 step() starts with no owed thorns")
+	# K7: an enemy shot pays at any distance; a shooter that died first pays nothing.
+	var shot := t17_run({"thorns_bps":3000});var shooter: int=tough(shot,"ranged",Vector2(28,0)).id
+	shot._projectile_sequence+=1
+	shot.projectiles.append({"uid":shot._projectile_sequence,"position":shot.hero.position,"previous":shot.hero.position,"direction":Vector2.RIGHT,"speed":0.0,"radius":.16,"skill_id":"hostile.ranged","hostile":true,"damage_raw":10000,"expires":shot.tick+100,"cast_id":0,"pierce_left":0,"hit_ids":[]})
+	shot._hostile_src[shot._projectile_sequence]={"id":shooter,"kind":"ranged"}
+	var shooter_before: int=shot.enemies[shooter].hp_raw
+	shot.step(Vector2.ZERO)
+	var shot_thorns := t17_thorns(shot)
+	check(shot_thorns.size()==1 and int(shot_thorns[0].amount_raw)==3000 and shooter_before-int(shot.enemies[shooter].hp_raw)==3000 and shot.enemies[shooter].position.distance_to(shot.hero.position)>15.0,"T17 K7 an enemy shot pays the shooter 3000 from 15+ m away (far outside the 1.15 m body reach)")
+	var dead_shot := t17_run({"thorns_bps":3000});var dead_shooter: int=tough(dead_shot,"ranged",Vector2(28,0)).id
+	dead_shot._projectile_sequence+=1
+	dead_shot.projectiles.append({"uid":dead_shot._projectile_sequence,"position":dead_shot.hero.position,"previous":dead_shot.hero.position,"direction":Vector2.RIGHT,"speed":0.0,"radius":.16,"skill_id":"hostile.ranged","hostile":true,"damage_raw":10000,"expires":dead_shot.tick+100,"cast_id":0,"pierce_left":0,"hit_ids":[]})
+	dead_shot._hostile_src[dead_shot._projectile_sequence]={"id":dead_shooter,"kind":"ranged"}
+	dead_shot.enemies[dead_shooter].hp_raw=0;dead_shot.enemies[dead_shooter].state="dead"
+	dead_shot.step(Vector2.ZERO)
+	check(event_count(dead_shot,"hero_hit")==1 and t17_thorns(dead_shot).is_empty(),"T17 K7 a shooter that died before its shot landed pays nothing (the hit still lands)")
+	# K8: a kill by thorns is the witch's kill.
+	var kill := t17_run({"thorns_bps":3000});var victim_ok: bool=kill._spawn("walker",Vector2(.5,0))
+	var victim_id: int=kill._enemy_sequence
+	kill.enemies[victim_id].hp_raw=100;kill._zone_entered=true;kill.orbs.clear()
+	var kills_before: int=kill.kills;var zone_before: int=kill.zone_kills
+	t17_hit(kill,victim_id)
+	var death: Dictionary=event_of(kill,"death")
+	check(victim_ok and death.get("skill_id","")=="gear.thorns" and kill.kills==kills_before+1 and kill.zone_kills==zone_before+1 and kill.orbs.size()==1 and kill.metrics.thorns.kills==1,"T17 K8 a kill by thorns: death skill_id gear.thorns, kills +1, seal kill +1, one experience orb")
+	# K9: the last life of the final boss, taken by thorns in a real step, closes the run in that tick.
+	var boss := t17_run({"thorns_bps":3000})
+	boss.hero.position=Chapter.ZONES[2];boss._zone_entered=true;boss.zone=2;boss.zone_kills=boss.tuning.seal_kills[2]
+	boss._spawn_wave()
+	var boss_id: int=boss._champion_id
+	boss.events.clear()
+	boss.enemies[boss_id].hp_raw=100;boss.enemies[boss_id].position=boss.hero.position+Vector2(30,0)
+	boss._projectile_sequence+=1
+	boss.projectiles.append({"uid":boss._projectile_sequence,"position":boss.hero.position,"previous":boss.hero.position,"direction":Vector2.RIGHT,"speed":0.0,"radius":.16,"skill_id":"hostile.ranged","hostile":true,"damage_raw":10000,"expires":boss.tick+100,"cast_id":0,"pierce_left":0,"hit_ids":[]})
+	boss._hostile_src[boss._projectile_sequence]={"id":boss_id,"kind":"boss"}
+	for id_ in boss._skill_ids:boss._next_cast[id_]=10000000
+	boss.step(Vector2.ZERO)
+	check(boss_id>0 and boss.mode=="victory" and event_count(boss,"victory")==1 and event_of(boss,"death").get("skill_id","")=="gear.thorns","T17 K9 thorns took the boss's last life: victory in the same tick")
+	# K10: no streak gear: 30 kills arm nothing and the snapshot has no streak key.
+	var idle := t17_run({})
+	for i in 30:idle.tick+=1;t17_death(idle)
+	check(event_count(idle,"streak_ready")==0 and not idle.snapshot().has("streak") and not idle.metrics.has("streak"),"T17 K10 without streak gear 30 kills arm nothing, no snapshot key")
+	# K11: window 180 ticks, threshold 20.
+	var late := t17_run({"streak_projectiles":2})
+	for i in 19:late.tick=100+i*9;t17_death(late)
+	late.tick=100+179;late.events.clear()
+	check(event_count(late,"streak_ready")==0 and late._streak_charge==0 and late.snapshot().streak.kills.size()==19,"T17 K11 19 kills in the window: not armed")
+	t17_death(late)
+	var ready: Dictionary=event_of(late,"streak_ready")
+	check(int(ready.get("charge",0))==2 and int(ready.get("kills",0))==20 and late._streak_charge==2 and late.snapshot().streak.kills.is_empty() and late.snapshot().streak.charge==2,"T17 K11 the 20th kill within 179 ticks arms it: streak_ready{charge 2, kills 20}")
+	check(late.metrics.streak.armed==1 and late.metrics.streak.casts==0,"T17 S8 metrics.streak appears when first armed")
+	late.events.clear();late.tick+=1
+	for i in 25:t17_death(late)
+	check(event_count(late,"streak_ready")==0 and late.snapshot().streak.kills.is_empty(),"T17 S4 while armed nothing is counted")
+	var old := t17_run({"streak_projectiles":2})
+	for i in 19:old.tick=100+i*9;t17_death(old)
+	old.tick=100+180;old.events.clear();t17_death(old)
+	check(event_count(old,"streak_ready")==0 and old.snapshot().streak.kills.size()==19,"T17 K11 a kill 180 ticks old has left the window (19 left, not armed)")
+	# K13: a descent's kill is not counted, thorns' kill is.
+	var cnt := t17_run({"streak_projectiles":2})
+	for i in 25:cnt.tick+=1;t17_death(cnt,"descent.frost")
+	var after_descent: int=cnt.snapshot().streak.kills.size()
+	for i in 20:cnt.tick+=1;t17_death(cnt,"gear.thorns")
+	check(after_descent==0 and event_count(cnt,"streak_ready")==1,"T17 K13 descent.* kills are not counted, gear.thorns kills are")
+	# K12: the next primary cast only. frost / ember: projectiles +2; the cast event says streak 2; the one after is as before.
+	for primary in [FROST,EMBER]:
+		var base := t17_run({"streak_projectiles":2},{},primary);var armed := t17_run({"streak_projectiles":2},{},primary)
+		for pair in [base,armed]:
+			tough(pair,"walker",Vector2(4,0));pair._rebuild_grid();pair._next_cast[primary]=0
+		armed._streak_charge=2
+		base.step(Vector2.ZERO);armed.step(Vector2.ZERO)
+		var base_cast: Dictionary={};var armed_cast: Dictionary={}
+		for event in base.events:
+			if event.type=="cast" and event.skill_id==primary:base_cast=event
+		for event in armed.events:
+			if event.type=="cast" and event.skill_id==primary:armed_cast=event
+		check(not base_cast.is_empty() and not armed_cast.is_empty() and int(armed_cast.effects.projectiles)==int(base_cast.effects.projectiles)+2 and int(armed_cast.get("streak",0))==2 and not base_cast.has("streak") and armed._streak_charge==0,"T17 K12 %s: the armed cast has +2 projectiles and streak 2, the unarmed one is the plain cast"%primary)
+		armed._next_cast[primary]=0;armed.events.clear();armed.step(Vector2.ZERO)
+		var again: Dictionary=event_of(armed,"cast")
+		check(not again.is_empty() and int(again.effects.projectiles)==int(base_cast.effects.projectiles) and not again.has("streak") and armed.metrics.streak.casts==1 and armed.metrics.streak.extra==2,"T17 K12 %s: the cast after it is the plain one again; metrics.streak counts one cast, 2 extra"%primary)
+	var arc_base := t17_run({"streak_projectiles":2},{},"chapter1.skill.arc");var arc_run := t17_run({"streak_projectiles":2},{},"chapter1.skill.arc")
+	for pair in [arc_base,arc_run]:
+		for i in 6:tough(pair,"walker",Vector2(3+i,0))
+		pair._rebuild_grid();pair._next_cast["chapter1.skill.arc"]=0
+	arc_run._streak_charge=2
+	arc_base.step(Vector2.ZERO);arc_run.step(Vector2.ZERO)
+	var arc_plain: Dictionary=event_of(arc_base,"cast");var arc_streak: Dictionary=event_of(arc_run,"cast")
+	check(int(arc_streak.effects.chain_targets)==int(arc_plain.effects.chain_targets)+2 and int(arc_streak.get("streak",0))==2,"T17 K12 arc: chain_targets +2 (%d vs %d) and streak 2"%[int(arc_streak.effects.chain_targets),int(arc_plain.effects.chain_targets)])
+	# K12: a secondary spell of the same tick does not get it.
+	var duo := tuned_run_owning(t17_caps(),"chapter1.skill.arc");clear_field(duo)
+	duo._gear_stats.streak_projectiles=2;duo.tick=100
+	for i in 4:tough(duo,"walker",Vector2(3+i,0))
+	duo._rebuild_grid();for id_ in duo._skill_ids:duo._next_cast[id_]=0
+	duo._streak_charge=2
+	var duo_twin := tuned_run_owning(t17_caps(),"chapter1.skill.arc");clear_field(duo_twin)
+	duo_twin._gear_stats.streak_projectiles=2;duo_twin.tick=100
+	for i in 4:tough(duo_twin,"walker",Vector2(3+i,0))
+	duo_twin._rebuild_grid();for id_ in duo_twin._skill_ids:duo_twin._next_cast[id_]=0
+	duo.step(Vector2.ZERO);duo_twin.step(Vector2.ZERO)
+	var duo_arc: Dictionary={};var twin_arc: Dictionary={}
+	for event in duo.events:
+		if event.type=="cast" and event.skill_id=="chapter1.skill.arc":duo_arc=event
+	for event in duo_twin.events:
+		if event.type=="cast" and event.skill_id=="chapter1.skill.arc":twin_arc=event
+	check(not duo_arc.is_empty() and not twin_arc.is_empty() and not duo_arc.has("streak") and int(duo_arc.effects.chain_targets)==int(twin_arc.effects.chain_targets),"T17 K12 the secondary spell cast in the same tick is not boosted")
+	# Not cast = not spent: with no enemy in reach the charge stays.
+	var hold := t17_run({"streak_projectiles":2});hold._streak_charge=2;hold._next_cast[EMBER]=0
+	hold.step(Vector2.ZERO)
+	check(hold._streak_charge==2 and event_count(hold,"cast")==0,"T17 S5 no target, no cast: the charge is kept")
+	# K14: the 16 cap.
+	var cap16 := t17_run({"streak_projectiles":4,"projectiles":15},{},FROST);tough(cap16,"walker",Vector2(4,0));cap16._rebuild_grid();cap16._next_cast[FROST]=0;cap16._streak_charge=4
+	cap16.step(Vector2.ZERO)
+	check(int(event_of(cap16,"cast").effects.projectiles)==16,"T17 K14 projectiles stay at 16 (15 gear + 4 streak)")
+	# S6: the reading functions do not include the charge.
+	var read := t17_run({"streak_projectiles":2},{},FROST);var plain_projectiles: int=read.effective_skill(FROST).effects.projectiles
+	read._streak_charge=2
+	check(read.effective_skill(FROST).effects.projectiles==plain_projectiles,"T17 S6 effective_skill does not include the streak charge")
+	# S4: the charge is kept when the gear comes off; a core start clears it.
+	read._gear_stats.erase("streak_projectiles")
+	check(read._streak_charge==2 and read.snapshot().has("streak"),"T17 S4 an armed charge survives taking the gear off (and shows in the snapshot)")
+	read.start(17,EMBER)
+	check(read._streak_charge==0 and read._streak_kills.is_empty() and read._thorns_pending.is_empty() and not read.snapshot().has("streak"),"T17 start() clears the streak and the owed thorns")
+	# K15: the document.
+	var doc_run := Chapter.new()
+	var half := t17_caps(false);half.gear_conditions.streak_kills=20
+	var half_window := t17_caps(false);half_window.gear_conditions.streak_window_ticks=180
+	check(not doc_run.set_tuning(tuning_with(half)) and not doc_run.set_tuning(tuning_with(half_window)),"T17 K15 gear_conditions with only one of streak_kills / streak_window_ticks is refused")
+	var zero_kills := t17_caps();zero_kills.gear_conditions.streak_kills=0
+	var long_window := t17_caps();long_window.gear_conditions.streak_window_ticks=3601
+	var stray := t17_caps();stray.gear_conditions.streak_extra=1
+	check(not doc_run.set_tuning(tuning_with(zero_kills)) and not doc_run.set_tuning(tuning_with(long_window)) and not doc_run.set_tuning(tuning_with(stray)),"T17 K15 streak_kills 0, window 3601 and an unknown extra key are refused")
+	check(doc_run.set_tuning(tuning_with(t17_caps(false))) and doc_run.set_tuning(tuning_with(t17_caps())),"T17 K15 neither key and both keys are accepted")
+	var absent := t17_run({"streak_projectiles":2},tuning_with(t17_caps(false)))
+	for i in 30:absent.tick+=1;t17_death(absent)
+	check(event_count(absent,"streak_ready")==0 and absent._streak_charge==0,"T17 K15 without the two keys nothing arms")
+	var shipped := Chapter.new()
+	check(shipped.start(5) and int(shipped.tuning.gear_conditions.streak_kills)==20 and int(shipped.tuning.gear_conditions.streak_window_ticks)==180,"T17 the shipped combat_tuning.json carries streak_kills 20 and streak_window_ticks 180")
+
+## D23 T17 "no empty golden": the golden case gear-t17 (seed 11, frost, kit.golden.t17, the QA pilot) must really show thorns, streak_ready and a
+## cast with streak. The run stops when all three were seen and at least 3000 ticks passed (or at the end of the run); the tick is written in the message.
+func t17_golden_checks() -> void:
+	var TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
+	var Pilot := preload("res://chapter1/core/chapter_pilot.gd")
+	var run := Chapter.new();var pilot: RefCounted=Pilot.new();pilot.run=run
+	check(run.start(11,FROST),"T17 golden fixture: the run starts")
+	var problem: String=TrialDocs.wear_fixture_kit_problem(run,"kit.golden.t17")
+	check(problem.is_empty(),"T17 golden fixture: the kit is worn through import_starting_gear ("+problem+")")
+	var thorns := 0;var ready := 0;var streak_casts := 0;var first := {}
+	var stats_ok: bool=int(run._gear_stats.get("thorns_bps",0))==3000 and int(run._gear_stats.get("streak_projectiles",0))==2
+	check(stats_ok,"T17 golden fixture: the worn gear reads thorns_bps 3000 and streak_projectiles 2 (%s)"%str([run._gear_stats.get("thorns_bps",0),run._gear_stats.get("streak_projectiles",0)]))
+	while run.mode not in ["victory","defeat"] and run.tick<12*60*60:
+		run.step(pilot.decide())
+		for event in run.events:
+			if event.type=="thorns":thorns+=1;first["thorns"]=first.get("thorns",run.tick)
+			elif event.type=="streak_ready":ready+=1;first["streak_ready"]=first.get("streak_ready",run.tick)
+			elif event.type=="cast" and event.has("streak"):streak_casts+=1;first["cast_streak"]=first.get("cast_streak",run.tick)
+		if thorns>0 and ready>0 and streak_casts>0 and run.tick>=3000:break
+	var worn_uids: Array=[]
+	for slot in ["body","feet"]:worn_uids.append(int(run.equipped.get(slot,-1)))
+	var worn_kit := true
+	for uid in worn_uids:
+		var item: Dictionary=run._owned(uid)
+		worn_kit=worn_kit and not item.is_empty() and (int(item.stats.get("thorns_bps",0))>0 or int(item.stats.get("streak_projectiles",0))>0)
+	check(thorns>0 and ready>0 and streak_casts>0,"T17 golden fixture: the pilot's run shows thorns (%d), streak_ready (%d) and a cast with streak (%d) by tick %d; first seen %s"%[thorns,ready,streak_casts,run.tick,str(first)])
+	check(worn_kit,"T17 golden fixture: the pilot still wears the thorns body and the streak boots at tick %d"%run.tick)
+	print("T17_GOLDEN_FIXTURE ",JSON.stringify({"tick":run.tick,"mode":run.mode,"thorns":thorns,"streak_ready":ready,"streak_casts":streak_casts,"first":first,"worn_kit":worn_kit}))
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -1287,6 +1571,8 @@ func execute() -> void:
 	t5_checks()
 	t15b_checks()
 	t9_core_checks()
+	t17_checks()
+	t17_golden_checks()
 	build_checks()
 	abandon_checks()
 	sheet_checks()

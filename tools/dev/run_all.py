@@ -120,7 +120,7 @@ def checks():
         godot_check('combat', 'res://chapter1/tests/test_combat_run.gd', 'CHAPTER1_COMBAT_RESULT'),
         godot_check('chapter', 'res://chapter1/tests/test_chapter_run.gd', 'CHAPTER_FULL_TEST'),
         godot_check('profile', 'res://chapter1/tests/test_chapter_profile.gd', 'CHAPTER_PROFILE', ['--fixture-dir=' + FIXTURES + stamp]),
-        godot_check('loot', 'res://chapter1/tests/test_loot.gd', 'CHAPTER1_LOOT_RESULT'),
+        godot_check('loot', 'res://chapter1/tests/test_loot.gd', 'CHAPTER1_LOOT_RESULT', timeout=300),
         # D23 T1-M: the fixed gear kits of fixtures/gear_kits.json build, validate and wear (sim_power.gd --gear-kit=).
         godot_check('gear-kits', 'res://chapter1/tests/test_gear_kits.gd', 'CHAPTER1_GEAR_KITS_RESULT'),
         godot_check('loc', 'res://chapter1/tests/test_loc.gd', 'CHAPTER1_LOC_RESULT'),

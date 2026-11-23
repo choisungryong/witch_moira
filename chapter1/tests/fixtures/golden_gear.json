@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "note": "D23 T17: fixed gear kits for the golden replay (golden_core.gd, case gear-t17), same shape as gear_kits.json and built by tests/support/gear_kits.gd. Worn through run.import_starting_gear right after start(). The other lines of each item are number lines at the top of their ladder so that the QA pilot (chapter_pilot.gd equipment_score, which gives no weight to thorns_bps and streak_projectiles) never takes these two items off during the run. Do not edit casually: a change moves the gear-t17 hashes of tests/golden/*.json.",
+  "kits": {
+    "kit.golden.t17": {
+      "what": "body: thorns_5 + life + protection; feet: streak_5 + movement + life",
+      "items": [
+        {"equip": "body", "slot": "body", "quality": "rare", "base": "iron_vest", "item_level": 16, "affixes": [["thorns_5", 3000], ["vigor5", 28000], ["ward5", 2400]]},
+        {"equip": "feet", "slot": "feet", "quality": "rare", "base": "ash_striders", "item_level": 16, "affixes": [["streak_5", 2], ["fleet", 800], ["blink", 1500], ["vigor5", 28000]]}
+      ]
+    }
+  }
+}

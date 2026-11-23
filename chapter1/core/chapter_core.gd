@@ -2848,7 +2848,7 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if _elite_bps>0 and e.elite and context.skill_id==_primary_id:damage=damage*(10000+_elite_bps)/10000
 	# D23 T1-B: the worn gear's condition lines (elite, frozen, marked, after a dash, on the move) add up to ONE multiplier, cut at
 	# stat_caps.condition_damage_bps. It sits before the spell composition and the mark resonance, so the mark credit stays exact.
-	var condition_bps := _condition_bps(e,was_frozen)
+	var condition_bps := 0 if bool(context.get("reflect",false)) else _condition_bps(e,was_frozen)
 	if condition_bps>0:damage=damage*(10000+condition_bps)/10000
 	# Spell composition: a direct hit that finds a status another spell put on the enemy is multiplied (detonation), then a
 	# spell with vs_strong_bps deals that share to guardians. Both come before the mark so the mark credit stays exact.
