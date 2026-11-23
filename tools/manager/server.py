@@ -5,10 +5,10 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
-    from . import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks
+    from . import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips
 except ImportError:
     from catalog import ROOT, generate
-    import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks
+    import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
@@ -155,6 +155,10 @@ class Handler(BaseHTTPRequestHandler):
         mime = characters.MEDIA_TYPES.get(p.suffix.lower())
         if mime is None:
             return self.send_json(404, {'error': 'Not an allowed media type'})
+        self.send_ranged(p, mime)
+
+    def send_ranged(self, p, mime):
+        """파일을 Range 요청에 맞춰 내준다(영상·소리 재생용, 휴대폰 브라우저도 Range 를 쓴다)."""
         size = p.stat().st_size
         start, end, status = 0, size - 1, 200
         rng = self.headers.get('Range')
@@ -230,6 +234,61 @@ class Handler(BaseHTTPRequestHandler):
         except OSError as e:
             self.send_json(500, {'error': 'Could not write the file: %s' % e.__class__.__name__})
 
+    def handle_skill_lab_get(self, route, q):
+        first = lambda k: (q.get(k) or [''])[0]
+        try:
+            if route == '/api/skill-lab':
+                return self.send_json(200, skill_lab.overview(ROOT))
+            if route == '/api/skill-lab/audio':
+                p = skill_lab.audio_file(ROOT, first('id') or None, first('slot') or None, first('n') or 0)
+                return self.send_ranged(p, 'audio/wav') if p else self.send_json(404, {'error': 'Not a registered sound'})
+            if route == '/api/skill-lab/portrait':
+                p = skill_lab.portrait_path(ROOT, first('id'))
+                return self.send_bytes('image/png', p, 'private, max-age=60') if p else self.send_json(404, {'error': 'No portrait'})
+            if route == '/api/skill-lab/shot':
+                p = skill_lab.shot_file(ROOT, first('name'))
+                return self.send_bytes('image/png', p, 'no-store') if p else self.send_json(404, {'error': 'No such shot'})
+            if route == '/api/skill-lab/clips':
+                return self.send_json(200, skill_lab_clips.listing(ROOT))
+            m = re.fullmatch(r'/api/skill-lab/clip/([0-9a-f]{24})(/video)?', route)
+            if m and m.group(2):
+                p = skill_lab_clips.video_file(ROOT, m.group(1))
+                if not p:
+                    return self.send_json(404, {'error': 'No such clip'})
+                skill_lab_clips.touch(ROOT, m.group(1))
+                return self.send_ranged(p, 'video/mp4')
+            if m:
+                st = skill_lab_clips.status(ROOT, m.group(1))
+                return self.send_json(200, st) if st else self.send_json(404, {'error': 'No such clip'})
+        except skill_lab.LabError as e:
+            return self.send_json(e.status, dict(e.extra, error=str(e)))
+        return self.send_json(404, {'error': 'Unknown route'})
+
+    def handle_skill_lab_post(self, path, payload):
+        """POST /api/skill-lab/<open|scene|cast|shot|close|clip|adopt|revert>. 경로는 받지 않고 이름·id 만 받는다."""
+        if not isinstance(payload, dict):
+            raise ValueError('Expected an object')
+        op = path.rsplit('/', 1)[-1]
+        if op == 'open':
+            return 200, skill_lab.open_window(ROOT, payload.get('scene'), payload.get('audio'), bool(payload.get('hero_models')))
+        if op == 'scene':
+            return 200, skill_lab.send_scene(ROOT, payload.get('scene'), payload.get('audio'))
+        if op == 'cast':
+            return 200, skill_lab.send_simple(ROOT, 'cast')
+        if op == 'close':
+            return 200, skill_lab.send_simple(ROOT, 'quit')
+        if op == 'shot':
+            return 200, skill_lab.request_shot(ROOT, payload.get('name'))
+        if op == 'clip':
+            if payload.get('retry'):
+                return 200, skill_lab_clips.retry(ROOT, payload['retry'])
+            return 200, skill_lab_clips.request(ROOT, payload.get('scene'), payload.get('audio'), payload.get('way', 'movie'))
+        if op == 'adopt':
+            return 200, skill_lab.adopt(ROOT, payload.get('slot'), payload.get('candidate'), payload.get('map_rev'), picks_path=picks.STORE)
+        if op == 'revert':
+            return 200, skill_lab.revert(ROOT, payload.get('slot'), payload.get('map_rev'), picks_path=picks.STORE)
+        raise ValueError('Unknown skill lab operation')
+
     def send_draft(self, rest):
         # /drafts/<thumb|full|prompt>/<id> ; only ids present in the current index are served
         kind, _, raw_id = unquote(rest).partition('/')
@@ -290,6 +349,8 @@ class Handler(BaseHTTPRequestHandler):
         if route.startswith('/api/characters/'):
             d = characters.detail(unquote(route[len('/api/characters/'):]))
             return self.send_json(200, d) if d is not None else self.send_json(404, {'error': 'Unknown character line'})
+        if route == '/api/skill-lab' or route.startswith('/api/skill-lab/'):
+            return self.handle_skill_lab_get(route, parse_qs(parts.query))
         if route.startswith('/media/'):
             return self.send_media(route[len('/media/'):])
         if route.startswith('/drafts/'):
@@ -323,7 +384,8 @@ class Handler(BaseHTTPRequestHandler):
         up = re.fullmatch(r'/api/characters/([^/?]+)/(tripo_out|open)(?:\?(.*))?', self.path)
         if up:
             return self.handle_tripo_post(unquote(up.group(1)), up.group(2), up.group(3) or '')
-        if self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
+        skill_post = self.path in ('/api/skill-lab/' + x for x in ('open', 'scene', 'cast', 'shot', 'close', 'clip', 'adopt', 'revert'))
+        if not skill_post and self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
                          '/api/balance/run', '/api/balance/experiments', '/api/balance/export', '/api/audit/run', '/api/picks'):
             return self.send_json(404, {'error': 'Unknown route'})
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
@@ -351,10 +413,14 @@ class Handler(BaseHTTPRequestHandler):
                 status, value = 200, audit_view.run()
             elif self.path == '/api/picks':
                 status, value = picks.update(payload)
+            elif skill_post:
+                status, value = self.handle_skill_lab_post(self.path, payload)
             else:
                 status, value = update_state(payload, self.server.valid_ids)
             self.send_json(status, value)
-        except (balance_lab.BusyError, audit_view.BusyError) as e:
+        except skill_lab.LabError as e:
+            self.send_json(e.status, dict(e.extra, error=str(e)))
+        except (balance_lab.BusyError, audit_view.BusyError, skill_lab.BusyError) as e:
             self.send_json(429, {'error': str(e)})
         except (balance_lab.RunError, audit_view.RunError) as e:
             self.send_json(502, {'error': str(e)})

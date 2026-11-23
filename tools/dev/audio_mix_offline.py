@@ -12,6 +12,10 @@ PITCH_STEPS, one step per play), voice gain master 0.8 * 0.11 * gain * the call'
 (ambience 0.8 * 0.025). A request for a name without files (not in COUNTS) is counted as no_file_skip and makes no sound. A voice stays busy for file length / pitch seconds. A request while the
 run is not "playing" is dropped unless it is a UI cue. Playback is linear-interpolated resampling (as the engine does for
 pitch_scale). The master bus has no limiter today, so the sum is written as is (clipping is counted, not hidden).
+Adopted sounds (T12, audio_map.json `adopted`) are NOT modelled: a request row of the log has no slot column (report_audio_requests.gd
+writes [tick, cue, ui, playing, source, ...] and no skill or evolution), so the mix cannot tell which request belongs to which slot.
+A mix made while a slot is adopted therefore still uses the old sound of the cue (and keeps SILENT cues silent). The tool prints a
+warning naming the adopted slots; the game itself and the skill lab do play the adopted files (combat_audio.gd).
 Model limits: time is tick/60 (ticks do not advance in the choice screen), the player's real pause is not modelled, no
 audio device is involved, so this says nothing about what a speaker would do.
 """
@@ -51,6 +55,17 @@ def parse_rules(player=am.PLAYER):
         # cues that make no sound until replaced (combat_audio.gd SILENT); the game returns before cooldown and voice
         'silent': re.findall(r'"(\w+)"', (re.search(r'const SILENT\b[^=]*=\s*\[([^\]]*)\]', text) or [None, ''])[1]),
     }
+
+
+def adopted_slots(map_path=None):
+    """Slots with an adopted file in audio_map.json (schema 2); {} when the file has none or is not there."""
+    path = Path(map_path) if map_path else REPO / 'chapter1' / 'data' / 'audio_map.json'
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8-sig'))
+    except (OSError, ValueError):
+        return {}
+    taken = doc.get('adopted', {}) if isinstance(doc, dict) else {}
+    return taken if isinstance(taken, dict) else {}
 
 
 def load_sources(rules, audio_dir=am.DEFAULT_DIR):
@@ -172,6 +187,9 @@ def main():
     ap.add_argument('--stats', action='store_true', help='print per-sound request/played counts for the whole run')
     args = ap.parse_args()
     log = load_log(args.log)
+    taken = adopted_slots()
+    if taken:
+        print('WARNING adopted slots are not modelled by this mix (the log has no slot column; header of this tool): %s' % ', '.join(sorted(taken)), file=sys.stderr)
     rules = parse_rules()
     src = load_sources(rules)
     played, stats = simulate(log['requests'], rules, src)

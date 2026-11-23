@@ -142,6 +142,8 @@
       {"path": "tools/manager/drafts.py", "use": "원화 시안 갤러리"},
       {"path": "tools/manager/playlog.py", "use": "플레이 기록"},
       {"path": "tools/manager/characters.py", "use": "「캐릭터」 화면의 뒷면(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수(BASE_SPEED·카메라), 그림·영상 자리. 화면은 character.js, 3D는 vendor/three"},
+      {"path": "tools/manager/skill_lab.py", "use": "「스킬 시험실」 화면의 뒷면: 스킬·소리 자리·후보 목록을 읽고, Godot 시험 창에 command.json/state.json 으로 명령을 보내고, 채택(audio_adopt.py)을 부른다. 경로별 원격 허용 표(ROUTE_POLICY)가 여기 있다. 화면은 skill_lab.js"},
+      {"path": "tools/manager/skill_lab_clips.py", "use": "시험실의 소리가 든 짧은 영상: 열쇠·판 해시 캐시, 대기열(하나씩 최대 5), ffmpeg 변환, 낡음 표시, 2 GB 상한"},
       {"path": "tools/manager/picks.py", "use": "사용자의 고름(이걸로/아님/보류)을 읽는다. 세션을 열면 list --open 으로 확인하고, 반영한 뒤 close <id> --ref 로 닫는다. 기록을 더하는 명령은 없다(화면에서만)"},
       {"path": "tools/manager/ui_shot.py", "use": "관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처(--out, _local/ 아래만)와 화면이 내놓은 data-* 수치(--dump-dom)를 얻는다. --offline으로 바깥 연결을 막고 다시 확인"},
       {"path": "tools/manager/tools_index.py", "use": "이 색인"}

@@ -4,7 +4,8 @@ extends RefCounted
 ## `run.spells` (the in-run spell document, {} while run_spells is off) and returns requests
 ##   [{cue, gain_db, source, ui, skill_id?, long?}]
 ## gain_db is the call's own trim in dB on top of GAINS[cue]. skill_id (cast, hit, shatter) lets a check see which skill a
-## request came from. `long` marks the long detonation variant. The order of the result is the order of the events.
+## request came from. `slot` (T12 SL-A) names the sound slot of the moment ("skill.frost.shatter", "descent.arc.call"; "" = none,
+## chapter1/data/audio_map.json `slots`), `targets` (arc cast only) the contacts of the chain; see SKILL_SLOTS and slot_of(). `long` marks the long detonation variant. The order of the result is the order of the events.
 ## The only state is the pulse habituation (docs/specs/AU-run-spells-sound-20261119.ko.md 3.1): when the previous ring pulse is
 ## near and had no pay-off (a kill by the ring, a cut, a detonation) the pulse is 1.5 dB quieter, up to 4.5 dB; a pay-off
 ## or a pause longer than 1.5 s puts it back to 0. No core random numbers are used.
@@ -21,6 +22,46 @@ const WEIGHT_MAX_DB := 3.0         # +1 dB per doubling of the targets (or of th
 const CUT_PAIR_DB := 2.0           # two or more cuts in one tick
 const LONG_DETONATION_AT := 4
 const INTERLOCK_CLASSES := ["frozen","stunned","staggered"]    # "slowed" makes no sound (3.7)
+## T12 SL-A: the slot of an event, from tables (no text is built while playing). Slot names are <group>.<target>.<moment>; the base skill
+## and its evolution have a group each (ember/meteor, frost/blizzard, arc/thunderstorm). This table and slot_of() are the one place that
+## says which event is which slot; audio_map.json `slots` says what each slot falls back to (its `parent`, today's sound name) and what
+## was adopted. A request keeps its `cue` exactly as before: a slot only lets the player pick another file for it (combat_audio.gd:
+## audition, then adopted, then the parent). Only the cold skill shatters. A table row is [base skill, evolved skill].
+const SKILL_SLOTS := {
+	"chapter1.skill.ember":{"cast":["skill.ember.cast","skill.meteor.cast"],"hit":["skill.ember.hit","skill.meteor.hit"]},
+	"chapter1.skill.frost":{"cast":["skill.frost.cast","skill.blizzard.cast"],"hit":["skill.frost.hit","skill.blizzard.hit"],"shatter":["skill.frost.shatter","skill.blizzard.shatter"]},
+	"chapter1.skill.arc":{"cast":["skill.arc.cast","skill.thunderstorm.cast"],"hit":["skill.arc.hit","skill.thunderstorm.hit"]}}
+const DESCENT_SLOTS := {"descent_called":{"ember":"descent.ember.call","frost":"descent.frost.call","arc":"descent.arc.call"},
+	"descent_released":{"ember":"descent.ember.sweep","frost":"descent.frost.sweep","arc":"descent.arc.sweep"},
+	"descent_end":{"ember":"descent.ember.end","frost":"descent.frost.end","arc":"descent.arc.end"}}
+
+## Slot handoff. chapter_one.gd plays a request as audio.play(request.cue,tick,request.gain_db) and does not pass the slot, so route()
+## and late() keep the requests they just made (the same dictionaries, no copy) in the order they were made, and combat_audio.play()
+## takes the next one when its cue is the cue of that request (take_handoff). route() starts the list over each tick. An explicit
+## `slot` argument of play() wins, so a caller that passes it needs no handoff. Nothing here touches a core.
+static var _pending: Array = []
+static var _cursor := 0
+
+static func take_handoff(cue: String) -> Dictionary:
+	if _cursor < _pending.size():
+		var request: Dictionary = _pending[_cursor]
+		if String(request.cue) == cue:
+			_cursor += 1
+			return request
+	return {}
+
+## The slot of one event ("" when the event has none): skill moments by skill and evolution, the meteor landing, the three descent moments.
+static func slot_of(event: Dictionary) -> String:
+	match String(event.type):
+		"cast","hit","shatter":
+			var row: Array = SKILL_SLOTS.get(String(event.get("skill_id","")),{}).get(String(event.type),[])
+			if row.is_empty(): return ""
+			return row[1 if bool(event.get("evolved",false)) else 0]
+		"explosion":
+			return "skill.meteor.land" if event.has("meteor") else ""
+		"descent_called","descent_released","descent_end":
+			return DESCENT_SLOTS[String(event.type)].get(String(event.get("element","")),"")
+	return ""
 
 ## Optional audition of the resolved contacts. No core state or random draws.
 static func chain_bank() -> String:
@@ -39,8 +80,8 @@ func reset() -> void:
 	_last_pulse_calm = false
 	_decay_db = 0.0
 
-static func _request(cue: String,source: String,ui: bool=false,gain_db: float=0.0) -> Dictionary:
-	return {"cue":cue,"gain_db":gain_db,"source":source,"ui":ui}
+static func _request(cue: String,source: String,ui: bool=false,gain_db: float=0.0,slot: String="") -> Dictionary:
+	return {"cue":cue,"gain_db":gain_db,"source":source,"ui":ui,"slot":slot}
 
 static func _weight_db(n: int) -> float:
 	if n < 2: return 0.0
@@ -56,6 +97,12 @@ static func ring_elements(spells: Dictionary) -> Dictionary:
 
 ## Requests of the first pass (what chapter_one._consume_events__chapter played). `events` are the new events of this tick.
 func route(events: Array,spells: Dictionary,tick: int) -> Array:
+	var out := _route(events,spells,tick)
+	_pending = out
+	_cursor = 0
+	return out
+
+func _route(events: Array,spells: Dictionary,tick: int) -> Array:
 	var out: Array = []
 	var rings := ring_elements(spells)
 	var on := not rings.is_empty()
@@ -73,13 +120,14 @@ func route(events: Array,spells: Dictionary,tick: int) -> Array:
 						var contacts := mini(3, event.get("targets", []).size())
 						if contacts > 0:
 							cue = "arc_path_%d" % contacts
-					var cast := _request(cue,"cast")
+					var cast := _request(cue,"cast",false,0.0,slot_of(event))
 					cast.skill_id = id_
+					if id_ == "chapter1.skill.arc": cast.targets = event.get("targets", []).size()
 					out.append(cast)
 			"hit":
 				var id_ := String(event.skill_id)
 				if on and rings.has(id_): continue    # the ring pulse stands for its hits
-				var hit := _request("impact","hit")
+				var hit := _request("impact","hit",false,0.0,slot_of(event))
 				hit.skill_id = id_
 				out.append(hit)
 				var cls := String(event.get("vs_cc",""))
@@ -101,9 +149,13 @@ func route(events: Array,spells: Dictionary,tick: int) -> Array:
 					if n >= LONG_DETONATION_AT: blast.long = true
 					out.append(blast)
 			"death": out.append(_request("death","death"))
-			"explosion": out.append(_request("explosion","explosion"))
+			"explosion": out.append(_request("explosion","explosion",false,0.0,slot_of(event)))
+			"descent_called","descent_released","descent_end":
+				# A slot with no sound of its own yet: cue "" makes no sound until a file is adopted for the slot.
+				var moment := slot_of(event)
+				if moment != "": out.append(_request("","descent",false,0.0,moment))
 			"shatter":
-				var shard := _request("cold","shatter")
+				var shard := _request("cold","shatter",false,0.0,slot_of(event))
 				shard.skill_id = String(event.skill_id)
 				out.append(shard)
 			"hero_hit": out.append(_request("hurt","hero_hit"))
@@ -114,6 +166,14 @@ func route(events: Array,spells: Dictionary,tick: int) -> Array:
 
 ## Requests of the second pass (chapter_one._consume_events), one event at a time.
 func late(event: Dictionary) -> Array:
+	var out := _late(event)
+	if _cursor >= _pending.size():
+		_pending = out
+		_cursor = 0
+	else: _pending.append_array(out)
+	return out
+
+func _late(event: Dictionary) -> Array:
 	var out: Array = []
 	match String(event.type):
 		"item_drop":

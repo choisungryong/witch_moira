@@ -1,4 +1,5 @@
 {
+  "schema_version": 2,
   "chain_lightning": {
     "A": {
       "arc_path_1": "res://chapter1/art/audio/chain/a1.wav",
@@ -10,5 +11,82 @@
       "arc_path_2": "res://chapter1/art/audio/chain/b2.wav",
       "arc_path_3": "res://chapter1/art/audio/chain/b3.wav"
     }
-  }
+  },
+  "slots": {
+    "skill.ember.cast": {
+      "parent": "fire"
+    },
+    "skill.ember.hit": {
+      "parent": "impact"
+    },
+    "skill.meteor.cast": {
+      "parent": "fire"
+    },
+    "skill.meteor.hit": {
+      "parent": "impact"
+    },
+    "skill.meteor.land": {
+      "parent": "explosion"
+    },
+    "skill.frost.cast": {
+      "parent": "cold"
+    },
+    "skill.frost.hit": {
+      "parent": "impact"
+    },
+    "skill.frost.shatter": {
+      "parent": "cold"
+    },
+    "skill.blizzard.cast": {
+      "parent": "cold"
+    },
+    "skill.blizzard.hit": {
+      "parent": "impact"
+    },
+    "skill.blizzard.shatter": {
+      "parent": "cold"
+    },
+    "skill.arc.cast": {
+      "parent": "lightning",
+      "per_targets": 3
+    },
+    "skill.arc.hit": {
+      "parent": "impact"
+    },
+    "skill.thunderstorm.cast": {
+      "parent": "lightning",
+      "per_targets": 3
+    },
+    "skill.thunderstorm.hit": {
+      "parent": "impact"
+    },
+    "descent.ember.call": {
+      "parent": ""
+    },
+    "descent.ember.sweep": {
+      "parent": ""
+    },
+    "descent.ember.end": {
+      "parent": ""
+    },
+    "descent.frost.call": {
+      "parent": ""
+    },
+    "descent.frost.sweep": {
+      "parent": ""
+    },
+    "descent.frost.end": {
+      "parent": ""
+    },
+    "descent.arc.call": {
+      "parent": ""
+    },
+    "descent.arc.sweep": {
+      "parent": ""
+    },
+    "descent.arc.end": {
+      "parent": ""
+    }
+  },
+  "adopted": {}
 }

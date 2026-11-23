@@ -507,4 +507,60 @@ small.bl-badt{display:block;font-size:var(--fs-xs)}
   .g-wait-list button{width:100%}
   .row-meta{max-width:96px}
 }
+/* ---------- 스킬 시험실 ---------- */
+.shell>#skill-lab{grid-column:2;min-width:0;padding:var(--s-5) var(--s-5) 48px}
+body.skilllab-mode .shell>main,body.skilllab-mode .shell>.inspector{display:none}
+@media(min-width:1101px){.shell>#skill-lab{grid-column:2/-1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}}
+.sl-grid{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(300px,1.5fr) minmax(280px,1.3fr);gap:var(--s-4);align-items:start}
+.sl-col{min-width:0}
+.sl-char{border:1px solid var(--c-line);border-radius:var(--r-m);background:var(--c-surface);padding:var(--s-3);margin-bottom:var(--s-3)}
+.sl-char.on{border-color:var(--brass)}
+.sl-char header{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-2)}
+.sl-char header img{width:56px;height:56px;object-fit:cover;object-position:top;border-radius:var(--r-s);background:var(--c-sunken)}
+.sl-char header small{display:block;color:var(--c-text-2)}
+.sl-forms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-2)}
+.sl-form{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:0}
+.sl-form small{color:var(--c-faint);font-size:var(--fs-xs)}
+.sl-form:disabled{opacity:.5;cursor:not-allowed}
+.sl-form.on,.sl-seg button.on{background:var(--brass-soft);border-color:var(--brass);color:var(--c-text)}
+.sl-status{padding:var(--s-3);border:1px solid var(--c-line);border-radius:var(--r-m);background:var(--c-surface);margin-bottom:var(--s-3);font-size:var(--fs-s)}
+.sl-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:var(--s-2);background:var(--c-faint)}
+.sl-dot.connected{background:var(--ok)}.sl-dot.starting{background:var(--warn)}.sl-dot.lost{background:var(--bad)}
+.sl-errs{margin:var(--s-2) 0 0;padding-left:var(--s-4);color:var(--bad);font-size:var(--fs-xs)}
+.sl-bar{display:flex;flex-wrap:wrap;gap:var(--s-2);margin:0 0 var(--s-3)}
+.sl-group{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2) var(--s-3);margin-bottom:var(--s-3)}
+.sl-k{color:var(--c-text-2);font-size:var(--fs-xs);min-width:64px}
+.sl-seg{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.sl-checks label{display:inline-flex;align-items:center;gap:var(--s-1);font-size:var(--fs-s);white-space:nowrap}
+.sl-nowin{margin:var(--s-2) 0 0;padding:var(--s-1) var(--s-2);border-left:3px solid var(--warn);background:var(--warn-soft);font-size:var(--fs-xs)}
+#sl-count{flex:1;min-width:120px;padding:0}
+.sl-clips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-3);margin-bottom:var(--s-3)}
+.sl-clip video{width:100%;max-width:100%;background:#000;border-radius:var(--r-s)}
+.sl-shot img{max-width:100%;border:1px solid var(--c-line);border-radius:var(--r-s)}
+.sl-shot figcaption{color:var(--c-faint);font-size:var(--fs-xs)}
+.sl-detail{margin-top:var(--s-4)}
+.sl-slot{border:1px solid var(--c-line);border-radius:var(--r-m);background:var(--c-surface);padding:var(--s-3);margin-bottom:var(--s-3)}
+.sl-cur{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2);font-size:var(--fs-s)}
+.sl-cand{border-top:1px solid var(--c-line);padding:var(--s-2) 0}
+.sl-cand.chosen{background:var(--brass-soft)}
+.sl-cand-t{font-size:var(--fs-s);margin-bottom:var(--s-1)}
+.sl-cand-t span{color:var(--c-text-2)}
+.sl-cand-b{display:flex;flex-wrap:wrap;gap:var(--s-1)}
+.sl-result pre{max-height:220px;overflow:auto;background:var(--c-sunken);padding:var(--s-2);border-radius:var(--r-s);font-size:var(--fs-xs);white-space:pre-wrap}
+.sl-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:var(--s-4)}
+.sl-modal-box{background:var(--c-surface);border:1px solid var(--c-line-strong);border-radius:var(--r-m);padding:var(--s-4);max-width:560px;max-height:90dvh;overflow:auto;box-shadow:var(--shadow-float)}
+.sl-modal-box ul{padding-left:var(--s-4);font-size:var(--fs-xs)}
+@media(max-width:1100px){.sl-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sl-right{grid-column:1/-1}}
+/* 휴대폰: 한 줄 세로 배치(캐릭터 → 스킬 → 적 배치 → 영상 → 소리 후보), 단추 44px 이상 */
+@media(max-width:768px){
+  .shell>#skill-lab{padding:var(--s-3) var(--s-3) 40px}
+  .sl-grid{display:block}
+  .sl-col{margin-bottom:var(--s-4)}
+  #skill-lab button,#skill-lab select{min-height:44px}
+  #skill-lab input[type=range]{min-height:44px}
+  #skill-lab input[type=checkbox],#skill-lab input[type=radio]{width:22px;height:22px}
+  .sl-clips{grid-template-columns:minmax(0,1fr)}
+  .sl-play,[data-clip-cand]{min-width:56px}
+  .sl-forms{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
