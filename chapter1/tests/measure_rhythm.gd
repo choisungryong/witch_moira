@@ -64,6 +64,13 @@ var bin_s := 30.0
 ## D22 R0-A switches (see the header).
 var no_trial_arena := false
 var stand_on := false
+## D22 CB-R1 (N94, N97), this tool only: --stand-from=<beat name, e.g. 승2> = the hero stands still from the first zone_entered after that beat started (casting and the grace pick stay the pilot's);
+## --move-bps=N = the pilot's movement vector is scaled by N/10000 (5000 = half speed, a stand-in for a slower human). Without both the output is unchanged.
+var stand_from := ""
+var stand_from_id := ""
+var move_bps := 10000
+## --xp-trace=N (read-only, this tool): every N seconds the run's xp, level and live enemy count go into the run JSON ("xp_trace": [[s, xp, level, alive]]) and one line "XPTRACE" is printed (to see why a grace gap is long).
+var xp_trace_s := 0.0
 var targets_name := ""
 var targets: Array = BEATS
 var gear_kit_names: Array = []
@@ -137,6 +144,17 @@ func execute() -> void:
 		elif arg == "--thirds": thirds_on = true
 		elif arg == "--no-trial-arena": no_trial_arena = true
 		elif arg == "--stand": stand_on = true
+		elif arg.begins_with("--stand-from="):
+			stand_from = arg.trim_prefix("--stand-from=")
+			for bid in BEAT_NAMES:
+				if String(BEAT_NAMES[bid]) == stand_from: stand_from_id = String(bid)
+			if stand_from_id == "":
+				push_error("measure_rhythm: --stand-from must be a beat name of %s (got %s)" % [str(BEAT_NAMES.values()), stand_from])
+				quit(1)
+				return
+		elif arg.begins_with("--xp-trace="): xp_trace_s = maxf(1.0, float(arg.trim_prefix("--xp-trace=")))
+		elif arg.begins_with("--move-bps="):
+			move_bps = clampi(int(arg.trim_prefix("--move-bps=")), 0, 10000)
 		elif arg.begins_with("--gear-kit="):
 			gear_kit_names = []
 			for part in arg.trim_prefix("--gear-kit=").split(","): gear_kit_names.append(String(part))
@@ -215,6 +233,7 @@ func execute() -> void:
 		print_cross(cross)
 	if descent_policy != "" and not gear_mode: print_descent_cross(runs)
 	if stand_on and not gear_mode: print_stand_cross(runs)
+	if stand_from != "" and not gear_mode: print_stand_from_cross(runs)
 	if thirds_on and not gear_mode: print_thirds(runs)
 	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "descent_cross": (descent_cross(runs) if descent_policy != "" else {}), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
@@ -341,6 +360,8 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	var offers: Array = []
 	var open_on: bool = bool(run.tuning.get("rhythm", {}).get("enabled", false)) and bool(run.tuning.get("rhythm", {}).get("opening", {}).get("enabled", false))
 	var first_beat_id := ""
+	var xp_trace: Array = []
+	var sf := {"armed": false, "on": false, "start_s": -1.0, "zone": -1, "champs": {}, "last_hit": {}}
 	if run.tuning.get("rhythm", {}).get("beats", []).size() > 0: first_beat_id = String(run.tuning.rhythm.beats[0].id)
 	var ex := {"born": {}, "engaged": {}, "walk_in_s": [], "guard_fight_s": [], "guard_placed_s": [], "guard_unlocked_s": [], "taken_s": [], "chest_s": [], "expired": 0, "locked_expired": 0}
 	while run.mode not in ["victory", "defeat"] and guard < 12 * 60 * 60 and (stop_s <= 0.0 or float(run.tick) < stop_s * 60.0):
@@ -359,11 +380,15 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 					return {}
 		if run.mode == "choice": note_offer(run, offers, run.get_offer())
 		var mv: Vector2 = pilot.decide()
-		if stand_on: mv = Vector2.ZERO
+		if move_bps != 10000: mv = mv * (float(move_bps) / 10000.0)
+		if stand_on or bool(sf.on): mv = Vector2.ZERO
 		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
 		guard += 1
+		if xp_trace_s > 0.0 and int(run.tick) % int(xp_trace_s * 60.0) == 0 and (xp_trace.is_empty() or int(xp_trace[xp_trace.size() - 1][0]) != int(int(run.tick) / 60)):
+			var gs0: Dictionary = run.growth.snapshot()
+			xp_trace.append([int(int(run.tick) / 60), int(gs0.xp), int(gs0.level), int(run.alive_count())])
 		var adv: int = int(run.tick) - last_tick
 		last_tick = int(run.tick)
 		var sec: float = float(run.tick) / 60.0
@@ -375,6 +400,17 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
 			var esec: float = float(ev.tick) / 60.0
 			sweep_event(sw, ev, run, prim)
+			if stand_from != "" or stand_on:
+				match String(ev.type):
+					"beat_started":
+						if stand_from != "" and String(ev.get("id", "")) == stand_from_id: sf.armed = true
+					"zone_entered":
+						if bool(sf.armed) and not bool(sf.on):
+							sf.on = true
+							sf.start_s = snappedf(esec, 0.1)
+							sf.zone = int(ev.get("zone", -1))
+					"chapter_champion": sf.champs[int(ev.get("zone", -1))] = snappedf(esec, 0.1)
+					"hero_hit": sf.last_hit = {"kind": String(ev.get("source_kind", "")), "attack": String(ev.get("attack_id", "")), "s": snappedf(esec, 0.1)}
 			if String(ev.type) == "hero_hit": bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
@@ -475,6 +511,11 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	summary["offers_l12"] = offers_l12(offers)
 	var end_beat := OPENING_NAME if op_active else (cur_beat if event_beats else beat_name_by_time(secs))
 	var defeat := {"mode": String(run.mode), "s": snappedf(secs, 0.1), "beat": end_beat, "opening_active": op_active, "opening_step": op_step_id if op_active else "", "last_opening_step": op_step_id}
+	if xp_trace_s > 0.0:
+		defeat["xp_trace"] = xp_trace
+		print("  XPTRACE %s seed=%d [s,xp,level,alive]: %s" % [prim.trim_prefix("chapter1.skill."), seed_, str(xp_trace)])
+	if stand_from != "" or stand_on:
+		defeat["stand"] = {"from": stand_from, "started": bool(sf.on), "start_s": sf.start_s, "zone": sf.zone, "champions_s": sf.champs.duplicate(), "last_hit": sf.last_hit, "cause": hit_cause(sf.last_hit)}
 	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "calls": descent_calls, "view": run.descent_view()},
@@ -1057,6 +1098,7 @@ func print_run(r: Dictionary) -> void:
 	print("RUN %s seed=%d mode=%s secs=%.1f kills=%d level=%d  beats by: %s" % [r.primary, r.seed, r.mode, r.secs, r.kills, s.level, r.beat_source])
 	print("  marks: ", ", ".join(PackedStringArray(r.marks)))
 	if stand_on: print(stand_line(r))
+	if stand_from != "": print(stand_from_line(r))
 	if r.descent.policy != "":
 		var dm: Dictionary = r.descent.metrics
 		var dk := 0
@@ -1189,6 +1231,27 @@ func print_thirds(runs: Array) -> void:
 	for k in guard_times: gparts.append("%s 잡음 %d판 %s / 못 잡고 끝 %d판 %s" % [k, guard_times[k].died.size(), fmt_med(guard_times[k].died, "%.1f"), guard_times[k].alive.size(), fmt_med(guard_times[k].alive, "%.1f")])
 	print("  큰 적 등장 → 죽음(초): " + " | ".join(PackedStringArray(gparts)))
 
+## D17 3.3 classes: 무리 (walker / charger), 탄 (ranged), 큰 적 (elite / champion / boss / boss_ward), 기타 (floor hazards). A shot carries its owner's kind, so a ranged body = 탄.
+func hit_cause(h: Dictionary) -> String:
+	if h.is_empty(): return "(맞은 적 없음)"
+	match String(h.kind):
+		"walker", "charger": return "무리"
+		"ranged": return "탄"
+		"elite", "champion", "boss", "boss_ward": return "큰 적"
+	return "기타(%s)" % String(h.kind)
+
+## --stand-from: when it began to stand, when and where the hero fell, the cause, and whether the guardian of that zone had appeared by then (N94 3: it must fall BEFORE guardian 2).
+func stand_from_line(r: Dictionary) -> String:
+	var e: Dictionary = r.end
+	var st: Dictionary = e.stand
+	if not bool(st.started): return "  STAND-FROM %s %s seed=%d: 서기 시작 못 함(%s 마디가 시작되고 구역에 들어서기 전에 끝남, 끝 상태=%s %.1f초)" % [stand_from, r.primary, r.seed, stand_from, String(e.mode), float(e.s)]
+	var zc = st.champions_s.get(int(st.zone), null)
+	var champ_txt := "수호자 미등장" if zc == null else "수호자 등장 %.1f초" % float(zc)
+	if String(e.mode) != "defeat":
+		return "  STAND-FROM %s %s seed=%d: 서기 시작 %.1f초(구역 %d), 쓰러지지 않음(끝 %s %.1f초, 마디=%s), %s | 목표(수호자 전에 쓰러짐) 밖" % [stand_from, r.primary, r.seed, float(st.start_s), int(st.zone), String(e.mode), float(e.s), String(e.beat), champ_txt]
+	var before: bool = zc == null or float(e.s) < float(zc)
+	return "  STAND-FROM %s %s seed=%d: 서기 시작 %.1f초(구역 %d), 쓰러짐 %.1f초(서고 %.1f초 뒤), 마디=%s, 원인=%s, %s | 목표(수호자 전에 쓰러짐) %s" % [stand_from, r.primary, r.seed, float(st.start_s), int(st.zone), float(e.s), float(e.s) - float(st.start_s), String(e.beat), String(st.cause), champ_txt, ("안" if before else "밖(수호자 뒤)")]
+
 ## --stand: when the standing hero fell and in which beat / opening step (D22 R0-A).
 func stand_line(r: Dictionary) -> String:
 	var e: Dictionary = r.end
@@ -1219,6 +1282,23 @@ func print_stand_cross(runs: Array) -> void:
 		else:
 			kept += 1
 	print("STAND across %d runs (measured, pilot casting, movement zeroed): 쓰러짐 %d판 / 끝까지 %d판 | 쓰러진 시각(초) %s | 쓰러진 마디 %s" % [runs.size(), fell.size(), kept, fmt_med(fell, "%.1f"), str(by_beat)])
+
+func print_stand_from_cross(runs: Array) -> void:
+	var fell: Array = []
+	var before := 0
+	var causes := {}
+	var not_started := 0
+	for r in runs:
+		var st: Dictionary = r.end.stand
+		if not bool(st.started):
+			not_started += 1
+			continue
+		if String(r.end.mode) != "defeat": continue
+		fell.append(float(r.end.s) - float(st.start_s))
+		causes[String(st.cause)] = int(causes.get(String(st.cause), 0)) + 1
+		var zc = st.champions_s.get(int(st.zone), null)
+		if zc == null or float(r.end.s) < float(zc): before += 1
+	print("STAND-FROM %s across %d runs (measured, pilot casting, movement zeroed from the zone entry): 쓰러짐 %d판 / 수호자 전에 쓰러짐 %d판 (목표 7/9) / 서기 시작 못 함 %d판 | 서고 나서 쓰러진 시간(초) %s | 원인 %s" % [stand_from, runs.size(), fell.size(), before, not_started, fmt_med(fell, "%.1f"), str(causes)])
 
 ## Crest peak / lull end, median per beat over all runs (--thirds).
 func print_crest_lull(runs: Array) -> void:
