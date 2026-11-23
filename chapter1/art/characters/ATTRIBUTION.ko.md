@@ -22,3 +22,17 @@
 v02가 세 주인공의 기준 원화다. v01은 지우지 않고 남긴다(`ember_witch_v01`은 뿔이 있어 주인공 설정과 맞지 않았고, v02로 대체됐다). 노출 기준: 상의와 골반 가리개는 불투명, 망토와 늘어지는 자락만 반투명(사용자 결정, 15세 등급 게임 수준).
 
 상태: 원화 보관만 했다. 게임 화면에 연결하지 않았고 배경 제거·크기 조정 같은 후처리도 하지 않았다. 배포에 쓰기 전에 생성 도구의 이용 약관과 수위 기준을 확인한다.
+
+## 3D 몸 — 화염(테사) (2026-11-23~24)
+
+`chapter1/art/actors/hero/ember/model.glb`(저장소에 올리지 않는다: `.gitignore`의 `chapter1/art/actors/hero/`, 이용 약관 확인 전. 냉기 `hero/frost/`도 같은 처지).
+
+| 단계 | 내용 |
+|---|---|
+| 메시 | Tripo(웹, 구독)로 사용자가 손으로 만든 몸을 15k 삼각형으로 줄임. 눈 색은 묶음에 든 그대로 둠(사용자, 2026-11-24) |
+| 뼈대·동작 | Mixamo(웹)에서 사용자가 손으로 뽑음, 2026-11-23: Standing Idle, Fast Run, Walking, Standing 1H Magic Attack 01, Standing 2H Magic Area Attack 01, Standing React Small From Front, Standing React Death Backward, Dodging Right |
+| 묶기 | `tools/art/gen3d_mixamo_pack.py`, 설정 `tools/art/gen3d_mixamo_configs/ember.json`(동작 8개, `dodge_back` 없음) |
+| 자리표 | `chapter1/art/asset_slots.json`의 `actor.hero.ember.model` |
+| 도구·날짜 | Blender 5.3 묶기 2026-11-24 |
+
+라이선스: Tripo 구독 약관과 Mixamo(Adobe) 약관. 배포에 쓰기 전에 두 약관의 상업 이용 조건을 확인한다.

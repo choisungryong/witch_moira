@@ -1,0 +1,52 @@
+{
+  "_about": "Ember (Tessa) witch: Tripo 15k body, Mixamo-rigged (rebuilt rig) + 8 motion clips (no dodge_back) -> chapter1/art/actors/hero/ember/model.glb. Same clip names as frost.json.",
+  "body": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/ember_t15k.fbx",
+  "texture_color": "D:/Project/witch-moira-work/pipeline/ember/game_a/ember_t15k_color.png",
+  "texture_normal": "D:/Project/witch-moira-work/pipeline/ember/game_a/ember_t15k_normal.png",
+  "metallic": 0.0,
+  "roughness": 0.8,
+  "fps": 30,
+  "out": "chapter1/art/actors/hero/ember/model.glb",
+  "clips": [
+    {
+      "name": "idle",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Standing Idle.fbx"
+    },
+    {
+      "name": "run",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Fast Run.fbx",
+      "in_place": true,
+      "ground_speed_mps": 7.25
+    },
+    {
+      "name": "walk",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Walking.fbx",
+      "in_place": true
+    },
+    {
+      "name": "cast",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Standing 1H Magic Attack 01.fbx"
+    },
+    {
+      "name": "cast_area",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Standing 2H Magic Area Attack 01.fbx"
+    },
+    {
+      "name": "hit",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Standing React Small From Front.fbx"
+    },
+    {
+      "name": "death",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Standing React Death Backward.fbx"
+    },
+    {
+      "name": "dodge",
+      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Dodging Right.fbx",
+      "frames": [
+        3,
+        40
+      ]
+    }
+  ],
+  "hero_json": "tools/art/gen3d_mixamo_configs/ember.hero.json"
+}

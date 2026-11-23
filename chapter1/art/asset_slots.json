@@ -102,10 +102,48 @@
     },
     "actor.hero.ember.model": {
       "kind": "model",
-      "file": "",
-      "planned": true,
+      "file": "actors/hero/ember/model.glb",
+      "meta": "actors/hero/ember/hero.json",
+      "optional": true,
       "used": "unverified",
-      "source": "T2-H 3.1: ember witch body, same contract shape as actor.hero.frost.model (not built yet)"
+      "source": "T2-H 3.1: ember (Tessa) witch body (Tripo 15k mesh, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/ember.json; the file is not kept in the repository (terms of use unchecked). Eye colour left as the pack has it (user, 2026-11-24). Numbers: scale 1.3176 = old mage height 2.68 m / body 2.034 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.261 m/s (pack-report) x scale 1.3176 x 0.5333 s = 5.1025; walk ground speed 2.355 m/s; idle = full clip 6.0 s (181 frames, head back to start within 0.1 mm, hips span 1.7 cm, so the loop seam does not show; the game reads the loop length from idle_loop_s); cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25 (same peak as frost); hit_start_s 0.35 (hit clip has the same shape as frost); death = full clip 3.6333 s; dodge = frames 3-40 (1.2333 s), no dodge_back",
+      "contract": {
+        "scale": 1.3176,
+        "bones": {
+          "hand_r": "mixamorig_RightHand",
+          "finger_r": "mixamorig_RightHandIndex1"
+        },
+        "bone_groups": {
+          "upper_prefixes": [
+            "mixamorig_Spine",
+            "mixamorig_Neck",
+            "mixamorig_Head"
+          ],
+          "upper_contains": [
+            "Shoulder",
+            "Arm",
+            "Hand"
+          ]
+        },
+        "clips": {
+          "idle": "idle",
+          "run": "run",
+          "cast": "cast",
+          "hit": "hit",
+          "death": "death"
+        },
+        "pose": {
+          "run_time_scale": 0.5333333,
+          "stride_world_m": 5.1025,
+          "idle_loop_s": 6.0,
+          "cast_start_s": 0.7,
+          "cast_time_scale": 2.25,
+          "hit_start_s": 0.35,
+          "hit_time_scale": 3,
+          "death_max_age_s": 3.6333333
+        },
+        "budget_profile": "hero"
+      }
     },
     "actor.hero.arc.model": {
       "kind": "model",
