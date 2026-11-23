@@ -548,7 +548,8 @@ body.skilllab-mode .shell>main,body.skilllab-mode .shell>.inspector{display:none
 .sl-cand-b{display:flex;flex-wrap:wrap;gap:var(--s-1)}
 .sl-result pre{max-height:220px;overflow:auto;background:var(--c-sunken);padding:var(--s-2);border-radius:var(--r-s);font-size:var(--fs-xs);white-space:pre-wrap}
 .sl-modal{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:var(--s-4)}
-.sl-modal-box{background:var(--c-surface);border:1px solid var(--c-line-strong);border-radius:var(--r-m);padding:var(--s-4);max-width:560px;max-height:90dvh;overflow:auto;box-shadow:var(--shadow-float)}
+.sl-modal-box{background:var(--c-surface);border:1px solid var(--c-line-strong);border-radius:var(--r-m);padding:var(--s-4);max-width:720px;max-height:90dvh;overflow:auto;box-shadow:var(--shadow-float)}
+.sl-modal-box pre{white-space:pre-wrap;font-size:var(--fs-xs)}
 .sl-modal-box ul{padding-left:var(--s-4);font-size:var(--fs-xs)}
 @media(max-width:1100px){.sl-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sl-right{grid-column:1/-1}}
 /* 휴대폰: 한 줄 세로 배치(캐릭터 → 스킬 → 적 배치 → 영상 → 소리 후보), 단추 44px 이상 */
@@ -564,3 +565,27 @@ body.skilllab-mode .shell>main,body.skilllab-mode .shell>.inspector{display:none
   .sl-forms{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+.sl-clip progress{width:100%;height:10px;accent-color:var(--accent,#c9ad6a)}
+/* ---------- 원격 접속(Cloudflare Access 로 들어온 화면): body[data-remote="1"] 은 서버가 index.html 에 붙인다 ---------- */
+.remote-status{margin-left:auto;font-size:var(--fs-xs);color:var(--c-text-2);border:1px solid var(--c-line);border-radius:999px;padding:2px 10px}
+.remote-status.on{color:var(--c-text);border-color:var(--brass)}
+.remote-status.warn{color:var(--c-text);border-color:var(--c-warn,#c98a3a)}
+/* 원격에서는 서버가 거절하는 일의 단추를 숨긴다(PC 탐색기 열기, 파일 올려받기, 균형 실험실·점검 실행) */
+body[data-remote="1"] .local-only,body[data-remote="1"] #ch-tripo,body[data-remote="1"] #bl-run,body[data-remote="1"] #au-run,body[data-remote="1"] [data-tripo="open"]{display:none!important}
+/* ---------- 휴대폰(768px 아래): 왼쪽 줄은 위쪽 가로 탭, 단추는 44px 이상 ---------- */
+@media(max-width:768px){
+  .shell{display:block}
+  .shell>.rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--c-line);padding:var(--s-2) var(--s-3);display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:var(--s-1);-webkit-overflow-scrolling:touch}
+  .rail-title{display:none}
+  #categories{display:contents}
+  .view-button,#categories button,.rail footer .quiet{flex:none;width:auto;white-space:nowrap}
+  .rail footer{display:block;margin:0;padding:0;border:0;width:auto;flex:none}
+  button,select,input[type=search],input[type=text],input[type=number],.ch-dl{min-height:44px}
+  input[type=checkbox],input[type=radio]{min-width:22px;min-height:22px}
+  .masthead{height:auto;min-height:48px;flex-wrap:wrap;padding-top:var(--s-1);padding-bottom:var(--s-1)}
+  .remote-status{margin-left:0}
+  .order{flex-wrap:wrap}
+  .shell>.inspector,.shell>main{grid-column:auto}
+  .table-wrap{max-width:100%;overflow-x:auto}
+  video,img,canvas{max-width:100%}
+}

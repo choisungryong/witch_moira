@@ -159,6 +159,23 @@ class DataTests(Base):
         self.assertEqual(rows['skill.meteor.land']['owner'], {'elem': 'ember', 'form': 'evolved'})
         self.assertEqual(rows['skill.arc.cast']['per_targets'], 3)
 
+    def test_typed_const_is_read_by_gd_const(self):
+        import catalog
+        t = 'const SILENT: Array[String] = ["lightning", "x"]\nconst D: Dictionary = {"a": 1}\nconst E := 3\nconst F: int = 4\n'
+        self.assertEqual(catalog.gd_const(t, 'SILENT'), ['lightning', 'x'])
+        self.assertEqual((catalog.gd_const(t, 'D'), catalog.gd_const(t, 'E'), catalog.gd_const(t, 'F')), ({'a': 1}, 3, 4))
+        w = []
+        self.assertEqual(skill_lab._gd_consts(self.root, w)['SILENT'], ['lightning'])
+        self.assertEqual(w, [])
+
+    def test_po_skill_description_is_read_when_present(self):
+        arc = lambda: next(c for c in skill_lab.characters_table(self.root) if c['elem'] == 'arc')
+        self.assertIn('설명 문장이 없고', arc()['forms'][0]['text'])
+        po = self.root / 'chapter1/i18n/ko.po'
+        po.write_text(po.read_text(encoding='utf-8') + '\nmsgid "skill.chapter1.skill.arc.desc"\nmsgstr "번개가 적 사이를 튄다"\n\nmsgid "skill.chapter1.skill.arc.evolved_desc"\nmsgstr "폭풍이 몰아친다"\n', encoding='utf-8')
+        forms = arc()['forms']
+        self.assertEqual((forms[0]['text'], forms[1]['text']), ('번개가 적 사이를 튄다', '폭풍이 몰아친다'))
+
     def test_schema1_has_no_slots(self):
         with tempfile.TemporaryDirectory() as t:
             r = Path(t) / 'r'
@@ -187,6 +204,19 @@ class CandidateTests(Base):
         self.assertEqual(c[0]['paths'][0], '_local/audio/chain-lightning/round2/assets/c1_1.wav')
         self.assertTrue(c[0]['origin_known'] and not c[1]['origin_known'])
         self.assertEqual(w, [])
+
+    def test_empty_slot_is_listen_only_not_a_warning(self):
+        f = self.root / '_local/audio/chain-lightning/round2/lab-candidates.json'
+        f.write_text(json.dumps({'schema': 1, 'title': '자리 없는 묶음', 'candidates': [
+            {'key': 'free-1', 'label': '자리 없음 · 아무 소리', 'slot': '', 'files': ['assets/c1_1.wav']}]}), encoding='utf-8')
+        w = []
+        c = skill_lab.scan_candidates(self.root, w)
+        self.assertEqual(w, [])
+        self.assertEqual([(x['id'], x['slot'], x['listen_only']) for x in c], [('chain-lightning/round2/free-1', '', True)])
+        self.assertIsNotNone(skill_lab.audio_file(self.root, 'chain-lightning/round2/free-1', None, 0))      # 듣기는 된다
+        with self.assertRaises(ValueError):                                                                     # 끼우기는 안 된다
+            skill_lab.clean_audio({'skill.arc.cast': 'chain-lightning/round2/free-1'}, self.root)
+        self.assertTrue(skill_lab.overview(self.root)['candidates'][0]['listen_only'])
 
     def test_bad_paths_rejected(self):
         f = self.root / '_local/audio/chain-lightning/round2/lab-candidates.json'
@@ -419,11 +449,35 @@ class AdoptTests(Base):
         self.assertEqual(r['result'], {'written': ['a.wav'], 'check': 'ok'})
         self.assertIn('audio_map.json', r['git_diff_stat'])
         tool_args = self.calls[0]
-        self.assertEqual(tool_args[2:], ['adopt', '--slot', 'skill.arc.cast', '--candidate', 'chain-lightning/round2/C1', '--expect-rev', self.rev()])
+        self.assertEqual(tool_args[2:], ['adopt', '--slot', 'skill.arc.cast', '--candidate', 'chain-lightning/round2/C1', '--expect-rev', self.rev(), '--yes'])
         rec, = picks.load(self.picks)['records'].values()
         self.assertEqual((rec['screen'], rec['subject'], rec['verdict']), ('skill', 'skill/chapter1.skill.arc/sound/skill.arc.cast', 'pick'))
         self.assertTrue(r['reload_sent'])
         self.assertEqual(self.command()['op'], 'reload_audio')
+
+    def test_preview_uses_dry_run_and_never_yes(self):
+        out = 'text\nAUDIO_ADOPT ' + json.dumps({'ok': True, 'dry_run': True, 'confirm': '채택 확인 글', 'warnings': ['무음이던 소리가 울립니다'],
+                                              'files': [{'dest_rel': 'chapter1/art/audio/slots/skill.arc.cast/C1_1.wav', 'format': 'wav'}], 'parent': 'lightning',
+                                              'parent_silent_today': True}) + '\n'
+        r = skill_lab.adopt_preview(self.root, 'skill.arc.cast', 'chain-lightning/round2/C1', self.runner(0, out))
+        self.assertEqual(self.calls[0][2:], ['adopt', '--slot', 'skill.arc.cast', '--candidate', 'chain-lightning/round2/C1', '--dry-run'])
+        self.assertNotIn('--yes', self.calls[0])
+        self.assertEqual((r['confirm'], r['parent_silent_today'], r['map_rev']), ('채택 확인 글', True, self.rev()))
+        self.assertEqual(r['files'][0]['dest_rel'].split('/')[-1], 'C1_1.wav')
+        self.assertFalse(self.picks.exists())
+
+    def test_preview_refusals(self):
+        with self.assertRaises(skill_lab.LabError) as cm:
+            skill_lab.adopt_preview(self.root, 'skill.arc.cast', 'chain-lightning/round2/C1', self.runner(2, 'bad'))
+        self.assertEqual(cm.exception.status, 422)
+        for slot, cand in (('no.slot', 'chain-lightning/round2/C1'), ('skill.arc.cast', 'nope')):
+            with self.assertRaises(skill_lab.LabError) as cm:
+                skill_lab.adopt_preview(self.root, slot, cand, self.runner(0, 'AUDIO_ADOPT {}\n'))
+            self.assertEqual(cm.exception.status, 400)
+        (self.root / 'tools/dev/audio_adopt.py').unlink()
+        with self.assertRaises(skill_lab.LabError) as cm:
+            skill_lab.adopt_preview(self.root, 'skill.arc.cast', 'chain-lightning/round2/C1', self.runner(0, ''))
+        self.assertEqual(cm.exception.status, 503)
 
     def test_success_without_window_sends_nothing(self):
         r = skill_lab.adopt(self.root, 'skill.arc.cast', 'chain-lightning/round2/C1', self.rev(), self.runner(0, 'AUDIO_ADOPT {}\n'), self.picks)
@@ -447,6 +501,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(P('GET', '/api/skill-lab/shot?name=x'), skill_lab.LOCAL_ONLY)
         self.assertEqual(P('POST', '/api/skill-lab/clip'), 'skill_lab.clip')
         self.assertEqual(P('POST', '/api/skill-lab/adopt'), 'skill_lab.adopt')
+        self.assertEqual(P('POST', '/api/skill-lab/adopt-preview'), 'skill_lab.adopt')
         self.assertEqual(P('POST', '/api/skill-lab/scene'), 'skill_lab.scene')
         self.assertEqual(P('GET', '/api/skill-lab/clip/' + 'a' * 24 + '/video'), 'view')
         self.assertIsNone(P('POST', '/api/skill-lab/unknown'))
@@ -576,6 +631,109 @@ class ClipTests(Base):
         with self.assertRaises(ValueError):
             skill_lab_clips.request(self.root, self.scene(), None, 'bogus', start_worker=False)
 
+    def fake_godot_and_ffmpeg(self, crashes=0):
+        calls = {'godot': [], 'ffmpeg': []}
+        real_run = subprocess.run
+
+        def run(args, **kw):
+            if len(args) > 1 and str(args[1]).endswith('godot.py'):
+                calls['godot'].append(args)
+                if len(calls['godot']) <= crashes:
+                    return subprocess.CompletedProcess(args, 4294967295, b'', b'error(-1): no debug info in PE/COFF executable\n')
+                avi = Path(self.root) / args[args.index('--write-movie') + 1]
+                avi.write_bytes(b'avi')
+                lab = Path(self.root) / [a for a in args if a.startswith('--lab-dir=')][0][len('--lab-dir='):]
+                lab.mkdir(parents=True, exist_ok=True)
+                (lab / 'state.json').write_text(json.dumps({'clip': {'start_frame': 30, 'start_time_s': 0.5, 'frames': 270, 'seconds': 4.0, 'done': True}}), encoding='utf-8')
+                return subprocess.CompletedProcess(args, 0, b'SKILL_LAB_QUIT\n', b'')
+            calls['ffmpeg'].append(args)
+            Path(args[-1]).write_bytes(b'mp4')
+            return subprocess.CompletedProcess(args, 0, b'', b'')
+        return calls, run, real_run
+
+    def test_real_shoot_command_and_ffmpeg_use_the_window_start_time(self):
+        skill_lab_clips.SHOOT['fn'] = self.real
+        (self.root / 'chapter1/tests').mkdir(parents=True)
+        (self.root / 'chapter1/tests/skill_lab.gd').write_text('# fake\n', encoding='utf-8')
+        calls, run, real_run = self.fake_godot_and_ffmpeg()
+        old = skill_lab_clips._ffmpeg
+        skill_lab_clips._ffmpeg = lambda: 'ffmpeg'
+        skill_lab_clips.subprocess.run = run
+        try:
+            j = self.ask()
+            skill_lab_clips.run_queue()
+        finally:
+            skill_lab_clips.subprocess.run = real_run
+            skill_lab_clips._ffmpeg = old
+        st = skill_lab_clips.status(self.root, j['id'])
+        self.assertEqual(st['state'], 'done', st)
+        g = calls['godot'][0]
+        self.assertEqual(g[g.index('--position') + 1], '4000,4000')                  # 화면 밖(Movie Maker 는 창이 필요하다)
+        self.assertIn('--write-movie', g)
+        self.assertNotIn('--headless', g)
+        self.assertIn('--lab-clip-seconds=4', g)
+        self.assertTrue(any(a.startswith('--lab-dir=_local/skill-lab/clips/tmp/lab-') for a in g))
+        f = calls['ffmpeg'][0]
+        self.assertEqual(f[f.index('-ss') + 1], '0.500')                               # 창이 state.json 에 쓴 start_time_s
+        self.assertEqual(f[f.index('-t') + 1], '4')
+        self.assertIn('libx264', f)
+        self.assertIn('aac', f)
+        meta = skill_lab_clips.read_meta(self.root, j['id'])
+        self.assertEqual((meta['start_frame'], meta['attempts']), (30, 1))
+        self.assertFalse((skill_lab_clips.clips_dir(self.root) / 'tmp' / ('lab-' + j['id'])).exists())     # 찌꺼기를 치운다
+
+    def test_real_shoot_retries_one_crash_and_keeps_the_log(self):
+        skill_lab_clips.SHOOT['fn'] = self.real
+        (self.root / 'chapter1/tests').mkdir(parents=True)
+        (self.root / 'chapter1/tests/skill_lab.gd').write_text('# fake\n', encoding='utf-8')
+        calls, run, real_run = self.fake_godot_and_ffmpeg(crashes=1)
+        old = skill_lab_clips._ffmpeg
+        skill_lab_clips._ffmpeg = lambda: 'ffmpeg'
+        skill_lab_clips.subprocess.run = run
+        try:
+            j = self.ask()
+            skill_lab_clips.run_queue()
+        finally:
+            skill_lab_clips.subprocess.run = real_run
+            skill_lab_clips._ffmpeg = old
+        self.assertEqual(len(calls['godot']), 2)
+        self.assertEqual(skill_lab_clips.read_meta(self.root, j['id'])['attempts'], 2)
+        self.assertIn('PE/COFF', (skill_lab_clips.clips_dir(self.root) / 'last-crash.log').read_text(encoding='utf-8'))
+
+    def test_two_crashes_are_an_error_with_the_reason(self):
+        skill_lab_clips.SHOOT['fn'] = self.real
+        (self.root / 'chapter1/tests').mkdir(parents=True)
+        (self.root / 'chapter1/tests/skill_lab.gd').write_text('# fake\n', encoding='utf-8')
+        calls, run, real_run = self.fake_godot_and_ffmpeg(crashes=5)
+        old = skill_lab_clips._ffmpeg
+        skill_lab_clips._ffmpeg = lambda: 'ffmpeg'
+        skill_lab_clips.subprocess.run = run
+        try:
+            j = self.ask()
+            skill_lab_clips.run_queue()
+        finally:
+            skill_lab_clips.subprocess.run = real_run
+            skill_lab_clips._ffmpeg = old
+        st = skill_lab_clips.status(self.root, j['id'])
+        self.assertEqual(len(calls['godot']), 2)
+        self.assertEqual(st['state'], 'error')
+        self.assertIn('4294967295', st['error'])
+        self.assertIn('last-shoot.log', st['error'])
+
+    def test_waiting_info_counts_jobs_ahead_and_uses_measured_time(self):
+        a, b = self.ask(count=1), self.ask(count=2)
+        self.assertEqual(skill_lab_clips.status(self.root, b['id'])['ahead'], 1)
+        self.assertIsNone(skill_lab_clips.status(self.root, b['id'])['eta_s'])           # 잰 값이 없으면 숫자를 지어내지 않는다
+        skill_lab_clips.run_queue()
+        c, d = self.ask(count=3), self.ask(count=4)
+        skill_lab_clips._JOBS[c['id']]['queued'] -= 5
+        for cid in (a['id'], b['id']):
+            m = skill_lab_clips.read_meta(self.root, cid)
+            m['seconds'] = 20.0
+            skill_lab_clips._meta_path(self.root, cid).write_text(json.dumps(m), encoding='utf-8')
+        st = skill_lab_clips.status(self.root, d['id'])
+        self.assertEqual((st['ahead'], st['typical_s'], st['eta_s']), (1, 20.0, 40.0))
+
     def test_real_shoot_reports_missing_script_instead_of_crashing(self):
         skill_lab_clips.SHOOT['fn'] = self.real
         j = self.ask()
@@ -663,6 +821,16 @@ class ServerTests(Base):
         st, _, body = self.req('/api/skill-lab/adopt', {'slot': 'skill.arc.cast', 'candidate': 'chain-lightning/round2/C1', 'map_rev': 'stale'})
         self.assertEqual(st, 409)
         self.assertEqual(json.loads(body)['map_rev'], skill_lab.map_info(self.root)['rev'])
+
+    def test_adopt_preview_route(self):
+        st, _, body = self.req('/api/skill-lab/adopt-preview', {'slot': 'skill.arc.cast', 'candidate': 'chain-lightning/round2/C1'})
+        self.assertEqual(st, 503)             # 채택 도구가 이 가짜 저장소에 없다
+        (self.root / 'tools/dev').mkdir(parents=True)
+        (self.root / 'tools/dev/audio_adopt.py').write_text('# fake\n', encoding='utf-8')
+        st, _, body = self.req('/api/skill-lab/adopt-preview', {'slot': 'skill.arc.cast', 'candidate': 'nope'})
+        self.assertEqual(st, 400)
+        st, _, body = self.req('/api/skill-lab/adopt-preview', {'slot': 'skill.arc.cast', 'candidate': 'chain-lightning/round2/C1'}, headers={'Origin': 'http://evil.example'})
+        self.assertEqual(st, 403)
 
     def test_clip_routes_and_range(self):
         def fake(root, scene, audio, way, cid, out):

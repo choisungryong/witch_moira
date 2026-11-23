@@ -45,7 +45,7 @@ def line_of(text, needle):
 # ------------------------------------------------------------------ GDScript literal parser (no eval)
 def gd_const(text, name):
     """Parse `const NAME := <literal>` (arrays, dicts, strings, numbers, Vector2). Raises ValueError."""
-    m = re.search(r'^const\s+' + re.escape(name) + r'\s*(?::=|=|:\s*\w+\s*=)\s*', text, re.M)
+    m = re.search(r'^const\s+' + re.escape(name) + r'\s*(?::=|=|:\s*[\w\[\], ]+?\s*=)\s*', text, re.M)
     if not m:
         raise ValueError('Missing constant ' + name)
     p = _Lit(text, m.end())

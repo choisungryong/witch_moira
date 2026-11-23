@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 12:30:49 · 도구 161개
+생성: 2026-11-23 19:08:57 · 도구 169개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -223,6 +223,11 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/manager/drafts.py` | 원화 시안 갤러리 | Character art draft gallery: reads _local/art/drafts/index.json on every request (read-only), |  |
 | `tools/manager/playlog.py` | 플레이 기록 | Human playtest log: questions read from the docs, answers saved as _local/playtests/<date-time>.json. |  |
 | `tools/manager/characters.py` | 「캐릭터」 화면의 뒷면(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수(BASE_SPEED·카메라), 그림·영상 자리. 화면은 character.js, 3D는 vendor/three | 「캐릭터」 화면의 서버 쪽(읽기 전용): 자리표의 주인공 몸, 걸음 계약, 코드 상수, 그림·영상의 자리를 모아 준다. |  |
+| `tools/manager/skill_lab.py` | 「스킬 시험실」 화면의 뒷면: 스킬·소리 자리·후보 목록을 읽고, Godot 시험 창에 command.json/state.json 으로 명령을 보내고, 채택(audio_adopt.py)을 부른다. 경로별 원격 허용 표(ROUTE_POLICY)가 여기 있다. 화면은 skill_lab.js | 「스킬 시험실」의 뒷면: 스킬·소리 자리 표를 데이터 파일에서 읽고, Godot 시험 창에 파일 두 개로 명령을 보내고, 소리 후보를 훑고, 채택을 부른다. |  |
+| `tools/manager/skill_lab_clips.py` | 시험실의 소리가 든 짧은 영상: 열쇠·판 해시 캐시, 대기열(하나씩 최대 5), ffmpeg 변환, 낡음 표시, 2 GB 상한 | 「스킬 시험실」의 영상: 장면을 소리가 든 짧은 mp4 로 찍어 캐시하고, 대기열(하나씩, 최대 5)과 낡음 표시를 맡는다. |  |
+| `tools/manager/remote_auth.py` | 원격 접속의 서버 쪽 판정: local-remote.json 읽기, Cloudflare Access JWT(RS256) 검증, 요청 판정, 원격에서 허용할 경로 표(ROUTE_POLICY), 접속 기록. 설정이 없으면 지금과 똑같이 루프백만. 터널 켜기·끄기는 같은 폴더의 remote.ps1(start\|stop\|status) | 원격 접속(Cloudflare Tunnel + Access)의 서버 쪽 판정: 설정 읽기, Access JWT(RS256) 검증, 요청 판정, 원격에서 허용할 경로, 접속 기록. 표준 라이브러리만. |  |
+| `tools/manager/skill_lab_live.py` | 스킬 시험실을 실제 Godot 창으로 끝까지 돌려 본다(창 열기, 장면 바꾸기, 소리 끼우기, 화면 저장, 영상 찍기). 서버를 먼저 띄우고 부른다. 창이 뜨고 몇 분 걸려 검사 묶음에는 넣지 않았다 | 스킬 시험실을 실제로 끝까지 돌려 보는 도구: 떠 있는 관리 서버(HTTP)를 통해 실제 Godot 시험 창을 열고, 장면을 바꾸고, 소리 후보를 끼우고, | `python tools/manager/skill_lab_live.py --port 8793 [--shots _local/shots/skill-lab-live] [--clip] [--no-close]` |
+| `tools/manager/skill_lab_adopt_check.py` | 시험실의 채택·취소가 audio_adopt.py까지 실제로 도는지 임시 저장소 --root에서만 본다(본 저장소의 채택은 하지 않는다) | 채택·취소가 페이지의 길(HTTP -> skill_lab.py -> tools/dev/audio_adopt.py)로 실제로 도는지 보는 도구. 임시 저장소 --root 에서만 돈다. |  |
 | `tools/manager/picks.py` | 사용자의 고름(이걸로/아님/보류)을 읽는다. 세션을 열면 list --open 으로 확인하고, 반영한 뒤 close <id> --ref 로 닫는다. 기록을 더하는 명령은 없다(화면에서만) | 사용자의 고름(이걸로/아님/보류/말만)을 tools/manager/local-picks.json 에 모으고, 디렉터가 읽을 수 있게 한다. | `python tools/manager/picks.py list [--open] [--subject frost/] [--json]`<br>`python tools/manager/picks.py close <id> --ref "<커밋이나 지시서>"` |
 | `tools/manager/ui_shot.py` | 관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처(--out, _local/ 아래만)와 화면이 내놓은 data-* 수치(--dump-dom)를 얻는다. --offline으로 바깥 연결을 막고 다시 확인 | 관리 툴 화면을 헤드리스 Edge로 열어 PNG 캡처와 화면이 내놓은 수치(data-*)를 얻는다. 표준 라이브러리만. | `python tools/manager/ui_shot.py --port 8791 --hash "#character/frost?a=run&b=walk@1.3&v=5.8&cam=19.5" --size 1440x900` |
 | `tools/manager/tools_index.py` | 이 색인 | 도구 색인: tools/dev, tools/art, tools/manager, chapter1/tests 의 측정·검사 도구를 파일 머리 주석에서 읽어 역할별로 보여 준다. |  |
@@ -245,6 +250,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/choice_frame_probe.gd` | Real-time frame interval while the growth-choice window is open (QA tool, no gameplay writes). The built-in pilot plays to the first choice, is parked, | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/choice_frame_probe.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost` |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
+| `chapter1/tests/descent_band_shots.gd` | QA tool (never product code): the descent's band part (chapter1/view/hud/descent_band.gd) drawn ALONE, plus the numbers that part promises (A11 4.1, 4.5). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/descent_band_shots.gd -- \`<br>`python tools/dev/godot.py --headless --path . --script res://chapter1/tests/descent_band_shots.gd -- --checks-only` |
 | `chapter1/tests/descent_fx_shots.gd` | QA tool (never product code): pictures and frame times of the descent's three sweeps (D24 12.2), on the real ChapterOne scene. | `python tools/dev/godot.py --timeout-s=900 --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/descent_fx_shots.gd -- --chapter1-start --chapter1-pilot --chapter1-trial=descent --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --chapter1-descent-cost=1000 --chapter1-primary=chapter1.skill.ember --element=ember --enemies=70 --shots=_local/shots/d24-fx --tag=ember` |
 | `chapter1/tests/descent_policy.gd` | When a bot uses the descent (D15 A6.5). MEASUREMENT ONLY: chapter_pilot.gd is not touched (the golden replay plays it as it is), |  |
 | `chapter1/tests/elite_sites_shot.gd` | Look study for guarded elites and the shrine/chest they guard (docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/elite_sites_shot.gd -- \` |
@@ -266,6 +272,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/record_input_check.gd` | Input check for the battle record window, with real GUI routing (events pushed into the window): | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_input_check.gd -- \` |
 | `chapter1/tests/record_run_shot.gd` | The battle record on a REAL run: the app plays a whole run with the built-in pilot (the core is stepped by calling the | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_run_shot.gd -- \` |
 | `chapter1/tests/sim_power.gd` | Power bench ("short proving ground", D12 P3 / P9): measures what a FIXED in-run spell build really does on the real core. |  |
+| `chapter1/tests/skill_lab.gd` | QA tool (never product code): the skill lab window (docs/specs/T12-skill-lab-20261123.ko.md, SL-B). | `python tools/dev/godot.py --timeout-s=14400 --resolution 1600x900 --path . --script res://chapter1/tests/skill_lab.gd -- \` |
 | `chapter1/tests/spells_pick.gd` | Check tool, not product code. How a tool turns the in-run spell composition ON and how it picks growth cards for it |  |
 | `chapter1/tests/trial_state_probe.gd` | Prints what the app's `--chapter1-trial=` handling (chapter_one.gd `_apply_trial`) did to the core, for the arguments this process got. |  |
 | `tools/art/albedo_fix.py` | 구운 몸 그림(albedo)의 상자 구간 안을 피부색으로 매끈하게 메운다. numpy만 쓴다. base_build.py가 부른다. |  |
@@ -310,6 +317,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/prompt_lint.py` | Check attempt prompts against the direction sheet (지시서) and the wording rules. Read-only. | `python tools/art/prompt_lint.py CONFIG.json [--dir DIR] [--only name ...]`<br>`python tools/art/prompt_lint.py --scan DIR` |
 | `tools/art/review_sheet.py` | Standard review sheet for generated attempts (replaces sheet_*.py / mkover*.py copies). Read-only on the sources. | `python tools/art/review_sheet.py --items cinder_staff=equipment_icon/cinder_staff-r2.png linen_robe=... [--prev cinder_staff=equipment_icon/cinder_staff-r1.png]`<br>`python tools/art/review_sheet.py --list ROWS.json [--name sheet-name] [--kind icon\|image] [--out FILE.jpg]` |
 | `tools/art/rig_mocap.py` | 사람 동작(다른 뼈대의 glb 동작)을 우리 24뼈 뼈대로 옮긴다. rig_clips.py가 부른다(Blender 5.3 안에서). 순수 계산 부분(디딤 구간 찾기, 디딤 고정)은 Blender 없이 검사된다. |  |
+| `tools/dev/audio_adopt.py` | Sound adoption (T12 skill lab, SL-A): put a candidate's files into a sound slot of the game, or take them out again. | `python tools/dev/audio_adopt.py list [--json]`<br>`python tools/dev/audio_adopt.py adopt  --slot skill.arc.cast --candidate chain-lightning/round2/C7 [--expect-rev SHA] [--dry-run] [--no-import] [--yes]` |
 | `tools/dev/audio_recheck_20261120.py` | Builds the 2026-11-20 recheck bundle (fire comparison again under one rule set + running-current lightning candidates). | `python tools/dev/make_lightning_candidates.py --out _local/audio/lightning-cands-20261120`<br>`python tools/dev/audio_recheck_20261120.py --out C:/Project/witch-moira/_local/sfx/recheck-20261120` |
 | `tools/dev/audio_scene_audition.py` | Scene audition: lay candidate sounds under captured game footage, one video per candidate, plus an answer key and measurements. | `python tools/dev/audio_scene_audition.py CAPTURE_DIR --requests REQ.json --candidates CANDS.json --out _local/audio/audition/20261119-scene`<br>`python tools/dev/audio_scene_audition.py _local/sfx/ember-a --requests _local/sfx/req_ember.json --candidates cands.json --out OUT --open-labels --no-video` |
 | `tools/dev/balance_search.py` | balance_search.py — 균형 시뮬레이터 위의 값 탐색(모델의 답이지 게임의 답이 아니다. 재미는 평가하지 않는다). | `python tools/dev/balance_search.py --stage power --plan A --rounds 3 --out _local/balsim2/s1A`<br>`python tools/dev/balance_search.py --stage threat --init _local/balsim2/s1A.json --out _local/balsim2/s2A` |
@@ -331,4 +339,4 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/video_strip.py` | 녹화 영상의 구간을 원래 프레임률로 뽑아 잘라 확대하고, 프레임 번호를 붙여 가로 띠(판)로 이어 붙인다. | `python tools/dev/video_strip.py _local/ref/sacrata/yt/sacrata-yt-0-21m.mp4 --start 342 --dur 2` |
 | `tools/manager/audit_view.py` | 점검 화면의 뒷면: 가장 최근 audit 결과를 읽고(읽기 전용), 다시 돌리기는 audit.py 를 하위 프로세스로 부른다. |  |
 
-chapter1/tests/test_*.gd 28개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.
+chapter1/tests/test_*.gd 30개는 회귀 검사라 목록에서 뺐습니다. python tools/dev/run_all.py 가 돌립니다.

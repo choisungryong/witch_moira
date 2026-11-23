@@ -97,15 +97,38 @@ def status(root, cid):
         return None
     with _LOCK:
         job = _JOBS.get(cid)
-        if job and job['state'] in ('queued', 'running', 'error'):
-            j = dict(job)
-            if j['state'] == 'running':
-                j['elapsed_s'] = round(time.time() - j['started'], 1)
-            return j
+        j = dict(job) if job and job['state'] in ('queued', 'running', 'error') else None
+    if j is not None:
+        if j['state'] == 'running':
+            j['elapsed_s'] = round(time.time() - j['started'], 1)
+        if j['state'] in ('queued', 'running'):
+            j.update(wait_info(root, cid))
+        return j
     meta = read_meta(root, cid)
     if meta and _video_path(root, cid).is_file():
         return _public(root, cid, meta, world_hash(root))
     return None
+
+
+def typical_seconds(root):
+    """최근에 찍은 영상들의 걸린 시간 중앙값(없으면 None). 화면의 '보통 n초' 안내에 쓴다 - 이 PC 에서 잰 값일 뿐 약속이 아니다."""
+    d = clips_dir(root)
+    secs = []
+    if d.is_dir():
+        metas = sorted(d.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:12]
+        for p in metas:
+            m = read_meta(root, p.stem) if ID_RE.match(p.stem) else None
+            if m and isinstance(m.get('seconds'), (int, float)):
+                secs.append(float(m['seconds']))
+    return round(sorted(secs)[len(secs) // 2], 1) if secs else None
+
+
+def wait_info(root, cid):
+    """대기 중이면 앞에 몇 개, 예상 시간(걸린 시간 중앙값 x (앞의 개수 + 1)). 실측이 없으면 숫자 없이 안내만."""
+    with _LOCK:
+        ahead = sum(1 for j in _JOBS.values() if j['state'] in ('queued', 'running') and j.get('queued', 0) < _JOBS.get(cid, {}).get('queued', 0))
+    typ = typical_seconds(root)
+    return {'ahead': ahead, 'typical_s': typ, 'eta_s': round(typ * (ahead + 1), 0) if typ else None}
 
 
 def listing(root=None):
@@ -182,31 +205,59 @@ def shoot_godot_movie(root, scene, audio, way, cid, out_mp4):
     (root / scene_rel).write_text(json.dumps({'scene': scene, 'audio': audio}, ensure_ascii=False), encoding='utf-8')
     avi_rel = '_local/skill-lab/clips/tmp/%s.avi' % cid
     # 영상 찍기는 떠 있는 창의 state.json 과 섞이지 않게 자기 lab 폴더를 쓴다(명세의 명령에 --lab-dir 을 더함: 확인 필요)
-    args = [sys.executable, str(root / 'tools/dev/godot.py'), '--timeout-s=120', '--fixed-fps', '60', '--resolution', '1280x720', '--write-movie', avi_rel,
+    # --position: Movie Maker 는 헤드리스가 안 되고 창이 필요하다(SL-B 실측). 화면 밖에 둬서 사용자 화면에 안 뜨게 한다.
+    args = [sys.executable, str(root / 'tools/dev/godot.py'), '--timeout-s=120', '--fixed-fps', '60', '--resolution', '1280x720', '--position', '4000,4000', '--write-movie', avi_rel,
             '--path', '.', '--script', 'res://chapter1/tests/skill_lab.gd', '--', '--chapter1-start', '--chapter1-profile-off', '--chapter1-qa-ignore-focus',
             '--chapter1-trial=descent', '--chapter1-descent-cost=1000', '--chapter1-seed=11', '--chapter1-primary=' + scene['skill'],
             '--lab-clip=' + scene_rel, '--lab-clip-seconds=4', '--lab-dir=_local/skill-lab/clips/tmp/lab-' + cid]
     env = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
-    done = subprocess.run(args, cwd=str(root), capture_output=True, timeout=180, env=env)
     avi = root / avi_rel
-    if done.returncode != 0 or not avi.is_file():
-        raise RuntimeError('Godot 영상 찍기가 실패했습니다(종료 %d). %s' % (done.returncode, done.stderr.decode('utf-8', 'replace')[-300:]))
-    start = 0
-    try:
-        st = json.loads((root / ('_local/skill-lab/clips/tmp/lab-' + cid) / 'state.json').read_text(encoding='utf-8'))
-        start = int((st.get('clip') or {}).get('start_frame', 0))      # 시험 창이 쓰는 칸(SL-B 와 맞출 것: 확인 필요)
-    except (OSError, ValueError, TypeError):
-        pass
-    cmd = [ff, '-y', '-v', 'error', '-ss', '%.3f' % (start / 60.0), '-i', str(avi), '-vf', 'fps=30,scale=1280:720', '-c:v', 'libx264', '-crf', '26',
-           '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', str(out_mp4)]
-    conv = subprocess.run(cmd, capture_output=True, timeout=120)
-    try:
-        avi.unlink()
+    attempts = 0
+    while True:
+        attempts += 1
+        done = subprocess.run(args, cwd=str(root), capture_output=True, timeout=180, env=env)
+        if done.returncode == 0 and avi.is_file():
+            break
+        if attempts >= 2:
+            break
+        # Godot 가 가끔 시작·종료 때 죽는다(종료 -1 과 C++ 역추적, 같은 장면이 다음에는 됨). 한 번만 더 해 보고, 첫 실패의 출력은 남긴다
+        try:
+            (clips_dir(root) / 'last-crash.log').write_bytes(done.stdout + b'\n' + done.stderr)
+        except OSError:
+            pass
+        try:
+            avi.unlink()
+        except OSError:
+            pass
+        shutil.rmtree(root / ('_local/skill-lab/clips/tmp/lab-' + cid), ignore_errors=True)
+    text = (done.stdout + b'\n' + done.stderr).decode('utf-8', 'replace')
+    try:      # 실패 때 까닭을 볼 수 있게 마지막 찍기의 전체 출력을 남긴다(다음 찍기가 덮어씀)
+        (clips_dir(root) / 'last-shoot.log').write_text(text, encoding='utf-8')
     except OSError:
         pass
+    if done.returncode != 0 or not avi.is_file():
+        hints = [ln.strip() for ln in text.splitlines() if re.search(r'SCRIPT ERROR|Parse Error|CrashHandler|crashed|Program crashed|Cannot|Failed|refused', ln)][:3]
+        raise RuntimeError('Godot 영상 찍기가 실패했습니다(종료 %d). %s (전체 출력: _local/skill-lab/clips/last-shoot.log)' % (done.returncode & 0xffffffff, ' / '.join(hints) or text[-200:].replace('\n', ' ')))
+    # 시험 창(skill_lab_node.gd)이 state.json 의 clip 칸에 무대가 선 프레임을 쓴다: {start_frame, start_time_s, frames, seconds, done}
+    start_s, clip_info = 0.0, {}
+    lab_tmp = root / ('_local/skill-lab/clips/tmp/lab-' + cid)
+    try:
+        clip_info = json.loads((lab_tmp / 'state.json').read_text(encoding='utf-8')).get('clip') or {}
+        start_s = float(clip_info.get('start_time_s', int(clip_info.get('start_frame', 0)) / 60.0))
+    except (OSError, ValueError, TypeError):
+        pass
+    cmd = [ff, '-y', '-v', 'error', '-i', str(avi), '-ss', '%.3f' % start_s, '-t', '4', '-vf', 'fps=30,scale=1280:720', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '27',
+           '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', str(out_mp4)]
+    conv = subprocess.run(cmd, capture_output=True, timeout=120)
+    for junk in (avi, root / scene_rel):
+        try:
+            junk.unlink()
+        except OSError:
+            pass
+    shutil.rmtree(lab_tmp, ignore_errors=True)
     if conv.returncode != 0 or not Path(out_mp4).is_file():
         raise RuntimeError('ffmpeg 변환이 실패했습니다: %s' % conv.stderr.decode('utf-8', 'replace')[-300:])
-    return {'start_frame': start}
+    return {'start_frame': int(clip_info.get('start_frame', 0) or 0), 'start_time_s': start_s, 'attempts': attempts}
 
 
 SHOOT = {'fn': shoot_godot_movie}       # 검사가 바꿔 끼운다

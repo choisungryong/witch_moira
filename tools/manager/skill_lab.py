@@ -51,6 +51,7 @@ ROUTE_POLICY = {
     ('POST', '/api/skill-lab/close'): 'skill_lab.scene',
     ('POST', '/api/skill-lab/clip'): 'skill_lab.clip',
     ('POST', '/api/skill-lab/adopt'): 'skill_lab.adopt',
+    ('POST', '/api/skill-lab/adopt-preview'): 'skill_lab.adopt',
     ('POST', '/api/skill-lab/revert'): 'skill_lab.adopt',
 }
 
@@ -158,14 +159,16 @@ def characters_table(root=None, warnings=None):
         base_name = po.get('skill.%s.name' % sid) or s.get('name', sid)
         evo_name = po.get('skill.%s.evolved_name' % sid) or s.get('evolution_name', '')
         pas = passives.get(s.get('passive_id'), {})
+        base_desc = po.get('skill.%s.desc' % sid, '')          # 글 파일에 스킬 설명 키가 생기면 그것을 먼저 읽는다
+        evo_desc = po.get('skill.%s.evolved_desc' % sid, '')
         ult = (descent.get('ultimates') or {}).get(elem, {})
         costs = descent.get('cost')
         forms = [
             {'form': 'base', 'label': '주력', 'name': base_name, 'available': True,
-             'text': '데이터에는 설명 문장이 없고 랭크별 수치만 있습니다(growth_quality37.json). 짝 패시브: %s' % pas.get('name', '?'),
+             'text': base_desc or '데이터에는 설명 문장이 없고 랭크별 수치만 있습니다(growth_quality37.json). 짝 패시브: %s' % pas.get('name', '?'),
              'table': {'columns': cols, 'rows': rows}},
             {'form': 'evolved', 'label': '진화', 'name': evo_name, 'available': True,
-             'text': '진화 수치는 위 표의 마지막 열입니다.', 'table': {'columns': cols, 'rows': rows}},
+             'text': evo_desc or '진화 수치는 위 표의 마지막 열입니다.', 'table': {'columns': cols, 'rows': rows}},
             {'form': 'descent', 'label': '강림', 'name': po.get('descent.name.' + elem, ''), 'available': True,
              'text': po.get('descent.desc.' + elem, ''),
              'pairs': [[k, str(v)] for k, v in ult.items()] + ([['비용(데이터 값)', ' / '.join(str(x) for x in costs)]] if isinstance(costs, list) else []),
@@ -232,13 +235,7 @@ def _gd_consts(root, warnings):
     text = p.read_text(encoding='utf-8', errors='replace')
     for name in out:
         try:
-            if name == 'SILENT':     # `const SILENT: Array[String] = [...]` 은 catalog.gd_const 가 못 읽는 꼴이라 따로 읽는다
-                m = re.search(r'^const\s+SILENT[^=\n]*=\s*\[([^\]]*)\]', text, re.M)
-                if not m:
-                    raise ValueError(name)
-                out[name] = re.findall(r'"([^"]*)"', m.group(1))
-            else:
-                out[name] = gd_const(text, name)
+            out[name] = gd_const(text, name)         # `const SILENT: Array[String] = [...]` 꼴도 gd_const 가 읽는다
         except ValueError:
             if name != 'DIRS':
                 warnings.append('combat_audio.gd 의 %s 상수를 읽지 못했습니다.' % name)
@@ -319,7 +316,7 @@ def scan_candidates(root=None, warnings=None):
         for c in doc['candidates']:
             key = c.get('key') if isinstance(c, dict) else None
             slot = c.get('slot') if isinstance(c, dict) else None
-            if not isinstance(key, str) or not KEY_RE.match(key) or not isinstance(slot, str) or not SLOT_RE.match(slot) or not isinstance(c.get('files'), list) or not c['files']:
+            if not isinstance(key, str) or not KEY_RE.match(key) or not isinstance(slot, str) or (slot != '' and not SLOT_RE.match(slot)) or not isinstance(c.get('files'), list) or not c['files']:
                 warnings.append('%s: 후보 하나의 꼴이 다릅니다.' % folder_rel)
                 continue
             cid = '%s/%s' % (folder_rel, key) if folder_rel != '.' else key
@@ -346,7 +343,7 @@ def scan_candidates(root=None, warnings=None):
             seen.add(cid)
             ledger = c.get('ledger') if isinstance(c.get('ledger'), list) else []
             found.append({'id': cid, 'key': key, 'label': str(c.get('label', '')), 'slot': slot, 'title': str(doc.get('title', folder_rel)),
-                          'delivered': str(doc.get('delivered', '')), 'by': str(doc.get('by', '')), 'paths': paths, 'missing': missing,
+                          'delivered': str(doc.get('delivered', '')), 'by': str(doc.get('by', '')), 'listen_only': slot == '', 'paths': paths, 'missing': missing,
                           'origin_known': bool(ledger) and all(isinstance(x, dict) and x.get('source') for x in ledger)})
     return found
 
@@ -670,33 +667,29 @@ def _skill_of_slot(slot):
     return PRIMARY[own[0]] if own else 'unknown'
 
 
-def _record_pick(root, slot, verdict, note, picks_path, by=None):
-    """picks.py 에 한 줄. 실패해도 채택 자체는 이미 끝났으므로 문자열로 알린다."""
+def _record_pick(root, slot, verdict, note, picks_path, by='user'):
+    """picks.py 에 한 줄. 실패해도 채택 자체는 이미 끝났으므로 문자열로 알린다. by: 로컬 user, 원격 user(remote:<이메일>)."""
     subject = 'skill/%s/sound/%s' % (_skill_of_slot(slot), slot)
     for _ in range(2):
         try:
             store = picks_mod.load(picks_path)
             status, v = picks_mod.update({'revision': store['revision'], 'action': 'add',
-                                          'record': {'screen': 'skill', 'subject': subject, 'verdict': verdict, 'note': note, 'values': {'slot': slot}, 'proposals': []}}, picks_path)
+                                          'record': {'screen': 'skill', 'subject': subject, 'verdict': verdict, 'note': note, 'values': {'slot': slot}, 'proposals': []}}, picks_path, by=by)
             if status == 200:
-                if by:
-                    rec = v['records'][v['id']]
-                    rec['by'] = by
-                    picks_mod.write(v if 'id' not in v else {k: v[k] for k in ('revision', 'records')}, picks_path)
                 return ''
         except (ValueError, OSError) as e:
             return '고름 기록을 쓰지 못했습니다: %s' % e.__class__.__name__
     return '고름 기록의 revision 이 계속 어긋났습니다.'
 
 
-def _after_tool(root, slot, op, verdict, note, done, runner, picks_path, window_alive):
+def _after_tool(root, slot, op, verdict, note, done, runner, picks_path, window_alive, by='user'):
     result, out = _parse_tool(done)
     if done.returncode == 3:
         raise LabError(409, 'audio_map.json changed since you loaded this page', {'map_rev': map_info(root)['rev']})
     if done.returncode != 0:
         raise LabError(422, 'The %s tool failed (exit %d)' % (op, done.returncode),
                        {'output': (out + done.stderr.decode('utf-8', 'replace'))[-1500:]})
-    pick_warning = _record_pick(root, slot, verdict, note, picks_path)
+    pick_warning = _record_pick(root, slot, verdict, note, picks_path, by)
     reloaded = False
     if window_alive():
         send_simple(root, 'reload_audio')
@@ -705,7 +698,28 @@ def _after_tool(root, slot, op, verdict, note, done, runner, picks_path, window_
             'reload_sent': reloaded, 'map_rev': map_info(root)['rev']}
 
 
-def adopt(root, slot, candidate, map_rev, runner=None, picks_path=None, pid_alive=None):
+def adopt_preview(root, slot, candidate, runner=None):
+    """채택 확인 창에 보일 글: 도구의 `adopt --dry-run` 이 낸 confirm·warnings·files 를 그대로 전한다(아무것도 쓰지 않는다)."""
+    root = Path(root)
+    runner = runner or subprocess.run
+    ok, why = adopt_available(root)
+    if not ok:
+        raise LabError(503, why)
+    info = map_info(root)
+    if slot not in info['slots']:
+        raise LabError(400, 'Unknown sound slot')
+    c = find_candidate(root, candidate) if isinstance(candidate, str) else None
+    if c is None or c['slot'] != slot or c['missing']:
+        raise LabError(400, 'Unknown candidate for this slot')
+    done = _run_tool(root, ['adopt', '--slot', slot, '--candidate', candidate, '--dry-run'], runner)
+    result, out = _parse_tool(done)
+    if done.returncode != 0 or not isinstance(result, dict):
+        raise LabError(422, 'The adopt tool refused the preview (exit %d)' % done.returncode, {'output': out[-1500:]})
+    return {'confirm': result.get('confirm', ''), 'warnings': result.get('warnings') or [], 'files': result.get('files') or [],
+            'parent': result.get('parent', ''), 'parent_silent_today': bool(result.get('parent_silent_today')), 'map_rev': info['rev']}
+
+
+def adopt(root, slot, candidate, map_rev, runner=None, picks_path=None, pid_alive=None, by='user'):
     root = Path(root)
     runner = runner or subprocess.run
     ok, why = adopt_available(root)
@@ -722,14 +736,15 @@ def adopt(root, slot, candidate, map_rev, runner=None, picks_path=None, pid_aliv
     if not _ADOPT_LOCK.acquire(blocking=False):
         raise BusyError('채택이 이미 돌고 있습니다.')
     try:
-        done = _run_tool(root, ['adopt', '--slot', slot, '--candidate', candidate, '--expect-rev', map_rev], runner)
+        # --yes 가 없으면 도구는 아무것도 쓰지 않고 종료 코드 6 으로 끝난다. 화면의 확인 창(adopt_preview 의 글)을 사용자가 누른 뒤에만 여기에 온다.
+        done = _run_tool(root, ['adopt', '--slot', slot, '--candidate', candidate, '--expect-rev', map_rev, '--yes'], runner)
         return _after_tool(root, slot, 'adopt', 'pick', '시험실에서 채택: %s' % candidate, done, runner, picks_path,
-                           lambda: window_status(root, None, pid_alive)['status'] == 'connected')
+                           lambda: window_status(root, None, pid_alive)['status'] == 'connected', by)
     finally:
         _ADOPT_LOCK.release()
 
 
-def revert(root, slot, map_rev, runner=None, picks_path=None, pid_alive=None):
+def revert(root, slot, map_rev, runner=None, picks_path=None, pid_alive=None, by='user'):
     root = Path(root)
     runner = runner or subprocess.run
     ok, why = adopt_available(root)
@@ -745,7 +760,7 @@ def revert(root, slot, map_rev, runner=None, picks_path=None, pid_alive=None):
     try:
         done = _run_tool(root, ['revert', '--slot', slot, '--expect-rev', map_rev], runner)
         return _after_tool(root, slot, 'revert', 'hold', '시험실에서 채택 취소', done, runner, picks_path,
-                           lambda: window_status(root, None, pid_alive)['status'] == 'connected')
+                           lambda: window_status(root, None, pid_alive)['status'] == 'connected', by)
     finally:
         _ADOPT_LOCK.release()
 

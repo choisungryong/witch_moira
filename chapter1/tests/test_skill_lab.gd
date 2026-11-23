@@ -190,12 +190,13 @@ func checks() -> void:
 	else:
 		var s7 := await scene_cmd({"character": "chapter1.character.arc", "skill": "chapter1.skill.arc", "form": "base", "layout": "pack", "count": 4, "motion": "hold", "durable": true, "repeat": true, "interval_s": 1.5}, {"skill.arc.cast": C7})
 		check(s7.audio.overrides.has("skill.arc.cast"), "audio override shown in state")
-		await wait_until(func(): return read_state().audio.recent.size() > 0, 30.0, "audio.recent has a request")
-		var rec: Array = read_state().audio.recent
-		var all_c7 := rec.size() > 0
-		for r in rec:
+		await wait_until(func(): return _slot_rows(read_state().audio.recent, "skill.arc.cast").size() > 0, 30.0, "audio.recent has a skill.arc.cast request")
+		# other slots (steps, hits) also log, with the file of their parent sound; only the overridden slot must carry the c7 files
+		var cast_rows: Array = _slot_rows(read_state().audio.recent, "skill.arc.cast")
+		var all_c7 := cast_rows.size() > 0
+		for r in cast_rows:
 			if not String(r.path).contains("c7_"): all_c7 = false
-		check(all_c7, "audio.recent paths are c7_*")
+		check(all_c7, "audio.recent paths of skill.arc.cast are c7_*")
 	phase = "soak"
 	# 5: ten game minutes of repeat, nothing from the run's own business leaks in
 	var s5 := await scene_cmd({"character": "chapter1.character.arc", "skill": "chapter1.skill.arc", "form": "base", "layout": "pack", "count": 10, "motion": "approach",
@@ -250,3 +251,8 @@ func finish() -> void:
 	quit(0 if fails.is_empty() else 1)
 
 
+func _slot_rows(recent: Array, slot: String) -> Array:
+	var out: Array = []
+	for r in recent:
+		if String(r.slot) == slot: out.append(r)
+	return out

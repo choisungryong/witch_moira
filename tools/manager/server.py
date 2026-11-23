@@ -5,13 +5,18 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
 try:
     from .catalog import ROOT, generate
-    from . import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips
+    from . import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips, remote_auth
 except ImportError:
     from catalog import ROOT, generate
-    import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips
+    import drafts, playlog, balance_lab, tools_index, audit_view, characters, picks, skill_lab, skill_lab_clips, remote_auth
 
 APP = Path(__file__).resolve().parent
 STATE = APP / 'local-state.json'
+# 원격 접속(Cloudflare Tunnel + Access). local-remote.json 이 없거나 enabled 가 false 면 지금까지와 똑같이 루프백 Host 만 받는다. 판정은 remote_auth.py.
+REMOTE = remote_auth.ConfigFile(APP / 'local-remote.json')
+KEYS = remote_auth.KeySet()
+REMOTE_LOG = ROOT / '_local' / 'manager' / 'remote-access.log'
+QUIET_SUFFIXES = {'.js', '.css', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.glb', '.wav', '.mp4'}      # 화면을 불러오는 파일은 성공하면 기록에 남기지 않는다(줄이 너무 많아짐)
 LOCK = threading.Lock()
 STATUSES = {'todo', 'in_progress', 'review', 'done', 'deferred'}
 PRIORITIES = {'low', 'normal', 'high', 'urgent'}
@@ -123,8 +128,56 @@ def refresh(server):
 
 
 class Handler(BaseHTTPRequestHandler):
+    decision = remote_auth.Decision('local')
+    _status = None
+    _logged = False
+
     def log_message(self, *args):
         pass
+
+    def send_response(self, code, message=None):
+        self._status = code
+        super().send_response(code, message)
+
+    def gate(self, method):
+        """요청 판정(trusted_request 를 대신하는 한 곳). 허용이면 True. 아니면 403 을 보내고 False. 원격 요청은 경로 정책(remote_auth.route_class)도 통과해야 한다."""
+        cfg = REMOTE.get()
+        d = self.decision = remote_auth.judge(cfg, KEYS, self.headers, method, self.server.server_port)
+        self._status, self._logged = None, False
+        if d.kind == 'local':
+            return True
+        if d.kind == 'deny':
+            if d.attempt:
+                remote_auth.log_line(REMOTE_LOG, '', method, self.path, 'denied:' + d.reason)
+            self.send_json(403, {'error': 'Untrusted Host' if method == 'GET' else 'Untrusted Host or Origin'})
+            return False
+        cls = remote_auth.route_class(method, self.path, skill_lab.route_policy)
+        if not remote_auth.remote_allowed(cfg, cls):
+            remote_auth.log_line(REMOTE_LOG, d.email, method, self.path, 'denied:route')
+            self.send_json(403, {'error': 'Not available remotely'})
+            return False
+        return True
+
+    def end_headers(self):
+        self.log_remote()          # 상태 코드가 정해진 이 순간(본문을 보내기 전)에 기록한다: 응답을 받은 쪽이 기록을 읽을 때 이미 있게
+        super().end_headers()
+
+    def log_remote(self, method=None):
+        """허용된 원격 요청의 결과를 접속 기록에 한 줄로(ok / fail:<상태>). 요청당 한 번."""
+        method = method or self.command
+        d = self.decision
+        if d.kind != 'remote' or self._status is None or self._logged:
+            return
+        self._logged = True
+        ok = self._status < 400
+        path = self.path.split('?', 1)[0]
+        if ok and method == 'GET' and Path(path).suffix.lower() in QUIET_SUFFIXES and not path.startswith('/api/'):
+            return
+        remote_auth.log_line(REMOTE_LOG, d.email, method, self.path, 'ok' if ok else 'fail:%d' % self._status)
+
+    def by(self):
+        """고름 기록의 by: 로컬은 user, 원격은 user(remote:<이메일>)."""
+        return 'user(remote:%s)' % self.decision.email if self.decision.kind == 'remote' else 'user'
 
     def send_json(self, status, value):
         data = json.dumps(value, ensure_ascii=False).encode('utf-8')
@@ -283,10 +336,12 @@ class Handler(BaseHTTPRequestHandler):
             if payload.get('retry'):
                 return 200, skill_lab_clips.retry(ROOT, payload['retry'])
             return 200, skill_lab_clips.request(ROOT, payload.get('scene'), payload.get('audio'), payload.get('way', 'movie'))
+        if op == 'adopt-preview':
+            return 200, skill_lab.adopt_preview(ROOT, payload.get('slot'), payload.get('candidate'))
         if op == 'adopt':
-            return 200, skill_lab.adopt(ROOT, payload.get('slot'), payload.get('candidate'), payload.get('map_rev'), picks_path=picks.STORE)
+            return 200, skill_lab.adopt(ROOT, payload.get('slot'), payload.get('candidate'), payload.get('map_rev'), picks_path=picks.STORE, by=self.by())
         if op == 'revert':
-            return 200, skill_lab.revert(ROOT, payload.get('slot'), payload.get('map_rev'), picks_path=picks.STORE)
+            return 200, skill_lab.revert(ROOT, payload.get('slot'), payload.get('map_rev'), picks_path=picks.STORE, by=self.by())
         raise ValueError('Unknown skill lab operation')
 
     def send_draft(self, rest):
@@ -309,8 +364,19 @@ class Handler(BaseHTTPRequestHandler):
         return self.send_bytes(drafts.IMAGE_TYPES[p.suffix.lower()], p, 'private, max-age=60')
 
     def do_GET(self):
-        if not trusted_request(self.headers.get('Host'), None, self.server.server_port):
-            return self.send_json(403, {'error': 'Untrusted Host'})
+        if not self.gate('GET'):
+            return
+        try:
+            self.serve_get()
+        finally:
+            self.log_remote('GET')
+
+    def remote_status(self):
+        cfg = REMOTE.get()
+        return {'enabled': cfg.enabled, 'hosts': list(cfg.hosts), 'allows': list(cfg.allows), 'problem': cfg.problem,
+                'last': remote_auth.last_access(REMOTE_LOG), 'log': 'remote-access.log'}
+
+    def serve_get(self):
         parts = urlsplit(self.path)
         route = parts.path
         if route == '/api/catalog':
@@ -319,6 +385,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, self.server.catalog)
         if route == '/api/server':
             return self.send_json(200, stale_report(self.server.code_started))
+        if route == '/api/remote':
+            return self.send_json(200, self.remote_status())       # 로컬에서만(원격 정책이 막음). AUD 태그·이메일 목록은 담지 않는다
         if route == '/api/management':
             return self.send_json(200, load_state())
         if route == '/api/drafts':
@@ -366,6 +434,16 @@ class Handler(BaseHTTPRequestHandler):
                 mime = 'text/javascript; charset=utf-8'
         if p is None or not p.is_file():
             return self.send_json(404, {'error': 'Not an allowed file'})
+        if self.decision.kind == 'remote' and p == APP / 'index.html':
+            data = p.read_bytes().replace(b'<body', b'<body data-remote="1"', 1)      # 화면이 원격임을 알게 한다(숨길 단추·휴대폰 배치)
+            self.send_response(200)
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', str(len(data)))
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            self.wfile.write(data)
+            return
         self.send_response(200)
         self.send_header('Content-Type', mime)
         self.send_header('Content-Length', str(p.stat().st_size))
@@ -379,12 +457,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
 
     def do_POST(self):
-        if not trusted_request(self.headers.get('Host'), self.headers.get('Origin'), self.server.server_port):
-            return self.send_json(403, {'error': 'Untrusted Host or Origin'})
+        if not self.gate('POST'):
+            return
+        try:
+            self.serve_post()
+        finally:
+            self.log_remote('POST')
+
+    def serve_post(self):
         up = re.fullmatch(r'/api/characters/([^/?]+)/(tripo_out|open)(?:\?(.*))?', self.path)
         if up:
             return self.handle_tripo_post(unquote(up.group(1)), up.group(2), up.group(3) or '')
-        skill_post = self.path in ('/api/skill-lab/' + x for x in ('open', 'scene', 'cast', 'shot', 'close', 'clip', 'adopt', 'revert'))
+        skill_post = self.path in ('/api/skill-lab/' + x for x in ('open', 'scene', 'cast', 'shot', 'close', 'clip', 'adopt', 'adopt-preview', 'revert'))
         if not skill_post and self.path not in ('/api/management', '/api/drafts/state', '/api/drafts/selection', '/api/playtests',
                          '/api/balance/run', '/api/balance/experiments', '/api/balance/export', '/api/audit/run', '/api/picks'):
             return self.send_json(404, {'error': 'Unknown route'})
@@ -412,7 +496,7 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == '/api/audit/run':
                 status, value = 200, audit_view.run()
             elif self.path == '/api/picks':
-                status, value = picks.update(payload)
+                status, value = picks.update(payload, by=self.by())
             elif skill_post:
                 status, value = self.handle_skill_lab_post(self.path, payload)
             else:

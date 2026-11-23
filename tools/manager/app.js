@@ -33,7 +33,30 @@ async function checkServer() {
   box.textContent = text;
   box.hidden = !text;
 }
-checkServer();
+// 머리의 원격 표시. 로컬 화면에서만 /api/remote(원격 켜짐·마지막 접속)를 묻고, 원격에서 열렸으면(body[data-remote="1"]) 그렇다고만 적는다.
+async function remoteBadge() {
+  const box = $('#remote-status');
+  if (!box) return;
+  if (document.body.dataset.remote === '1') {
+    box.textContent = '원격으로 보는 중 · 일은 PC가 합니다';
+    box.className = 'remote-status on';
+    box.hidden = false;
+    return;
+  }
+  try {
+    const r = await fetch('/api/remote');
+    if (!r.ok) return;
+    const s = await r.json();
+    if (s.problem) { box.textContent = s.problem; box.className = 'remote-status warn'; }
+    else if (s.enabled) {
+      box.textContent = '원격 켜짐 · ' + (s.last ? '마지막 접속 ' + s.last.email + ' ' + s.last.time : '아직 접속 없음');
+      box.className = 'remote-status on';
+    } else { box.textContent = '원격 꺼짐'; box.className = 'remote-status'; }
+    box.hidden = false;
+  } catch { /* 서버 연결 문제는 다른 곳이 알린다 */ }
+}
+if (document.body.dataset.remote !== '1') checkServer();
+remoteBadge();
 setInterval(checkServer, 60000);
 
 async function load(refresh) {

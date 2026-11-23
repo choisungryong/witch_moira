@@ -129,7 +129,12 @@
     h += main.map(slotHtml).join('');
     if (other.length) h += `<details><summary>소속을 정하지 못한 자리 ${other.length}개</summary>${other.map(slotHtml).join('')}</details>`;
     const known = new Set(ov.slots.rows.map(r => r.slot)), orphan = ov.candidates.filter(c => !known.has(c.slot));
-    if (orphan.length) h += `<details ${ov.slots.rows.length ? '' : 'open'}><summary>소리 표에 자리가 없는 후보 ${orphan.length}개(듣기만 됩니다)</summary>${orphan.map(c => `<div class="sl-cand"><div class="sl-cand-t"><strong>${esc(c.key)}</strong> <span>${esc(c.label)}</span> <small>${esc(c.slot)}</small></div><div class="sl-cand-b">${fileButtons('/api/skill-lab/audio?id=' + encodeURIComponent(c.id), c.paths.length)}</div></div>`).join('')}</details>`;
+    if (orphan.length) {      // 소리 표에 자리가 없는 후보(자리 칸이 빈 것 포함)는 듣기만. 납품 묶음(제목)별로 접어 둔다
+      const groups = {};
+      orphan.forEach(c => (groups[c.title] = groups[c.title] || []).push(c));
+      h += `<h4>듣기만 되는 후보 ${orphan.length}개 <small>소리 표에 자리가 없어 끼우기·채택은 못 합니다</small></h4>` + Object.entries(groups).map(([t, list]) =>
+        `<details ${ov.slots.rows.length ? '' : 'open'}><summary>${esc(t)} · ${list.length}개</summary>${list.map(c => `<div class="sl-cand"><div class="sl-cand-t"><strong>${esc(c.key)}</strong> <span>${esc(c.label)}</span>${c.slot ? ` <small>${esc(c.slot)}</small>` : ''}${c.origin_known ? '' : '<span class="badge deferred">출처 미확인</span>'}</div><div class="sl-cand-b">${fileButtons('/api/skill-lab/audio?id=' + encodeURIComponent(c.id), c.paths.length)}</div></div>`).join('')}</details>`).join('');
+    }
     if (!ov.adopt.available) h += `<p class="bl-help">채택 단추를 껐습니다: ${esc(ov.adopt.reason)}</p>`;
     h += '<p class="bl-help"><b>이 페이지의 채택은 저장소 파일을 고친다. 커밋은 디렉터가 회귀 뒤에.</b></p>';
     h += `<div id="sl-analysis">${analysisHtml()}</div>`;
@@ -158,7 +163,12 @@
       if (c) {
         if (c.state === 'done') body = `<video controls playsinline preload="metadata" src="${esc(c.video)}"></video><p class="bl-help">${esc(c.way_label)} · ${c.size ? (c.size / 1048576).toFixed(1) + ' MB' : ''} · 찍는 데 ${esc(c.seconds)}초${c.cached ? ' · 찍어 둔 것을 다시 씀' : ''}${c.stale ? ' · <b class="au-worse">낡음: ' + esc(c.stale_reason) + '</b>' : ''}</p>`;
         else if (c.state === 'error') body = `<p class="alert bad">영상을 찍지 못했습니다. ${esc(c.error)} <button type="button" data-clip-retry="${esc(c.id)}">다시 시도</button></p>`;
-        else body = `<p class="alert info">${c.state === 'queued' ? '대기 중' : '찍는 중 ' + Math.round(c.elapsed_s || 0) + '초'}</p>`;
+        else {
+          const typ = c.typical_s, el = Math.round(c.elapsed_s || 0);
+          const note = c.state === 'queued' ? `대기 중 — 앞에 ${c.ahead || 0}개${c.eta_s ? ', 예상 약 ' + c.eta_s + '초' : ''}` : `찍는 중 ${el}초${typ ? ' (보통 약 ' + typ + '초)' : ''}`;
+          const pct = c.state === 'running' && typ ? Math.min(95, Math.round(100 * el / typ)) : 0;
+          body = `<p class="alert info">${note}</p>${c.state === 'running' ? `<progress max="100" value="${pct}" aria-label="영상 찍는 진행"></progress>` : ''}<p class="bl-help">영상은 PC가 한 편씩 찍습니다(한 편에 20~40초 걸릴 수 있음). 찍는 동안 다른 장면을 바꿔도 됩니다.</p>`;
+        }
         if (c.audio_overrides && Object.keys(c.audio_overrides).length) body += `<p class="bl-help">끼운 소리: ${esc(Object.entries(c.audio_overrides).map(([s, f]) => s + ' ← ' + f[0].split('/').pop()).join(', '))}</p>`;
       }
       return `<div class="sl-clip"><h4>${k === 'A' ? '영상 A (지금 소리)' : '영상 B (고른 후보)'}</h4>${body}</div>`;
@@ -317,12 +327,16 @@
   // ---------------------------------------------------------------- 조작
   async function adoptFlow(slot, cid) {
     const c = ov.candidates.find(x => x.id === cid);
-    const files = c.paths.flatMap((_, i) => [`chapter1/art/audio/slots/${slot}/${c.key}_${i + 1}.wav`, `chapter1/art/audio/slots/${slot}/${c.key}_${i + 1}.wav.import`]).concat(['chapter1/data/audio_map.json', 'chapter1/art/audio/AUDIO-LEDGER.json', 'tools/manager/local-picks.json']);
-    const lightning = slot.includes('arc') && slot.endsWith('cast');
+    let pv;
+    try { pv = await post('adopt-preview', {slot, candidate: cid}); }       // 채택 도구의 --dry-run: 쓸 파일·경고를 도구가 정한다(아무것도 쓰지 않음)
+    catch (e) { say('채택 미리보기를 받지 못했습니다. ' + e.message + (e.data && e.data.output ? ' ' + e.data.output : ''), 'bad'); return false; }
     const modal = document.createElement('div'); modal.className = 'sl-modal'; modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
+    const fmt = f => { const x = f.format || {}; return typeof x === 'object' ? [x.rate ? x.rate + ' Hz' : '', x.channels ? x.channels + 'ch' : '', x.seconds != null ? x.seconds + '초' : '', x.peak_dbfs != null ? '최대 ' + x.peak_dbfs + ' dBFS' : ''].filter(Boolean).join(' · ') : String(x); };
+    const files = pv.files.map(f => `<tr><td><code>${esc(f.dest_rel)}</code></td><td>${esc(fmt(f))}</td><td>${f.new === false ? '이미 있음' : '새 파일'}</td></tr>`).join('');
     modal.innerHTML = `<div class="sl-modal-box"><h3>채택 확인</h3><p><b>${esc(c.key)}</b>를 <b>${esc(slot)}</b> 자리에 채택합니다.</p>
-      <p class="alert warn">이 페이지의 채택은 저장소 파일을 고친다. 커밋은 디렉터가 회귀 뒤에. 일반 게임에서 이 소리가 울리게 됩니다.${lightning ? ' 번개 시전은 지금 일반 실행에서 무음입니다(2026-11-18에 거슬린다고 꺼 둔 것). 채택하면 울립니다.' : ''}</p>
-      <p>쓰일 파일(예상 — 실제 목록은 채택 도구가 정하고 끝난 뒤 보여 줍니다)</p><ul>${files.map(f => `<li><code>${esc(f)}</code></li>`).join('')}</ul>
+      <p class="alert ${pv.parent_silent_today ? 'bad' : 'warn'}">${pv.parent_silent_today ? '지금 일반 실행에서 무음이던 소리가 울리기 시작합니다. ' : ''}이 페이지의 채택은 저장소 파일을 고칩니다. 커밋은 디렉터가 회귀를 돌린 뒤에 합니다.</p>
+      <pre>${esc(pv.confirm)}</pre>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>쓸 파일(채택 도구가 정함)</th><th>잰 값</th><th></th></tr></thead><tbody>${files}</tbody></table></div>
       <div class="sl-bar"><button type="button" class="primary" id="sl-yes">채택</button><button type="button" id="sl-no">취소</button></div></div>`;
     document.body.append(modal);
     $('#sl-no').focus();

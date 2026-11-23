@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """사용자의 고름(이걸로/아님/보류/말만)을 tools/manager/local-picks.json 에 모으고, 디렉터가 읽을 수 있게 한다.
 
-기록은 화면에서만 더해진다(POST /api/picks, by 는 서버가 "user"로 채움). 명령줄에는 읽기와 닫기만 있다:
+기록은 화면에서만 더해진다(POST /api/picks, by 는 서버가 채움: 로컬 "user", 원격 "user(remote:<이메일>)"). 명령줄에는 읽기와 닫기만 있다:
   python tools/manager/picks.py list [--open] [--subject frost/] [--json]
   python tools/manager/picks.py close <id> --ref "<커밋이나 지시서>"
 같은 subject 에 기록이 여럿 쌓이고, 마지막 pick 이 그 주제의 답이다. 이 파일은 사용자 기록이라 _local/ 에 두지 않는다(git 밖, move_bundle 이 옮김).
@@ -74,7 +74,7 @@ def new_id(store, subject):
     return pid
 
 
-def update(payload, path=None):
+def update(payload, path=None, by='user'):
     """POST /api/picks 의 본체. (상태 코드, 값). revision 이 어긋나면 409 와 최신 값."""
     if not isinstance(payload, dict) or not {'revision', 'action', 'record'} <= set(payload) or set(payload) - {'revision', 'action', 'record', 'id'}:
         raise ValueError('Expected revision, action, record')
@@ -87,7 +87,7 @@ def update(payload, path=None):
             return 409, store
         if payload['action'] == 'add':
             pid = new_id(store, rec['subject'])
-            store['records'][pid] = dict(rec, by='user', created=time.strftime('%Y-%m-%d %H:%M:%S'), status='open', closed_ref='')
+            store['records'][pid] = dict(rec, by=by, created=time.strftime('%Y-%m-%d %H:%M:%S'), status='open', closed_ref='')
         else:
             pid = payload.get('id')
             old = store['records'].get(pid) if isinstance(pid, str) else None
