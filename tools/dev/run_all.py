@@ -48,8 +48,8 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 # --only accepts check names and these groups.
 ALIASES = {
     'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'app-guard', 'app-loadout'],
-    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx'],
-    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
+    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx', 'skill-lab'],
+    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'descent-fx', 'skill-lab', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
     'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest', 'screen-contract'],
@@ -88,13 +88,15 @@ CHANGE_TABLE = [
     ('AGENTS.md', 'docs'),
     ('tools/dev/', 'docs'),
     ('tools/art/', 'tools'),
+    ('tools/dev/audio_adopt.py', 'tools'),
+    ('tools/dev/test_audio_adopt.py', 'tools'),
     ('art-archive/', 'none'),
     ('_local/', 'none'),
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'world-layout', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording', 'screen-contract'],
-    'art': ['loc', 'app-guard', 'app-loadout', 'world-layout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'skill-lab', 'asset-slots', 'world-layout', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording', 'screen-contract'],
+    'art': ['loc', 'app-guard', 'app-loadout', 'skill-lab', 'world-layout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
     'app': ['loc', 'app-guard', 'app-loadout', 'playlog', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
@@ -138,6 +140,8 @@ def checks():
         godot_check('descent', 'res://chapter1/tests/test_descent.gd', 'CHAPTER1_DESCENT_TEST_RESULT', timeout=600),
         godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),
         godot_check('descent-fx', 'res://chapter1/tests/test_descent_fx.gd', 'CHAPTER1_DESCENT_FX_TEST_RESULT', timeout=300),
+        # T12 SL-D: the skill lab body (stage, commands, sound overrides, soak) in a headless run; the line SKILL_LAB_TEST {"pass": ...} decides.
+        godot_check('skill-lab', 'res://chapter1/tests/test_skill_lab.gd', 'SKILL_LAB_TEST', ['--chapter1-start', '--chapter1-profile-off', '--chapter1-qa-ignore-focus', '--chapter1-trial=descent', '--chapter1-descent-cost=1000'], timeout=600),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
         # A12-0: what the world presenter places (props, stones, masonry, edge, grass) equals the snapshot of the code that held it as literals, bit for bit.
         godot_check('world-layout', 'res://chapter1/tests/test_world_layout.gd', 'CHAPTER1_WORLD_LAYOUT_RESULT', timeout=180),
@@ -256,6 +260,13 @@ def parse_godot(check, proc):
                     detail += ' · ' + result['mismatches'][0]
             if result.get('failures'):
                 detail += ' · ' + str(result['failures'][0])
+            if 'pass' in result:  # a result line that carries its own verdict (SKILL_LAB_TEST)
+                fails = result.get('fails', [])
+                detail = 'pass' if result['pass'] else '%d fails · %s' % (len(fails), str(fails[0])[:160] if fails else '?')
+                if result.get('skipped'):
+                    detail += ' · skipped %d' % len(result['skipped'])
+                if not result['pass'] or proc['code'] != 0:
+                    return False, detail
         except ValueError:
             detail = 'unreadable result line'
     else:

@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 19:08:57 · 도구 169개
+생성: 2026-11-23 21:20:25 · 도구 170개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -334,6 +334,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/dev/shot_review.py` | 캡처 전후 비교와 화면 측정 (이미 찍힌 그림만 본다. Godot를 돌리지 않는다). |  |
 | `tools/dev/sim_economy.py` | 경제·성장 시뮬레이터 — 판과 판 사이의 흐름(영구 경험치·레벨·스킬 포인트·트리·재·장비·상점·퀘스트·균열 깊이)을 계산하는 모델. | `python tools/dev/sim_economy.py`<br>`python tools/dev/sim_economy.py --preset now --runs 30` |
 | `tools/dev/sim_grid.py` | sim_grid.py - 시험장(chapter1/tests/sim_power.gd) 유입률 칸을 격자로 돌리고 "같은 점수 견줌" 표를 낸다. | `python tools/dev/sim_grid.py list`<br>`python tools/dev/sim_grid.py run  <exp> [--out DIR] [--jobs 2] [--seeds 11,12,13] [--witches frost,ember,arc] [--dry] [--force]` |
+| `tools/dev/skill_lab_smoke.py` | Skill lab end-to-end smoke (T12 SL-D). Needs a real window and ffmpeg, so run_all.py does NOT run it. | `python tools/dev/skill_lab_smoke.py [--root DIR] [--out _local/skill-lab/smoke] [--no-clips] [--only ember/base/single,...]` |
 | `tools/dev/snapshot_diff.py` | Compare two snapshot dumps field by field. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/golden_core.gd -- --case=11:chapter1.skill.frost --dump-at=1800 --dump-out=_local/diff/a.json`<br>`python tools/dev/snapshot_diff.py _local/diff/a.json _local/diff/b.json [--limit 200]` |
 | `tools/dev/video_motion.py` | 녹화 영상의 화면 흐름(카메라가 주인공을 따라가므로 = 주인공의 이동 속도)을 프레임마다 잰다. |  |
 | `tools/dev/video_strip.py` | 녹화 영상의 구간을 원래 프레임률로 뽑아 잘라 확대하고, 프레임 번호를 붙여 가로 띠(판)로 이어 붙인다. | `python tools/dev/video_strip.py _local/ref/sacrata/yt/sacrata-yt-0-21m.mp4 --start 342 --dur 2` |
