@@ -30,14 +30,15 @@ void fragment(){
  float lines=max(facet,f2)*.5;
  float cr=1.-smoothstep(0.,.045,abs(noise(p*3.7+sd*2.)-.5));
  float crack=cr*smoothstep(.05,.5,id.z)*smoothstep(.1,.6,noise(p*2.+sd));
- vec3 col=mix(vec3(.45,.74,.92),vec3(.92,.98,1.),rimline*.8+lines*.5);
- col=mix(col,vec3(1.),crack*.85);
- float a=body*(.05+.30*rimline+.16*lines)+crack*body*.45;
+ // A11 5.2: edge .30 -> .22, grain .16 -> .10, crack .45 -> .35; the crack is a pale cyan, not white (white stays for the break)
+ vec3 col=mix(vec3(.45,.74,.92),vec3(.74,.92,1.),rimline*.8+lines*.5);   // A11 5.2 (extra): the edge is cyan, not white
+ col=mix(col,vec3(.80,.93,1.),crack*.85);
+ float a=body*(.05+.18*rimline+.08*lines)+crack*body*.30;
  float br=id.w;
  a*=(1.-smoothstep(.0,.35,br));
  col=mix(col,vec3(1.),smoothstep(.0,.08,br)*(1.-smoothstep(.08,.2,br))*.7);
  a=max(a,body*smoothstep(0.,.06,br)*(1.-smoothstep(.06,.18,br))*.8);
  a*=smoothstep(0.,.05,id.x);
- ALBEDO=col*.72;
+ ALBEDO=col*.54;
  ALPHA=clamp(a,0.,.7);
 }

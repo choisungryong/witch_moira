@@ -34,6 +34,7 @@ const EmberUlt = preload("res://chapter1/view/fx/descent/ember_ult.gd")
 const FrostUlt = preload("res://chapter1/view/fx/descent/frost_ult.gd")
 const ArcUlt = preload("res://chapter1/view/fx/descent/arc_ult.gd")
 const SCREEN_SHADER = preload("res://chapter1/view/fx/descent_screen.gdshader")
+const SIGIL_SHADER = preload("res://chapter1/view/fx/descent_sigil.gdshader")
 
 const SLOT_PREFIX := "illustration.cutin.descent."
 const SKY_SLOT_PREFIX := "illustration.sky.descent."
@@ -64,6 +65,14 @@ const T_END := 0.90
 const WATCHDOG_SECONDS := 2.0
 
 const GROUND_Y := 0.045
+## A11 5.1: the sign under the hero. Slot fx.descent.sigil.<element> (a picture, when one is chosen) else the shader's own sign.
+const SIGIL_SLOT_PREFIX := "fx.descent.sigil."
+const SIGIL_SIZE_M := 6.0
+const SIGIL_DRAW_SECONDS := 0.30
+const SIGIL_FADE_SECONDS := 0.40
+const SIGIL_ALPHA_DRAW := 0.55
+const SIGIL_ALPHA_SWEEP := 0.45
+const SIGIL_SPIN_DEG := 20.0
 const FLIGHT_ORBS := 64
 const FLIGHT_PUFFS := 32
 const ORB_COLOR := Color("8fe3c0")
@@ -82,7 +91,7 @@ var low := false
 
 var view: Node3D
 var stats := {"cutins": 0, "sweeps": 0, "bolts": 0, "bolts_dropped": 0, "peak_bolts": 0, "flights": 0, "lights_peak": 0, "particles": 0,
-	"rocks": 0, "impacts": 0, "pulses": 0, "breaks": 0, "kicks": 0, "peak_alpha_layers": 0}
+	"rocks": 0, "impacts": 0, "pulses": 0, "breaks": 0, "kicks": 0, "peak_alpha_layers": 0, "bolts_recycled": 0, "sigils": 0}
 
 ## Values the element's module sets each frame for the one screen shader (read by _push_screen).
 var scr := {"sky": 0.0, "sky_flash": 0.0, "storm": 0.0, "gust": 0.0, "fire_cover": 0.0, "fire_alpha": 0.0, "whiteout": 0.0, "demon_pose": 0.0}
@@ -103,6 +112,11 @@ var _layer: CanvasLayer
 var _screen: ColorRect
 var _screen_mat: ShaderMaterial
 var _kill_label: Label
+var _sigil: MeshInstance3D
+var _sigil_mat: ShaderMaterial
+var _sigil_age := -1.0
+var _sigil_alpha := 0.0
+var _sigil_art_checked := false
 var _flight: MultiMeshInstance3D
 var _lights: Array[OmniLight3D] = []
 var _light_life := PackedFloat32Array([0.0, 0.0, 0.0])
@@ -164,6 +178,9 @@ func reset() -> void:
 	_art = null
 	_art_checked = false
 	_sky_art_checked = false
+	_sigil_age = -1.0
+	_sigil_alpha = 0.0
+	_sigil_art_checked = false
 	_reset_scr()
 	if _built:
 		_hide_all()
@@ -184,7 +201,8 @@ func take_release() -> bool:
 func status() -> Dictionary:
 	return {"built": _built, "element": _element, "cutin": not _cut.is_empty(), "cut_t": float(_cut.get("t", 0.0)), "cut_dur": float(_cut.get("dur", 0.0)),
 		"sweep": not sw.is_empty(), "sweep_t": float(sw.get("t", 0.0)), "aura": _aura, "bolts": int(_ult.live_bolts()) if _ult != null and _element == "arc" else 0,
-		"release_due": _release_due, "demon": _demon, "low": low, "stats": stats.duplicate()}
+		"release_due": _release_due, "demon": _demon, "low": low, "stats": stats.duplicate(),
+		"sigil": _sigil_age >= 0.0, "sigil_alpha": _sigil_alpha, "sigil_age": _sigil_age}
 
 # ---------------------------------------------------------------- services for the element modules
 
@@ -320,6 +338,8 @@ func _on_called(event: Dictionary) -> void:
 	_release_due = false
 	stats.cutins += 1
 	_load_art()
+	_sigil_age = 0.0
+	stats.sigils += 1
 
 func _on_released(event: Dictionary) -> void:
 	_ensure_built(String(event.element))
@@ -385,7 +405,7 @@ func _free_built() -> void:
 		if _ult != null: _ult.reset()
 		if holder != null: holder.queue_free()
 		if _layer != null: _layer.queue_free()
-		holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null; _flight = null; _ult = null
+		holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null; _flight = null; _ult = null; _sigil = null; _sigil_mat = null
 		_lights.clear()
 		_built = false
 		_shown = false
@@ -425,6 +445,21 @@ func _build() -> void:
 			light.visible = false
 			holder.add_child(light)
 			_lights.append(light)
+	# The sign under the hero (A11 5.1): one flat quad, plain alpha, under every enemy telegraph.
+	_sigil = MeshInstance3D.new(); _sigil.name = "DescentSigil"
+	var sigil_plane := PlaneMesh.new(); sigil_plane.size = Vector2(SIGIL_SIZE_M, SIGIL_SIZE_M)
+	_sigil.mesh = sigil_plane
+	_sigil_mat = ShaderMaterial.new(); _sigil_mat.shader = SIGIL_SHADER
+	_sigil_mat.render_priority = -4   # above the frost floor (-5), far under every telegraph (10..12)
+	_sigil_mat.set_shader_parameter("tint", tint)
+	_sigil_mat.set_shader_parameter("brass", Palette.BRASS)
+	_sigil_mat.set_shader_parameter("brass_dim", Palette.BRASS_DIM)
+	_sigil_mat.set_shader_parameter("element_id", float(ELEMENT_ID.get(_element, 0.0)))
+	_sigil_mat.set_shader_parameter("low", 1.0 if low else 0.0)
+	_sigil.material_override = _sigil_mat
+	_sigil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_sigil.visible = false
+	holder.add_child(_sigil)
 	# The element's own layers.
 	match _element:
 		"ember": _ult = EmberUlt.new()
@@ -520,6 +555,7 @@ func sync(run: RefCounted, delta: float) -> void:
 	_update_cutin(run, mode, state, dt, delta)
 	_update_warm()
 	_update_sweep(run, mode, dt)
+	_update_sigil(dt)
 	_update_flights(run, dt)
 	_update_lights(dt)
 	_update_label(dt)
@@ -529,6 +565,7 @@ func _hide_all() -> void:
 	_shown = false
 	if _screen != null: _screen.visible = false
 	if _kill_label != null: _kill_label.visible = false
+	if _sigil != null: _sigil.visible = false
 	if _ult != null: _ult.hide_all()
 
 func _update_cutin(run: RefCounted, mode: String, state: String, dt: float, wall_dt: float) -> void:
@@ -566,9 +603,10 @@ func _cut_uniforms() -> Dictionary:
 func _push_screen() -> void:
 	var cu := _cut_uniforms()
 	var cut_on := not _cut.is_empty()
-	var scrim := maxf(float(cu.scrim), _scrim_hold)
+	var scrim := float(cu.scrim)
+	var dim := _scrim_hold
 	var sweeping := not sw.is_empty()
-	var any := _aura > 0.005 or _aura_pulse > 0.005 or cut_on or _freeze > 0.005 or _pulse > 0.005 or scrim > 0.005 or sweeping or _warm > 0 or float(scr.whiteout) > 0.005
+	var any := _aura > 0.005 or _aura_pulse > 0.005 or cut_on or _freeze > 0.005 or _pulse > 0.005 or scrim > 0.005 or dim > 0.005 or sweeping or _warm > 0 or float(scr.whiteout) > 0.005
 	_shown = _shown or any
 	_screen.visible = any
 	if not any: return
@@ -578,6 +616,11 @@ func _push_screen() -> void:
 	_screen_mat.set_shader_parameter("aura", _aura * (1.0 if flash_scale > 0.0 else 0.6))
 	_screen_mat.set_shader_parameter("aura_pulse", _aura_pulse * flash_scale)
 	_screen_mat.set_shader_parameter("scrim", scrim)
+	_screen_mat.set_shader_parameter("dim", dim)
+	var hu := hero_uv()
+	var aspect_ := size_.x / maxf(1.0, size_.y)
+	_screen_mat.set_shader_parameter("hero_on", 1.0 if hu.x >= 0.0 else 0.0)
+	_screen_mat.set_shader_parameter("hero_sc", Vector2((hu.x - 0.5) * aspect_, hu.y - 0.5))
 	_screen_mat.set_shader_parameter("rift", cu.rift)
 	_screen_mat.set_shader_parameter("slide", cu.slide)
 	_screen_mat.set_shader_parameter("retract", cu.retract)
@@ -597,6 +640,48 @@ func _push_screen() -> void:
 	_screen_mat.set_shader_parameter("whiteout", float(scr.whiteout) * flashy)
 	_screen_mat.set_shader_parameter("demon", _demon)
 	_screen_mat.set_shader_parameter("demon_pose", float(scr.demon_pose))
+
+## A11 5.1: the sign under the hero. Drawn over 0.30 s from the call (the clock is the wall's: the core stands still then), stays at 0.45 through
+## the sweep turning 20 deg/s, goes out over 0.4 s from the sweep's end. Not shown while nothing of the descent is going on.
+func _update_sigil(dt: float) -> void:
+	if _sigil == null: return
+	var want := not _cut.is_empty() or not sw.is_empty()
+	var fade := 1.0
+	var ended := not sw.is_empty() and float(sw.ended_at) >= 0.0
+	if ended:
+		fade = 1.0 - ramp_t(float(sw.t), float(sw.ended_at), float(sw.ended_at) + SIGIL_FADE_SECONDS)
+		if fade <= 0.0: want = false
+	if not want:
+		_sigil_age = -1.0
+		_sigil_alpha = 0.0
+		_sigil.visible = _warm > 0
+		if _warm > 0: _sigil_mat.set_shader_parameter("fade", 0.0)
+		return
+	if _sigil_age < 0.0: _sigil_age = 0.0
+	_sigil_age += dt
+	_load_sigil_art()
+	var draw := 1.0 if reduced_motion else ease_out(ramp_t(_sigil_age, 0.0, SIGIL_DRAW_SECONDS))
+	var cap := lerpf(SIGIL_ALPHA_DRAW, SIGIL_ALPHA_SWEEP, 0.0 if sw.is_empty() else ramp_t(float(sw.t), 0.0, 0.3))
+	_sigil_alpha = cap * fade
+	_sigil.visible = true
+	_sigil.global_position = Vector3(hero.x, 0.04, hero.y)
+	_sigil_mat.set_shader_parameter("draw", draw)
+	_sigil_mat.set_shader_parameter("fade", fade * (ramp_t(_sigil_age, 0.0, 0.12) if reduced_motion else 1.0))
+	_sigil_mat.set_shader_parameter("max_alpha", cap)
+	_sigil_mat.set_shader_parameter("spin", 0.0 if reduced_motion else deg_to_rad(SIGIL_SPIN_DEG) * _sigil_age)
+	_sigil_mat.set_shader_parameter("low", 1.0 if low else 0.0)
+
+## The picture of the slot fx.descent.sigil.<element> when one is chosen (the slot is `planned` until then: the shader's own sign is drawn).
+func _load_sigil_art() -> void:
+	if _sigil_art_checked or _sigil_mat == null: return
+	_sigil_art_checked = true
+	var slot := SIGIL_SLOT_PREFIX + _element
+	var tex: Texture2D = null
+	if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot):
+		tex = AssetSlots.texture(slot)
+		if slot in AssetSlots.missing(): tex = null
+	_sigil_mat.set_shader_parameter("art", tex)
+	_sigil_mat.set_shader_parameter("has_art", 1.0 if tex != null else 0.0)
 
 func _update_warm() -> void:
 	if _ult == null: return

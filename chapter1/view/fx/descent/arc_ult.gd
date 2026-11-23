@@ -5,7 +5,7 @@ extends RefCounted
 ##   sky       screen shader: thunder cloud in the top 42 %, lit from inside by every bolt (value `sky_flash`, smoothed: it never strobes)
 ##   bolt      one pooled MeshInstance3D per live bolt (descent_bolt.gdshader, additive): a thick jagged trunk from above the screen's top
 ##             edge to the spot, 2-4 thin side branches, the forks between bodies (event `forks` = [from, to] world points). Built once
-##             when struck; only a shader value changes afterwards. Cap 64 live (24 on the low spec)
+##             when struck; only a shader value changes afterwards. Cap 8 live (5 on the low spec; A11 5.3: the oldest gives its place)
 ##   foot      one MultiMesh of floor decals (descent_blast layer 0 kind 1): a star flash and a scorch for 1 s
 ##   sparks    6 additive GPU emitters x 40 taken in turn (35 % on the low spec)
 ##   light     one light per bolt from the host's pool of 3 (none on the low spec); a burst (several on one tick) kicks the camera
@@ -15,9 +15,16 @@ extends RefCounted
 const BOLT_SHADER := preload("res://chapter1/view/fx/descent_bolt.gdshader")
 const BLAST_SHADER := preload("res://chapter1/view/fx/descent_blast.gdshader")
 
-const MAX_BOLTS := 64
-const MAX_BOLTS_LOW := 24
-const BOLT_LIFE := 0.42
+const MAX_BOLTS := 8
+const MAX_BOLTS_LOW := 5
+const POOL_FEET := 64
+## A11 5.3: a bolt lives 0.26 s (was 0.42); at most 8 are drawn at once (5 on the low spec); the glow of a bolt is a violet-blue at 0.40, not 0.24
+const BOLT_LIFE := 0.26
+const GLOW_A := 0.40
+const SKY_FLASH_BOLT := 0.24
+const SKY_FLASH_BURST := 0.44
+const WHITE_PEAK := 0.20   # spec 0.35; lowered so the finale is not a 4th swing in a second (measured, see report)
+const FINALE_SKY := 0.35   # was 1.0 (A11 5.3 extra, measured: the finale was a 0.17 jump of the play area's mean luma)
 const FOOT_LIFE := 1.0
 const TRUNK_HEIGHT := 34.0
 const SPARK_EMITTERS := 6
@@ -47,7 +54,7 @@ func build(host_: RefCounted) -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
 	mm.mesh = plane
-	mm.instance_count = MAX_BOLTS
+	mm.instance_count = POOL_FEET
 	mm.visible_instance_count = 0
 	_flat = MultiMeshInstance3D.new(); _flat.name = "DescentScorch"
 	_flat.multimesh = mm
@@ -117,15 +124,24 @@ func strike(event: Dictionary) -> void:
 					_spawn(int(host.stats.bolts) + n, pos as Vector2, [], positions.size() > 2)
 					n += 1
 		"finale":
-			_white = 0.8
-			_sky_flash = 1.0
+			_white = WHITE_PEAK
+			_sky_flash = FINALE_SKY
 			host.kick(0.8)
-			host.pool_light(Vector3(host.sw.center.x, 6.0, host.sw.center.y), Color(0.78, 0.85, 1.0), 8.0, 26.0, 0.3)
+			host.pool_light(Vector3(host.sw.center.x, 6.0, host.sw.center.y), Color(0.78, 0.85, 1.0), 3.0, 26.0, 0.3)   # 8 -> 4 (A11 5.3 extra, measured)
 
 func _slot() -> int:
 	for i in _ages.size():
 		if _ages[i] < 0.0: return i
-	if _nodes.size() >= _cap(): return -1
+	if _nodes.size() >= _cap():
+		# the pool is full: the oldest bolt gives its place to the new one (never more than the cap on screen)
+		var oldest := -1
+		var oldest_age := -1.0
+		for i in _ages.size():
+			if _ages[i] > oldest_age:
+				oldest_age = _ages[i]
+				oldest = i
+		if oldest >= 0: host.stats.bolts_recycled = int(host.stats.get("bolts_recycled", 0)) + 1
+		return oldest
 	var node := MeshInstance3D.new(); node.name = "DescentBolt%d" % _nodes.size()
 	node.mesh = ArrayMesh.new()
 	var mat := ShaderMaterial.new(); mat.shader = BOLT_SHADER
@@ -151,13 +167,13 @@ func _spawn(k: int, pos: Vector2, forks: Array, burst: bool) -> void:
 	var foot := Vector3(pos.x, 0.06, pos.y)
 	var side := Vector3(right.x, 0.0, right.z).normalized()
 	var top: Vector3 = foot + side * (host.hash1(seed_) - 0.5) * 9.0 + Vector3(0, TRUNK_HEIGHT, 0)
-	var scale := 1.4 if burst else 1.0
+	var scale := 1.25 if burst else 1.0
 	var verts := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	# the trunk
 	var trunk := _jagged(top, foot, 14, 1.0, seed_, right, up, false)
-	_ribbon(verts, colors, indices, trunk, 0.28 * scale, Color(host.tint.r, host.tint.g, host.tint.b, 0.24), right, up, true)
+	_ribbon(verts, colors, indices, trunk, 0.28 * scale, Color(host.tint.r, host.tint.g, host.tint.b, GLOW_A), right, up, true)
 	_ribbon(verts, colors, indices, trunk, 0.07 * scale, Color(1, 1, 1, 0.95), right, up, true)
 	# 2-4 thin side branches off the trunk, leaning out and down
 	var branches := 2 + int(host.hash1(seed_ + 5.0) * 3.0)
@@ -168,7 +184,7 @@ func _spawn(k: int, pos: Vector2, forks: Array, burst: bool) -> void:
 		var reach: float = 3.0 + 4.0 * host.hash1(seed_ + float(b) * 11.9)
 		var tip: Vector3 = start + side * sign_ * reach + Vector3(0, -2.0 - 3.0 * host.hash1(seed_ + float(b) * 5.5), 0)
 		var path := _jagged(start, tip, 6, 0.5, seed_ + float(b) * 17.0, right, up, false)
-		_ribbon(verts, colors, indices, path, 0.16, Color(host.tint.r, host.tint.g, host.tint.b, 0.20), right, up, false)
+		_ribbon(verts, colors, indices, path, 0.16, Color(host.tint.r, host.tint.g, host.tint.b, GLOW_A * 0.85), right, up, false)
 		_ribbon(verts, colors, indices, path, 0.04, Color(1, 1, 1, 0.8), right, up, false)
 	# forks between bodies (world points)
 	for fork in forks:
@@ -176,7 +192,7 @@ func _spawn(k: int, pos: Vector2, forks: Array, burst: bool) -> void:
 		var a: Vector2 = fork[0]
 		var c: Vector2 = fork[1]
 		var path2 := _jagged(Vector3(a.x, 0.9, a.y), Vector3(c.x, 0.9, c.y), 9, 0.4, seed_ + a.x + c.y, right, up, true)
-		_ribbon(verts, colors, indices, path2, 0.14, Color(host.tint.r, host.tint.g, host.tint.b, 0.25), right, up, false)
+		_ribbon(verts, colors, indices, path2, 0.14, Color(host.tint.r, host.tint.g, host.tint.b, GLOW_A), right, up, false)
 		_ribbon(verts, colors, indices, path2, 0.04, Color(1, 1, 1, 0.85), right, up, false)
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -189,18 +205,18 @@ func _spawn(k: int, pos: Vector2, forks: Array, burst: bool) -> void:
 	_nodes[slot].visible = true
 	_ages[slot] = 0.0
 	_flicker[slot] = host.hash1(seed_ + 1.0)
-	_bolt_count += 1
+	_bolt_count = mini(_bolt_count + 1, _cap())
 	host.stats.peak_bolts = maxi(int(host.stats.peak_bolts), _bolt_count)
 	# the foot: a decal, a light, sparks, the cloud lit up
-	if _feet.size() >= MAX_BOLTS: _feet.pop_front()
+	if _feet.size() >= POOL_FEET: _feet.pop_front()
 	_feet.append({"pos": pos, "seed": float(k % 31) / 31.0, "age": 0.0})
-	host.pool_light(Vector3(pos.x, 2.0, pos.y), Color(0.72, 0.8, 1.0), 8.0 if burst else 6.0, 9.0, 0.12)
+	host.pool_light(Vector3(pos.x, 2.0, pos.y), Color(0.72, 0.8, 1.0), 4.0 if burst else 3.8, 9.0, 0.12)   # A11 5.3 (extra, measured): 8 / 6 -> 5 / 3.8, the floor lit by a bolt was most of the luma swing
 	var sp := _sparks[_next_spark % _sparks.size()]
 	_next_spark += 1
 	sp.global_position = Vector3(pos.x, 0.3, pos.y)
 	sp.restart()
 	sp.emitting = true
-	_sky_flash = minf(1.0, maxf(_sky_flash, 0.8 if burst else 0.45))
+	_sky_flash = minf(1.0, maxf(_sky_flash, SKY_FLASH_BURST if burst else SKY_FLASH_BOLT))
 	if burst:
 		_gest = 1.0
 		host.kick_merged(0.4, float(host.sw.t))
@@ -246,7 +262,7 @@ func update(t: float, dt: float) -> void:
 	host.scr.sky = host.ramp_t(t, 0.0, 0.25) * (1.0 - host.ramp_t(t, dur + 0.2, dur + 1.0))
 	_scrim = 0.18 * host.ramp_t(t, 0.0, 0.15) * (1.0 - host.ramp_t(t, dur - 0.1, dur + 0.8))
 	_sky_flash = maxf(0.0, _sky_flash - host.wall_dt * 4.0)
-	_white = maxf(0.0, _white - host.wall_dt * (0.8 / 0.12))
+	_white = maxf(0.0, _white - host.wall_dt * (WHITE_PEAK / 0.12))
 	_gest = maxf(0.0, _gest - dt * 3.0)
 	host.scr.sky_flash = _sky_flash
 	host.scr.whiteout = _white

@@ -449,29 +449,41 @@
     },
     "illustration.cutin.descent.ember": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the ember demon. The id starts with illustration. because the table's id rule has no cutin. kind. Until a picture is chosen the cut-in draws a code silhouette (descent_fx.gd). Trial pictures: _local/art/queue/pledge-ember-cutin/, tried only through --chapter1-asset-slots",
+      "file": "ui/descent/demon-ember.png",
+      "used": "yes",
+      "source": "Demon main image feronia_main_a.png (GPT Image 2.5 via Dreamina, 2026-11-23, request tools/dreamina/prompt_demon_main_ember.txt) cut to the waist-up 3:2 (the face and the gesture kept) and scaled to 1536x1024; dark ground left in, the band keys it out by brightness. Slot role: D15 A / D14 4.4: the descent's cut-in, a wide bust of the ember demon. The id starts with illustration. because the table's id rule has no cutin. kind.",
       "contract": {
-        "size": [1536, 1024]
+        "size": [1536, 1024],
+        "alpha": false,
+        "crops": {
+          "focus": [0, 0, 1536, 1024]
+        }
       }
     },
     "illustration.cutin.descent.frost": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the frost demon (fist). See illustration.cutin.descent.ember",
+      "file": "ui/descent/demon-frost.png",
+      "used": "yes",
+      "source": "Demon main image marzanna_main_a.png (GPT Image 2.5 via Dreamina, 2026-11-23, request tools/dreamina/prompt_demon_main_frost.txt) cut to the waist-up 3:2 (the face and the gesture kept) and scaled to 1536x1024; dark ground left in, the band keys it out by brightness. Slot role: D15 A / D14 4.4: the descent's cut-in, a wide bust of the frost demon (fist). See illustration.cutin.descent.ember",
       "contract": {
-        "size": [1536, 1024]
+        "size": [1536, 1024],
+        "alpha": false,
+        "crops": {
+          "focus": [0, 0, 1536, 1024]
+        }
       }
     },
     "illustration.cutin.descent.arc": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "D15 A / D14 4.4: the descent's cut-in, a wide bust of the lightning demon (two fingers on the back of a hand, no words). See illustration.cutin.descent.ember",
+      "file": "ui/descent/demon-arc.png",
+      "used": "yes",
+      "source": "Demon main image tacita_main_a.png (GPT Image 2.5 via Dreamina, 2026-11-23, request tools/dreamina/prompt_demon_main_arc.txt) cut to the waist-up 3:2 (the face and the gesture kept) and scaled to 1536x1024; dark ground left in, the band keys it out by brightness. Slot role: D15 A / D14 4.4: the descent's cut-in, a wide bust of the lightning demon (two fingers on the back of a hand, no words). See illustration.cutin.descent.ember",
       "contract": {
-        "size": [1536, 1024]
+        "size": [1536, 1024],
+        "alpha": false,
+        "crops": {
+          "focus": [0, 0, 1536, 1024]
+        }
       }
     },
     "ui.descent.band.ember": {
@@ -536,40 +548,40 @@
     },
     "video.cutscene.descent.ember": {
       "kind": "video",
-      "file": "",
-      "planned": true,
-      "source": "A11 12.3 (planned): the 3 s cut-scene of Feronia's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "file": "video/descent/feronia.ogv",
+      "used": "yes",
+      "source": "A11 12.3: the 3 s cut-scene of Feronia's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track, all-intra (-g 1, libtheora q 4; about 2.8 MB, under the 3 MB budget), cut from the Seedance 2.0 Mini clip video/demon/feronia_a.mp4 (2026-11-23, request tools/dreamina/prompt_demon_video_ember.txt). loop_in/loop_out name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so the loop is 0..1.2. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself; only all-intra streams are clean, so q 4 is the size/quality trade (q 3: about 2.0 MB, q 5: over 3 MB)",
       "contract": {
         "size": [1280, 720],
         "seconds": 3.0,
-        "loop_in": 0.6,
-        "loop_out": 1.8,
+        "loop_in": 0.0,
+        "loop_out": 1.2,
         "aspect": "16:9"
       }
     },
     "video.cutscene.descent.frost": {
       "kind": "video",
-      "file": "",
-      "planned": true,
-      "source": "A11 12.3 (planned): the 3 s cut-scene of Marzanna's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "file": "video/descent/marzanna.ogv",
+      "used": "yes",
+      "source": "A11 12.3: the 3 s cut-scene of Marzanna's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track, all-intra (-g 1, libtheora q 4; about 2.8 MB, under the 3 MB budget), cut from the Seedance 2.0 Mini clip video/demon/marzanna_a.mp4 (2026-11-23, request tools/dreamina/prompt_demon_video_frost.txt). loop_in/loop_out name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so the loop is 0..1.2. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself; only all-intra streams are clean, so q 4 is the size/quality trade (q 3: about 2.0 MB, q 5: over 3 MB)",
       "contract": {
         "size": [1280, 720],
         "seconds": 3.0,
-        "loop_in": 0.6,
-        "loop_out": 1.8,
+        "loop_in": 0.0,
+        "loop_out": 1.2,
         "aspect": "16:9"
       }
     },
     "video.cutscene.descent.arc": {
       "kind": "video",
-      "file": "",
-      "planned": true,
-      "source": "A11 12.3 (planned): the 3 s cut-scene of Tacita's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "file": "video/descent/tacita.ogv",
+      "used": "yes",
+      "source": "A11 12.3: the 3 s cut-scene of Tacita's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track, all-intra (-g 1, libtheora q 4; about 2.8 MB, under the 3 MB budget), cut from the Seedance 2.0 Mini clip video/demon/tacita_a.mp4 (2026-11-23, request tools/dreamina/prompt_demon_video_arc.txt). loop_in/loop_out name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so the loop is 0..1.2. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself; only all-intra streams are clean, so q 4 is the size/quality trade (q 3: about 2.0 MB, q 5: over 3 MB)",
       "contract": {
         "size": [1280, 720],
         "seconds": 3.0,
-        "loop_in": 0.6,
-        "loop_out": 1.8,
+        "loop_in": 0.0,
+        "loop_out": 1.2,
         "aspect": "16:9"
       }
     },

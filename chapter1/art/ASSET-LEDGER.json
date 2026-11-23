@@ -342,6 +342,126 @@
       "status": "기록 이관(원장 migrate)"
     },
     {
+      "path": "audio/chain/a1.wav",
+      "sha256": "c60335b828dc5b5794525aec8b3ca59a306121f5f084097a6931eb07c40646db",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/a2.wav",
+      "sha256": "d0054412106bfdb8a6e78f5e956d290eff79d063038aca376b646a3488099f11",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/a3.wav",
+      "sha256": "3c5452147d1837e2362a933fa971452bcaba1b4e9c9776cc01d99f9a76bb89c0",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "InMotionAudio",
+      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b1.wav",
+      "sha256": "c54719d7009883d37535c7304708493faa6aaf0d52cf2c2b7b55192162662784",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b2.wav",
+      "sha256": "fcfbde353b4441ef621da5a6f4a6815af17ecacca0640a27de93d79585a927f5",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
+      "path": "audio/chain/b3.wav",
+      "sha256": "055db2b1ddac410311b2816d07fd68b88d85ee6ffe15820880d93f03d6e372bb",
+      "size": 22604,
+      "kind": "audio",
+      "source_type": "third_party_derived",
+      "creator": "Sound Spark LLC",
+      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
+      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
+      "date": "2026-11-22",
+      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
+      "record_files": [
+        {
+          "path": "audio/AUDIO-LEDGER.json",
+          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
+        }
+      ],
+      "release_cleared": false,
+      "status": "A/B audition"
+    },
+    {
       "path": "chained_warden/v01/chained_demon_animated.glb",
       "sha256": "1aa069466e8666461f7b1844435167772cec9d2fe4d56196da34c7c0d38d571c",
       "size": 1270600,
@@ -2894,6 +3014,66 @@
       "notes": "원본 기록(v01, SOURCE.json)이 저장소에 없어 CC0 근거를 확인할 수 없다."
     },
     {
+      "path": "ui/descent/demon-arc.png",
+      "sha256": "89d454b9d5089b70190d00af0ec06893641a3ba37bc3ef5a8f897da8982fb645",
+      "size": 1237351,
+      "kind": "image",
+      "width": 1536,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 GPT Image 2.5, 서약한 악마 Tacita 메인 이미지 tacita_main_a.png",
+      "license": "출시 전 약관 확인",
+      "model": "GPT Image 2.5 (Dreamina)",
+      "prompt": "Wide cinematic key art of the same adult woman as in {{res:55d08e18-4b77-4e51-be54-6364ef40eb6e}} and {{res:f1b846b0-d56f-450d-b7e2-b3df48740cef}}: keep her exact face, long wavy dark violet hair, the large curved dark-brown horns, the dark indigo and silver filigree high-collared coat with lightning-shaped trim, and the thin branching scar mark on the side of her neck. Tall woman in her late thirties, silent and watchful.\n\nMoment: she is about to call the lightning down, and she says nothing. Three-quarter view from the knees up, camera slightly below her eye line. Her mouth is closed, no smile, heavy-lidded eyes glowing pale violet look straight out of frame at the enemy. Her left hand is held at chest height with the back of the hand up; two fingers of her right hand rest on the back of that hand, tapping, and a pale violet light gathers under the two fingertips. Raindrops hang motionless in the air around her. Static lifts strands of her hair.\n\nComposition: 16:9 frame, she stands in the left half with her head in the upper third, the right 40 percent of the frame is empty dark space with faint violet storm clouds and a few hanging raindrops where the lightning will strike. Background is near-black indigo, no architecture, no frame, no border. Cool violet rim light, one accent colour electric violet.\n\nSemi-realistic painterly dark fantasy, high finish, same rendering style as the references, sharp detailed face, five-fingered hands. Opaque closed clothing. No text, no watermark.\n",
+      "terms_checked": false,
+      "creator": "GPT Image 2.5 via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "3840x2160 원본에서 허리 위 3:2 로 잘라 1536x1024 로 줄임(LANCZOS). 띠에서 어두운 바탕을 밝기로 오리므로 형상 둘레 밖을 마스크로 검게 눕힘(밝기 기반 자동 마스크 + 번짐; 화염은 마스크 없음)",
+      "record_files": [],
+      "release_cleared": false,
+      "status": "등록됨"
+    },
+    {
+      "path": "ui/descent/demon-ember.png",
+      "sha256": "d313b6b29354c2bb48afdebbabc87d31de8b83e5e64817ce862bdaf204a3c09d",
+      "size": 1718005,
+      "kind": "image",
+      "width": 1536,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 GPT Image 2.5, 서약한 악마 Feronia 메인 이미지 feronia_main_a.png",
+      "license": "출시 전 약관 확인",
+      "model": "GPT Image 2.5 (Dreamina)",
+      "prompt": "Wide cinematic key art of the same adult woman as in {{res:3d81c44a-37d4-4558-9cef-e28fca5737e4}} and {{res:02e4d7ac-55b5-407e-98b7-02af4bf8f957}}: keep her exact face, glossy jet-black hair in a high ponytail with ember-orange strands, the pair of short curved black horns, the charcoal and burnt-orange cropped jacket with sleeves rolled to the elbows, and the small worn leather pouch on her belt. Tall woman in her late thirties, powerful and composed.\n\nMoment: she is about to sweep the battlefield. Three-quarter view from the knees up, camera slightly below her eye line so she looms. Her chin is lowered, her eyes burn molten orange and stare out of frame at the enemy, her jaw is set, a stern fierce look with no smile. Her right arm is swung out across the frame with the open hand palm down, fingers spread, as if wiping everything away. Her hands are clean and unburnt. Her left hand rests on her belt. Wind lifts her ponytail and coat.\n\nComposition: 16:9 frame, she stands in the left half with her head in the upper third, the right 40 percent of the frame is empty dark space with a faint molten glow and drifting embers where meteors will fall. Background is near-black charcoal, no architecture, no frame, no border. Strong orange rim light on her hair and shoulder, one accent colour molten orange.\n\nSemi-realistic painterly dark fantasy, high finish, same rendering style as the references, sharp detailed face, five-fingered hands. Opaque closed clothing. No text, no watermark.\n",
+      "terms_checked": false,
+      "creator": "GPT Image 2.5 via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "3840x2160 원본에서 허리 위 3:2 로 잘라 1536x1024 로 줄임(LANCZOS). 띠에서 어두운 바탕을 밝기로 오리므로 형상 둘레 밖을 마스크로 검게 눕힘(밝기 기반 자동 마스크 + 번짐; 화염은 마스크 없음)",
+      "record_files": [],
+      "release_cleared": false,
+      "status": "등록됨"
+    },
+    {
+      "path": "ui/descent/demon-frost.png",
+      "sha256": "58860681c007b2e88aa5db4341ad4884545a9d3e0bb095a0f2c232e2a903fd53",
+      "size": 1700655,
+      "kind": "image",
+      "width": 1536,
+      "height": 1024,
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 GPT Image 2.5, 서약한 악마 Marzanna 메인 이미지 marzanna_main_a.png",
+      "license": "출시 전 약관 확인",
+      "model": "GPT Image 2.5 (Dreamina)",
+      "prompt": "Wide cinematic key art of the same adult woman as in {{res:9131e62a-5a26-4d7f-a8ca-9ac5a1d09393}} and {{res:a2d6aa05-78ee-49fb-9506-0468382e775a}}: keep her exact face, dark teal hair worn up with one long white lock, the pair of curved pale ice-grey horns, glowing pale cyan eyes, the jagged ice-crystal collar, the dark teal and silver filigree coat with a stitched patch on the cuff. Tall woman in her mid thirties, cold and exact.\n\nMoment: she is about to freeze the whole field. Three-quarter view from the knees up, camera slightly below her eye line. Her face is still and calm, lips closed, eyes pale cyan and fixed on the enemy out of frame, no smile. Her right arm is extended forward and slightly down with the open palm pushing outward, fingertips glowing cold blue, and a ring of frost crystals spreads from her hand into the air. Her left hand rests at her side. Cold wind lifts her white lock and the hem of her coat, fine snow whirls past.\n\nComposition: 16:9 frame, she stands in the left half with her head in the upper third, the right 40 percent of the frame is empty dark space with faint blue mist and snow where the freeze will spread. Background is near-black deep navy, no architecture, no frame, no border. Strong cold cyan rim light, one accent colour pale cyan.\n\nSemi-realistic painterly dark fantasy, high finish, same rendering style as the references, sharp detailed face, five-fingered hands. Opaque closed clothing. No text, no watermark.\n",
+      "terms_checked": false,
+      "creator": "GPT Image 2.5 via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "3840x2160 원본에서 허리 위 3:2 로 잘라 1536x1024 로 줄임(LANCZOS). 띠에서 어두운 바탕을 밝기로 오리므로 형상 둘레 밖을 마스크로 검게 눕힘(밝기 기반 자동 마스크 + 번짐; 화염은 마스크 없음)",
+      "record_files": [],
+      "release_cleared": false,
+      "status": "등록됨"
+    },
+    {
       "path": "ui/grace/candle.png",
       "sha256": "eb552005a93698f53f5b2c6d5d9965595d8f02243176a574969ab6ce81614026",
       "size": 331463,
@@ -4033,124 +4213,58 @@
       "status": "기록 이관(원장 migrate)"
     },
     {
-      "path": "audio/chain/a1.wav",
-      "sha256": "c60335b828dc5b5794525aec8b3ca59a306121f5f084097a6931eb07c40646db",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "InMotionAudio",
-      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
+      "path": "video/descent/feronia.ogv",
+      "sha256": "658ba6ebbb3e756790e84b5475f4fdcfcc04e2561c6e9fa57e53f40ccafe36ea",
+      "size": 2816298,
+      "kind": "video",
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 Seedance 2.0 Mini, 악마 Feronia 영상 feronia_a.mp4",
+      "license": "출시 전 약관 확인",
+      "model": "Seedance 2.0 Mini (Dreamina)",
+      "prompt": "Slow push-in. She lowers her chin and sweeps her right arm across the frame; a molten glow flares behind her and embers surge. Her face and clothes stay the same.\n",
+      "terms_checked": false,
+      "creator": "Seedance 2.0 Mini via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "1280x720 60fps 5초 원본에서 3초 구간을 잘라 30fps, 소리 없음, Theora all-intra(-g 1) q4 로 인코딩(ffmpeg 8.0.1)",
+      "record_files": [],
       "release_cleared": false,
-      "status": "A/B audition"
+      "status": "등록됨"
     },
     {
-      "path": "audio/chain/a2.wav",
-      "sha256": "d0054412106bfdb8a6e78f5e956d290eff79d063038aca376b646a3488099f11",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "InMotionAudio",
-      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
+      "path": "video/descent/marzanna.ogv",
+      "sha256": "ea60814e550b1ac0a4c99459f0964a2da55a608d62cf4607d6a13682835d1269",
+      "size": 2934179,
+      "kind": "video",
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 Seedance 2.0 Mini, 악마 Marzanna 영상 marzanna_a.mp4",
+      "license": "출시 전 약관 확인",
+      "model": "Seedance 2.0 Mini (Dreamina)",
+      "prompt": "Slow push-in. She pushes her open hand forward; a ring of frost spreads outward, snow whirls past, cold blue light flares. Her face stays calm and the same.\n",
+      "terms_checked": false,
+      "creator": "Seedance 2.0 Mini via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "1280x720 60fps 5초 원본에서 3초 구간을 잘라 30fps, 소리 없음, Theora all-intra(-g 1) q4 로 인코딩(ffmpeg 8.0.1)",
+      "record_files": [],
       "release_cleared": false,
-      "status": "A/B audition"
+      "status": "등록됨"
     },
     {
-      "path": "audio/chain/a3.wav",
-      "sha256": "3c5452147d1837e2362a933fa971452bcaba1b4e9c9776cc01d99f9a76bb89c0",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "InMotionAudio",
-      "origin": "sonniss-gdc-2026/extracted/InMotionAudio - Arc/ELECArc_ArcDesign15_InMotionAudio_Arc.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 0.0s, duration 0.8s, lowpass 6000.0; bandpass 500-5100 Hz. Grains from candidate 0.48s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
+      "path": "video/descent/tacita.ogv",
+      "sha256": "0ae6d605720c3c69b516d70ed05e921a706de73d8e8bfd17901d45df0d133ebb",
+      "size": 2814093,
+      "kind": "video",
+      "source_type": "ai_generated",
+      "origin": "Dreamina 상 Seedance 2.0 Mini, 악마 Tacita 영상 tacita_a.mp4",
+      "license": "출시 전 약관 확인",
+      "model": "Seedance 2.0 Mini (Dreamina)",
+      "prompt": "Slow push-in. Two fingers flick off the back of her hand; violet lightning flashes behind her, hanging raindrops shake, her hair lifts. Her face stays silent and the same.\n",
+      "terms_checked": false,
+      "creator": "Seedance 2.0 Mini via Dreamina",
+      "date": "2026-11-23",
+      "postprocess": "1280x720 60fps 5초 원본에서 3초 구간을 잘라 30fps, 소리 없음, Theora all-intra(-g 1) q4 로 인코딩(ffmpeg 8.0.1)",
+      "record_files": [],
       "release_cleared": false,
-      "status": "A/B audition"
-    },
-    {
-      "path": "audio/chain/b1.wav",
-      "sha256": "c54719d7009883d37535c7304708493faa6aaf0d52cf2c2b7b55192162662784",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "Sound Spark LLC",
-      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
-      "release_cleared": false,
-      "status": "A/B audition"
-    },
-    {
-      "path": "audio/chain/b2.wav",
-      "sha256": "fcfbde353b4441ef621da5a6f4a6815af17ecacca0640a27de93d79585a927f5",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "Sound Spark LLC",
-      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
-      "release_cleared": false,
-      "status": "A/B audition"
-    },
-    {
-      "path": "audio/chain/b3.wav",
-      "sha256": "055db2b1ddac410311b2816d07fd68b88d85ee6ffe15820880d93f03d6e372bb",
-      "size": 22604,
-      "kind": "audio",
-      "source_type": "third_party_derived",
-      "creator": "Sound Spark LLC",
-      "origin": "sonniss-2020/p12 - Sound Spark LLC - Electric Arcs and Energy/Electric_Arc_Reverberant_Shock_Long_05.wav",
-      "license": "Sonniss GameAudioGDC bundle; local edit for game use",
-      "date": "2026-11-22",
-      "postprocess": "Candidate source offset 1.1s, duration 1.2s, lowpass None; bandpass 155-3300 Hz. Grains from candidate 0.095s + j*61ms, starts 0/48/99ms for actual contacts, capped at 3; gentle pitch steps, exponential decay, edge fades. Mono PCM16 48kHz.",
-      "record_files": [
-        {
-          "path": "audio/AUDIO-LEDGER.json",
-          "sha256": "d4c8bdc0ccd002c815aa099b269454e3224d98136e7ba8fa01521e17661a5b83"
-        }
-      ],
-      "release_cleared": false,
-      "status": "A/B audition"
+      "status": "등록됨"
     }
   ]
 }

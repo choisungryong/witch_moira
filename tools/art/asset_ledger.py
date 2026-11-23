@@ -35,6 +35,7 @@ ASSET_EXT = {
     ".glb": "model", ".gltf": "model",
     ".ttf": "font", ".otf": "font",
     ".wav": "audio", ".ogg": "audio", ".mp3": "audio",
+    ".ogv": "video",
 }
 UNKNOWN = "미확인"
 SOURCE_TYPES = ("ai_generated", "project_original", "third_party", "third_party_derived", "derived")
@@ -538,6 +539,20 @@ SEED_RULES = [
         license=UNKNOWN + ": 생성 도구 약관 확인 전", date="2026-11-20",
         postprocess="마젠타 바탕을 알파로 뗌(tools/art/matte_kit.py), 악마 전신 세 장은 가공 없음(임시)",
         records=["ui/grace/ATTRIBUTION.ko.md"])),
+    ("ui/descent/*", dict(
+        source_type="ai_generated", creator="프로젝트(Dreamina 생성 그림에서 잘라 줄임)",
+        origin="서약한 악마 셋의 메인 이미지(2026-11-23, U-100·U-101, 3840x2160)에서 허리 위를 3:2로 잘라 1536x1024로 줄인 강림 띠의 그림. 참조는 은총 화면의 임시 악마 그림",
+        model="GPT Image 2.5 (dreamina_gpt_image_2_5_sunburst, Dreamina CLI)", prompt="요청문 전문은 작업 폴더 tools/dreamina/prompt_demon_main_<원소>.txt (저장소 밖)",
+        license=UNKNOWN + ": 출시 전 약관 확인", date="2026-11-23",
+        postprocess="자르기와 LANCZOS 축소. 냉기·번개는 밝기 기반 자동 마스크로 형상 밖 바탕을 어둡게 눕힘, 화염은 가공 없음",
+        records=["ui/descent/ATTRIBUTION.ko.md"])),
+    ("video/descent/*", dict(
+        source_type="ai_generated", creator="프로젝트(Dreamina 생성 영상에서 3초를 잘라 변환)",
+        origin="서약한 악마 셋의 강림 컷신(2026-11-23, U-100·U-101): 메인 이미지를 첫 프레임으로 만든 5초 영상에서 3초를 자름",
+        model="Seedance 2.0 Mini (Dreamina CLI, first_last_frame, 720p)", prompt="요청문 전문은 작업 폴더 tools/dreamina/prompt_demon_video_<원소>.txt (저장소 밖)",
+        license=UNKNOWN + ": 출시 전 약관 확인", date="2026-11-23",
+        postprocess="ffmpeg: 3초 자르기(화염 1.9~4.9초, 냉기 0.3~3.3초, 번개 1.7~4.7초), 1280x720 30fps, 소리 없음, Theora all-intra(-g 1) q4",
+        records=["video/descent/ATTRIBUTION.ko.md"])),
     ("actors/*", dict(
         AI_UNKNOWN, creator=UNKNOWN + ": 기록 없음",
         origin="README 는 '독립 생성한 2.5D PNG 스프라이트' 라고만 적는다. README 가 가리키던 출처·프롬프트·원본 경로 기록(옛 저장소 plans/chapter1-c2-20261031-01/)은 이 저장소에 없다",

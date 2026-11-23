@@ -17,6 +17,11 @@ const MAX_ICE := 64
 const STORM_AMOUNT := 300
 const SHARD_AMOUNT := 300
 const COLD := Color(0.62, 0.86, 1.0)
+## A11 5.2: the break's white flash 1.0 -> 0.45 (held 2 frames, gone in 0.12 s)
+const WHITE_PEAK := 0.45
+## A11 5.2 (extra, measured): the floor was a pale wash (0.07 cap); it is now a dark blue floor (FLOOR_DARK) with cold veins, under the bodies
+const GROUND_ALPHA := 0.8
+const FLOOR_DARK := 0.88
 
 var host: RefCounted
 var _ground: MeshInstance3D
@@ -51,7 +56,8 @@ func build(host_: RefCounted) -> void:
 	_ground_mat.set_shader_parameter("mode", 1)
 	_ground_mat.set_shader_parameter("tint", host.tint)
 	_ground_mat.set_shader_parameter("reach", 26.0)
-	_ground_mat.set_shader_parameter("max_alpha", 0.07)
+	_ground_mat.set_shader_parameter("max_alpha", GROUND_ALPHA)
+	_ground_mat.set_shader_parameter("floor_dark", FLOOR_DARK)
 	_ground.material_override = _ground_mat
 	_ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ground.visible = false
@@ -59,7 +65,7 @@ func build(host_: RefCounted) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	var quad := QuadMesh.new(); quad.size = Vector2(1.7, 2.0)
+	var quad := QuadMesh.new(); quad.size = Vector2(1.4, 1.7)   # A11 5.2: the size of a body, so shells overlap less
 	mm.mesh = quad
 	mm.instance_count = MAX_ICE
 	mm.visible_instance_count = 0
@@ -80,7 +86,7 @@ func build(host_: RefCounted) -> void:
 	_storm_mat.initial_velocity_min = 30.0; _storm_mat.initial_velocity_max = 55.0
 	_storm_mat.gravity = Vector3.ZERO
 	_storm_mat.scale_min = 0.5; _storm_mat.scale_max = 2.6
-	_storm_mat.color_ramp = host.ramp([[0.0, Color(0.9, 0.97, 1.0, 0.0)], [0.15, Color(0.9, 0.97, 1.0, 0.75)], [0.8, Color(0.7, 0.9, 1.0, 0.6)], [1.0, Color(0.6, 0.85, 1.0, 0.0)]])
+	_storm_mat.color_ramp = host.ramp([[0.0, Color(0.9, 0.97, 1.0, 0.0)], [0.15, Color(0.8, 0.94, 1.0, 0.55)], [0.8, Color(0.65, 0.88, 1.0, 0.45)], [1.0, Color(0.6, 0.85, 1.0, 0.0)]])
 	_storm = GPUParticles3D.new(); _storm.name = "DescentWind"
 	_storm.amount = host.count(STORM_AMOUNT); _storm.lifetime = 1.1
 	_storm.emitting = false; _storm.local_coords = false
@@ -186,7 +192,7 @@ func _do_break(positions: Array) -> void:
 	host.stats.breaks += 1
 	host.hitstop(host.HITSTOP_SECONDS)
 	host.kick(1.0)
-	_white = 1.0
+	_white = WHITE_PEAK
 	_white_frames = 2
 	var points := PackedVector3Array()
 	var from: Array = []
@@ -218,7 +224,7 @@ func update(t: float, dt: float) -> void:
 	host.scr.gust = _gust
 	host.scr.sky = host.ramp_t(t, 0.0, 0.4) * (1.0 - host.ramp_t(t, dur + 0.2, dur + 1.2))
 	if _white_frames > 0: _white_frames -= 1
-	else: _white = maxf(0.0, _white - host.wall_dt * (1.0 / 0.12))
+	else: _white = maxf(0.0, _white - host.wall_dt * (WHITE_PEAK / 0.12))
 	host.scr.whiteout = _white
 	# the demon: a long exhale while the storm blows, the fist closes at the break
 	var pose: float = 0.35 * host.ramp_t(t, 0.3, 2.0)

@@ -13,7 +13,10 @@ uniform float aspect = 1.7778;
 uniform float time = 0.0;
 uniform float aura = 0.0;          // 0..1 how present the edge aura is
 uniform float aura_pulse = 0.0;    // 0..1 the one-time swell when the gauge fills
-uniform float scrim = 0.0;         // 0..1 darkness of the cut-in
+uniform float scrim = 0.0;         // 0..1 darkness of the cut-in (A11 4.3: near-black, alpha 0.50 in the middle .. 0.62 at the edge, a hole round the hero)
+uniform float dim = 0.0;           // 0..1 the sweep's own dim (arc's silence): the old mapping, so the arc's sweep keeps its look
+uniform vec2 hero_sc = vec2(0.0);  // the hero's place in `sc` (centred, in screen heights)
+uniform float hero_on = 0.0;       // 1 when hero_sc is valid
 uniform float rift = 0.0;          // 0..1 how far the slit has opened (1 = the full bust band)
 uniform float slide = 0.0;         // 0..1 the bust coming in (1 = settled)
 uniform float retract = 0.0;       // 0..1 the picture leaving
@@ -172,24 +175,30 @@ void fragment() {
 
 	// ---- freeze rim ----
 	if (freeze > 0.001) {
-		float close_in = 0.07 + 0.28 * freeze;
+		float close_in = 0.05 + 0.10 * freeze;   // A11 5.2: the rim is at most 0.15 H deep
 		vec4 v = voronoi(vec2(sc.x, sc.y) * 7.0 + 3.0);
 		float crack = 1.0 - smoothstep(0.0, 0.05, v.y);
 		float rimmask = 1.0 - smoothstep(close_in * 0.35, close_in, edge_d + (v.x - 0.5) * 0.04);
 		float cell_h = hash21(v.zw);
 		float alive = step(shatter * 1.15, cell_h + 0.001) ;
 		float a = (rimmask * (0.30 + 0.40 * (0.5 + 0.5 * cell_h)) + crack * rimmask * 0.35) * alive;
-		a += 0.07 * freeze * alive;
 		vec3 c = mix(tint.rgb, vec3(0.92, 0.98, 1.0), 0.35 + 0.4 * crack);
-		float fa = clamp(a, 0.0, 0.62) * (1.0 - shatter * 0.4);
+		float fa = clamp(a, 0.0, 0.32) * (1.0 - shatter * 0.4);
 		out_c = vec4(mix(out_c.rgb, c, fa / max(0.001, fa + out_c.a)), clamp(out_c.a + fa * (1.0 - out_c.a), 0.0, 1.0));
 	}
 
+	// ---- the sweep's dim (arc) ----
+	if (dim > 0.001) {
+		float vigd = smoothstep(0.2, 1.0, length(sc * vec2(0.8, 1.2)));
+		out_c = vec4(vec3(0.0), max(out_c.a, clamp(dim * (0.74 + 0.16 * vigd), 0.0, 0.92)));
+	}
 	// ---- cut-in ----
 	if (scrim > 0.001) {
 		float vig = smoothstep(0.2, 1.0, length(sc * vec2(0.8, 1.2)));
-		float dark = clamp(scrim * (0.74 + 0.16 * vig), 0.0, 0.92);
-		out_c = vec4(vec3(0.0), max(out_c.a, dark));
+		// A11 4.3: the floor stays readable. Near-black, alpha 0.50 (0.62 at the edge), and a hole round the hero (x0.4 inside 0.09 H, back to 1 at 0.16 H)
+		float hole = hero_on > 0.5 ? mix(0.4, 1.0, smoothstep(0.09, 0.16, length(sc - hero_sc))) : 1.0;
+		float dark = clamp(scrim * mix(0.50, 0.62, vig) * hole, 0.0, 0.62);
+		out_c = vec4(vec3(0.02, 0.02, 0.03), max(out_c.a, dark));
 		float hb = 0.36 * rift * (1.0 - retract);
 		float band = 1.0 - smoothstep(hb - 0.004, hb + 0.002, abs(sc.y));
 		// the slit: a thin line of the element colour before the band opens
@@ -256,7 +265,7 @@ void fragment() {
 			sa = m * sky * (0.30 + 0.28 * cl);
 		} else if (element_id < 1.5) {
 			sc3 = mix(vec3(0.09, 0.16, 0.23), vec3(0.50, 0.70, 0.82), cl);
-			sa = m * sky * (0.26 + 0.28 * cl);
+			sa = m * sky * (0.14 + 0.14 * cl);   // A11 5.2 (extra): the storm cloud 0.26+0.28 -> 0.14+0.14
 		} else {
 			sc3 = mix(vec3(0.03, 0.04, 0.08), vec3(0.20, 0.24, 0.42), cl) + vec3(0.62, 0.72, 1.0) * sky_flash * (0.4 + cl);
 			sa = m * sky * (0.46 + 0.16 * cl) + sky_flash * m * 0.18;
@@ -283,7 +292,7 @@ void fragment() {
 			float cells = ly == 0 ? 8.0 : (ly == 1 ? 20.0 : 46.0);
 			float speed = ly == 0 ? 3.4 : (ly == 1 ? 2.1 : 1.2);
 			float len = ly == 0 ? 0.34 : (ly == 1 ? 0.22 : 0.12);
-			float amp = ly == 0 ? 0.62 : (ly == 1 ? 0.45 : 0.30);
+			float amp = ly == 0 ? 0.38 : (ly == 1 ? 0.45 : 0.30);   // A11 5.2: the front layer 0.62 -> 0.38 (spec 0.45; measured p90)
 			float sway = sin(dot(sc, vec2(1.3, 0.9)) * 1.7 + time * 0.9 + float(ly) * 2.0) * 0.20 + (band - 0.5) * 0.7;
 			vec2 d = vec2(sdir.x * cos(sway) - sdir.y * sin(sway), sdir.x * sin(sway) + sdir.y * cos(sway));
 			float along = dot(sc, d);
@@ -295,10 +304,12 @@ void fragment() {
 			float s1 = smoothstep(0.0, 0.02, pos) * (1.0 - smoothstep(0.02, len, pos));
 			streak = max(streak, s1 * lane * step(0.42, h) * amp);
 		}
-		float swirl = low > 0.5 ? 0.0 : smoothstep(0.46, 0.82, band) * 0.20;
+		float swirl = low > 0.5 ? 0.0 : smoothstep(0.46, 0.82, band) * 0.07;   // A11 5.2 (extra): the snow veil 0.20 -> 0.07, it was the wash of the whole middle
 		float rim = 1.0 - smoothstep(0.0, 0.34, edge_d);
-		float wa = clamp(cov * ((streak + swirl) * (1.0 + gust * 0.9) + 0.06 + 0.24 * rim), 0.0, 0.62);
-		vec3 wc = mix(vec3(0.60, 0.82, 0.96), vec3(0.97, 0.99, 1.0), clamp(streak * 2.6, 0.0, 1.0));
+		// A11 5.2: streaks and a rim only (no flat wash in the middle), a hole round the hero, a deeper cold colour; white only at a streak's tip
+		float hero_keep = hero_on > 0.5 ? mix(0.35, 1.0, smoothstep(0.10, 0.28, length(sc - hero_sc))) : 1.0;
+		float wa = clamp(cov * ((streak + swirl) * (1.0 + gust * 0.9) + 0.11 * rim), 0.0, 0.42) * hero_keep;
+		vec3 wc = mix(vec3(0.40, 0.62, 0.82), vec3(0.97, 0.99, 1.0), clamp((streak - 0.30) * 4.0, 0.0, 1.0));
 		float oa2 = out_c.a;
 		out_c.rgb = mix(out_c.rgb, wc, wa / max(0.001, wa + oa2));
 		out_c.a = clamp(oa2 + wa * (1.0 - oa2), 0.0, 1.0);

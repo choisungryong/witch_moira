@@ -189,7 +189,7 @@ func sweep_part() -> void:
 		check(not bool(status.sweep) and not bool(status.cutin), element + ": the presenter is idle again after the sweep")
 		if element == "arc":
 			check(int(status.stats.bolts) > 0, "arc: bolts were drawn")
-			check(int(status.stats.peak_bolts) <= 64, "arc: the bolt pool stayed inside 64 (%d)" % int(status.stats.peak_bolts))
+			check(int(status.stats.peak_bolts) <= 8, "arc: at most 8 bolts at once (A11 5.3) (%d)" % int(status.stats.peak_bolts))
 		check(stage.world.kicks > 0 or element == "frost" and stage.world.kicks >= 0, element + ": the camera got an impulse")
 		stage.queue_free()
 
@@ -258,6 +258,47 @@ func settings_part() -> void:
 	check(stage.world.kicks == 0, "settings: shake off means no impulse (%d)" % stage.world.kicks)
 	stage.queue_free()
 
+## A11 5.1 / 4.3: the sign under the hero (drawn over 0.3 s from the call, <= 0.55 on the floor, 0.45 through the sweep, gone with the sweep),
+## the cut-in's scrim goes to the shader as `scrim` and the arc's own dim as `dim` (never mixed), and the hero's hole is there.
+func sigil_part() -> void:
+	for element in ["ember", "frost", "arc"]:
+		var run := make_run(element, true)
+		var stage := make_stage()
+		var fx = DescentFx.new()
+		fx.setup(stage)
+		play(run, fx, 10)
+		check(not bool(fx.status().sigil), element + ": no sign before the call")
+		fill_and_call(run, fx)
+		fx.sync(run, 1.0 / 60.0)
+		check(bool(fx.status().sigil), element + ": the sign starts with the call")
+		check(fx._sigil != null and fx._sigil.visible, element + ": the sign's quad is shown")
+		for i in 6: fx.sync(run, 1.0 / 60.0)
+		var early_age := float(fx.status().sigil_age)
+		check(float(fx.status().sigil_alpha) <= 0.55 + 0.0001, "%s: the floor alpha stays at or under 0.55 (%.2f)" % [element, float(fx.status().sigil_alpha)])
+		var mat: ShaderMaterial = fx._sigil_mat
+		check(float(mat.get_shader_parameter("draw")) < 1.0 and early_age < 0.3, "%s: still being drawn at %.2f s (draw %.2f)" % [element, early_age, float(mat.get_shader_parameter("draw"))])
+		check(float(fx._screen_mat.get_shader_parameter("hero_on")) > 0.5, element + ": the scrim knows where the hero is")
+		var peak := 0.0
+		var in_sweep := 0.0
+		for i in 600:
+			if run.mode == "playing":
+				run.hero.hp_raw = run.hero.max_hp_raw
+				run.step(Vector2.ZERO)
+			fx.consume(run.events)
+			fx.sync(run, 1.0 / 60.0)
+			if run.mode == "descent" and fx.take_release(): run.release_descent()
+			peak = maxf(peak, float(fx.status().sigil_alpha))
+			if bool(fx.status().sweep) and float(fx.status().sweep_t) > 0.5 and float(fx.status().sweep_t) < float(fx.sw.get("dur", 0.0)):
+				in_sweep = float(fx.status().sigil_alpha)
+		check(peak <= 0.55 + 0.0001, "%s: the sign never passes 0.55 (%.2f)" % [element, peak])
+		check(absf(in_sweep - 0.45) < 0.02, "%s: 0.45 through the sweep (%.3f)" % [element, in_sweep])
+		check(not bool(fx.status().sigil) and not fx._sigil.visible, element + ": the sign is gone when the sweep is over")
+		check(int(fx.status().stats.sigils) == 1, element + ": one sign per call")
+		if element == "arc":
+			# the arc's silence is the `dim` value, not the cut-in's `scrim`
+			check(float(fx._screen_mat.get_shader_parameter("scrim")) == 0.0, "arc: no cut-in scrim after the cut-in")
+		stage.queue_free()
+
 ## D24 12.2: the three sweeps drawn from FAKE events in the shape of 9.4 (no core needed for them; the run only supplies the view).
 ## Checks: every layer runs without a script error, the budgets of 10.2 hold (particles 800, lights 3, bolts 64, fragments 14), the low
 ## spec has no light and 35 % of the particles, the presenter ends idle, and the settings (shake off, reduced motion) silence the kicks.
@@ -322,7 +363,7 @@ func fake_part() -> void:
 				"arc":
 					check(int(r.types.get("bolt", 0)) == 40, tag + ": 40 bolts were struck (%d)" % int(r.types.get("bolt", 0)))
 					check(int(stats.bolts) + int(stats.bolts_dropped) == 40, tag + ": every bolt was drawn or counted dropped " + str(stats))
-					check(int(stats.peak_bolts) <= (24 if low else 64), tag + ": the live bolt pool stayed in its cap (%d)" % int(stats.peak_bolts))
+					check(int(stats.peak_bolts) <= (5 if low else 8), tag + ": the live bolt pool stayed in its cap, 8 / 5 on the low spec (%d)" % int(stats.peak_bolts))
 	# settings: shake off = no impulse at all; reduced motion = no impulse either
 	for element in ["ember", "frost", "arc"]:
 		var quiet := fake_run_one(element, false, 0.0, false)
@@ -342,6 +383,7 @@ func execute() -> void:
 	purity_part()
 	watchdog_part()
 	settings_part()
+	sigil_part()
 	fake_part()
 	print("CHAPTER1_DESCENT_FX_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
