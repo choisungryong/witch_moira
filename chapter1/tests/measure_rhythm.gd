@@ -339,6 +339,12 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			return {}
 	var dmg_raw_s: Array = []
 	var hurt_log: Array = []
+	var volley_placed := 0
+	var volley_shooters := {}
+	var volley_beats := {}
+	if hurt_on:
+		for b in run.tuning.get("rhythm", {}).get("beats", []):
+			if JSON.stringify(b).contains("\"volley\""): volley_beats[String(b.get("id", ""))] = true
 	var policy_rng := RandomNumberGenerator.new()
 	policy_rng.seed = (seed_ * 2654435761) ^ (GracePolicies.ALL_POLICIES.find(policy_name) * 40503 + 977)
 	var sw := new_sweep(run)
@@ -389,6 +395,10 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
+		if hurt_on:
+			for uid in run._hostile_src:
+				var hs = run._hostile_src[uid]
+				if String(hs.get("attack_id", "")) == "volley": volley_shooters[int(hs.id)] = true
 		guard += 1
 		if xp_trace_s > 0.0 and int(run.tick) % int(xp_trace_s * 60.0) == 0 and (xp_trace.is_empty() or int(xp_trace[xp_trace.size() - 1][0]) != int(int(run.tick) / 60)):
 			var gs0: Dictionary = run.growth.snapshot()
@@ -418,6 +428,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			if String(ev.type) == "hero_hit":
 				bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
 				if hurt_on: hurt_log.append(hurt_note(run, ev))
+			if hurt_on and String(ev.type) == "wave_squad" and volley_beats.has(String(ev.get("beat", ""))): volley_placed += int(ev.get("count", 0))
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
@@ -528,7 +539,9 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
 		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
-	if hurt_on: result["hurt"] = hurt_summary(hurt_log)
+	if hurt_on:
+		result["hurt"] = hurt_summary(hurt_log)
+		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}
 	return result
 
 # ---------- GM-A: damage taken by source (read-only) ----------
@@ -552,7 +565,7 @@ func hurt_summary(log_: Array) -> Dictionary:
 			worst = window
 			worst_lo = maxi(0, i - 59)
 	var worst_hi := worst_lo + 59
-	var out := {"worst_window_s": [worst_lo, worst_hi], "all": {}, "w60": {}, "attack_all": {}, "attack_w60": {}, "hits": 0, "heavy": 0, "graze": 0, "hits_w60": 0, "heavy_w60": 0, "graze_w60": 0}
+	var out := {"worst_window_s": [worst_lo, worst_hi], "all": {}, "w60": {}, "attack_all": {}, "attack_w60": {}, "hits_by_attack": {"all": {}, "w60": {}}, "hits": 0, "heavy": 0, "graze": 0, "hits_w60": 0, "heavy_w60": 0, "graze_w60": 0}
 	for h in log_:
 		var inw: bool = int(h[0]) >= worst_lo and int(h[0]) <= worst_hi
 		var dmg := float(h[3]) / 256.0
@@ -560,12 +573,14 @@ func hurt_summary(log_: Array) -> Dictionary:
 		var atk := "%s/%s" % [kind, String(h[2])]
 		out.all[kind] = snappedf(float(out.all.get(kind, 0.0)) + dmg, 0.001)
 		out.attack_all[atk] = snappedf(float(out.attack_all.get(atk, 0.0)) + dmg, 0.001)
+		out.hits_by_attack.all[atk] = int(out.hits_by_attack.all.get(atk, 0)) + 1
 		out.hits += 1
 		if bool(h[5]): out.heavy += 1
 		if bool(h[4]): out.graze += 1
 		if inw:
 			out.w60[kind] = snappedf(float(out.w60.get(kind, 0.0)) + dmg, 0.001)
 			out.attack_w60[atk] = snappedf(float(out.attack_w60.get(atk, 0.0)) + dmg, 0.001)
+			out.hits_by_attack.w60[atk] = int(out.hits_by_attack.w60.get(atk, 0)) + 1
 			out.hits_w60 += 1
 			if bool(h[5]): out.heavy_w60 += 1
 			if bool(h[4]): out.graze_w60 += 1
