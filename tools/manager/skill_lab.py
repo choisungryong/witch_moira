@@ -270,19 +270,86 @@ def current_sound(root, slot, info, consts):
     return {'kind': 'silent' if (silent or not files) else 'parent', 'cue': parent, 'files': files, 'note': note}
 
 
+def _num(v):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float('inf') else None
+
+
+def mix_info(root, info, warnings):
+    """게임이 한 소리에 곱하는 크기: master x mix_gain x GAINS[부모 소리]. 읽는 차례는 mix_gain 이 데이터(audio_map.json) -> 코드 상수 -> 코드의 곱셈 리터럴 -> 0.11."""
+    import re
+    root = Path(root)
+    p = root / 'chapter1/presentation/combat_audio.gd'
+    text = p.read_text(encoding='utf-8', errors='replace') if p.is_file() else ''
+    out = {'master': 0.8, 'master_source': '못 읽어 기본값', 'mix_gain': 0.11, 'mix_source': '못 읽어 기본값', 'gains': {}, 'slot_default_gain': 1.0, 'silent': []}
+    try:
+        out['gains'] = {k: float(v) for k, v in (gd_const(text, 'GAINS') or {}).items()}
+        out['silent'] = list(gd_const(text, 'SILENT') or [])
+    except (ValueError, TypeError):
+        warnings.append('combat_audio.gd 의 GAINS·SILENT 를 읽지 못해 게임 안 크기를 낼 수 없습니다.')
+    try:
+        sd = gd_const(text, 'SLOT_DEFAULT')
+        if isinstance(sd, dict) and _num(sd.get('gain')) is not None:
+            out['slot_default_gain'] = float(sd['gain'])
+    except ValueError:
+        pass
+    m = re.search(r'^var\s+master_volume\s*(?::\s*float\s*)?:?=\s*([0-9.]+)', text, re.M)
+    if m:
+        out['master'], out['master_source'] = float(m.group(1)), '코드의 기본값'
+    data_mix = None
+    try:
+        d = json.loads((root / 'chapter1/data/audio_map.json').read_text(encoding='utf-8'))
+        data_mix = _num(d.get('mix_gain')) if isinstance(d, dict) else None
+    except (OSError, ValueError):
+        pass
+    code_mix = None
+    try:
+        code_mix = _num(gd_const(text, 'MIX_GAIN_DEFAULT'))
+    except ValueError:
+        pass
+    if code_mix is None:
+        m = re.search(r'master_volume\s*\*\s*(\.?[0-9]*\.[0-9]+)\s*\*', text)
+        code_mix = float(m.group(1)) if m else None
+    if data_mix is not None and data_mix > 0:
+        out['mix_gain'], out['mix_source'] = data_mix, '소리 표(audio_map.json)의 mix_gain'
+    elif code_mix is not None and code_mix > 0:
+        out['mix_gain'], out['mix_source'] = code_mix, '코드(combat_audio.gd)의 값'
+    else:
+        warnings.append('게임의 믹스 값을 못 읽어 0.11 로 가정합니다.')
+    return out
+
+
+def game_gain(mix, parent, slot):
+    """그 자리의 소리가 게임에서 원본에 곱해지는 값(선형). 부모 소리가 없으면 자리 기본값."""
+    g = mix['gains'].get(parent) if parent else None
+    if g is None:
+        g = mix['slot_default_gain']
+    return mix['master'] * mix['mix_gain'] * g
+
+
+def _db(x):
+    import math
+    return round(20 * math.log10(x), 1) if x > 0 else None
+
+
 def slots_table(root, warnings):
     info = map_info(root)
     if info['error']:
         warnings.append(info['error'])
     consts = _gd_consts(root, warnings)
+    mix = mix_info(root, info, warnings)
     rows = []
     for slot, spec in info['slots'].items():
         own = slot_owner(slot)
         moment = slot.split('.')[-1]
-        rows.append({'slot': slot, 'label': MOMENT_LABEL.get(moment, moment), 'parent': (spec or {}).get('parent', ''),
+        parent = (spec or {}).get('parent', '')
+        gg = game_gain(mix, parent, slot)
+        rows.append({'slot': slot, 'label': MOMENT_LABEL.get(moment, moment), 'parent': parent,
                      'per_targets': (spec or {}).get('per_targets'), 'owner': {'elem': own[0], 'form': own[1]} if own else None,
-                     'current': current_sound(root, slot, info, consts)})
+                     'current': current_sound(root, slot, info, consts), 'game_gain': round(gg, 6), 'game_db': _db(gg)})
+    og = game_gain(mix, '', '')
     return {'rev': info['rev'], 'schema': info['schema'], 'rows': rows,
+            'mix': {'master': mix['master'], 'mix_gain': mix['mix_gain'], 'mix_source': mix['mix_source'], 'master_source': mix['master_source'],
+                    'default_gain': round(og, 6), 'default_db': _db(og), 'silent_parents': mix['silent']},
             'note': '' if info['slots'] else '이 소리 표(audio_map.json)는 스키마 %s 라 소리 자리가 없습니다. 소리 자리가 들어오면 여기에 나옵니다.' % (info['schema'] or '?')}
 
 

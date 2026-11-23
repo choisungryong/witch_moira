@@ -104,7 +104,7 @@ class _Lit:
                 raise ValueError('Bad string literal')
             self.i = m.end()
             return m.group(1)
-        m = re.compile(r'-?\d+(?:\.\d+)?').match(s, self.i)
+        m = re.compile(r'-?(?:\d+(?:\.\d+)?|\.\d+)').match(s, self.i)
         if m:
             self.i = m.end()
             return float(m.group()) if '.' in m.group() else int(m.group())

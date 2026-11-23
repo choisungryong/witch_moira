@@ -127,6 +127,7 @@ func _ready__chapter() -> void:
 		elif arg.begins_with("--chapter1-quit-after="):_quit_after=float(arg.trim_prefix("--chapter1-quit-after="))
 		elif arg.begins_with("--chapter1-capture-dir="):_capture_dir=arg.trim_prefix("--chapter1-capture-dir=")
 		elif arg.begins_with("--chapter1-seed="):seed_=int(arg.trim_prefix("--chapter1-seed="))
+		elif arg.begins_with("--chapter1-sfx-gain-db="):audio.set_sfx_test_gain_db(float(arg.trim_prefix("--chapter1-sfx-gain-db=")))
 	if not input_log_path.is_empty():
 		var allowed := ProjectSettings.globalize_path("res://_local/").replace("\\","/")
 		var quality_allowed := ProjectSettings.globalize_path("res://_local/").replace("\\","/")

@@ -33,6 +33,13 @@ var ambience: AudioStreamWAV
 var muted := false
 var paused := true
 var master_volume := .8
+## One number for every one-shot (not the ambience loop): audio_map.json `mix_gain`, MIX_GAIN_DEFAULT when the file has none. A test gain
+## (--chapter1-sfx-gain-db, set_sfx_test_gain_db) multiplies it; 0 dB changes nothing. Only the output of the voices changes, never the core.
+const MIX_GAIN_DEFAULT := .11
+const LIMITER_CEILING_DB := -1.0
+var mix_gain := MIX_GAIN_DEFAULT
+var map_mix_gain := MIX_GAIN_DEFAULT
+var sfx_test_gain_db := 0.0
 var played := 0
 var dropped := 0
 var last_cue_tick: Dictionary={}
@@ -78,6 +85,9 @@ func _load_chain_bank() -> void:
 func reload_map() -> void:
 	slot_table.clear();adopted.clear();adopted_paths.clear();map_errors.clear()
 	var data := _read_map()
+	var mixed = data.get("mix_gain",MIX_GAIN_DEFAULT)
+	map_mix_gain = clampf(float(mixed),.001,2.0) if (mixed is float or mixed is int) and is_finite(float(mixed)) else MIX_GAIN_DEFAULT
+	_refresh_mix_gain()
 	var slots = data.get("slots",{})
 	if slots is Dictionary:
 		for slot in slots:
@@ -214,7 +224,7 @@ func _play_cue(cue: String,tick: int,ui: bool,gain_db: float=0.0,slot: String=""
 			var turn: int=int(pitch_turn.get(group,0));pitch_turn[group]=turn+1
 			voice.pitch_scale=PITCH_STEPS[turn%PITCH_STEPS.size()]
 		voice_gains[index]=float(GAINS[group])*(db_to_linear(gain_db) if gain_db!=0.0 else 1.0)
-		voice.volume_db=linear_to_db(maxf(.0001,master_volume*.11*voice_gains[index]))
+		voice.volume_db=linear_to_db(maxf(.0001,master_volume*mix_gain*voice_gains[index]))
 		voice.stream_paused=false;voice.play()
 		played+=1
 		if tick>=0:last_cue_tick[group]=tick
@@ -246,7 +256,7 @@ func _play_slot(cue: String,slot: String,files: Array,tick: int,ui: bool,gain_db
 			voice.pitch_scale=PITCH_STEPS[turn%PITCH_STEPS.size()]
 		else: voice.pitch_scale=PITCHES[variant%PITCHES.size()]
 		voice_gains[index]=float(GAINS.get(group,SLOT_DEFAULT.gain))*(db_to_linear(gain_db) if gain_db!=0.0 else 1.0)
-		voice.volume_db=linear_to_db(maxf(.0001,master_volume*.11*voice_gains[index]))
+		voice.volume_db=linear_to_db(maxf(.0001,master_volume*mix_gain*voice_gains[index]))
 		voice.stream_paused=false;voice.play()
 		played+=1
 		if tick>=0:last_cue_tick[group]=tick
@@ -276,11 +286,31 @@ func set_master_volume(value: float) -> void:
 	if not is_finite(value):return
 	master_volume=clampf(value,0,1);apply_volume()
 
+## Test only: raise or lower every one-shot by `db` (0 = as the data says). Above 0 dB a hard limiter is put on the Master bus
+## (ceiling LIMITER_CEILING_DB) so a big gain cannot clip; at 0 or below no effect is added, the output is as before.
+func set_sfx_test_gain_db(db: float) -> void:
+	if not is_finite(db):return
+	sfx_test_gain_db=clampf(db,-40.0,30.0)
+	_refresh_mix_gain()
+	if sfx_test_gain_db>0.0 and not _limiter_on():
+		var limiter := AudioEffectHardLimiter.new()
+		limiter.ceiling_db=LIMITER_CEILING_DB
+		AudioServer.add_bus_effect(0,limiter)
+	apply_volume()
+
+func _refresh_mix_gain() -> void:
+	mix_gain=map_mix_gain*(db_to_linear(sfx_test_gain_db) if sfx_test_gain_db!=0.0 else 1.0)
+
+func _limiter_on() -> bool:
+	for i in AudioServer.get_bus_effect_count(0):
+		if AudioServer.get_bus_effect(0,i) is AudioEffectHardLimiter:return true
+	return false
+
 func apply_volume() -> void:
 	for index in voices.size():
-		# Individual peaks<=.68 *12voices*.11 =.8976 at master1.
+		# Individual peaks<=.68 *12voices*.11 =.8976 at master1 (with the default mix_gain; see MIX_GAIN_DEFAULT).
 		# Looppeak<=.22*.025 adds.0055, so even worst phase alignment stays bounded.
-		var gain := .025 if index==0 else .11*voice_gains[index]
+		var gain := .025 if index==0 else mix_gain*voice_gains[index]
 		voices[index].volume_db=linear_to_db(maxf(.0001,master_volume*gain)) if not muted else -80
 
 func reset() -> void:

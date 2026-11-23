@@ -159,6 +159,42 @@ class DataTests(Base):
         self.assertEqual(rows['skill.meteor.land']['owner'], {'elem': 'ember', 'form': 'evolved'})
         self.assertEqual(rows['skill.arc.cast']['per_targets'], 3)
 
+    def _write_audio(self, text):
+        (self.root / 'chapter1/presentation/combat_audio.gd').write_text(text, encoding='utf-8')
+
+    def test_game_loudness_matches_code_and_data(self):
+        import math
+        self._write_audio(COMBAT_AUDIO + 'const GAINS := {"fire":.8,"lightning":.82,"explosion":1.0}\nconst SLOT_DEFAULT := {"cooldown":60,"gain":1.0}\nvar master_volume := .8\n'
+                          'func f():\n\tvoice.volume_db=linear_to_db(maxf(.0001,master_volume*.11*voice_gains[index]))\n')
+        t = skill_lab.slots_table(self.root, [])
+        rows = {r['slot']: r for r in t['rows']}
+        self.assertEqual((t['mix']['master'], t['mix']['mix_gain']), (0.8, 0.11))        # 코드의 곱셈 리터럴에서
+        self.assertAlmostEqual(rows['skill.ember.cast']['game_gain'], 0.8 * 0.11 * 0.8, places=6)
+        self.assertEqual(rows['skill.ember.cast']['game_db'], round(20 * math.log10(0.8 * 0.11 * 0.8), 1))
+        self.assertAlmostEqual(rows['descent.arc.call']['game_gain'], 0.8 * 0.11, places=6)     # 부모 소리 없음: 자리 기본 이득
+        self.assertEqual(rows['skill.arc.cast']['current']['kind'], 'silent')              # 게임 안 무음 표시의 근거
+        self.assertEqual(rows['descent.arc.call']['current']['kind'], 'silent')
+        self.assertEqual(t['mix']['silent_parents'], ['lightning'])
+
+    def test_mix_gain_order_data_then_code_then_default(self):
+        self._write_audio(COMBAT_AUDIO + 'const MIX_GAIN_DEFAULT := .2\n')
+        self.assertEqual(skill_lab.slots_table(self.root, [])['mix']['mix_gain'], 0.2)     # 코드 상수
+        mp = self.root / 'chapter1/data/audio_map.json'
+        d = json.loads(mp.read_text(encoding='utf-8')); d['mix_gain'] = 0.3
+        mp.write_text(json.dumps(d), encoding='utf-8')
+        self.assertEqual(skill_lab.slots_table(self.root, [])['mix']['mix_gain'], 0.3)     # 데이터가 먼저
+        d.pop('mix_gain'); mp.write_text(json.dumps(d), encoding='utf-8')
+        self._write_audio(COMBAT_AUDIO)
+        w = []
+        self.assertEqual(skill_lab.slots_table(self.root, w)['mix']['mix_gain'], 0.11)     # 못 읽으면 0.11, 경고
+        self.assertTrue(w)
+
+    def test_real_repo_values_are_read(self):
+        t = skill_lab.slots_table(skill_lab.ROOT, [])
+        self.assertTrue(0 < t['mix']['mix_gain'] < 1 and 0 < t['mix']['master'] <= 1)
+        self.assertIn('lightning', t['mix']['silent_parents'])
+        self.assertTrue(all(r['game_db'] is not None and r['game_db'] < 0 for r in t['rows']))
+
     def test_typed_const_is_read_by_gd_const(self):
         import catalog
         t = 'const SILENT: Array[String] = ["lightning", "x"]\nconst D: Dictionary = {"a": 1}\nconst E := 3\nconst F: int = 4\n'

@@ -1,5 +1,5 @@
 """Loopback-only manager server: read-only catalog plus atomic management notes (stdlib only)."""
-import argparse, json, mimetypes, os, re, threading
+import argparse, json, mimetypes, os, re, socket, sys, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit, parse_qs
@@ -514,8 +514,43 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(500, {'error': 'Could not write the file: %s' % e.__class__.__name__})
 
 
+class PortInUse(OSError):
+    pass
+
+
+class ExclusiveServer(ThreadingHTTPServer):
+    """같은 포트에 두 번째 서버가 붙지 못하게 한다. Windows 에서는 SO_REUSEADDR 가 이미 듣고 있는 포트에도 붙게 해 주므로
+    allow_reuse_address 를 끄고 SO_EXCLUSIVEADDRUSE 를 건다. 다른 곳(POSIX)은 기본 동작이 이미 막는다."""
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def port_message(port):
+    return ('%d번 포트를 이미 다른 프로그램(옛 제작실 서버일 수 있음)이 쓰고 있어 서버를 띄우지 않았습니다. '
+            '옛 서버를 먼저 끄거나(어느 프로세스인지는 `netstat -ano | findstr :%d` 로 확인), '
+            '`--port %d` 처럼 다른 번호로 띄우세요.' % (port, port, port + 10))
+
+
+def port_is_listening(port):
+    """바인드 전에 접속을 시도해 본다. 누가 듣고 있으면 True."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as c:
+        c.settimeout(0.5)
+        return c.connect_ex(('127.0.0.1', port)) == 0
+
+
 def make_server(port=8781):
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    if port and port_is_listening(port):
+        raise PortInUse(port_message(port))
+    try:
+        server = ExclusiveServer(('127.0.0.1', port), Handler)
+    except OSError as e:
+        if port:
+            raise PortInUse(port_message(port)) from e
+        raise
     server.code_started = code_snapshot()
     refresh(server)
     return server
@@ -525,6 +560,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8781)
     args = parser.parse_args()
-    with make_server(args.port) as server:
+    try:
+        server = make_server(args.port)
+    except PortInUse as e:
+        print(e, flush=True)
+        sys.exit(1)
+    with server:
         print('Manager: http://127.0.0.1:' + str(server.server_port), flush=True)
         server.serve_forever()

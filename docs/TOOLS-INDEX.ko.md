@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 21:20:25 · 도구 170개
+생성: 2026-11-24 00:55:10 · 도구 172개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -247,6 +247,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | 도구 | 머리 주석 | 예시 명령 |
 |---|---|---|
 | `chapter1/tests/asset_usage_probe.gd` | T7-0: which files under chapter1/art/ (and the living-portrait flake pictures) a play-through really loads and draws. |  |
+| `chapter1/tests/audio_level_probe.gd` | Check tool, not product code. Measures how loud the game's own player (chapter1/presentation/combat_audio.gd) is on the Master bus | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/audio_level_probe.gd -- --out=_local/lab-loud/cap` |
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/choice_frame_probe.gd` | Real-time frame interval while the growth-choice window is open (QA tool, no gameplay writes). The built-in pilot plays to the first choice, is parked, | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/choice_frame_probe.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost` |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
@@ -318,6 +319,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/review_sheet.py` | Standard review sheet for generated attempts (replaces sheet_*.py / mkover*.py copies). Read-only on the sources. | `python tools/art/review_sheet.py --items cinder_staff=equipment_icon/cinder_staff-r2.png linen_robe=... [--prev cinder_staff=equipment_icon/cinder_staff-r1.png]`<br>`python tools/art/review_sheet.py --list ROWS.json [--name sheet-name] [--kind icon\|image] [--out FILE.jpg]` |
 | `tools/art/rig_mocap.py` | 사람 동작(다른 뼈대의 glb 동작)을 우리 24뼈 뼈대로 옮긴다. rig_clips.py가 부른다(Blender 5.3 안에서). 순수 계산 부분(디딤 구간 찾기, 디딤 고정)은 Blender 없이 검사된다. |  |
 | `tools/dev/audio_adopt.py` | Sound adoption (T12 skill lab, SL-A): put a candidate's files into a sound slot of the game, or take them out again. | `python tools/dev/audio_adopt.py list [--json]`<br>`python tools/dev/audio_adopt.py adopt  --slot skill.arc.cast --candidate chain-lightning/round2/C7 [--expect-rev SHA] [--dry-run] [--no-import] [--yes]` |
+| `tools/dev/audio_level_report.py` | Level table of recordings (read only): integrated loudness (ebur128 I), true peak, mean and max volume (volumedetect) per file. | `python tools/dev/audio_level_report.py DIR_OR_FILES... [--json out.json]` |
 | `tools/dev/audio_recheck_20261120.py` | Builds the 2026-11-20 recheck bundle (fire comparison again under one rule set + running-current lightning candidates). | `python tools/dev/make_lightning_candidates.py --out _local/audio/lightning-cands-20261120`<br>`python tools/dev/audio_recheck_20261120.py --out C:/Project/witch-moira/_local/sfx/recheck-20261120` |
 | `tools/dev/audio_scene_audition.py` | Scene audition: lay candidate sounds under captured game footage, one video per candidate, plus an answer key and measurements. | `python tools/dev/audio_scene_audition.py CAPTURE_DIR --requests REQ.json --candidates CANDS.json --out _local/audio/audition/20261119-scene`<br>`python tools/dev/audio_scene_audition.py _local/sfx/ember-a --requests _local/sfx/req_ember.json --candidates cands.json --out OUT --open-labels --no-video` |
 | `tools/dev/balance_search.py` | balance_search.py — 균형 시뮬레이터 위의 값 탐색(모델의 답이지 게임의 답이 아니다. 재미는 평가하지 않는다). | `python tools/dev/balance_search.py --stage power --plan A --rounds 3 --out _local/balsim2/s1A`<br>`python tools/dev/balance_search.py --stage threat --init _local/balsim2/s1A.json --out _local/balsim2/s2A` |

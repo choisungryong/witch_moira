@@ -4,7 +4,8 @@
 
 몸 FBX(뼈대 붙음)와 동작 FBX들을 읽어 동작 이름을 논리 이름으로 붙이고, 제자리로 만들 동작은 엉덩이 뼈의 수평 이동 추세를 지우고,
 프레임 범위가 있으면 그 구간만 남기고(0초부터), 질감 두 장(색·법선)을 단 하나의 머티리얼(금속 0, 거칠기 설정값)로 입힌 glb 한 개를 낸다.
-report.json에는 동작마다 길이(초), 엉덩이 수평 이동, 지면 속도 추정, 오른손 뻗음·머리 흔들림 정점 시각을 적는다.
+몸의 쉬는 자세(A자)와 동작 FBX의 쉬는 자세(T자)가 다르므로 동작의 뼈 회전을 그대로 옮기지 않고, 뼈마다 세계 방향이 동작과 같아지게 옮긴다
+(retarget_rest, 설정 rest_retarget=false로 끄면 옛 방식: 뼈 이름으로 회전 복사). report.json에는 동작마다 길이(초), 엉덩이 수평 이동, 지면 속도 추정, 오른손 뻗음·머리 흔들림 정점 시각을 적는다.
 """
 import json
 import math
@@ -174,6 +175,56 @@ def measure(f0, f1, clip_speed=None):
     }
 
 
+def depth(pb):
+    d = 0
+    while pb.parent:
+        pb = pb.parent
+        d += 1
+    return d
+
+
+def sample_clip_pose(carm, f0, f1):
+    """동작 FBX 자신의 뼈대로 재생한 뼈마다의 자세(뼈대 공간 3x3)를 프레임마다 읽어 둔다."""
+    out = {}
+    for f in range(f0, f1 + 1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        out[f] = {pb.name: pb.matrix.to_3x3().normalized() for pb in carm.pose.bones}
+    return out
+
+
+def retarget_rest(carm, clip_pose, f0, f1):
+    """몸 뼈대(A자 쉬는 자세)에 동작 뼈대(T자 쉬는 자세)의 동작을 얹는다.
+    뼈마다 W = D @ S @ Rbody. D = 동작이 쉬는 자세에서 얼마나 돌았나(세계 회전), S = 몸 뼈의 쉬는 방향을 동작 뼈의 쉬는 방향으로 보내는 최단 회전.
+    그러면 W의 뼈 방향 = 동작 뼈의 그 순간 방향이다(팔이 T자에서 내려온 만큼 A자에서 더 안쪽으로 돌지 않는다).
+    부모부터 W를 정해 가며 뼈 자기 회전(rotation_quaternion)을 거꾸로 풀어 키로 넣는다. 위치 채널(엉덩이 이동)은 그대로 둔다."""
+    order = sorted(arm.pose.bones, key=depth)
+    rb = {pb.name: arm.data.bones[pb.name].matrix_local.to_3x3().normalized() for pb in order}
+    rc = {pb.name: carm.data.bones[pb.name].matrix_local.to_3x3().normalized() for pb in order if pb.name in carm.data.bones}
+    shortest = {n: rb[n].col[1].rotation_difference(rc[n].col[1]).to_matrix() for n in rc}
+    prev = {}
+    for f in range(f0, f1 + 1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        want = {}
+        for pb in order:
+            n = pb.name
+            if n in rc and n in clip_pose[f]:
+                want[n] = (clip_pose[f][n] @ rc[n].inverted()) @ shortest[n] @ rb[n]
+            else:
+                par = want[pb.parent.name] if pb.parent else mathutils.Matrix.Identity(3)
+                rel = (rb[pb.parent.name].inverted() @ rb[n]) if pb.parent else rb[n]
+                want[n] = par @ rel @ pb.rotation_quaternion.to_matrix()
+            par = want[pb.parent.name] if pb.parent else mathutils.Matrix.Identity(3)
+            rel = (rb[pb.parent.name].inverted() @ rb[n]) if pb.parent else rb[n]
+            q = ((par @ rel).inverted() @ want[n]).to_quaternion()
+            if n in prev and prev[n].dot(q) < 0:
+                q.negate()
+            prev[n] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=f)
+
+
 report = {"body": cfg["body"], "clips": {}}
 mn = mathutils.Vector((1e9,) * 3)
 mx = mathutils.Vector((-1e9,) * 3)
@@ -191,17 +242,28 @@ for clip in cfg["clips"]:
     before_objs = set(bpy.context.scene.objects)
     bpy.ops.import_scene.fbx(filepath=clip["fbx"], automatic_bone_orientation=False)
     new = [a for a in bpy.data.actions if a not in before]
-    for o in list(bpy.context.scene.objects):
-        if o not in before_objs:
-            bpy.data.objects.remove(o, do_unlink=True)
+    carm = [o for o in bpy.context.scene.objects if o not in before_objs and o.type == "ARMATURE"]
     if not new:
         raise SystemExit("no action in " + clip["fbx"])
     act = new[0]
     act.name = clip["name"]
     sc.render.fps = FPS
-    assign(act)
     a0, a1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
     f0, f1 = (int(clip["frames"][0]), int(clip["frames"][1])) if clip.get("frames") else (a0, a1)
+    clip_pose = None
+    if cfg.get("rest_retarget", True) and carm:
+        if not carm[0].animation_data:
+            carm[0].animation_data_create()
+        carm[0].animation_data.action = act
+        if hasattr(carm[0].animation_data, "action_slot") and act.slots:
+            carm[0].animation_data.action_slot = act.slots[0]
+        clip_pose = sample_clip_pose(carm[0], f0, f1)
+    assign(act)
+    if clip_pose is not None:
+        retarget_rest(carm[0], clip_pose, f0, f1)
+    for o in list(bpy.context.scene.objects):
+        if o not in before_objs:
+            bpy.data.objects.remove(o, do_unlink=True)
     info = {"fbx": clip["fbx"].split("/")[-1], "source_frames": [a0, a1], "used_frames": [f0, f1]}
     if clip.get("in_place"):
         info["trend_removed_m"] = round(strip_trend(f0, f1), 4)

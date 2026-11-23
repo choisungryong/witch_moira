@@ -50,7 +50,7 @@ def parse_rules(player=am.PLAYER):
         'counts': {k: int(v) for k, v in table('COUNTS').items()}, 'cooldowns': {k: int(v) for k, v in table('COOLDOWNS').items()},
         'gains': table('GAINS'), 'max_voices': int(re.search(r'const MAX_VOICES\s*:?=\s*(\d+)', text).group(1)),
         'master': float(re.search(r'var master_volume\s*:?=\s*([\d.]+)', text).group(1)), 'pitches': pitches,
-        'one_shot_gain': float(re.search(r'\.11\b', text).group()),
+        'one_shot_gain': float((re.search(r'MIX_GAIN_DEFAULT\s*:=\s*([\d.]+)', text) or re.search(r'(\.11)\b', text)).group(1)),
         'ambience_gain': float(re.search(r'\.025\b', text).group()),
         # cues that make no sound until replaced (combat_audio.gd SILENT); the game returns before cooldown and voice
         'silent': re.findall(r'"(\w+)"', (re.search(r'const SILENT\b[^=]*=\s*\[([^\]]*)\]', text) or [None, ''])[1]),

@@ -325,6 +325,25 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.post({'revision': 1, 'id': 'nope', 'changes': {'notes': 'x'}}, origin)[0], 400)
         self.assertEqual(self.post({'revision': 1, 'id': 'run:xp', 'changes': {'notes': 'x'}}, 'http://evil.com')[0], 403)
 
+class PortGuardTests(unittest.TestCase):
+    def test_second_server_on_same_port_fails(self):
+        first = server.make_server(0)
+        try:
+            port = first.server_port
+            with self.assertRaises(server.PortInUse) as cm:
+                server.make_server(port)
+            self.assertIn(str(port), str(cm.exception))
+            self.assertIn('--port', str(cm.exception))
+        finally:
+            first.server_close()
+
+    def test_exclusive_bind_blocks_even_without_the_connect_probe(self):
+        first = server.ExclusiveServer(('127.0.0.1', 0), server.Handler)
+        try:
+            with self.assertRaises(OSError):
+                server.ExclusiveServer(('127.0.0.1', first.server_port), server.Handler)
+        finally:
+            first.server_close()
 
 if __name__ == '__main__':
     unittest.main()

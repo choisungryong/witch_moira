@@ -14,7 +14,7 @@
   let sel = {elem: null, form: 'base'}, opts = Object.assign({}, DEFAULTS), audio = {}, hero = false;
   let synced = false, sendTimer = null, message = '', msgKind = 'info', shotName = '', result = null;
   let clips = {A: null, B: null}, clipList = null, clipTimer = null;
-  let ctx = null, source = null;
+  let ctx = null, source = null, loud = (function () { try { return localStorage.getItem('sl-loud') === 'raw' ? 'raw' : 'game'; } catch { return 'game'; } })();
   const analysis = [];            // 이번 방문에서 들어 본 소리의 잰 값
 
   async function call(url, options) {
@@ -96,8 +96,14 @@
     return {main, other: rows.filter(r => !r.owner)};
   }
 
-  function fileButtons(prefix, n) {
-    return Array.from({length: n}, (_, i) => `<button type="button" class="sl-play" data-play="${esc(prefix)}&n=${i}" aria-label="듣기 ${i + 1}">▶${n > 1 ? i + 1 : ''}</button>`).join('');
+  function fileButtons(prefix, n, gain) {
+    const g = gain == null ? ((ov.slots.mix || {}).default_gain ?? 1) : gain;
+    return Array.from({length: n}, (_, i) => `<button type="button" class="sl-play" data-play="${esc(prefix)}&n=${i}" data-gain="${g}" aria-label="듣기 ${i + 1}">▶${n > 1 ? i + 1 : ''}</button>`).join('');
+  }
+  function dbText(db) { return db == null ? '' : Math.abs(db).toFixed(1) + ' dB'; }
+  function loudLine(r) {
+    if (loud === 'raw') return '원본 크기로 들려 줍니다.';
+    return `게임 안 크기: 원본보다 ${dbText(r.game_db)} 작게`;
   }
 
   function slotHtml(r) {
@@ -108,14 +114,15 @@
       const chosen = audio[r.slot] === c.id, inWin = using === c.id;
       return `<div class="sl-cand ${chosen ? 'chosen' : ''}"><div class="sl-cand-t"><strong>${esc(c.key)}</strong> <span>${esc(c.label)}</span>
         ${inWin ? '<span class="badge is-ok">창이 지금 씀</span>' : chosen ? '<span class="badge is-info">끼움 고름</span>' : ''}${c.missing.length ? '<span class="badge is-bad">파일 없음</span>' : ''}${c.origin_known ? '' : '<span class="badge deferred" title="후보 목록에 출처가 없음">출처 미확인</span>'}</div>
-        <div class="sl-cand-b">${fileButtons('/api/skill-lab/audio?id=' + encodeURIComponent(c.id), c.paths.length)}
+        <div class="sl-cand-b">${fileButtons('/api/skill-lab/audio?id=' + encodeURIComponent(c.id), c.paths.length, r.game_gain)}
         <button type="button" data-fit="${esc(r.slot)}" data-cand="${esc(c.id)}" ${c.missing.length ? 'disabled' : ''}>끼우기</button>
         <button type="button" data-clip-cand="${esc(c.id)}" data-slot="${esc(r.slot)}" ${c.missing.length ? 'disabled' : ''}>이 소리로 영상</button>
         <button type="button" class="sl-adopt" data-adopt="${esc(c.id)}" data-slot="${esc(r.slot)}" ${ov.adopt.available && !c.missing.length ? '' : 'disabled'}>채택</button></div></div>`;
     }).join('') || '<p class="bl-help">이 자리에 올라온 후보가 없습니다.</p>';
     return `<section class="sl-slot" data-slot="${esc(r.slot)}"><h4>${esc(r.label)} <small>${esc(r.slot)}${r.shared ? ' · 기본 스킬의 자리' : ''}</small></h4>
       <div class="sl-cur"><span class="badge ${kind[1]}">${kind[0]}</span> <span>${esc(cur.note || (cur.kind === 'adopted' ? '채택: ' + (cur.candidate || '') + ' ' + (cur.date || '') : ''))}</span>
-        ${cur.files.length ? fileButtons('/api/skill-lab/audio?slot=' + encodeURIComponent(r.slot), cur.files.length) : ''}</div>
+        ${cur.files.length ? fileButtons('/api/skill-lab/audio?slot=' + encodeURIComponent(r.slot), cur.files.length, r.game_gain) : ''}</div>
+      <p class="sl-loud">${cur.kind === 'silent' ? '<span class="badge is-warn">게임 안에서는 아직 소리가 없음</span> ' : ''}${esc(loudLine(r))}</p>
       ${rows}
       <div class="sl-cand-b"><button type="button" data-unfit="${esc(r.slot)}" ${audio[r.slot] || using ? '' : 'disabled'}>지금 것으로 되돌리기</button>
         <button type="button" data-revert="${esc(r.slot)}" ${cur.kind === 'adopted' && ov.adopt.available ? '' : 'disabled'}>채택 취소</button></div></section>`;
@@ -123,7 +130,11 @@
 
   function soundHtml() {
     const {main, other} = slotsFor();
-    let h = '<h3>소리</h3>';
+    const mx = ov.slots.mix || {};
+    let h = `<h3>소리</h3><div class="sl-group sl-checks sl-loudpick"><span class="sl-k">듣는 크기</span>
+      <label><input type="radio" name="sl-loud" value="game" ${loud === 'game' ? 'checked' : ''}> 게임 안 크기</label>
+      <label><input type="radio" name="sl-loud" value="raw" ${loud === 'raw' ? 'checked' : ''}> 원본 크기</label></div>
+      <p class="bl-help">${loud === 'game' ? '게임이 소리마다 곱하는 값(음량 ' + esc(mx.master) + ' × 믹스 ' + esc(mx.mix_gain) + ' × 소리 자리별 값)을 단추에 똑같이 적용합니다.' : '파일 그대로(0 dB) 들려 줍니다. 후보끼리 견줄 때는 이쪽이 맞습니다. 게임 안에서는 20 dB 안팎 작게 납니다.'} 아래 파형·dB 표는 어느 쪽이든 원본 파일을 잰 값입니다.</p>`;
     if (!ov.slots.rows.length) h += `<p class="alert warn">${esc(ov.slots.note)}</p>`;
     else if (!main.length) h += '<p class="bl-help">이 스킬에 묶인 소리 자리가 표에 없습니다.</p>';
     h += main.map(slotHtml).join('');
@@ -223,7 +234,7 @@
 
   // ---------------------------------------------------------------- 소리 듣기와 재기
   function audioCtx() { return ctx || (ctx = new (window.AudioContext || window.webkitAudioContext)()); }
-  async function play(url) {
+  async function play(url, gain) {
     try {
       const ac = audioCtx();
       if (ac.state === 'suspended') await ac.resume();
@@ -231,7 +242,7 @@
       if (!r.ok) throw new Error('소리 파일을 받지 못했습니다(' + r.status + ')');
       const buf = await ac.decodeAudioData(await r.arrayBuffer());
       if (source) { try { source.stop(); } catch {} }
-      source = ac.createBufferSource(); source.buffer = buf; source.connect(ac.destination); source.start();
+      source = ac.createBufferSource(); source.buffer = buf; const g = ac.createGain(); g.gain.value = loud === 'game' && gain > 0 ? Math.min(1, gain) : 1; source.connect(g); g.connect(ac.destination); source.start();
       const name = decodeURIComponent((url.match(/(?:id|slot)=([^&]+)/) || [])[1] || '?') + ' #' + ((url.match(/n=(\d+)/) || [])[1] ?? '0');
       let peak = 0, sum = 0, n = 0;
       const wave = [];
@@ -375,7 +386,7 @@
     if ((b = t.closest('[data-elem]'))) { sel = {elem: b.dataset.elem, form: b.dataset.form}; render(); queueSend(); return; }
     if ((b = t.closest('[data-layout]'))) { opts.layout = b.dataset.layout; render(); queueSend(); return; }
     if ((b = t.closest('[data-speed]'))) { opts.speed = +b.dataset.speed; render(); queueSend(); return; }
-    if ((b = t.closest('[data-play]'))) return play(b.dataset.play);
+    if ((b = t.closest('[data-play]'))) return play(b.dataset.play, parseFloat(b.dataset.gain));
     if ((b = t.closest('[data-fit]'))) { audio[b.dataset.fit] = b.dataset.cand; render(); queueSend(); if (!live()) say('창이 떠 있지 않아 고른 후보는 "시험실 열기" 때 함께 적용됩니다.'); return; }
     if ((b = t.closest('[data-unfit]'))) { delete audio[b.dataset.unfit]; render(); queueSend(); return; }
     if ((b = t.closest('[data-adopt]'))) return doAdopt(b.dataset.slot, b.dataset.adopt);
@@ -406,6 +417,7 @@
     if (!open || !t.closest('#skill-lab')) return;
     if (t.id === 'sl-count') { opts.count = +t.value; $('#sl-count-n').textContent = t.value; queueSend(); }
     else if (t.name === 'sl-motion') { opts.motion = t.value; queueSend(); }
+    else if (t.name === 'sl-loud') { loud = t.value === 'raw' ? 'raw' : 'game'; try { localStorage.setItem('sl-loud', loud); } catch {} const col = $('#skill-lab .sl-right'); if (col) { col.innerHTML = soundHtml(); drawWaves(); } }
     else if (t.id === 'sl-durable') { opts.durable = t.checked; queueSend(); }
     else if (t.id === 'sl-juice') { opts.juice = t.checked; queueSend(); }
     else if (t.id === 'sl-repeat') { opts.repeat = t.checked; queueSend(); }
