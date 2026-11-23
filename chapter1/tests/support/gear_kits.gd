@@ -126,6 +126,18 @@ static func install(run, built: Dictionary) -> Dictionary:
 	run._recompute_gear()
 	return map
 
+## Wear the kit from tick 0 through the core's own starting-gear import (the way a run starts with town gear; required levels are not enforced there).
+static func wear_from_start(run, built: Dictionary) -> bool:
+	var gear: Array[Dictionary] = []
+	var n := 0
+	for entry in built.items:
+		var item: Dictionary = entry.item.duplicate(true)
+		n += 1
+		item["storage_id"] = "kit-%d" % n
+		item["equip_slot"] = String(entry.equip)
+		gear.append(item)
+	return run.import_starting_gear(gear)
+
 ## Model of the standing-power ratio S(kit) / S(baseline): contact damage scales with (1 - damage reduction), life with max_hp, the potion share is the same
 ## (D12 P4 S definition). A model answer, not a measurement. dr_bps is the plain sum of the kit's damage_reduction_bps (no cap in the core today).
 static func s_ratio(sums: Dictionary) -> float:

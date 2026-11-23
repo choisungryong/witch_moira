@@ -10,6 +10,10 @@ extends SceneTree
 ## D22 R0-A (read-only, only this tool; with none of these the printed output of a rhythm-off run is unchanged): --no-trial-arena (--rhythm-on does not switch the 45 s hold on, the same run as the app's
 ## `--chapter1-trial=rhythm`), --stand (the pilot's movement is zeroed; casting and the grace pick stay the pilot's; prints when and in which beat / opening step the hero fell),
 ## --targets=d22 (the D22 3.4 table, with the opening as its own beat), and with --thirds: wave-crest / lull ratios, grace-density figures, and the card kinds offered after level 12.
+## D23 T1 appendix A.6 (2), layer 2 (with none of these the output is unchanged): --gear-kit=none,kit.f2.@.r3,kit.d1_end,... wears the kit from the START of every run (core.import_starting_gear, memory only; the
+##   data files and the saves are untouched) and prints a table against the bare hero ("none", same seed): damage taken (whole run, worst 60 s window), guardian / boss kill time, defeats, run length, with the
+##   A.5 verdicts. "@" in a kit name = the primary's series (ember / frost / arc). Kits come from tests/fixtures/gear_kits.json plus --kits-file=_local/..json (the F2 kits of sim_loot.gd --wear). The kit order is
+##   the outer loop, so a run list is kit by kit; the printed per-run lines are short in this mode.
 ## Grouping: fixed-size time bins (--bin seconds), D11 A2 beats, and zones. Beats are grouped by `beat_started` core
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
@@ -43,6 +47,14 @@ const BEATS_D22 := [
 	{"name": "전C", "from": 380.0, "to": 1.0e9, "alive_avg": [10, 25], "alive_max": null, "kpm": null, "hits_pm": null, "dmg30": null},
 ]
 const OPENING_NAME := "도입"
+const GearKits = preload("res://chapter1/tests/support/gear_kits.gd")
+const LootData = preload("res://chapter1/core/loot.gd")
+## D23 T1 appendix A.5, layer 2 [hypothesis]: damage taken (60 s window) and guardian / boss kill time against the bare hero, defeats 0. kill_floor = "too easy" below it.
+const A5_ROWS := {
+	"r3": {"label": "r3 / d1_start", "dmg": [0.65, 0.85], "kill": [0.70, 0.85], "kill_floor": 0.70},
+	"r15": {"label": "r15 / d1_end", "dmg": [0.40, 0.65], "kill": [0.50, 0.70], "kill_floor": 0.50},
+	"r30": {"label": "r30 / d2_mid", "dmg": null, "kill": [0.40, 1.0], "kill_floor": 0.40},
+}
 const CREST_AFTER_TICKS := 600        ## the peak of the alive count is taken over 10 s after a wave_crest
 const BEAT_NAMES := {"gi": "기", "seung1": "승1", "seung2": "승2", "jeon_a": "전A", "trial": "전B", "boss": "전C"}
 const METRICS := ["alive_avg", "alive_max", "kpm", "hits_pm", "dmg30"]
@@ -54,6 +66,11 @@ var no_trial_arena := false
 var stand_on := false
 var targets_name := ""
 var targets: Array = BEATS
+var gear_kit_names: Array = []
+var kits_file := ""
+var cur_kit := ""
+var kit_fixture: Dictionary = {}
+var kit_loot = null
 ## --rhythm-on: test switch. The shipped document is read, rhythm.enabled and trial.enabled are set in memory only.
 var rhythm_on := false
 ## --stop-s=N: end every run after N seconds (a short look at the first minutes, e.g. the run opening with --bin=10).
@@ -120,6 +137,10 @@ func execute() -> void:
 		elif arg == "--thirds": thirds_on = true
 		elif arg == "--no-trial-arena": no_trial_arena = true
 		elif arg == "--stand": stand_on = true
+		elif arg.begins_with("--gear-kit="):
+			gear_kit_names = []
+			for part in arg.trim_prefix("--gear-kit=").split(","): gear_kit_names.append(String(part))
+		elif arg.begins_with("--kits-file="): kits_file = arg.trim_prefix("--kits-file=")
 		elif arg.begins_with("--targets="):
 			targets_name = arg.trim_prefix("--targets=")
 			if targets_name != "d22":
@@ -156,21 +177,45 @@ func execute() -> void:
 			quit(1)
 			return
 		descent_doc = parsed2
-	var runs: Array = []
-	for prim in prims:
-		for s in seeds:
-			var r := play(int(s), String(prim), tuning_doc, descent_doc)
-			if r.is_empty():
-				quit(2)
+	var gear_mode := not gear_kit_names.is_empty()
+	if gear_mode:
+		kit_fixture = GearKits.load_fixture()
+		if kits_file != "":
+			if not kits_file.begins_with("_local/") or kits_file.contains("..") or kits_file.contains(":"):
+				push_error("measure_rhythm: --kits-file must be a relative path under _local/ (got %s)" % kits_file)
+				quit(1)
 				return
-			runs.append(r)
-			print_run(r)
-			if thirds_on: print_sweep_run(r)
+			var extra := GearKits.load_fixture("res://" + kits_file)
+			for k in extra.get("kits", {}): kit_fixture.kits[k] = extra.kits[k]
+		kit_loot = LootData.new()
+		if kit_fixture.is_empty() or not kit_loot.load_file():
+			push_error("measure_rhythm: gear kit fixture or loot data unreadable")
+			quit(1)
+			return
+	var kit_list: Array = gear_kit_names if gear_mode else [""]
+	var runs: Array = []
+	for kit in kit_list:
+		for prim in prims:
+			for s in seeds:
+				cur_kit = String(kit)
+				var r := play(int(s), String(prim), tuning_doc, descent_doc)
+				if r.is_empty():
+					quit(2)
+					return
+				runs.append(r)
+				if gear_mode:
+					print(gear_line(r))
+					continue
+				print_run(r)
+				if thirds_on: print_sweep_run(r)
 	var cross := cross_summary(runs)
-	print_cross(cross)
-	if descent_policy != "": print_descent_cross(runs)
-	if stand_on: print_stand_cross(runs)
-	if thirds_on: print_thirds(runs)
+	if gear_mode:
+		print_gear_table(runs)
+	else:
+		print_cross(cross)
+	if descent_policy != "" and not gear_mode: print_descent_cross(runs)
+	if stand_on and not gear_mode: print_stand_cross(runs)
+	if thirds_on and not gear_mode: print_thirds(runs)
 	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "descent_cross": (descent_cross(runs) if descent_policy != "" else {}), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
@@ -265,6 +310,12 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	if not run.start(seed_, prim):
 		push_error("measure_rhythm: start failed %s" % str(run.errors))
 		return {}
+	if cur_kit != "" and cur_kit != "none":
+		var kit_problem := install_kit(run, cur_kit, prim)
+		if kit_problem != "":
+			push_error("measure_rhythm: " + kit_problem)
+			return {}
+	var dmg_raw_s: Array = []
 	var policy_rng := RandomNumberGenerator.new()
 	policy_rng.seed = (seed_ * 2654435761) ^ (GracePolicies.ALL_POLICIES.find(policy_name) * 40503 + 977)
 	var sw := new_sweep(run)
@@ -324,6 +375,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
 			var esec: float = float(ev.tick) / 60.0
 			sweep_event(sw, ev, run, prim)
+			if String(ev.type) == "hero_hit": bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
@@ -428,7 +480,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "calls": descent_calls, "view": run.descent_view()},
 		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
-		"end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
+		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
 
 # ---------- D22 R0-A helpers (read-only) ----------
 ## The name (as the beat tables use), cap and lull length of a core beat id; the opening steps report as the opening. {} = not a beat of the table.
@@ -802,6 +854,112 @@ func check_beat(name: String, m: Dictionary, bin_list: Array) -> Dictionary:
 	for k in METRICS:
 		out[k] = {"value": vals[k], "target": t[k], "verdict": range_verdict(float(vals[k]), t[k])}
 	return out
+
+# ---------- D23 T1 appendix A.6 (2): the kit worn from the start, and its table ----------
+## The kit (name, "@" = the series) worn through the core's own starting-gear import. "" = ok.
+func install_kit(run, kit: String, prim: String) -> String:
+	var name := kit.replace("@", prim.trim_prefix("chapter1.skill."))
+	var built := GearKits.items(kit_loot, kit_fixture, name)
+	if not bool(built.ok): return "gear kit %s: %s" % [name, str(built.errors)]
+	# The worn-from-the-start import lives in support/gear_kits.gd (this file keeps no reference to the profile or the import: test_profile_v5 V5-16).
+	if not GearKits.wear_from_start(run, built): return "the core refused the kit %s (validate or slots)" % name
+	return ""
+
+## Damage taken (HP) of the whole run and of the worst 60 s window, from the hero_hit events (damage_raw is after reduction).
+func gear_summary(run, dmg_raw_s: Array) -> Dictionary:
+	var total := 0.0
+	for v in dmg_raw_s: total += float(v)
+	var worst := 0.0
+	var window := 0.0
+	for i in dmg_raw_s.size():
+		window += float(dmg_raw_s[i])
+		if i >= 60: window -= float(dmg_raw_s[i - 60])
+		worst = maxf(worst, window)
+	return {"dmg_hp": snappedf(total / 256.0, 0.1), "dmg_worst60_hp": snappedf(worst / 256.0, 0.1), "max_hp": snappedf(float(run.hero.max_hp_raw) / 256.0, 0.1)}
+
+func guardian_times(r: Dictionary) -> Dictionary:
+	var out := {}
+	for b in r.sweep.big:
+		if String(b.kind).begins_with("guardian") and float(b.death_s) >= 0.0: out[String(b.kind)] = float(b.lived_s)
+	return out
+
+func gear_line(r: Dictionary) -> String:
+	var g: Dictionary = r.gear
+	var times := guardian_times(r)
+	return "RUN %s seed=%d kit=%s mode=%s secs=%.1f kills=%d level=%d maxhp=%.0f dmg_hp=%.0f worst60_hp=%.0f guardians_s=%s" % [r.primary, r.seed, String(r.kit), r.mode, r.secs, r.kills, r.summary.level, float(g.max_hp), float(g.dmg_hp), float(g.dmg_worst60_hp), str(times)]
+
+func kit_row(kit: String) -> String:
+	for key in ["r3", "r15", "r30"]:
+		if kit.ends_with("." + key): return key
+	if kit == "kit.d1_start": return "r3"
+	if kit == "kit.d1_end" or kit.begins_with("kit.d1_end_v1"): return "r15"
+	if kit == "kit.d2_mid": return "r30"
+	return ""
+
+func ratio_word(v: float, rng_: Variant) -> String:
+	if not rng_ is Array: return "기록"
+	if v < float(rng_[0]): return "아래(쉬움)"
+	if v > float(rng_[1]): return "위(약함)"
+	return "안"
+
+## The layer-2 table: each kit against "none" (same primary and seed). Ratios are medians of the paired ratios; the verdicts are the A.5 rows (kit name -> row).
+func print_gear_table(runs: Array) -> void:
+	var by_key := {}
+	for r in runs: by_key["%s|%s|%d" % [r.kit, r.primary, r.seed]] = r
+	var kits: Array = []
+	for r in runs:
+		if not String(r.kit) in kits: kits.append(String(r.kit))
+	print("")
+	print("LAYER2 table (paired with 'none' by primary and seed; medians of the paired ratios; ratio < 1 = less damage taken / faster kill; mode %s)" % ("rhythm on" if rhythm_on else "rhythm off (shipped)"))
+	print("%-24s %-6s %3s | %8s %8s | %8s %8s %8s | %7s %6s | %s" % ["kit", "primary", "n", "dmg tot", "dmg w60", "kill all", "kill g3", "kill g1", "defeat", "secs", "A.5 verdict (damage w60 / kill / defeat)"])
+	var groups: Array = ["all"]
+	for p in ["ember", "frost", "arc"]:
+		for r in runs:
+			if String(r.primary) == p and not p in groups:
+				groups.append(p)
+				break
+	for kit in kits:
+		if kit == "none": continue
+		for grp in groups:
+			var dt: Array = []
+			var dw: Array = []
+			var ka: Array = []
+			var k3: Array = []
+			var k1: Array = []
+			var sc: Array = []
+			var defeats := 0
+			var n := 0
+			for r in runs:
+				if String(r.kit) != kit or (grp != "all" and String(r.primary) != grp): continue
+				var kitname := String(r.kit).replace("@", String(r.primary))
+				var base: Dictionary = by_key.get("none|%s|%d" % [r.primary, r.seed], {})
+				if base.is_empty(): continue
+				n += 1
+				if String(r.mode) == "defeat": defeats += 1
+				var g: Dictionary = r.gear
+				var bg: Dictionary = base.gear
+				if float(bg.dmg_hp) > 0.0:
+					dt.append(float(g.dmg_hp) / float(bg.dmg_hp))
+					dw.append(float(g.dmg_worst60_hp) / maxf(0.001, float(bg.dmg_worst60_hp)))
+				var gt := guardian_times(r)
+				var bt := guardian_times(base)
+				var rs: Array = []
+				for k in gt:
+					if bt.has(k) and float(bt[k]) > 0.0:
+						rs.append(float(gt[k]) / float(bt[k]))
+						if k == "guardian3": k3.append(rs[rs.size() - 1])
+						if k == "guardian1": k1.append(rs[rs.size() - 1])
+				if not rs.is_empty(): ka.append(median(rs))
+				sc.append(float(r.secs) / maxf(0.1, float(base.secs)))
+			var row: Dictionary = A5_ROWS.get(kit_row(kit.replace("@", "x")), {})
+			var verdict := "-"
+			if not row.is_empty() and not dw.is_empty() and not ka.is_empty():
+				verdict = "%s: %s / %s / %s" % [String(row.label), ratio_word(median(dw), row.dmg), ratio_word(median(ka), row.kill), ("안" if defeats == 0 else "밖(%d)" % defeats)]
+			print("%-24s %-6s %3d | %8s %8s | %8s %8s %8s | %7d %6s | %s" % [kit, grp, n, med_text(dt), med_text(dw), med_text(ka), med_text(k3), med_text(k1), defeats, med_text(sc), verdict])
+	print("note: damage = hero_hit damage_raw / 256 (HP) summed over the run; w60 = the worst 60 s window. The kit is worn from tick 0 although its required levels are above level 1 (the core's starting-gear import allows it, as the town does).")
+
+func med_text(v: Array) -> String:
+	return "%.2f" % median(v) if not v.is_empty() else "-"
 
 # ---------- cross-run ----------
 func median(arr: Array) -> float:
