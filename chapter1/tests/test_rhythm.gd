@@ -27,8 +27,28 @@ func check(ok: bool, message: String) -> void:
 		failures.append(message)
 		push_error(message)
 
-func shipped() -> Dictionary:
+## The data file exactly as it is: since CB-R2 its rhythm block is valued (L3-final), switches off.
+func data_file() -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string(TUNING))
+
+## The data file without the rhythm's optional threat keys (R1B: ranged_cap, crest mix, crest count_jitter_bps, squad, guardian) and without guardian_grace and kill_burst.
+## Its level table and seal kills are the file's own (rhythm.xp_thresholds, rhythm.seal_kills).
+## The R1B checks say "without the key ..."; they run on this keyless document, as they did when the file carried none of them.
+## The numbers that stay (crest counts, lulls, opening) are the file's own.
+func shipped() -> Dictionary:
+	var doc := data_file()
+	doc.rhythm.erase("guardian")
+	# C1 sweeps and guardian graces are checked in test_growth_pace; here the beats run without them (one grace, at the boss).
+	doc.rhythm.erase("guardian_grace")
+	doc.rhythm.erase("kill_burst")
+	for beat in doc.rhythm.beats:
+		beat.erase("ranged_cap")
+		if beat.get("wave") is Dictionary:
+			beat.wave.erase("squad")
+			if beat.wave.get("crest") is Dictionary:
+				beat.wave.crest.erase("mix")
+				beat.wave.crest.erase("count_jitter_bps")
+	return doc
 
 ## The shipped document with the rhythm switched on (and the trial, when asked), then `mutate` applied.
 func document(trial: bool, mutate: Callable = Callable()) -> Dictionary:
@@ -162,7 +182,9 @@ func scenario_b(verify: bool) -> Dictionary:
 	var rec := {"events": [], "max_out": 0.0, "min_out": 1.0e9, "objective_trial": [], "progress_trial": [], "progress_boss": [], "objective_boss": [], "champion_tick": -1, "xp_at_boss": -1, "level_at_boss": -1, "spawns_in_clear": 0, "over_cap": 0, "hold_start": -1, "hold_end": -1}
 	var last_seq := -1
 	var push_dir := Vector2.ZERO
-	var last_threshold: int = int(doc.xp_thresholds[doc.xp_thresholds.size() - 1])
+	# The table the rhythm run really uses: its own rhythm.xp_thresholds when the data carries one, else the top-level 12 levels.
+	var table: Array = doc.rhythm.xp_thresholds if doc.rhythm.has("xp_thresholds") else doc.xp_thresholds
+	var last_threshold: int = int(table[table.size() - 1])
 	for i in 60000:
 		var alive_before: int = run.alive_count()
 		var holding: bool = run._trial_phase == "hold"
@@ -224,7 +246,7 @@ func scenario_b(verify: bool) -> Dictionary:
 	check(float(rec.max_out) >= 11.99, "B the circle really held the hero back (farthest %.4f m)" % float(rec.max_out))
 	check(int(rec.champion_tick) >= int(rec.hold_end) + 180, "B the boss comes after the clearing time (hold end %d, boss %d)" % [int(rec.hold_end), int(rec.champion_tick)])
 	check(int(rec.spawns_in_clear) == 0, "B nothing spawns while the arena is cleared")
-	check(int(rec.level_at_boss) == int(doc.xp_thresholds.size()) and int(rec.xp_at_boss) >= last_threshold, "B the last grace lands when the boss appears (level %d, xp %d)" % [int(rec.level_at_boss), int(rec.xp_at_boss)])
+	check(int(rec.level_at_boss) == table.size() and int(rec.xp_at_boss) >= last_threshold, "B the last grace lands when the boss appears (level %d, xp %d)" % [int(rec.level_at_boss), int(rec.xp_at_boss)])
 	var graces: Array = []
 	for e in rec.events:
 		if e.type == "seal_grace": graces.append(int(e.tick))
@@ -420,6 +442,11 @@ func scenario_o(doc: Dictionary, ticks: int, first_visit: bool = true, seed_: in
 	var cur := ""
 	var last_seq := -1
 	for i in ticks:
+		# The cast decides on the bodies as they are inside the tick: after they moved, before the ones it or a landing shot killed are gone.
+		# So a cast counts as "too far" only when the nearest body was out of reach both before and after the tick.
+		var near_before := 1.0e9
+		for e in run.enemies.values():
+			if e.hp_raw > 0: near_before = minf(near_before, e.position.distance_to(run.hero.position))
 		advance(run, pilot, true)
 		if run.mode != "playing" and run.mode != "choice": break
 		var near := 1.0e9
@@ -455,7 +482,7 @@ func scenario_o(doc: Dictionary, ticks: int, first_visit: bool = true, seed_: in
 					rec.casts[cur] = int(rec.casts.get(cur, 0)) + 1
 					var rule := step_rule(doc, cur)
 					if not rule.is_empty() and rule.acquire_m != null: acquire = float(rule.acquire_m)
-					if near > acquire + 0.001: rec.cast_far += 1
+					if minf(near, near_before) > acquire + 0.001: rec.cast_far += 1
 		var rule_now := step_rule(doc, cur)
 		var acquire_now := 13.0 if rule_now.is_empty() or rule_now.acquire_m == null else float(rule_now.acquire_m)
 		if near > acquire_now + 0.2 and near < 13.0: rec.far_ticks[cur] = int(rec.far_ticks.get(cur, 0)) + 1
@@ -562,7 +589,9 @@ func opening_checks() -> void:
 	for s in r.spawns: returning_spawn = mini(returning_spawn, int(s.tick))
 	check(returning_spawn == 121, "O the returning player meets the first body at tick %d (121 expected)" % returning_spawn)
 	# the opening is dropped when a later beat takes over (huge progress by kills)
-	var drop_doc := opening_doc(func(d): d.seal_kills = [100, 100, 100])
+	var drop_doc := opening_doc(func(d):
+		d.seal_kills = [100, 100, 100]
+		if d.rhythm.has("seal_kills"): d.rhythm.seal_kills = [100, 100, 100])
 	var drop := make_run(drop_doc)
 	var drop_pilot = Pilot.new()
 	drop_pilot.run = drop

@@ -27,8 +27,18 @@ func check(ok: bool, message: String) -> void:
 		failures.append(message)
 		push_error(message)
 
-func shipped() -> Dictionary:
+const C1_KEYS := ["xp_thresholds", "seal_kills", "guardian_grace", "kill_burst"]
+
+## The data file exactly as it is (since CB-R2 its rhythm block carries the C1 keys, with the switches off).
+func data_file() -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string(TUNING))
+
+## The data file with the rhythm's four C1 keys removed: the "keyless rhythm" document this check was written against
+## (old table, old seal kills, no guardian grace, no sweep bonus). The checks below that expect "without the key" use it.
+func shipped() -> Dictionary:
+	var doc := data_file()
+	for key in C1_KEYS: doc.rhythm.erase(key)
+	return doc
 
 ## The shipped document with the rhythm (and its opening) on, then `mutate` applied.
 func document(mutate: Callable = Callable(), rhythm_on := true) -> Dictionary:
@@ -114,7 +124,11 @@ func validator_checks() -> void:
 	rejects("pace with an unknown key", func(d): d.grace.pace = {"soft_after_ticks": 2100, "ramp_bps_per_s": 800, "max_bps": 25000, "x": 1})
 	rejects("pace missing a key", func(d): d.grace.pace = {"soft_after_ticks": 2100, "ramp_bps_per_s": 800})
 	var plain := shipped()
-	check(not plain.rhythm.has("xp_thresholds") and not plain.rhythm.has("seal_kills") and not plain.rhythm.has("guardian_grace") and not plain.rhythm.has("kill_burst") and not plain.grace.has("pace"), "A the data file carries none of the C1 keys")
+	check(not plain.rhythm.has("xp_thresholds") and not plain.rhythm.has("seal_kills") and not plain.rhythm.has("guardian_grace") and not plain.rhythm.has("kill_burst") and not plain.grace.has("pace"), "A the keyless document carries none of the C1 keys")
+	var file := data_file()
+	var loader = Chapter.new()
+	check(loader.set_tuning(file), "A the data file as it is (C1 keys present, switches off) is accepted " + str(loader.errors))
+	check(not bool(file.rhythm.enabled) and not bool(file.rhythm.opening.enabled) and not bool(file.rhythm.trial.enabled), "A the three rhythm switches are off in the data file")
 	var loose := false
 	for beat in plain.rhythm.beats:
 		if beat.has("xp_bps"): loose = true
@@ -451,6 +465,19 @@ func off_equals_today_checks() -> void:
 	var no_rhythm := shipped()
 	var plain_off := Chapter.new()
 	check(plain_off.set_tuning(no_rhythm) and plain_off.start(11, "chapter1.skill.ember") and not plain_off.snapshot().has("rhythm") and not plain_off.snapshot().has("pace"), "G the shipped default run has no rhythm and no pace key")
+	# The data file as it is: the C1 keys are present but all three switches are off, so no tick reads them.
+	var file_doc := data_file()
+	var from_file := play(file_doc, 1200)
+	var stripped_off := play(document(Callable(), false), 1200)
+	check(hash_of(from_file) == hash_of(stripped_off) and from_file.tick == stripped_off.tick, "G the shipped file (rhythm block valued, switches off) plays exactly like the same file without the rhythm's C1 keys")
+	var churned := data_file()
+	churned.rhythm.xp_thresholds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+	churned.rhythm.seal_kills = [1, 1, 1]
+	churned.rhythm.guardian_grace = true
+	churned.rhythm.kill_burst = {"window_ticks": 6, "min_kills": 3, "xp_bonus_bps": 20000, "descent_bonus_bps": 20000}
+	for beat in churned.rhythm.beats: beat.xp_bps = 50000
+	churned.rhythm.trial.xp_bps = 50000
+	check(hash_of(play(churned, 1200)) == hash_of(from_file), "G the switches off: no value of the rhythm block is read in 1200 ticks (even absurd ones)")
 	var with_grace_plain := play(document(func(d): d.grace.enabled = true, false), 1200)
 	var with_grace_neutral := play(document(func(d):
 		d.grace.enabled = true
@@ -475,10 +502,10 @@ func determinism_checks() -> void:
 	check(a.growth.xp_thresholds().size() == 16 and a._seal_total(0) == 365, "H the trial values reached the run (16 levels, seal 365)")
 	var run := Chapter.new()
 	check(TrialDocs.TRIAL_NAMES.has("pace") and TrialDocs.enable_rhythm_problem(run, false, true).is_empty() and run.start(11, "chapter1.skill.ember") and run.growth.xp_thresholds().size() == 16 and run.tuning.rhythm.kill_burst.min_kills == 10, "H the trial switch name is pace and it turns the first values on in memory")
-	var file := shipped()
-	check(not file.rhythm.has("kill_burst") and not file.rhythm.has("xp_thresholds"), "H the data file stays free of the keys after a trial document was built")
+	var file := data_file()
+	check(bool(file.rhythm.enabled) == false and bool(file.rhythm.opening.enabled) == false and file.rhythm.xp_thresholds.size() == 17 and not file.rhythm.xp_thresholds.has(null), "H the data file keeps its own rhythm table and its switches off after a trial document was built")
 	var run2 := Chapter.new()
-	check(TrialDocs.enable_rhythm_problem(run2).is_empty() and run2.start(11, "chapter1.skill.ember") and run2.growth.xp_thresholds().size() == 12, "H the rhythm trial without pace keeps the 12 level table")
+	check(TrialDocs.enable_rhythm_problem(run2).is_empty() and run2.start(11, "chapter1.skill.ember") and run2.growth.xp_thresholds().size() == data_file().rhythm.xp_thresholds.size() and run2.growth.xp_thresholds().size() != 16, "H the rhythm trial without pace takes the file's own table, not the pace first values (17, not 16)")
 
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
