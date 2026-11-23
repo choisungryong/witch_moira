@@ -53,4 +53,12 @@
 9. 도구의 표본 파일: `tools/manager/test_backend.py`가 실제 에셋을 표본으로 쓴다. 표본 파일을 지우거나 이름을 바꾸면 그 검사를 고친다.
 10. 원화를 바꾸면 사람이 앵커를 다시 찍고(`tools/art/portrait_slots.json`, `portrait_anchor_table.py`), 자르기를 다시 만들고(`portrait_derive.py`), 계약 `crops`를 고친다. 초상 겹 분해(`layers_source.json`)도 새로 한다.
 11. 환경음 반복 끝 `data.size()/2`(`combat_audio.gd`)는 16비트 모노 가정이다.
-12. 자리표가 아직 덮지 않는 것(지금 코드가 경로를 직접 가진다): UI 키트, 장비 아이콘, 글꼴, 원화·초상, 지형·소품, 소리, 눈송이 그림. T7-3 이후 차례로 옮긴다.
+12. 자리표가 아직 덮지 않는 것(지금 코드가 경로를 직접 가진다): UI 키트, 장비 아이콘, 글꼴, 원화·초상, 소리, 눈송이 그림. T7-3 이후 차례로 옮긴다. (지형·소품은 A12-0에서 옮겼다. 아래 절.)
+
+### 지형·소품과 배치 파일(A12-0)
+
+- `chapter1/view/world/chapter_world.gd`는 그림 경로를 하나도 갖지 않는다. 바닥 두 장은 `world.common.ground.flagstone`·`world.common.ground.soil`, 돌 겉은 `world.common.trim.stone`, 소품 시트는 `world.common.props.cloister`(옆 JSON에 칸·발·높이), 경계의 시트·밑돌은 `world.edge.props`·`world.edge.stone`이다. 구역마다 따로 바꿀 때의 이름은 `world.zone<N>.<항목>`(A12 5.4).
+- 무엇이 어디에 서는지는 `world/layout_chapter1.json`(자리 `world.common.layout`)이다. 소품·기초 돌·뒷벽 돌·뒷벽 아치·풀 한도·맵 경계의 줄(`edge`)이 있고, 한 줄이 하나다. 줄을 옮기거나 지우면 그것이 옮겨지거나 사라진다. 좌표는 코어와 같은 세계 좌표(m)이며 코어는 이 파일을 읽지 않는다.
+- 배치를 바꾸면 `chapter1/tests/test_world_layout.gd`가 옛 코드의 배치(`tests/fixtures/world_layout_before.json`)와 다르다고 말한다. 의도한 변경이면 그 검사의 `--record`로 기준을 다시 찍는다.
+- 풀 시트(`world.common.props.foliage`, 옆 JSON `group: foliage`)는 불러오지 않는다. 풀은 코드 기하다.
+- 시트의 옆 JSON `group` 칸이 분류 표지다(파일 이름으로 가르지 않는다).

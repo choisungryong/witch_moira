@@ -16,7 +16,7 @@ const ARG_PREFIX := "--chapter1-asset-slots="
 const SCHEMA := 1
 const CHECKER_SIZE := 64
 const CHECKER_CELL := 8
-const KINDS: Array[String] = ["model", "sprite_sheet", "texture", "atlas", "nine_slice", "portrait_rig", "prop_atlas", "font", "video"]
+const KINDS: Array[String] = ["model", "sprite_sheet", "texture", "atlas", "nine_slice", "portrait_rig", "prop_atlas", "font", "video", "layout"]
 const ID_PREFIXES: Array[String] = ["actor", "portrait", "illustration", "ui", "icon", "world", "fx", "font", "video"]
 const USED_VALUES: Array[String] = ["unverified", "yes", "no"]
 const SLOT_KEYS: Array[String] = ["kind", "file", "meta", "fallback", "extra_files", "contract", "planned", "inherit", "used", "source", "optional"]
@@ -31,6 +31,8 @@ const CONTRACT_KEYS := {
 	"prop_atlas": ["group", "ids_required", "import"],
 	"font": ["axes", "features", "import"],
 	"video": ["size", "seconds", "loop_in", "loop_out", "aspect"],
+	# A placement file (where things stand; chapter1/art/world/layout_chapter1.json): read as JSON by the presenter, nothing to check but that it is there.
+	"layout": [],
 }
 ## Bone-group names whose entries are name prefixes or fragments, not logical bone names.
 const PATTERN_GROUPS: Array[String] = ["upper_prefixes", "upper_contains"]

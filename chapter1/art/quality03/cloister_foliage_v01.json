@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "group": "foliage",
   "source_type": "independent_generated_2d_foliage_atlas",
   "texture": "res://chapter1/art/quality03/cloister_foliage_v01.png",
   "width": 1774,

@@ -17,7 +17,13 @@ const HERO_LIGHT_FAR := .82
 const HERO_OMNI_ENERGY := 1.15
 const HERO_OMNI_RANGE := 10.0
 const HERO_OMNI_COLOR := Color("ffe3bd")
-const ART_BASE := "res://chapter1/art/quality03/"
+const Slots=preload("res://chapter1/view/assets/asset_slots.gd")
+## The pictures and the placement file are asked for by slot id (chapter1/art/asset_slots.json); this file names no art path.
+const SLOT_GROUND_FLAGSTONE := "world.common.ground.flagstone"
+const SLOT_GROUND_SOIL := "world.common.ground.soil"
+const SLOT_TRIM_STONE := "world.common.trim.stone"
+const SLOT_PROPS := "world.common.props.cloister"
+const SLOT_LAYOUT := "world.common.layout"
 var root: Node3D
 var camera: Camera3D
 var art_status: Dictionary={"ground":[],"props":0,"raw_texture_fallbacks":[]}
@@ -26,6 +32,8 @@ var _prop_defs: Dictionary={}
 var _prop_texture: Texture2D
 var _prop_textures: Dictionary={}
 var _prop_entries: Array[Dictionary]=[]
+## What is placed where: the file behind SLOT_LAYOUT (props, foundation stones, rear masonry, grass limits, map edge), read once in setup.
+var _layout: Dictionary={}
 var _prop_materials: Array[ShaderMaterial]=[]
 var _light_materials: Array[ShaderMaterial]=[]
 var _hero_omni: OmniLight3D
@@ -45,6 +53,7 @@ func material(color: Color, emission: float=0.0) -> StandardMaterial3D:
 
 func setup__q03(view: Node3D) -> void:
 	_rng.seed=730113
+	_read_layout()
 	root=Node3D.new();root.name="CloisterWorldQuality03";view.add_child(root)
 	var environment := Environment.new()
 	environment.background_mode=Environment.BG_COLOR
@@ -74,38 +83,74 @@ func setup__q03(view: Node3D) -> void:
 	view.add_child(camera);camera.position=CAMERA_OFFSET;camera.look_at(Vector3.ZERO);camera.current=true
 	print("CHAPTER1_WORLD_ART ",JSON.stringify(art_status))
 
-func _texture(path: String) -> Texture2D:
-	var result: Texture2D
-	if ResourceLoader.exists(path,"Texture2D"):result=ResourceLoader.load(path,"Texture2D") as Texture2D
-	if result==null and FileAccess.file_exists(path):
-		var source := Image.load_from_file(ProjectSettings.globalize_path(path))
-		if source:
-			result=ImageTexture.create_from_image(source)
-			art_status.raw_texture_fallbacks.append(path)
-	if result:
-		var image := result.get_image()
-		if image and not image.has_mipmaps():
-			if image.is_compressed():image.decompress()
-			image.generate_mipmaps();result=ImageTexture.create_from_image(image)
+## A slot's picture with a mip chain (the imported one when it has mipmaps, else a copy that has).
+func _slot_texture(id_: String) -> Texture2D:
+	var result: Texture2D=Slots.texture(id_)
+	if result==null:return null
+	var path := Slots.path(id_)
+	if path!="" and not ResourceLoader.exists(path,"Texture2D") and FileAccess.file_exists(path):art_status.raw_texture_fallbacks.append(path)
+	var image := result.get_image()
+	if image and not image.has_mipmaps():
+		if image.is_compressed():image.decompress()
+		image.generate_mipmaps();result=ImageTexture.create_from_image(image)
 	return result
+
+func _read_layout() -> void:
+	var path := Slots.path(SLOT_LAYOUT)
+	var doc: Variant=JSON.parse_string(FileAccess.get_file_as_string(path)) if path!="" and FileAccess.file_exists(path) else null
+	if not doc is Dictionary:
+		push_error("chapter_world: placement file for slot %s is missing or not a JSON object (%s)"%[SLOT_LAYOUT,path])
+		doc={}
+	_layout=doc
+	var edge: Dictionary=_layout.get("edge",{})
+	_edge_rows=[]
+	for row in edge.get("rows",[]):
+		var passages: Array=[]
+		for passage in row.get("passages",[]):passages.append({"side":String(passage.side),"half_width":float(passage.half_width),"reach":float(passage.reach),"opening":float(passage.opening)})
+		_edge_rows.append({"zone":int(row.zone),"center":_v2(row.center),"half":float(row.half),"offset":float(row.offset),"style":String(row.style),"window_x":_v2(row.window_x),"passages":passages})
+	_edge_styles={}
+	var styles: Dictionary=edge.get("styles",{})
+	for name_ in styles:
+		var style: Dictionary=styles[name_]
+		_edge_styles[name_]={"seed":int(style.seed),"gap_chance":float(style.gap_chance),"rail_chance":float(style.rail_chance),"slab_chance":float(style.slab_chance),"cross_chance":float(style.cross_chance),
+			"height_near":_v2(style.height_near),"height_far":_v2(style.height_far),"gap_len":_v2(style.gap_len),"rail_len":_v2(style.rail_len)}
+	var look: Dictionary=edge.get("look",{"sunk":1.0,"reach":1.0,"fog":0.0,"fog_color":"000000"})
+	_edge_look={"sunk":float(look.sunk),"reach":float(look.reach),"fog":float(look.fog),"fog_color":Color(String(look.fog_color))}
+	_edge_sides={}
+	var sides: Dictionary=edge.get("sides",{})
+	for name_ in sides:
+		var side: Dictionary=sides[name_]
+		_edge_sides[name_]={"out":_v2(side.out),"along":_v2(side.along),"near":bool(side.near),"mirror_wall":bool(side.mirror_wall)}
+
+func _v2(a: Array) -> Vector2:
+	return Vector2(float(a[0]),float(a[1]))
+
+func _v3(a: Array) -> Vector3:
+	return Vector3(float(a[0]),float(a[1]),float(a[2]))
+
+## A colour from the file: [r,g,b] floats, an html hex string, or the fallback when absent.
+func _tint(value: Variant,fallback: Color=Color.WHITE) -> Color:
+	if value is Array:return Color(float(value[0]),float(value[1]),float(value[2]))
+	if value is String:return Color(value)
+	return fallback
 
 
 func _load_props() -> void:
-	_load_prop_doc(ART_BASE+"cloister_props_v01.json")
-	_load_prop_doc(ART_BASE+"cloister_foliage_v01.json")
+	_load_prop_doc(SLOT_PROPS)
 
-func _load_prop_doc(path: String) -> void:
-	if not FileAccess.file_exists(path):return
-	var doc: Variant=JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not doc is Dictionary:return
-	var texture_path := String(doc.get("texture",ART_BASE+"cloister_props_v01.png"))
-	var texture := _texture(texture_path)
+## Reads the sprite sheet behind a prop_atlas slot (its side JSON holds the regions and feet). A sheet whose side JSON says
+## "group": "foliage" is not a sprite sheet for placed props (grass is code geometry) and is not loaded.
+func _load_prop_doc(slot_id: String) -> void:
+	var doc: Dictionary=Slots.meta(slot_id)
+	if doc.is_empty() or String(doc.get("group",""))=="foliage":return
+	var texture_path := Slots.path(slot_id)
+	var texture := _slot_texture(slot_id)
 	if texture==null:return
 	if _prop_texture==null:_prop_texture=texture
 	_prop_textures[texture_path]=texture
 	for prop in doc.get("props",[]):
 		if prop is Dictionary and prop.has("id") and prop.has("region") and prop.has("feet"):
-			prop._atlas=texture_path;_prop_defs[String(prop.id)]=prop
+			var def: Dictionary=prop.duplicate();def._atlas=texture_path;_prop_defs[String(def.id)]=def
 
 func _prop__q03(id_: String, at: Vector3, height: float=0.0, tint: Color=Color.WHITE, mirror: bool=false) -> void:
 	if not _prop_defs.has(id_):return
@@ -121,8 +166,8 @@ func _paving_distance(at: Vector2) -> float:
 	return minf(court,minf(nave,crossing))
 
 
-func _brazier(at: Vector3) -> void:
-	_prop("brazier",at,2.0,Color(.88,.8,.67))
+func _brazier(at: Vector3,height: float,tint: Color) -> void:
+	_prop("brazier",at,height,tint)
 	var light := OmniLight3D.new();light.position=at+Vector3.UP*1.5
 	light.light_color=Color("ffad66");light.light_energy=4.5;light.omni_range=7.0;light.shadow_enabled=false
 	root.add_child(light);_warm_lights.append(light);_warm_base.append(2.8)
@@ -227,14 +272,21 @@ func setup__chapter(view: Node3D) -> void:
 	for i in 3:
 		var ring := _ring(Vector3(i*48,.035,0),4.0,4.08,Color("d8b46a"));seals.append(ring)
 		_ring(Vector3(i*48,.035,0),3.5,3.53,Color("6e5c3a"))
+		# The twelve tick marks of a seal ring are one multimesh (they were twelve boxes).
+		var tick_box := BoxMesh.new();tick_box.size=Vector3(.12,.025,.35)
+		var ticks := MultiMesh.new();ticks.transform_format=MultiMesh.TRANSFORM_3D;ticks.mesh=tick_box;ticks.instance_count=12
+		var tick_index := 0
 		for side in [-1,1]:
 			for step in 6:
-				var marker := MeshInstance3D.new();var box := BoxMesh.new();box.size=Vector3(.12,.025,.35);marker.mesh=box
-				marker.material_override=material(Color("927a52"),.15);marker.position=Vector3(i*48+side*3.9,.03,-2.0+step*.8);root.add_child(marker)
+				ticks.set_instance_transform(tick_index,Transform3D(Basis.IDENTITY,Vector3(i*48+side*3.9,.03,-2.0+step*.8)));tick_index+=1
+		var tick_node := MultiMeshInstance3D.new();tick_node.name="SealTicks%d"%i;tick_node.multimesh=ticks;tick_node.material_override=material(Color("927a52"),.15);root.add_child(tick_node)
 	for i in 2:
 		var gate := Node3D.new();gate.position=Vector3(19+i*48,0,0);root.add_child(gate);gates.append(gate)
-		for z in 7:
-			var bar := MeshInstance3D.new();var mesh := BoxMesh.new();mesh.size=Vector3(.10,2.6,.045);bar.mesh=mesh;bar.material_override=material(Color("ae8750"),.7);bar.position=Vector3(0,1.3,-3+z);gate.add_child(bar)
+		# The seven bars of a gate are one multimesh (they were seven boxes); the gate node still shows and hides them together.
+		var bar_box := BoxMesh.new();bar_box.size=Vector3(.10,2.6,.045)
+		var bars := MultiMesh.new();bars.transform_format=MultiMesh.TRANSFORM_3D;bars.mesh=bar_box;bars.instance_count=7
+		for z in 7:bars.set_instance_transform(z,Transform3D(Basis.IDENTITY,Vector3(0,1.3,-3+z)))
+		var bar_node := MultiMeshInstance3D.new();bar_node.name="GateBars";bar_node.multimesh=bars;bar_node.material_override=material(Color("ae8750"),.7);gate.add_child(bar_node)
 		var text := Label3D.new();text.text="봉인을 해제하면 열립니다";text.position=Vector3(0,3.0,0);text.pixel_size=.009;text.font_size=32;text.billboard=BaseMaterial3D.BILLBOARD_ENABLED;gate.add_child(text)
 	for def in view.run.RITUALS:
 		_ring(Vector3(def.position.x,.04,def.position.y),2.2,2.28,Color("79604f"))
@@ -245,33 +297,13 @@ func setup__chapter(view: Node3D) -> void:
 
 func _compose_cloister() -> void:
 	art_status.composition_revision="full-chapter-three-courtyards-01"
-	# Graveyard, broken nave, circular sanctuary use different silhouettes/layouts.
-	_prop("arch",Vector3(0,0,-21),6.5,Color(.74,.80,.87))
-	for side in [-1.0,1.0]:
-		for x in [-16,-8,0,8,16]:
-			_prop("grave_cross" if x<0 else "grave_slab",Vector3(x,0,side*20.2),1.35,Color(.75,.8,.83))
-			_prop("wall",Vector3(x,0,side*22),2.0,Color(.61,.68,.73))
-		_prop("tree",Vector3(-22,0,side*18),5.7,Color(.64,.72,.76),side>0)
-		_prop("pillar_broken",Vector3(19.8,0,side*5.2),3.2)
-		for x in [31,40,48,56,65]:
-			_prop("pillar_whole" if x in [31,65] else "pillar_broken",Vector3(x,0,side*20.7),4.4,Color(.78,.75,.76))
-			_prop("wall",Vector3(x,0,side*23),3.0,Color(.69,.67,.7))
-		for x in [21,26,69,74]:_prop("pillar_broken",Vector3(x,0,side*4.6),2.5,Color(.75,.72,.72))
-		for x in [48,60,84,108]:_brazier(Vector3(x,0,side*19.8))
-	_prop("arch",Vector3(48,0,-23),8.2,Color(.73,.70,.75))
-	for i in 14:
-		var a := TAU*i/14.0;var at := Vector3(96+cos(a)*21.5,0,sin(a)*21.5)
-		# Leave the west corridor visibly open.
-		if at.x<77 and absf(at.z)<6:continue
-		_prop("pillar_whole" if i%3 else "pillar_broken",at,5.2,Color(.69,.73,.81))
-	_prop("arch",Vector3(96,0,-24),9.0,Color(.65,.71,.81))
-	for at in [Vector3(33,0,-16),Vector3(63,0,15),Vector3(88,0,-17),Vector3(109,0,14),Vector3(-12,0,16)]:
-		_prop("rubble",at,.65,Color(.77,.75,.72));_prop("roots",at+Vector3(1,0,.5),.50,Color(.59,.65,.61))
+	# Graveyard, broken nave, circular sanctuary use different silhouettes/layouts. What stands where: the "props" of the layout file.
+	for record in _layout.get("props",[]):
+		var at := _v3(record.at)
+		var tint := _tint(record.get("tint"))
+		if String(record.id)=="brazier":_brazier(at,float(record.height),tint)
+		else:_prop(String(record.id),at,float(record.height),tint,bool(record.get("mirror",false)))
 	_compose_verges()
-	# Sparse growth in the nave; sanctuary leaves broad ash paving visible.
-	for i in 100:
-		var side := -1 if i%2 else 1
-		_prop("grass_bent" if i%3 else "fern_moss",Vector3(_rng.randf_range(30,65),.005,side*_rng.randf_range(14,21)),_rng.randf_range(.28,.5),Color(.7,.68,.6),i%2==0)
 	_compose_edges()
 
 func _ring(at: Vector3,inner: float,outer: float,color: Color) -> MeshInstance3D:
@@ -306,6 +338,8 @@ var _grass_normals := PackedVector3Array()
 var _grass_colors := PackedColorArray()
 var _grass_uv := PackedVector2Array()
 var _grass_blades := 0
+## One finished mesh worth of blades per zone (a zone's grass is culled with the zone); _grass_vertices... hold the zone being built.
+var _grass_chunks: Array[Dictionary]=[]
 
 ## Ground, grass and props use the shared hero light field. Written once here; the hero position every frame.
 func _register_light_material(mat: ShaderMaterial) -> void:
@@ -333,18 +367,18 @@ func setup__q10(view: Node3D) -> void:
 
 func _ground_material() -> Material:
 	var mat := ShaderMaterial.new();mat.shader=preload("res://chapter1/view/chapter_ground_quality10.gdshader")
-	for pair in [["flagstone","ground_flagstone_v01.png"],["soil","ground_soil_v01.png"]]:
-		var texture := _texture(ART_BASE+pair[1])
-		if texture:mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true);art_status.ground.append(pair[1])
+	for pair in [["flagstone",SLOT_GROUND_FLAGSTONE],["soil",SLOT_GROUND_SOIL]]:
+		var texture := _slot_texture(pair[1])
+		if texture:mat.set_shader_parameter(pair[0],texture);mat.set_shader_parameter("has_"+pair[0],true);art_status.ground.append(Slots.path(pair[1]).get_file())
 	_register_light_material(mat);_edge_apply(mat)
 	return mat
 
 func _prop__q10(id_: String,at: Vector3,height: float=0.0,tint: Color=Color.WHITE,mirror: bool=false) -> void:
-	if _prop_defs.has(id_) and String(_prop_defs[id_]._atlas).ends_with("cloister_foliage_v01.png"):return
 	_prop__q03(id_,at,height,tint,mirror)
 
 func _compose_verges() -> void:
 	var patches := 0
+	var zone_grass: Array=_layout.get("grass",{}).get("zones",[])
 	for zone in 3:
 		var candidates: Array[Dictionary]=[]
 		for gx in range(-24,25):
@@ -358,17 +392,19 @@ func _compose_verges() -> void:
 				if absf(local.y)<4.0 or sin(local.x*.47+local.y*.15)+cos(local.y*.51-local.x*.13)<-.75:continue
 				candidates.append({"at":local+Vector2(zone*48,0),"priority":_rng.randf()+distance_*.08})
 		candidates.sort_custom(func(a: Dictionary,b: Dictionary)->bool:return a.priority<b.priority)
-		var limit := mini([330,125,90][zone],candidates.size())
+		var kind: Dictionary=zone_grass[zone]
+		var limit := mini(int(kind.limit),candidates.size())
 		for i in limit:
 			var center: Vector2=candidates[i].at
-			var patch_height := _rng.randf_range(.50,.95) if zone==0 else _rng.randf_range(.32,.67)
-			var tint := Color("5c6544") if zone==0 else (Color("615e43") if zone==1 else Color("515858"))
+			var patch_height := _rng.randf_range(float(kind.height[0]),float(kind.height[1]))
+			var tint := Color(String(kind.tint))
 			for blade in _rng.randi_range(16,26):
 				var angle := _rng.randf_range(0,TAU)
 				var spread := sqrt(_rng.randf())*.38
 				var foot := Vector3(center.x+cos(angle)*spread,.0,center.y+sin(angle)*spread*.72)
 				_blade(foot,patch_height*_rng.randf_range(.48,1.14),_rng.randf_range(.022,.046),_rng.randf_range(0,TAU),tint*_rng.randf_range(.68,1.12))
 			patches+=1
+		_close_grass_chunk()
 	art_status.foliage_quads=0;art_status.grass_patches=patches;art_status.grass_blades=_grass_blades
 	art_status.composition_revision="full-chapter-tapered-grass-10"
 
@@ -389,15 +425,27 @@ func _blade(foot: Vector3,height: float,width: float,angle: float,tint: Color) -
 			_grass_colors.append((tint*lerpf(.48,1.06,t)).srgb_to_linear());_grass_uv.append(Vector2(0,t))
 	_grass_blades+=1
 
-func _bake_grass() -> void:
+## Moves the blades built so far (one zone) into a chunk and starts the next.
+func _close_grass_chunk() -> void:
 	if _grass_vertices.is_empty():return
-	var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX]=_grass_vertices;arrays[Mesh.ARRAY_NORMAL]=_grass_normals;arrays[Mesh.ARRAY_COLOR]=_grass_colors;arrays[Mesh.ARRAY_TEX_UV]=_grass_uv
-	var mesh := ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
-	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader");_register_light_material(_grass_material);_edge_apply(_grass_material)
-	var node := MeshInstance3D.new();node.name="TaperedGrass";node.mesh=mesh;node.material_override=_grass_material;node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;root.add_child(node)
+	_grass_chunks.append({"vertices":_grass_vertices.duplicate(),"normals":_grass_normals.duplicate(),"colors":_grass_colors.duplicate(),"uv":_grass_uv.duplicate()})
 	_grass_vertices.clear();_grass_normals.clear();_grass_colors.clear();_grass_uv.clear()
-	print("CHAPTER1_GRASS_ART ",JSON.stringify({"patches":art_status.grass_patches,"blades":_grass_blades,"surfaces":1,"collision":false,"source":"independent code geometry"}))
+
+func _bake_grass() -> void:
+	_close_grass_chunk()
+	if _grass_chunks.is_empty():return
+	_grass_material=ShaderMaterial.new();_grass_material.shader=preload("res://chapter1/view/chapter_grass_quality10.gdshader");_register_light_material(_grass_material);_edge_apply(_grass_material)
+	for index in _grass_chunks.size():
+		var chunk: Dictionary=_grass_chunks[index]
+		var arrays: Array=[];arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX]=chunk.vertices;arrays[Mesh.ARRAY_NORMAL]=chunk.normals;arrays[Mesh.ARRAY_COLOR]=chunk.colors;arrays[Mesh.ARRAY_TEX_UV]=chunk.uv
+		var mesh := ArrayMesh.new();mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+		# The wind in the shader moves a tip by up to 4 cm; the margin keeps a chunk at the screen edge from popping.
+		var node := MeshInstance3D.new();node.name="TaperedGrass%d"%index;node.mesh=mesh;node.material_override=_grass_material;node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;node.extra_cull_margin=.2;root.add_child(node)
+	art_status.grass_chunks=_grass_chunks.size()
+	var chunk_count := _grass_chunks.size()
+	_grass_chunks.clear()
+	print("CHAPTER1_GRASS_ART ",JSON.stringify({"patches":art_status.grass_patches,"blades":_grass_blades,"surfaces":chunk_count,"collision":false,"source":"independent code geometry"}))
 
 func update_camera__q10(hero: Vector2,delta: float) -> void:
 	update_camera__q03(hero,delta)
@@ -410,35 +458,24 @@ var depth_stones := 0
 var _stones: Array[Dictionary]=[]
 func setup__q17(view: Node3D) -> void:
 	setup__q10(view)
-	for zone in 3:
-		for side in [-1,1]:
-			for x in [-12,-4,5,13]:
-				var at := Vector3(zone*48+x,0,side*21.4)
-				_stone(at+Vector3(0,.14,0),Vector3(2.1,.28,1.7),Color("42484a"))
-				_stone(at+Vector3(0,.38,0),Vector3(1.6,.22,1.3),Color("626762"))
-				var height_ := .65+float(posmod(x+zone*3,4))*.26
-				_stone(at+Vector3(0,.49+height_*.5,0),Vector3(.68,height_,.68),Color("585e59"))
-				_stone(at+Vector3(.10,height_+.57,-.04),Vector3(.94,.16,.86),Color("72756a"))
-			for x in [-9,0,9]:
-				_stone(Vector3(zone*48+x,.18,side*22.8),Vector3(5.5,.36,1.1),Color("41484b"))
+	for record in _layout.get("foundation_stones",[]):
+		_stone(_v3(record.at),_v3(record.size),float(record.yaw),Color(String(record.tint)),int(record.zone))
 	art_status.depth_stones=depth_stones
 	var column_shape := CylinderMesh.new();column_shape.top_radius=.43;column_shape.bottom_radius=.5;column_shape.height=1;column_shape.radial_segments=8;column_shape.rings=1
 	var wall_shape := BoxMesh.new();wall_shape.size=Vector3.ONE
-	var mat := StandardMaterial3D.new();mat.albedo_texture=_texture(ART_BASE+"ground_flagstone_v01.png")
+	var mat := StandardMaterial3D.new();mat.albedo_texture=_slot_texture(SLOT_TRIM_STONE)
 	mat.vertex_color_use_as_albedo=true;mat.roughness=.96;mat.uv1_triplanar=true;mat.uv1_world_triplanar=true;mat.uv1_scale=Vector3.ONE*.7
 	# Two bounded static batches per zone rather than a draw per stone.
 	for zone in 3:
 		for wall in [false,true]:
 			var records: Array[Dictionary]=[]
-			for i in 38:
-				var record: Dictionary=_stones[zone*38+i]
-				if record.wall==wall:records.append(record)
+			for record in _stones:
+				if record.zone==zone and record.wall==wall:records.append(record)
 			var mm := MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.use_colors=true;mm.mesh=wall_shape if wall else column_shape;mm.instance_count=records.size()
 			for i in records.size():mm.set_instance_transform(i,records[i].transform);mm.set_instance_color(i,records[i].tint)
 			var node := MultiMeshInstance3D.new();node.multimesh=mm;node.material_override=mat;root.add_child(node)
-func _stone(at: Vector3,dimensions: Vector3,tint: Color) -> void:
-	var angle := sin(float(depth_stones)*1.7)*.065
-	_stones.append({"transform":Transform3D(Basis(Vector3.UP,angle).scaled(dimensions),at),"tint":Color(tint.r*1.65,tint.g*1.65,tint.b*1.65,1),"wall":dimensions.x>3});depth_stones+=1
+func _stone(at: Vector3,dimensions: Vector3,yaw: float,tint: Color,zone: int) -> void:
+	_stones.append({"transform":Transform3D(Basis(Vector3.UP,yaw).scaled(dimensions),at),"tint":Color(tint.r*1.65,tint.g*1.65,tint.b*1.65,1),"wall":dimensions.x>3,"zone":zone});depth_stones+=1
 
 # ---- chapter1/view/chapter_world_quality18.gd ----
 ## Cover every legal camera target and the current viewport's ground footprint.
@@ -489,47 +526,22 @@ func _prop__q22(id_: String,at: Vector3,height: float=0.0,tint: Color=Color.WHIT
 	_prop__q10(id_,at,height,tint,mirror)
 func setup__q22(view: Node3D) -> void:
 	setup__q18(view)
-	# The inherited foundation batch contains both sides. Retain the south
-	# foundations; the authored rear colonnade replaces its northern stones.
-	for child in root.get_children():
-		if not child is MultiMeshInstance3D:continue
-		var old: MultiMesh=child.multimesh
-		var keep: Array[int]=[]
-		for i in old.instance_count:
-			if old.get_instance_transform(i).origin.z>0:keep.append(i)
-		for i in keep.size():
-			old.set_instance_transform(i,old.get_instance_transform(keep[i]))
-			old.set_instance_color(i,old.get_instance_color(keep[i]))
-		old.visible_instance_count=keep.size()
+	# The foundation batches hold the south stones only; the rear colonnade (the layout's rear_blocks and rear_arches) stands on the north side.
 	var blocks: Array[Dictionary]=[]
 	var wedges: Array[Dictionary]=[]
-	for zone in 3:
-		var center := Vector3(zone*48,3.1,-22.8)
-		var tint := Color("7b8279") if zone==0 else (Color("817a76") if zone==1 else Color("78818a"))
-		for side in [-1,1]:
-			for row in 6:
-				var at := center+Vector3(side*3.7,-2.85+row*.5,0)
-				_add22(blocks,at,Vector3(.83,.47,1.10),0,tint,zone)
-			_add22(blocks,center+Vector3(side*3.7,-3.0,0),Vector3(1.2,.20,1.4),0,tint*.78,zone)
-			_add22(blocks,center+Vector3(side*3.7,-.08,0),Vector3(1.12,.25,1.35),0,tint*1.12,zone)
-		for segment in 15:
-			# Missing voussoirs distinguish a collapsed garden from the nave
-			# and the intact sanctuary, instead of repeating one sprite.
-			if zone==0 and segment in [6,7,8]:continue
-			if zone==1 and segment in [3,4]:continue
-			var angle := (float(segment)+.5)*PI/15.0
-			var record := {"transform":Transform3D(Basis(Vector3.BACK,angle),center),"tint":tint*(.90+.14*sin(segment*2.3)),"zone":zone}
-			wedges.append(record)
-		for side in [-1,1]:
-			for index in 3:
-				var x: float=side*(7.3+index*4.2)
-				var height_ := 1.15+float(posmod(zone+index*2,4))*.48
-				for row in int(ceil(height_/.46)):
-					_add22(blocks,Vector3(zone*48+x,.23+row*.46,-22.5),Vector3(.85,.43,.95),sin(index+row)*.035,tint*.85,zone)
-				_add22(blocks,Vector3(zone*48+x,.12,-22.5),Vector3(1.3,.24,1.5),0,tint*.73,zone)
-			# Fallen stones lie behind the broken piers, outside walkable ground.
-			for index in 4:
-				_add22(blocks,Vector3(zone*48+side*(1.8+index*.9),.18,-24.1-index*.30),Vector3(.7,.34,.92),side*(.2+index*.31),tint*.86,zone)
+	for record in _layout.get("rear_blocks",[]):
+		_add22(blocks,_v3(record.at),_v3(record.size),float(record.yaw),Color(String(record.tint))*float(record.get("mul",1.0)),int(record.zone))
+	for arch in _layout.get("rear_arches",[]):
+		var segments := int(arch.segments)
+		var center := _v3(arch.at)
+		var tint := Color(String(arch.tint))
+		var skipped := PackedInt32Array()
+		for index in arch.skip:skipped.append(int(index))
+		for segment in segments:
+			# Missing voussoirs distinguish a collapsed garden from the nave and the intact sanctuary, instead of repeating one sprite.
+			if segment in skipped:continue
+			var angle := (float(segment)+.5)*PI/float(segments)
+			wedges.append({"transform":Transform3D(Basis(Vector3.BACK,angle),center),"tint":tint*(.90+.14*sin(segment*2.3)),"zone":int(arch.zone)})
 	var box := BoxMesh.new();box.size=Vector3.ONE
 	_batch22(blocks,box,"RearMasonry22")
 	_batch22(wedges,_voussoir22(),"RearArches22")
@@ -541,7 +553,7 @@ func _batch22__q22(records: Array[Dictionary],shape: Mesh,label: String) -> void
 	var mm := MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.use_colors=true;mm.mesh=shape;mm.instance_count=records.size()
 	for i in records.size():
 		mm.set_instance_transform(i,records[i].transform);mm.set_instance_color(i,records[i].tint*1.85)
-	var material_ := StandardMaterial3D.new();material_.albedo_texture=_texture(ART_BASE+"ground_flagstone_v01.png")
+	var material_ := StandardMaterial3D.new();material_.albedo_texture=_slot_texture(SLOT_TRIM_STONE)
 	material_.vertex_color_use_as_albedo=true;material_.roughness=.97;material_.uv1_triplanar=true;material_.uv1_world_triplanar=true;material_.uv1_scale=Vector3.ONE*.7
 	var node := MultiMeshInstance3D.new();node.name=label;node.multimesh=mm;node.material_override=material_;root.add_child(node)
 
@@ -702,47 +714,35 @@ func _batch22(records: Array[Dictionary],shape: Mesh,label: String) -> void:
 	if not rear:return
 	var material := ShaderMaterial.new()
 	material.shader=preload("res://chapter1/view/chapter_masonry_quality37c.gdshader")
-	material.set_shader_parameter("flagstone",_texture(ART_BASE+"ground_flagstone_v01.png"))
-	material.set_shader_parameter("soil",_texture(ART_BASE+"ground_soil_v01.png"))
+	material.set_shader_parameter("flagstone",_slot_texture(SLOT_GROUND_FLAGSTONE))
+	material.set_shader_parameter("soil",_slot_texture(SLOT_GROUND_SOIL))
 	var node: MultiMeshInstance3D=root.get_node(NodePath(label))
 	node.material_override=material
 
 # ---- A10 W4: the visible edge of the walkable ground (U-64) ----
-## The core stops the hero at zone centre +-19 m (chapter_core.gd _clamp_point, read only; this file never writes it). EDGE_ROWS is the
-## one place the picture is told where that edge is: the wall line, the dimmed ground outside it and the wall's mix all come from
-## these rows. To extend to zone 1 or 2, add a row (centre, half, style, passages) and a style entry; nothing else holds a number.
-## Pieces are the existing prop atlas (slot world.edge.props) scaled to 0.7-1.2 m, a footing course (slot world.edge.stone) and a
-## few iron railing pieces drawn from boxes. Decorative only: no collision, no core state.
-const EDGE_ROWS := [
-	{"zone":0,"center":Vector2(0,0),"half":19.0,"offset":0.3,"style":"graveyard","window_x":Vector2(-200,29),
-	 "passages":[{"side":"east","half_width":3.6,"reach":10.0,"opening":3.0}]},
-]
-## window_x: where this row owns the dimming of the ground (past it the next row's ground is left alone; 29 = where zone 1's walk area starts).
+## The core stops the hero at zone centre +-19 m (chapter_core.gd _clamp_point, read only; this file never writes it). The "edge" of the layout file
+## is the one place the picture is told where that edge is: the wall line, the dimmed ground outside it and the wall's mix all come from its rows.
+## To extend to zone 1 or 2, add a row (centre, half, style, passages) and a style entry to that file; nothing else holds a number.
+## Pieces are the prop sheet (slot world.edge.props) scaled to 0.7-1.2 m, a footing course (slot world.edge.stone) and a few iron railing
+## pieces drawn from boxes. Decorative only: no collision, no core state.
+## rows: window_x = where this row owns the dimming of the ground (past it the next row's ground is left alone; 29 = where zone 1's walk area starts).
 ## passages: a walkable strip leaving the square. opening = half width kept free of wall (the sealed gate stands there); half_width and reach are the core's strip.
-const EDGE_STYLES := {
-	"graveyard":{"seed":640064,"gap_chance":.15,"rail_chance":.12,"slab_chance":.15,"cross_chance":.12,
-		"height_near":Vector2(.72,.95),"height_far":Vector2(.9,1.2),"gap_len":Vector2(2.2,3.4),"rail_len":Vector2(2.4,3.6)},
-}
-## sunk = brightness left outside the walk area; reach = metres over which it falls; fog = amount of the cool fog mixed in.
-const EDGE_LOOK := {"sunk":.56,"reach":2.4,"fog":.12,"fog_color":Color("1b2124")}
-## out = away from the walk area, along = direction of the line, near = faces the camera (lower pieces so the hero's legs stay seen),
+## styles: the chances and lengths of one kind of wall line. look: sunk = brightness left outside the walk area; reach = metres over which it falls; fog = amount of the cool fog mixed in.
+## sides: out = away from the walk area, along = direction of the line, near = faces the camera (lower pieces so the hero's legs stay seen),
 ## mirror_wall = the wall sprite's diagonal must be flipped to run along this line on screen.
-const EDGE_SIDES := {
-	"north":{"out":Vector2(0,-1),"along":Vector2(1,0),"near":false,"mirror_wall":true},
-	"south":{"out":Vector2(0,1),"along":Vector2(1,0),"near":true,"mirror_wall":true},
-	"west":{"out":Vector2(-1,0),"along":Vector2(0,1),"near":false,"mirror_wall":false},
-	"east":{"out":Vector2(1,0),"along":Vector2(0,1),"near":true,"mirror_wall":false},
-}
+var _edge_rows: Array=[]
+var _edge_styles: Dictionary={}
+var _edge_look: Dictionary={}
+var _edge_sides: Dictionary={}
 const EDGE_SLOT_PROPS := "world.edge.props"
 const EDGE_SLOT_STONE := "world.edge.stone"
-const EdgeSlots=preload("res://chapter1/view/assets/asset_slots.gd")
 var _edge_anchors: Array[Vector2]=[]
 var _edge_blocks: Array[Dictionary]=[]
 var _edge_iron: Array[Dictionary]=[]
 var edge_stats: Dictionary={}
 
 func edge_rows() -> Array:
-	return EDGE_ROWS
+	return _edge_rows
 ## Foot points of everything placed on an edge line (for the capture tool's gap measure).
 func edge_anchors() -> Array[Vector2]:
 	var all: Array[Vector2]=_edge_anchors.duplicate()
@@ -752,11 +752,11 @@ func edge_anchors() -> Array[Vector2]:
 
 func _edge_apply(mat: ShaderMaterial) -> void:
 	var rects := PackedVector4Array();var wins := PackedVector4Array()
-	for row in EDGE_ROWS:
+	for row in _edge_rows:
 		var c: Vector2=row.center;var h: float=row.half;var win: Vector2=row.window_x
 		rects.append(Vector4(c.x-h,c.y-h,c.x+h,c.y+h));wins.append(Vector4(win.x,win.y,0,0))
 		for passage in row.get("passages",[]):
-			var side: Dictionary=EDGE_SIDES[passage.side];var out_: Vector2=side.out;var along: Vector2=side.along
+			var side: Dictionary=_edge_sides[passage.side];var out_: Vector2=side.out;var along: Vector2=side.along
 			var a := c+out_*h-along*float(passage.half_width);var b := c+out_*(h+float(passage.reach))+along*float(passage.half_width)
 			rects.append(Vector4(minf(a.x,b.x),minf(a.y,b.y),maxf(a.x,b.x),maxf(a.y,b.y)));wins.append(Vector4(win.x,win.y,0,0))
 	assert(rects.size()<=8)
@@ -764,8 +764,8 @@ func _edge_apply(mat: ShaderMaterial) -> void:
 	while rects.size()<8:
 		rects.append(Vector4.ZERO);wins.append(Vector4.ZERO)
 	mat.set_shader_parameter("edge_count",count);mat.set_shader_parameter("edge_rect",rects);mat.set_shader_parameter("edge_win",wins)
-	var fog: Color=(EDGE_LOOK.fog_color as Color).srgb_to_linear()
-	mat.set_shader_parameter("edge_look",Vector4(EDGE_LOOK.sunk,EDGE_LOOK.reach,EDGE_LOOK.fog,0));mat.set_shader_parameter("edge_fog",Vector4(fog.r,fog.g,fog.b,1))
+	var fog: Color=(_edge_look.fog_color as Color).srgb_to_linear()
+	mat.set_shader_parameter("edge_look",Vector4(_edge_look.sunk,_edge_look.reach,_edge_look.fog,0));mat.set_shader_parameter("edge_fog",Vector4(fog.r,fog.g,fog.b,1))
 
 func _edge_at(row: Dictionary,side: Dictionary,t: float,extra: float=0.0) -> Vector2:
 	var c: Vector2=row.center;var out_: Vector2=side.out;var along: Vector2=side.along
@@ -841,7 +841,7 @@ func _edge_gap(side: Dictionary,t0: float,t1: float,row: Dictionary,rng: RandomN
 		t+=_edge_sprite_width("rubble",h)/k*.8
 
 func _edge_side(row: Dictionary,side_name: String,style: Dictionary,rng: RandomNumberGenerator) -> void:
-	var side: Dictionary=EDGE_SIDES[side_name]
+	var side: Dictionary=_edge_sides[side_name]
 	var k := _edge_screen_k(side)
 	var reach := float(row.half)+float(row.offset)+.6
 	var opening := Vector2(1,-1)
@@ -895,11 +895,10 @@ func _edge_side(row: Dictionary,side_name: String,style: Dictionary,rng: RandomN
 		last_gap=false
 
 func _compose_edges() -> void:
-	var meta: String=String(EdgeSlots.slot(EDGE_SLOT_PROPS).get("meta",""))
-	if meta!="":_load_prop_doc(EdgeSlots.ART_ROOT+meta)
+	_load_prop_doc(EDGE_SLOT_PROPS)
 	_edge_anchors.clear();_edge_blocks.clear();_edge_iron.clear()
-	for row in EDGE_ROWS:
-		var style: Dictionary=EDGE_STYLES[row.style]
+	for row in _edge_rows:
+		var style: Dictionary=_edge_styles[row.style]
 		var rng := RandomNumberGenerator.new();rng.seed=int(style.seed)+int(row.zone)*101
 		for side_name in ["north","south","west","east"]:_edge_side(row,side_name,style,rng)
 		## Corners are closed with a heap and a block, so no diagonal gap is left between two lines.
@@ -919,7 +918,7 @@ func _build_edge_batches() -> void:
 		for z in [-.5,.5]:
 			for x in [-.5,.5]:
 				for y in [-.5,.5]:points.append(Vector3(x,y,z))
-		var mat := StandardMaterial3D.new();mat.albedo_texture=EdgeSlots.texture(EDGE_SLOT_STONE)
+		var mat := StandardMaterial3D.new();mat.albedo_texture=Slots.texture(EDGE_SLOT_STONE)
 		mat.vertex_color_use_as_albedo=true;mat.roughness=.97;mat.uv1_triplanar=true;mat.uv1_world_triplanar=true;mat.uv1_scale=Vector3.ONE*.7
 		_edge_batch(_edge_blocks,_stone_geometry37._chamfer37(points,.06),mat,"EdgeFooting")
 	if not _edge_iron.is_empty():

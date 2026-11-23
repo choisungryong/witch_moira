@@ -238,8 +238,13 @@ func slot_checks(id: String, s: Dictionary, c: Dictionary) -> void:
 			model_checks(id, c)
 		"sprite_sheet":
 			sheet_checks(id, c)
-		"texture", "atlas", "nine_slice", "prop_atlas":
+		"texture", "atlas", "nine_slice":
 			texture_checks(id, c)
+		"prop_atlas":
+			texture_checks(id, c)
+			prop_atlas_checks(id, c)
+		"layout":
+			layout_checks(id)
 		"video":
 			check(Slots.video(id) != null, "%s: the video does not load as a Theora stream" % id)
 		"font":
@@ -311,6 +316,40 @@ func texture_checks(id: String, c: Dictionary) -> void:
 			problems.append("crop '%s' %s is outside the %dx%d texture" % [name, str(r), size.x, size.y])
 	report(id, "texture", problems)
 
+## A prop sheet's side JSON must hold every id the contract asks for (the ids the placement file and the map edge use).
+func prop_atlas_checks(id: String, c: Dictionary) -> void:
+	var have: Array = []
+	for prop in Slots.meta(id).get("props", []):
+		if prop is Dictionary:
+			have.append(String(prop.get("id", "")))
+	var problems: Array = []
+	for need in c.get("ids_required", []):
+		if not String(need) in have:
+			problems.append("id '%s' is not in the side JSON" % need)
+	report(id, "prop sheet ids", problems)
+
+## The placement file (A12-0): every sprite prop id it places is one the prop sheet slot promises, zones are 0..2, and the sections the world presenter reads exist.
+func layout_checks(id: String) -> void:
+	var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string(Slots.path(id)))
+	if not doc is Dictionary:
+		check(false, "%s: the placement file is not a JSON object" % id)
+		return
+	var problems: Array = []
+	for section in ["props", "foundation_stones", "rear_blocks", "rear_arches", "grass", "edge"]:
+		if not doc.has(section):
+			problems.append("section '%s' is missing" % section)
+	var sheet_ids: Array = Slots.contract("world.common.props.cloister").get("ids_required", [])
+	for record in doc.get("props", []):
+		if not String(record.get("id", "")) in sheet_ids:
+			problems.append("prop id '%s' is not in the ids of slot world.common.props.cloister" % record.get("id", ""))
+		if not record.get("at") is Array or (record.at as Array).size() != 3 or not record.has("height"):
+			problems.append("a prop record has no at [x,y,z] or no height: %s" % JSON.stringify(record))
+	for section in ["foundation_stones", "rear_blocks", "rear_arches"]:
+		for record in doc.get(section, []):
+			if int(record.get("zone", -1)) < 0 or int(record.get("zone", -1)) > 2:
+				problems.append("%s: zone outside 0..2: %s" % [section, JSON.stringify(record)])
+	report(id, "placement file", problems)
+
 func sheet_checks(id: String, c: Dictionary) -> void:
 	var meta := Slots.meta(id)
 	var problems: Array = []
@@ -354,6 +393,8 @@ func sheet_checks(id: String, c: Dictionary) -> void:
 ## The core's ids must each have a slot: every enemy kind, the hero, the final boss.
 func coverage_checks(summary: Dictionary) -> void:
 	var wanted: Array[String] = ["actor.hero.model", "actor.hero.sheet", "actor.boss.model"]
+	# What chapter_world.gd asks for (A12-0).
+	wanted.append_array(["world.common.ground.flagstone", "world.common.ground.soil", "world.common.trim.stone", "world.common.props.cloister", "world.common.layout", "world.edge.props", "world.edge.stone"])
 	for kind in Core.ENEMY_DEFS:
 		wanted.append("actor.%s.model" % kind)
 		wanted.append("actor.%s.sheet" % kind)
@@ -363,7 +404,7 @@ func coverage_checks(summary: Dictionary) -> void:
 			absent.append(id)
 	check(absent.is_empty(), "core ids without a slot: %s" % str(absent))
 	summary["coverage_checked"] = wanted.size()
-	summary["coverage_pending"] = ["icon.equip.<slot> (T7-4)", "portrait.<witch>.rig and illustration.<witch> (T7-4/5)", "world.* (T7-6)", "font.* (T7-4)"]
+	summary["coverage_pending"] = ["icon.equip.<slot> (T7-4)", "portrait.<witch>.rig and illustration.<witch> (T7-4/5)", "font.* (T7-4)"]
 
 ## Hero bodies (T2-H): every actor.hero*.model slot that has a contract. The old mage always; a per-witch body only when its file is in
 ## this checkout (those files are not kept in the repository). Clip lengths are read from the imported glb, not from the code.

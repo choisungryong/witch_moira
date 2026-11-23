@@ -898,6 +898,72 @@
         "alpha": true
       }
     },
+    "world.common.ground.flagstone": {
+      "kind": "texture",
+      "file": "quality03/ground_flagstone_v01.png",
+      "used": "yes",
+      "source": "A12-0 (T7-6): chapter1/view/world/chapter_world.gd _ground_material and the rear masonry material; the flagstone role of the ground shader, one picture for all three zones for now (a zone of its own becomes world.zone<N>.ground.*)",
+      "contract": {
+        "square": true
+      }
+    },
+    "world.common.ground.soil": {
+      "kind": "texture",
+      "file": "quality03/ground_soil_v01.png",
+      "used": "yes",
+      "source": "A12-0 (T7-6): chapter1/view/world/chapter_world.gd _ground_material and the rear masonry material; the soil role of the ground shader",
+      "contract": {
+        "square": true
+      }
+    },
+    "world.common.trim.stone": {
+      "kind": "texture",
+      "file": "quality03/ground_flagstone_v01.png",
+      "used": "yes",
+      "source": "A12-0 (T7-6): chapter1/view/world/chapter_world.gd setup__q17 and _batch22__q22; triplanar skin of the foundation stones and the rear masonry blocks (the stone trim; the map edge footing has its own slot world.edge.stone)",
+      "contract": {
+        "square": true
+      }
+    },
+    "world.common.props.cloister": {
+      "kind": "prop_atlas",
+      "file": "quality03/cloister_props_v01.png",
+      "meta": "quality03/cloister_props_v01.json",
+      "used": "yes",
+      "source": "A12-0 (T7-6): chapter1/view/world/chapter_world.gd _load_props; the sprite sheet of the placed props (the ids are the ones layout_chapter1.json and the map edge use)",
+      "contract": {
+        "group": "props",
+        "ids_required": [
+          "pillar_whole",
+          "pillar_broken",
+          "wall",
+          "grave_cross",
+          "grave_slab",
+          "brazier",
+          "tree",
+          "roots",
+          "rubble"
+        ]
+      }
+    },
+    "world.common.props.foliage": {
+      "kind": "prop_atlas",
+      "file": "quality03/cloister_foliage_v01.png",
+      "meta": "quality03/cloister_foliage_v01.json",
+      "used": "no",
+      "source": "A12-0 (T7-6): not loaded. The grass of the map is code geometry; this sheet was loaded and never drawn. Its side JSON says group foliage, which the loader skips. Kept in the table so the file is not lost from the list",
+      "contract": {
+        "group": "foliage",
+        "ids_required": []
+      }
+    },
+    "world.common.layout": {
+      "kind": "layout",
+      "file": "world/layout_chapter1.json",
+      "used": "yes",
+      "source": "A12-0 (A12 5.4): where the cloister props, foundation stones, rear masonry, grass limits and the map edge stand; read by chapter1/view/world/chapter_world.gd _read_layout. Presentation only, the core never reads it",
+      "contract": {}
+    },
     "world.edge.props": {
       "kind": "prop_atlas",
       "file": "quality03/cloister_props_v01.png",

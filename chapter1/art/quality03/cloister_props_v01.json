@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "group": "props",
   "source_type": "independent_generated_2d_prop_atlas",
   "texture": "res://chapter1/art/quality03/cloister_props_v01.png",
   "width": 1448,

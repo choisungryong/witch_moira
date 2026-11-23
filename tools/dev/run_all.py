@@ -93,8 +93,8 @@ CHANGE_TABLE = [
 ]
 # What each selection name turns on. 'all' is every check. 'view' / 'app' leave the headless core checks out.
 SELECTIONS = {
-    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording', 'screen-contract'],
-    'art': ['loc', 'app-guard', 'app-loadout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
+    'view': ['loc', 'app-guard', 'app-loadout', 'asset-slots', 'world-layout', 'playlog', 'manager', 'i18n-scan', 'glyphs', 'wording', 'screen-contract'],
+    'art': ['loc', 'app-guard', 'app-loadout', 'world-layout', 'manager', 'i18n-scan', 'glyphs', 'wording', 'asset-ledger', 'audio-ledger'],
     'app': ['loc', 'app-guard', 'app-loadout', 'playlog', 'run-record', 'profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'manager', 'i18n-scan', 'glyphs', 'wording'],
     'text': ['loc', 'i18n-scan', 'glyphs', 'wording'],
     'records': ['wording', 'decisions', 'manager'],
@@ -139,6 +139,8 @@ def checks():
         godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),
         godot_check('descent-fx', 'res://chapter1/tests/test_descent_fx.gd', 'CHAPTER1_DESCENT_FX_TEST_RESULT', timeout=300),
         godot_check('asset-slots', 'res://chapter1/tests/test_asset_slots.gd', 'CHAPTER1_ASSET_SLOTS_RESULT', ['--strict'], timeout=180),
+        # A12-0: what the world presenter places (props, stones, masonry, edge, grass) equals the snapshot of the code that held it as literals, bit for bit.
+        godot_check('world-layout', 'res://chapter1/tests/test_world_layout.gd', 'CHAPTER1_WORLD_LAYOUT_RESULT', timeout=180),
         godot_check('ui-parts', 'res://chapter1/tests/test_ui_parts.gd', 'CHAPTER1_UI_PARTS_RESULT', timeout=120),
         godot_check('run-record','res://chapter1/tests/test_run_record.gd', 'CHAPTER1_RUN_RECORD_TEST_RESULT', timeout=900),
         # The unit checks (parts A to E, 191 checks) run always; the enabled whole chapters (part F, 15 checks, about 18 minutes) are the slow line.

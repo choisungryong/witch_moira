@@ -1,0 +1,53 @@
+{
+	"about": "Placement of the world presenter as built by the code that held it as literals (A12-0 baseline, commit 3417a2e). test_world_layout.gd compares bit for bit.",
+	"categories": {
+		"batches": {
+			"count": 12,
+			"sha256": "5ac2016793dda6c4feda1154d26aa2ba178f94e0934122ad88b922404cc27621"
+		},
+		"columns": {
+			"count": 33,
+			"sha256": "07df87124055e4915fbe1d53ac16fac2ea746ce2a4364b724c7729fb2957955a"
+		},
+		"edge_anchors": {
+			"count": 261,
+			"sha256": "0a53123f19721edc09b533701630b6607ee41d5657cbac73de8c4b944ff6f035"
+		},
+		"edge_blocks": {
+			"count": 143,
+			"sha256": "48cb8aeffd148ad733be01171a1fe5f1e24ac3a15bcc1f1c97ddc0b807ce51e9"
+		},
+		"edge_iron": {
+			"count": 187,
+			"sha256": "2b8f5d5805e90485333d00aa3c7aa401c1a34c151b475f240f4f721a9a9bb256"
+		},
+		"grass": {
+			"count": 1,
+			"sha256": "7f81e043f04067c539dc0f5b382d661957dd3999a14de4a17f22162a299cdc5c"
+		},
+		"grass_stats": {
+			"count": 1,
+			"sha256": "292f71e5f59a2837766ed2157f6fe38209af66f0ab99e9f297f3d62e75555695"
+		},
+		"lights": {
+			"count": 8,
+			"sha256": "5bef5d80583a3b33d7a50ad5c7c6c153153703484f7a90a3a2b8a10160b8d124"
+		},
+		"masonry": {
+			"count": 206,
+			"sha256": "410af4c701edfb83da209c56eda8ba49699d2adadeecae59d0c1ef60ff5953d0"
+		},
+		"props": {
+			"count": 194,
+			"sha256": "8b3f6d85cd21e8d5115253e003b647544037d5c3bac91f791d68a0101c1c62ee"
+		},
+		"stones": {
+			"count": 57,
+			"sha256": "ff91ced276d46eb977274b155e646ec7c5b991e550deb277187f6343dfe016db"
+		},
+		"surfaces": {
+			"count": 3,
+			"sha256": "34741075724f95a0247f8e230aac114888ffc787a123558ec551ee914aa26216"
+		}
+	}
+}
