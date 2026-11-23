@@ -264,5 +264,5 @@
     ]
   },
   "pity": {"enabled": false, "runs_without_legendary": 5, "upgrade": "first_guaranteed_to_legendary"},
-  "luck": {"enabled": false, "stat": "luck_bps", "cap_bps": 3000, "k": {"rare": 6000, "legendary": 4000, "unique": 2500}, "snapshot": "run_start"}
+  "luck": {"enabled": false, "stat": "luck_bps", "cap_bps": 3000, "k": {"rare": 6000, "legendary": 40000, "unique": 2500}, "snapshot": "run_start"}
 }

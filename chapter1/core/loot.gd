@@ -6,6 +6,9 @@ extends RefCounted
 ## Not yet wired into the running chapter; see SYSTEMS-DESIGN L1.
 const DATA_PATH := "res://chapter1/data/loot.json"
 const ItemsV1 := preload("res://chapter1/core/chapter_items.gd")
+## LKB1: when luck is really applied, every grade weight of the class table is scaled by this before the luck formula, so the integer
+## division no longer cuts the effect of small luck (weights of 30 would stay at 32 for any K).
+const LUCK_WEIGHT_SCALE := 100
 const BASE_PREFIX := "chapter1.full."
 const UNIQUE_PREFIX := "chapter1.full.unique."
 const AFFIX_COUNTS := {"common":[0,0],"magic":[1,2],"rare":[2,4],"legendary":[1,3],"unique":[0,0]}
@@ -120,8 +123,9 @@ func set_luck(enabled: bool) -> bool:
 	return true
 
 ## D23 T8: the quality weights roll_class draws from for one class. Pure. The shrine's quality_bps is applied first; then, when luck is on
-## and mods.luck_bps (cut at the cap) is above 0, rare/legendary/unique get w*(10000+L*K/(L+K))/10000 (integer division, this order).
-## Without mods, or at luck 0, or with luck off, it is the data's own dictionary (same values, same order).
+## and mods.luck_bps (cut at the cap) is above 0, every grade weight of the table is multiplied by LUCK_WEIGHT_SCALE (100), then
+## the grades in luck.k get w*(10000+L*K/(L+K))/10000 (integer division, this order). Common and magic are exactly 100x.
+## Without mods, or at luck 0, or with luck off, it is the data's own dictionary (same values, same order, unscaled).
 func quality_weights(class_id: String, mods: Dictionary = {}) -> Dictionary:
 	if not data.treasure_classes.has(class_id): return {}
 	var weights: Dictionary = data.treasure_classes[class_id].quality
@@ -137,6 +141,7 @@ func quality_weights(class_id: String, mods: Dictionary = {}) -> Dictionary:
 		var luck := mini(int(mods.get("luck_bps",0)),luck_cap_bps())
 		if luck > 0:
 			if not copied: weights = weights.duplicate()
+			for quality in weights: weights[quality] = int(weights[quality])*LUCK_WEIGHT_SCALE
 			var ks: Dictionary = data.luck.k
 			for quality in ks:
 				if weights.has(quality):

@@ -822,6 +822,7 @@ func luck_expected(base: Dictionary, shrine: Dictionary, luck: int, ks: Dictiona
 		if out.has(quality): out[quality] = int(out[quality]) * int(shrine[quality]) / 10000
 	var l := mini(luck, cap)
 	if l > 0:
+		for quality in out: out[quality] = int(out[quality]) * 100
 		for quality in ks:
 			var k := int(ks[quality])
 			out[quality] = int(out[quality]) * (10000 + l * k / (l + k)) / 10000
@@ -858,13 +859,24 @@ func luck_checks() -> void:
 			var got: Dictionary = loot.quality_weights(class_id, {"luck_bps": luck})
 			if JSON.stringify(got) != JSON.stringify(luck_expected(base, {}, luck, ks, cap)): formula_ok = false
 			for quality in ["common", "magic"]:
-				if int(got[quality]) != int(base[quality]): rest_ok = false
+				if int(got[quality]) != int(base[quality]) * 100: rest_ok = false
 			var with_shrine: Dictionary = loot.quality_weights(class_id, {"luck_bps": luck, "quality_bps": shrine})
 			if JSON.stringify(with_shrine) != JSON.stringify(luck_expected(base, shrine, luck, ks, cap)): shrine_ok = false
 		if JSON.stringify(loot.quality_weights(class_id, {"luck_bps": 9000})) != JSON.stringify(loot.quality_weights(class_id, {"luck_bps": 3000})): cap_ok = false
-	check(formula_ok, "LK3 luck on: rare, legendary and unique weights are w*(10000+L*K/(L+K))/10000 to the integer (K from the data)")
-	check(rest_ok, "LK3 common and magic weights are untouched by luck")
+	check(formula_ok, "LK3 luck on: all weights x100, then rare, legendary and unique get w*100*(10000+L*K/(L+K))/10000 to the integer (K from the data)")
+	check(rest_ok, "LK3 common and magic weights are exactly 100x with luck on")
 	check(shrine_ok, "LK3 the shrine quality_bps is applied first, then luck")
+	# LK3b the scale keeps small luck visible: normal class legendary 3000 -> 3000*(10000+1000K/(1000+K))/10000 > 3200, for K 4000, 15000, 40000
+	var scale_ok := true
+	var normal_legendary := int(loot.data.treasure_classes.normal.quality.legendary)
+	for k_test in [4000, 15000, 40000]:
+		var saved_k: int = loot.data.luck.k.legendary
+		loot.data.luck.k.legendary = k_test
+		var got_w := int(loot.quality_weights("normal", {"luck_bps": 1000}).legendary)
+		var want_w: int = normal_legendary * 100 * (10000 + 1000 * k_test / (1000 + k_test)) / 10000
+		if got_w != want_w or got_w <= 3200: scale_ok = false
+		loot.data.luck.k.legendary = saved_k
+	check(scale_ok, "LK3 normal class, luck 1000: legendary weight = 3000*(10000+1000K/(1000+K))/10000 and above 3200 at K 4000, 15000, 40000")
 	check(cap_ok, "LK4 luck_bps 9000 gives the weights of 3000 (cap)")
 	# LK5 luck off: the draws are the draws of a call without mods
 	var off = Loot.new()

@@ -37,6 +37,8 @@ extends SceneTree
 ## Without it this script prints LOOT_AFFIX_SIM_UNSUPPORTED and exits 3. It never reports a value it did not measure.
 ## --luck=N>0 also needs set_luck(enabled) and quality_weights(class, mods) (D23 T8): missing -> LOOT_AFFIX_SIM_UNSUPPORTED, exit 3; set_luck(true) refused -> exit 2.
 ##   Before the run it prints LOOT_LUCK_PROBE {luck, weights_off, weights_on, changed} (quality_weights("normal",{}) vs {"luck_bps":N}); changed=false -> exit 3.
+##   weights_on is on the 100x scale of LKB1 (LUCK_WEIGHT_SCALE) when luck is applied; that is expected.
+## --seed=N: seed of the drop generator of the main run (default 4141; without it the output is the same as before).
 const Loot = preload("res://chapter1/core/loot.gd")
 const GearKits = preload("res://chapter1/tests/support/gear_kits.gd")
 const ZONE_LEVELS := [4,8,12]
@@ -69,12 +71,14 @@ func execute() -> void:
 	var wear_runs := 2000
 	var wear_seeds: Array = [11,12,13]
 	var kits_out := ""
+	var seed_arg := 4141
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--runs="): runs = maxi(1,int(arg.trim_prefix("--runs=")))
 		elif arg.begins_with("--primary="): primary = arg.trim_prefix("--primary=")
 		elif arg.begins_with("--affix-rolls="): affix_arg = arg.trim_prefix("--affix-rolls=")
 		elif arg.begins_with("--pity="): pity_arg = arg.trim_prefix("--pity=")
 		elif arg.begins_with("--luck="): luck = int(arg.trim_prefix("--luck="))
+		elif arg.begins_with("--seed="): seed_arg = int(arg.trim_prefix("--seed="))
 		elif arg == "--wear": wear_on = true
 		elif arg.begins_with("--wear-runs="): wear_runs = maxi(30,int(arg.trim_prefix("--wear-runs=")))
 		elif arg.begins_with("--wear-seeds="):
@@ -125,7 +129,7 @@ func execute() -> void:
 		return
 	var tier_of := _tier_table(loot)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 4141
+	rng.seed = seed_arg
 	var totals := {"items":0,"common":0,"magic":0,"rare":0,"legendary":0,"unique":0,"jewelry":0}
 	var by_slot: Dictionary = {}
 	var runs_with := {"legendary":0,"unique":0,"jewelry":0}
