@@ -1,28 +1,26 @@
 extends Control
 ## The descent's cut-scene (A11 12.3, U-100): the demon's 3-second video (the length comes from the file, see video_seconds()), drawn full screen. This part DRAWS: the unfolding band (a slanted strip of the
 ## element's colour that opens from the band's own height to the whole screen and closes back to it), the video seen through that strip, the name tag
-## and the subtitle, the skip hint. It keeps no timetable and takes no input: the presenter (view/fx/descent_fx.gd, vfx-feel B) pushes the values on its
-## schedule and decides about skipping (A11 12.3.4). Presentation only: nothing here reads or writes the core.
+## (the demon's name and, big, the skill's name: U-102 took every spoken line away) and the skip hint. It keeps no timetable and takes no input: the presenter
+## (view/fx/descent_fx.gd) pushes the values on its schedule and decides about skipping (A11 12.3.4). Presentation only: nothing here reads or writes the core.
 ##
 ##   var cut := DescentCutscene.attach(host)          # a CanvasLayer above the HUD's (layer 2), the HUD is hidden while the cut-scene runs
 ##   if cut.open_stream("ember"):                     # false: no file / not a Theora file -> the presenter falls back to the long band (A11 12.3.3)
 ##       ... on descent_ready: open_stream() already holds the first frame paused ...
 ##   cut.first_frame_ready()                          # true once a frame is on hand (the presenter waits at most 0.5 s for it, else the band)
 ##   cut.start()                                      # video runs (sound is the game's, the file has none)
-##   cut.apply({"open": 0..1, "plate": 0..1, "subtitle": 0..1, "skip_hint": 0..1, "reduced_motion": false, "fade": 1.0, "subtitle_key": "descent.say.ember.first"})
-##   cut.frame_texture()                              # the live frame, for DescentBand.set_demon_video() (the band's demon window from the second descent on)
-##   cut.loop_clip(true)                              # the player repeats contract.loop_in..loop_out (see the note on seeking below)
+##   cut.apply({"open": 0..1, "plate": 0..1, "skip_hint": 0..1, "reduced_motion": false, "fade": 1.0, "closed_cy": px, "closed_h": px})
 ##   cut.close()
 ## Video: Ogg Theora (.ogv) only; the slot is video.cutscene.descent.<element> (a video slot, planned until the file exists). 16:9 fills the screen;
 ## a portrait video (aspect < 1.2) stands in a window 0.92 H high at x 0.58 W with a brass frame, the band's colour filling the sides (12.3.5).
-## Seeking: this engine's Theora stream cannot seek, so loop_in is tried (stream_position = loop_in) and when the position does not move the loop runs
-## 0..loop_out instead (can_seek() tells). The first frame is held by playing until a frame exists and then pausing (one or two frames are spent).
+## The first frame is held by playing until a frame exists and then pausing (one or two frames are spent). The band's demon window does NOT use the video
+## any more (a video frame there showed its brightness key as a box): it is the still picture.
 const Palette = preload("res://chapter1/view/hud/palette.gd")
 const Loc = preload("res://chapter1/view/loc.gd")
 const AssetSlots = preload("res://chapter1/view/assets/asset_slots.gd")
-const UiStyle = preload("res://chapter1/view/hud/ui_style.gd")
 const DescentBand = preload("res://chapter1/view/hud/descent_band.gd")
 const MASK_SHADER = preload("res://chapter1/view/hud/descent_cutscene_mask.gdshader")
+const NAME_SHADER = preload("res://chapter1/view/hud/descent_band_name.gdshader")
 const SLOT_PREFIX := "video.cutscene.descent."
 const TILT := 0.13962634
 const BAND_H := 216.0
@@ -32,28 +30,28 @@ const BAND_LENGTH := 3400.0
 const WINDOW_H := 0.92           ## a portrait video's window, as a share of the screen's height
 const WINDOW_X := 0.58           ## and its middle, as a share of the screen's width
 const PORTRAIT_BELOW := 1.2      ## aspect under this is a portrait video
+const TAG_NAME_SIZE := 72        ## the skill name on the tag (the band has 84; the tag shares the screen with the picture)
+const TAG_NAME_MAX_W := 640.0
 
 var element := "ember"
 var open_t := 0.0
 var plate := 0.0
-var subtitle := 0.0
 var skip_hint := 0.0
 var reduced_motion := false
 var fade := 1.0
-var subtitle_key := ""
+var closed_cy := -1.0     ## where the narrowed strip stands (px, the band's own layout); < 0: the default band place
+var closed_h := -1.0
 
 var _player: VideoStreamPlayer
 var _body: Control
 var _edge: Control
 var _text: Control
+var _name_fill: Control
+var _name_material: ShaderMaterial
 var _contract: Dictionary = {}
 var _has := false
 var _first_ready := false
 var _pending_pause := false
-var _looping := false
-var _seek_works := false
-var _loop_in := 0.0
-var _loop_out := 0.0
 var _body_material: ShaderMaterial
 var _mask_material: ShaderMaterial
 var _window := Rect2()
@@ -69,14 +67,6 @@ static func attach(host: Node) -> Control:
 	var cut: Control = load("res://chapter1/view/hud/descent_cutscene.gd").new()
 	layer.add_child(cut)
 	return cut
-
-## The subtitle key for a descent: the first one of a run says `descent.say.<element>.first`; later ones rotate 1, 2 (and, from character level 12,
-## `.deep` joins the rotation). Lightning's demon says nothing, so "" for arc. The caller decides which descent it is; this only names the key.
-static func say_key(el: String, first: bool, index: int = 0, deep: bool = false) -> String:
-	if el == "arc": return ""
-	if first: return "descent.say.%s.first" % el
-	var pool: Array = ["1","2"] + (["deep"] if deep else [])
-	return "descent.say.%s.%s" % [el,String(pool[posmod(index,pool.size())])]
 
 func _init() -> void:
 	name = "Cutscene"
@@ -98,9 +88,15 @@ func _ready() -> void:
 	add_child(_player)
 	_edge = _child("Edge",2)
 	_text = _child("Text",3)
+	_name_fill = _child("NameFill",4)
+	_name_material = ShaderMaterial.new(); _name_material.shader = NAME_SHADER
+	_name_material.set_shader_parameter("top",Palette.BRASS_HI.lerp(Palette.INK,.8))
+	_name_material.set_shader_parameter("bottom",Palette.BRASS.lerp(Palette.BRASS_HI,.75))
+	_name_fill.material = _name_material
 	_body.draw.connect(_draw_body)
 	_edge.draw.connect(_draw_edge)
 	_text.draw.connect(_draw_text)
+	_name_fill.draw.connect(_draw_name_fill)
 	resized.connect(func(): _lay_key = [])
 
 func _child(label: String, z: int) -> Control:
@@ -124,8 +120,6 @@ func open_stream(el: String) -> bool:
 	var stream := AssetSlots.video(id)
 	if stream == null: return false
 	_contract = AssetSlots.contract(id)
-	_loop_in = float(_contract.get("loop_in",0.0))
-	_loop_out = float(_contract.get("loop_out",0.0))
 	_player.stream = stream
 	_player.play()
 	_pending_pause = true
@@ -177,41 +171,17 @@ func video_position() -> float:
 func is_playing() -> bool:
 	return _has and _player.is_playing() and not _player.paused
 
-## Repeat contract.loop_in..loop_out in the player (the band's demon window from the second descent on). Empty loop_out: the whole file.
-func loop_clip(on: bool) -> void:
-	_looping = on
-	if not on or not _has: return
-	_pending_pause = false
-	_player.paused = false
-	if not _player.is_playing(): _player.play()
-	_try_seek()
-
-func can_seek() -> bool:
-	return _seek_works
-
-func _try_seek() -> void:
-	if _loop_in <= 0.0: return
-	_player.stream_position = _loop_in
-	_seek_works = absf(_player.stream_position-_loop_in) < 0.25
-
 func _process(_delta: float) -> void:
 	if not _has: return
 	if _pending_pause and frame_size().x > 0.0:
 		_player.paused = true
 		_pending_pause = false
 		_first_ready = true
-	if _looping and not _pending_pause:
-		var out := _loop_out if _loop_out > 0.0 else 1e9
-		if not _player.is_playing() or _player.stream_position >= out:
-			_player.stop()
-			_player.play()
-			_try_seek()
 
 func close() -> void:
 	_has = false
 	_first_ready = false
 	_pending_pause = false
-	_looping = false
 	if _player != null:
 		_player.stop()
 		_player.stream = null
@@ -219,18 +189,18 @@ func close() -> void:
 
 # ---- the picture ----
 
-## Values (all optional): open (0 closed band height .. 1 whole screen), plate, subtitle, skip_hint (0..1), reduced_motion, fade (1 normal, 0 black),
-## subtitle_key (a po key, default say_key(element, true)), element.
+## Values (all optional): open (0 closed band height .. 1 whole screen), plate (the name tag), skip_hint (0..1), reduced_motion, fade (1 normal, 0 black),
+## closed_cy / closed_h (px: where and how high the narrowed strip stands, the band's own layout, so the hand-over to the band has no step), element.
 func apply(values: Dictionary) -> void:
 	for key in values:
 		match String(key):
 			"open": open_t = clampf(float(values[key]),0,1)
 			"plate": plate = clampf(float(values[key]),0,1)
-			"subtitle": subtitle = clampf(float(values[key]),0,1)
 			"skip_hint": skip_hint = clampf(float(values[key]),0,1)
 			"reduced_motion": reduced_motion = bool(values[key])
 			"fade": fade = clampf(float(values[key]),0,1)
-			"subtitle_key": subtitle_key = String(values[key])
+			"closed_cy": closed_cy = float(values[key])
+			"closed_h": closed_h = float(values[key])
 			"element": element = String(values[key])
 	_refresh()
 
@@ -243,8 +213,8 @@ func _refresh() -> void:
 	if not visible: return
 	var k := size.y/900.0
 	var e := 1.0 if reduced_motion else _ease_out(open_t)
-	var h := lerpf(BAND_H*k,FULL_H*k,e)
-	var centre := Vector2(size.x*.5,lerpf(BAND_CENTER_Y*k,size.y*.5,e))
+	var h := lerpf(closed_h if closed_h > 0.0 else BAND_H*k,FULL_H*k,e)
+	var centre := Vector2(size.x*.5,lerpf(closed_cy if closed_cy >= 0.0 else BAND_CENTER_Y*k,size.y*.5,e))
 	modulate = Color(1,1,1,open_t if reduced_motion else 1.0)
 	_body_material = DescentBand.body_material(element)
 	_body_material.set_shader_parameter("band_size",Vector2(BAND_LENGTH*k,h))
@@ -271,7 +241,7 @@ func _refresh() -> void:
 	_mask_material.set_shader_parameter("half_h",h*.5)
 	_mask_material.set_shader_parameter("fade",fade)
 	_player.visible = true
-	for node in [_body,_edge,_text]:
+	for node in [_body,_edge,_text,_name_fill]:
 		node.queue_redraw()
 
 func _draw_body() -> void:
@@ -292,6 +262,19 @@ func _draw_edge() -> void:
 		_edge.draw_rect(Rect2(-length*.5,minf(edge-side*6.0,edge-side*7.5),length,1.5),Palette.BRASS_DIM)
 		_edge.draw_rect(Rect2(-length*.5,minf(edge-side*7.5,edge-side*11.5),length,4.0),ec)
 
+## The name tag's layout: the demon's name (small) above the skill's name (big), lower left.
+func _tag_layout() -> Dictionary:
+	var font := DescentBand.name_font()
+	var title := Loc.t("descent.name."+element)
+	var size_ := TAG_NAME_SIZE
+	var width := font.get_string_size(title,HORIZONTAL_ALIGNMENT_LEFT,-1,size_).x
+	while size_ > 44 and width > TAG_NAME_MAX_W:
+		size_ -= 2
+		width = font.get_string_size(title,HORIZONTAL_ALIGNMENT_LEFT,-1,size_).x
+	var k := size.y/900.0
+	var slide := (1.0-plate)*-24.0*k
+	return {"font":font,"title":title,"size":size_,"width":width,"at":Vector2(64.0*k+slide,size.y-70.0*k),"k":k}
+
 func _draw_text() -> void:
 	var k := size.y/900.0
 	var e := 1.0 if reduced_motion else _ease_out(open_t)
@@ -299,36 +282,40 @@ func _draw_text() -> void:
 		var outer := _window.grow(5.0)
 		_text.draw_rect(outer,Palette.BRASS,false,4.0)
 		_text.draw_rect(_window.grow(-1.0),Palette.BRASS_DIM,false,1.5)
-	var words := DescentBand.texts(element)
-	var fade_text := plate
-	if fade_text > 0.0:
-		# A dark wash in the lower left so the tag reads on any frame, then the demon's name (T3 26) and the small line (T6 15).
-		var wash := Color(0,0,0,.55*fade_text)
+	if plate > 0.0:
+		var lay := _tag_layout()
+		var font: Font = lay.font
+		var at: Vector2 = lay.at
+		var ec := Palette.element_color(element)
+		# A dark wash in the lower left so the tag reads on any frame.
+		var wash := Color(0,0,0,.62*plate)
 		var clear := Color(0,0,0,0)
-		_text.draw_polygon(PackedVector2Array([Vector2(0,size.y-230*k),Vector2(760*k,size.y-230*k),Vector2(760*k,size.y),Vector2(0,size.y)]),PackedColorArray([clear,clear,clear,wash]))
-		var slide := (1.0-fade_text)*-24.0*k
+		_text.draw_polygon(PackedVector2Array([Vector2(0,size.y-300*k),Vector2(980*k,size.y-300*k),Vector2(980*k,size.y),Vector2(0,size.y)]),PackedColorArray([clear,clear,clear,wash]))
+		# the demon's name, small, over the skill's name (T3 26)
 		var heading := Loc.font("heading")
-		var name_at := Vector2(48.0*k+slide,size.y-86.0*k)
 		var demon_name := Loc.t("demon."+element+".name")
-		_text.draw_string_outline(heading,name_at,demon_name,HORIZONTAL_ALIGNMENT_LEFT,-1,26,5,Color(0,0,0,.9*fade_text))
-		_text.draw_string(heading,name_at,demon_name,HORIZONTAL_ALIGNMENT_LEFT,-1,26,Color(Palette.INK,fade_text))
-		var body := Loc.font("body")
-		var line_at := name_at+Vector2(0,26.0*k)
-		_text.draw_string_outline(body,line_at,String(words.line),HORIZONTAL_ALIGNMENT_LEFT,-1,15,4,Color(0,0,0,.9*fade_text))
-		_text.draw_string(body,line_at,String(words.line),HORIZONTAL_ALIGNMENT_LEFT,-1,15,Color(Palette.INK_DIM,fade_text))
-	var key := subtitle_key if subtitle_key != "" else say_key(element,true)
-	var said := "" if key == "" else Loc.t(key)
-	if subtitle > 0.0 and said != "" and said != key:
-		var body2 := Loc.font("body")
-		var width := body2.get_string_size(said,HORIZONTAL_ALIGNMENT_LEFT,-1,20).x
-		var mid := Vector2(size.x*.5,size.y-118.0*k)
-		DescentBand.iron_plate(_text,Rect2(mid.x-width*.5-30.0,mid.y-30.0,width+60.0,44.0),subtitle)
-		var at := mid+Vector2(-width*.5,0)
-		_text.draw_string_outline(body2,at,said,HORIZONTAL_ALIGNMENT_LEFT,-1,20,4,Color(0,0,0,.9*subtitle))
-		_text.draw_string(body2,at,said,HORIZONTAL_ALIGNMENT_LEFT,-1,20,Color(Palette.INK,subtitle))
+		var demon_at := at+Vector2(0,-float(lay.size)-8.0)
+		_text.draw_string_outline(heading,demon_at,demon_name,HORIZONTAL_ALIGNMENT_LEFT,-1,26,5,Color(0,0,0,.9*plate))
+		_text.draw_string(heading,demon_at,demon_name,HORIZONTAL_ALIGNMENT_LEFT,-1,26,Color(Palette.INK_DIM,plate))
+		# the skill's name: a light of the element's colour, the dark edge, the fill comes from _name_fill (brass to old gold, cut into metal)
+		for glow in [[18,.10],[13,.16],[9,.24]]:
+			_text.draw_string_outline(font,at,String(lay.title),HORIZONTAL_ALIGNMENT_LEFT,-1,int(lay.size),int(glow[0]),Color(ec,float(glow[1])*plate))
+		_text.draw_string_outline(font,at,String(lay.title),HORIZONTAL_ALIGNMENT_LEFT,-1,int(lay.size),8,Color(0.01,0.01,0.015,.95*plate))
+		_text.draw_string(font,at+Vector2(0,2.0),String(lay.title),HORIZONTAL_ALIGNMENT_LEFT,-1,int(lay.size),Color(Palette.INK,.55*plate))
 	if skip_hint > 0.0:
-		var tag := Vector2(size.x-90.0*k,size.y-52.0*k)
-		UiStyle.blit_centered(_text,"key_tag",tag,1.0,Color(1,1,1,skip_hint))
+		# an iron plate with the word, lower right (the key plate of the HUD is too small to read at 720p)
 		var hint := Loc.t("descent.cutscene.skip")
-		_text.draw_string_outline(Loc.font("heading"),tag+Vector2(-30,5),hint,HORIZONTAL_ALIGNMENT_CENTER,60,14,3,Color(0,0,0,.85*skip_hint))
-		_text.draw_string(Loc.font("heading"),tag+Vector2(-30,5),hint,HORIZONTAL_ALIGNMENT_CENTER,60,14,Color(Palette.INK_FAINT,skip_hint))
+		var font_h := Loc.font("heading")
+		var hint_w := font_h.get_string_size(hint,HORIZONTAL_ALIGNMENT_LEFT,-1,18).x
+		var plate_rect := Rect2(size.x-48.0*k-hint_w-44.0,size.y-58.0*k,hint_w+44.0,36.0)
+		DescentBand.iron_plate(_text,plate_rect,skip_hint)
+		var at_hint := Vector2(plate_rect.position.x+22.0,plate_rect.position.y+25.0)
+		_text.draw_string_outline(font_h,at_hint,hint,HORIZONTAL_ALIGNMENT_LEFT,-1,18,3,Color(0,0,0,.85*skip_hint))
+		_text.draw_string(font_h,at_hint,hint,HORIZONTAL_ALIGNMENT_LEFT,-1,18,Color(Palette.INK,skip_hint))
+
+func _draw_name_fill() -> void:
+	if plate <= 0.0: return
+	var lay := _tag_layout()
+	_name_material.set_shader_parameter("pivot_y",float(lay.at.y)-float(lay.size)*.35)
+	_name_material.set_shader_parameter("height",float(lay.size))
+	_name_fill.draw_string(lay.font,lay.at,String(lay.title),HORIZONTAL_ALIGNMENT_LEFT,-1,int(lay.size),Color(1,1,1,plate))

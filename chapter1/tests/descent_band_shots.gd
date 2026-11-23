@@ -13,7 +13,6 @@ extends SceneTree
 ## Prints DESCENT_BAND_SHOT lines and, last, CHAPTER1_DESCENT_BAND_RESULT {...}; exit code 1 on any failed check.
 const DescentBand := preload("res://chapter1/view/hud/descent_band.gd")
 const DescentCutscene := preload("res://chapter1/view/hud/descent_cutscene.gd")
-const DescentCall := preload("res://chapter1/view/hud/descent_call.gd")
 const Loc := preload("res://chapter1/view/loc.gd")
 const ELEMENTS := ["ember", "frost", "arc"]
 const LONG_SECONDS := 0.9
@@ -102,13 +101,8 @@ func text_checks() -> void:
 			var bold := Loc.font("bold")
 			var line_w := bold.get_string_size(String(words.line), HORIZONTAL_ALIGNMENT_LEFT, -1, DescentBand.LINE_SIZE).x
 			check(line_w <= DescentBand.NAME_MAX_W, "%s %s: the small line is %.0f wide (max %.0f)" % [code, el, line_w, DescentBand.NAME_MAX_W])
-			var said := String(words.demon_line)
-			check((el == "arc") == (said == ""), "%s %s: only lightning's demon is silent (line '%s')" % [code, el, said])
-			if said != "":
-				var body := Loc.font("body")
-				var said_w := body.get_string_size(said, HORIZONTAL_ALIGNMENT_LEFT, -1, DescentBand.DEMON_LINE_SIZE).x
-				check(said_w <= 400.0, "%s %s: the demon's line is %.0f wide (box 400)" % [code, el, said_w])
-			notes.append("text %s %s: name '%s' size %d width %.0f | line '%s' | demon line '%s'" % [code, el, words.name, int(fit.size), float(fit.width), words.line, said])
+			notes.append("text %s %s: name '%s' size %d width %.0f | line '%s'" % [code, el, words.name, int(fit.size), float(fit.width), words.line])
+			check(not words.has("demon_line"), "%s %s: nobody speaks on the band (U-102)" % [code, el])
 	Loc.set_locale("ko")
 
 # ---- pictures ----
@@ -116,7 +110,7 @@ func text_checks() -> void:
 ## The long cut-in's values at `t` seconds (A11 4.2). Test-only.
 func timetable(t: float) -> Dictionary:
 	return {"band_in": _span(t, .06, .24), "witch": 0.0, "demon": _span(t, .24, .44), "name": _span(t, .38, .50),
-		"line": _span(t, .46, .56), "demon_line": _span(t, .50, .62), "trim_flash": sin(PI * _span(t, .38, .48)) if t >= .38 and t <= .48 else 0.0}
+		"line": _span(t, .46, .56), "trim_flash": sin(PI * _span(t, .38, .48)) if t >= .38 and t <= .48 else 0.0}
 
 func _span(t: float, a: float, b: float) -> float:
 	return clampf((t - a) / (b - a), 0.0, 1.0)
@@ -227,7 +221,7 @@ func _small(img: Image) -> Image:
 ## saturation of the band's own surface; the full band gives the share of the screen it covers (body + overflow). Also the contrast round the name.
 func _metrics_for(band: Control, el: String, full: Image, values: Dictionary) -> void:
 	var body_values := values.duplicate()
-	for key in ["demon", "name", "line", "demon_line", "witch"]: body_values[key] = 0.0
+	for key in ["demon", "name", "line", "witch"]: body_values[key] = 0.0
 	band.apply(body_values)
 	for i in 3: await process_frame
 	await RenderingServer.frame_post_draw
@@ -294,7 +288,6 @@ func _grab(abs_dir: String, label: String, size_px: Vector2i) -> void:
 func _shoot_cutscene(band: Control, abs_dir: String, size_px: Vector2i) -> void:
 	Loc.set_locale(String(locales[0]))
 	var cut: Control = DescentCutscene.attach(root)
-	var call: Control = DescentCall.attach(root)
 	for el in elements:
 		var ok: bool = cut.open_stream(String(el))
 		check(ok, "%s: the cut-scene's video slot opens (a table with the video slots must be given with --chapter1-asset-slots=)" % el)
@@ -306,34 +299,27 @@ func _shoot_cutscene(band: Control, abs_dir: String, size_px: Vector2i) -> void:
 			await process_frame
 			waited += 1
 		check(cut.first_frame_ready(), "%s: a first frame is on hand within 60 frames (waited %d)" % [el, waited])
-		notes.append("cutscene %s: first frame after %d frames, aspect %.3f, length %.2f s, seek works: %s" % [el, waited, cut.video_aspect(), cut.video_seconds(), str(cut.can_seek())])
+		notes.append("cutscene %s: first frame after %d frames, aspect %.3f, length %.2f s" % [el, waited, cut.video_aspect(), cut.video_seconds()])
 		cut.apply({"element": String(el), "open": 0.0})
 		cut.start()
 		var e := String(el)
 		cut.apply({"open": 0.45, "plate": 0.0})
 		await _grab(abs_dir, "cut-%s-open045" % e, size_px)
 		for i in 20: await process_frame
-		cut.apply({"open": 1.0, "plate": 1.0, "subtitle": 1.0, "skip_hint": 1.0, "subtitle_key": DescentCutscene.say_key(e, true)})
+		cut.apply({"open": 1.0, "plate": 1.0, "skip_hint": 1.0})
 		await _grab(abs_dir, "cut-%s-run" % e, size_px)
 		var pos_a: float = cut.video_position()
 		for i in 15: await process_frame
 		check(cut.video_position() > pos_a, "%s: the video keeps running (%.2f -> %.2f s)" % [e, pos_a, cut.video_position()])
-		cut.apply({"open": 0.3, "plate": 0.0, "subtitle": 0.0, "skip_hint": 0.0})
+		cut.apply({"open": 0.3, "plate": 0.0, "skip_hint": 0.0})
 		await _grab(abs_dir, "cut-%s-close030" % e, size_px)
-		# The band over it with the video in the demon window (from the second descent on).
+		# The band over it: the demon window is the still picture (a video frame there showed its brightness key as a box).
 		band.open(e)
-		band.set_demon_video(cut.frame_texture(), Rect2(Vector2.ZERO, cut.frame_size()) if cut.frame_size().x > 0.0 else Rect2())
 		var v := timetable(.9)
 		v["hero_top"] = hero_top
 		v["clock"] = 2.0
 		cut.apply({"open": 0.0})
 		band.apply(v)
-		await _grab(abs_dir, "cut-%s-bandvideo" % e, size_px)
-		band.set_demon_video(null)
+		await _grab(abs_dir, "cut-%s-bandstill" % e, size_px)
 		band.close()
 		cut.close()
-	var key := DescentCall.call_key("ember", false)
-	call.say("ember", key)
-	check(Loc.t(key) != key, "the sorceress's call key exists: " + key)
-	call.apply({"t": .5, "hero_top": hero_top})
-	await _grab(abs_dir, "call-ember", size_px)

@@ -9,9 +9,9 @@ extends Control
 ## Use:
 ##   var band := DescentBand.new(); layer.add_child(band)       # the layer: CanvasLayer 0, added AFTER the screen layer, see attach()
 ##   band.open("ember")                                         # picks the pictures and the words once
-##   band.apply({"band_in": e, "witch": e, "demon": e, "name": e, "line": e, "demon_line": e, "bonus": 0.12, "hero_top": Vector2(x, y)})
+##   band.apply({"band_in": e, "witch": e, "demon": e, "name": e, "line": e, "bonus": 0.12, "hero_top": Vector2(x, y)})
 ##   band.close()
-## Values (all 0..1 unless said): band_in, band_out, witch, demon, name, line, demon_line, trim_flash, bonus (0..0.3, the hold bonus: the
+## Values (all 0..1 unless said): band_in, band_out, witch, demon, name, line, trim_flash, bonus (0..0.3, the hold bonus: the
 ## brass edge brightens in proportion), hero_top (the hood's top on screen, code units 1600x900), clock (seconds, drives the pattern;
 ## the part counts it itself unless "clock" is pushed), reduced_motion (bool: no slide, no scale, alpha only), slide_out (bool, false for lightning).
 ## Pictures (A11 4.6, by slot id only): sorceress portrait.<element>.cutin_ultimate (none: the demon alone); demon illustration.cutin.descent.<element>
@@ -45,8 +45,6 @@ const NAME_SPACING := 5.0         ## letter spacing in the font's units: an engr
 const NAME_Y := -20.0             ## the name's middle, from the band's centre line (band-local y)
 const LINE_SIZE := 20             ## T4
 const LINE_DY := 56.0             ## below the name's middle
-const DEMON_LINE_SIZE := 17       ## T5
-const DEMON_LINE_RIGHT := 1255.0  ## screen x of the demon line's right end: left of the demon's face and hand (A11 4.5 says 1500, which lands on the chin in the captures)
 const WITCH_LEFT := 1330.0        ## screen x of the small sorceress's left edge (U-99: the demon owns the band; she is an optional guest, drawn only when "witch" > 0)
 const WITCH_HEIGHT := 0.8         ## her height against the band when her picture has its scene painted in (cut inside the band)
 const WITCH_HEIGHT_ALPHA := 1.1   ## the same for a transparent picture (it may overflow the top)
@@ -69,7 +67,6 @@ var witch := 0.0
 var demon := 0.0
 var name_t := 0.0
 var line := 0.0
-var demon_line := 0.0
 var trim_flash := 0.0
 var sweep := -1.0               ## the light sweep across the band when the name stands: 0..1 while it runs, -1 off
 var bonus := 0.0
@@ -91,8 +88,6 @@ var _name_node: Control      ## the metal fill, with the gradient and the inset 
 var _name_back: Control      ## everything behind the fill: plate, ornaments, light, dark edge, the highlight
 var _name_font: FontVariation
 var _name_material: ShaderMaterial
-var _demon_video: Texture2D    ## a live video frame standing in for the picture (set_demon_video)
-var _demon_video_focus := Rect2()
 var _body_material: ShaderMaterial
 var _demon_material: ShaderMaterial
 var _witch_tex: Texture2D
@@ -156,15 +151,6 @@ func _process(delta: float) -> void:
 	if visible and auto_clock:
 		clock += delta
 		_push_clock()
-	if visible and _demon_video != null:
-		_demon_node.queue_redraw()   # the video frame changes under the picture
-
-## A live video frame (the cut-scene player's texture) drawn instead of the demon's picture in the band's demon window, keyed by brightness like the picture.
-## `focus` is the window of the frame in pixels (empty: the whole frame). null puts the picture back.
-func set_demon_video(frame: Texture2D, focus: Rect2 = Rect2()) -> void:
-	_demon_video = frame
-	_demon_video_focus = focus
-	if _demon_node != null: _demon_node.queue_redraw()
 
 # ---- geometry (static, so a check can ask without a node) ----
 
@@ -217,13 +203,10 @@ static func fit_name(title: String) -> Dictionary:
 		width = font.get_string_size(title,HORIZONTAL_ALIGNMENT_LEFT,-1,size_).x
 	return {"size":size_,"width":width}
 
-## The three texts of the band for an element: {name, line, demon_line} ("" when the element has none: lightning's demon says nothing).
+## The two texts of the band for an element: {name, line}. U-102: nobody speaks on the descent's screen; the skill's name and one small line are all the words.
 static func texts(el: String) -> Dictionary:
-	var demon_key := "descent.say."+el+".first"
-	var said := Loc.t(demon_key)
 	return {"name":Loc.t("descent.name."+el),
-		"line":Loc.t("descent.band.line",{"demon":Loc.t("demon."+el+".name"),"witch":Loc.t("character."+el+".name")}),
-		"demon_line":"" if said == demon_key else said}
+		"line":Loc.t("descent.band.line",{"demon":Loc.t("demon."+el+".name"),"witch":Loc.t("character."+el+".name")})}
 
 static func _slot_ready(id: String) -> bool:
 	return AssetSlots.has_slot(id) and not AssetSlots.is_planned(id) and AssetSlots.available(id)
@@ -278,7 +261,7 @@ func open(el: String) -> void:
 	_refresh()
 
 func close() -> void:
-	band_in = 0.0; band_out = 0.0; witch = 0.0; demon = 0.0; name_t = 0.0; line = 0.0; demon_line = 0.0; trim_flash = 0.0; bonus = 0.0
+	band_in = 0.0; band_out = 0.0; witch = 0.0; demon = 0.0; name_t = 0.0; line = 0.0; trim_flash = 0.0; bonus = 0.0
 	_opened = false
 	visible = false
 
@@ -292,7 +275,6 @@ func apply(values: Dictionary) -> void:
 			"demon": demon = clampf(float(values[key]),0,1)
 			"name": name_t = clampf(float(values[key]),0,1)
 			"line": line = clampf(float(values[key]),0,1)
-			"demon_line": demon_line = clampf(float(values[key]),0,1)
 			"trim_flash": trim_flash = clampf(float(values[key]),0,1)
 			"sweep": sweep = float(values[key])
 			"bonus": bonus = clampf(float(values[key]),0,.3)
@@ -322,7 +304,7 @@ func _refresh() -> void:
 	var up := _opened and band_in > 0.0 and band_out < 1.0
 	visible = up
 	if not up: return
-	var key: Array = [element,band_in,band_out,witch,demon,name_t,line,demon_line,trim_flash,sweep,bonus,hero_top,reduced_motion,slide_out,size,clock if not auto_clock else 0.0]
+	var key: Array = [element,band_in,band_out,witch,demon,name_t,line,trim_flash,sweep,bonus,hero_top,reduced_motion,slide_out,size,clock if not auto_clock else 0.0]
 	_push_clock()
 	if key == _key: return
 	_key = key
@@ -435,9 +417,9 @@ func _draw_witch() -> void:
 	_figure(_witch_node,_witch_tex,box,_witch_focus,Vector2.ZERO if _witch_alpha else Vector2(-h*.5,h*.5),0.0 if _witch_alpha else EDGE_FADE_RIGHT,0.0 if _witch_alpha else EDGE_FADE,witch)
 
 func _draw_demon() -> void:
-	var frame: Texture2D = _demon_video if _demon_video != null else _demon_tex
+	var frame: Texture2D = _demon_tex   # a still picture: a video frame in this window showed its brightness key as a box (VFX-B 6)
 	if frame == null or demon <= 0.0: return
-	var focus := _demon_video_focus if _demon_video != null else _demon_focus
+	var focus := _demon_focus
 	if focus.size.x <= 0.0 or focus.size.y <= 0.0: focus = Rect2(Vector2.ZERO,frame.get_size())
 	var h := float(_lay.height)
 	var hd := h*DEMON_HEIGHT
@@ -488,14 +470,6 @@ func _draw_text() -> void:
 		var at_line := Vector2(left,cy+LINE_DY*_k*h_scale+(bold.get_ascent(LINE_SIZE)-bold.get_descent(LINE_SIZE))*.5)
 		_text.draw_string_outline(bold,at_line,String(words.line),HORIZONTAL_ALIGNMENT_LEFT,-1,LINE_SIZE,4,Color(0,0,0,.9*line))
 		_text.draw_string(bold,at_line,String(words.line),HORIZONTAL_ALIGNMENT_LEFT,-1,LINE_SIZE,Color(Palette.INK,line))
-	var said := String(words.demon_line)
-	if demon_line > 0.0 and said != "":
-		var body := Loc.font("body")
-		var right := _lx(DEMON_LINE_RIGHT)
-		var y := float(_lay.height)*.5-28.0*_k
-		var at_said := Vector2(right-400.0,y+(body.get_ascent(DEMON_LINE_SIZE)-body.get_descent(DEMON_LINE_SIZE))*.5)
-		_text.draw_string_outline(body,at_said,said,HORIZONTAL_ALIGNMENT_RIGHT,400.0,DEMON_LINE_SIZE,5,Color(0,0,0,.9*demon_line))
-		_text.draw_string(body,at_said,said,HORIZONTAL_ALIGNMENT_RIGHT,400.0,DEMON_LINE_SIZE,Color(Palette.INK,demon_line))
 
 ## Behind the fill (A11 12.2 as changed by U-101): a faint light of the element's colour, an iron plate, short brass ornaments left and right of the name, the
 ## dark edge round the letters, and the highlight line under them (the "cut into metal" look: the top inner edge is shaded by the shader, the bottom edge lit here).

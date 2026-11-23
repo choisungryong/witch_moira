@@ -1,6 +1,7 @@
 extends RefCounted
-## The descent's screen (D15 A, D14 4.3-4.4, D24 4.8 / 5-7 / 12.2): the gauge's edge aura, the cut-in, the demon in the sky layer,
-## and the sweep of each element (ember_ult.gd / frost_ult.gd / arc_ult.gd in fx/descent/).
+## The descent's screen (D15 A, D14 4.3-4.4, D24 4.8 / 5-7 / 12.2, A11): the gauge's edge aura, the band and the cut-scene (A11: the demon's own art; the
+## parts are view/hud/descent_band.gd and descent_cutscene.gd, this file keeps their timetable), the demon in the sky layer, and the sweep of each element
+## (ember_ult.gd / frost_ult.gd / arc_ult.gd in fx/descent/). Nobody speaks on this screen (U-102): the words are the demon's name and the skill's name.
 ## It only READS the core: descent_view() and the events descent_ready / descent_called / descent_released / descent_book /
 ## descent_strike / descent_end / orb_vacuum, plus the orbs and the hero's place. It never writes to the core. The two calls that do
 ## (request_descent, release_descent) are the app's: this file only says "the cut-in is over" through take_release().
@@ -21,7 +22,8 @@ extends RefCounted
 ## Without an `area` (a core older than D24) the screen rectangle falls back to the data's default numbers.
 ##
 ## Settings (variables here; a settings screen and settings.cfg do not exist yet, so the app sets them from launch arguments):
-##   cutin_short    the 0.5 s cut-in every time ("짧게만")
+##   cutin_short    the 0.5 s band every time ("짧게만"; no cut-scene)
+##   cutscene_mode  "first" (the run's first descent plays the demon's 3 s video: default) / "always" / "off" (--chapter1-descent-cutscene=)
 ##   reduced_motion no slide, no shake, no flash, no gust (the picture only fades)
 ##   flash_scale    0 off, 0.5 weak, 1 full: the flash of the gesture, the tint washes, the aura swell, the white flashes, the lights
 ##   shake_scale    0 off .. 1: the camera impulses
@@ -35,36 +37,50 @@ const FrostUlt = preload("res://chapter1/view/fx/descent/frost_ult.gd")
 const ArcUlt = preload("res://chapter1/view/fx/descent/arc_ult.gd")
 const SCREEN_SHADER = preload("res://chapter1/view/fx/descent_screen.gdshader")
 const SIGIL_SHADER = preload("res://chapter1/view/fx/descent_sigil.gdshader")
+const DescentBand = preload("res://chapter1/view/hud/descent_band.gd")
+const DescentCutscene = preload("res://chapter1/view/hud/descent_cutscene.gd")
 
-const SLOT_PREFIX := "illustration.cutin.descent."
+const CUTIN_SLOT_PREFIX := "illustration.cutin.descent."
 const SKY_SLOT_PREFIX := "illustration.sky.descent."
-## Until the sky pictures exist the grace screen's demon (a full-length figure on a dark ground, the same one per element) is used, upper body only.
+## The sky layer's demon: illustration.sky.descent.<el>, then the band's own picture (illustration.cutin.descent.<el>, a waist-up 3:2 picture), then the grace screen's
+## demon (a full-length figure on a dark ground, the same one per element, upper body only), then the code silhouette.
 const GRACE_SLOT_PREFIX := "ui.grace.demon."
 const ELEMENT_ID := {"ember": 0.0, "frost": 1.0, "arc": 2.0}
-## Where the bust sits and which way it comes in from, per element (the art decides the final look).
-const SLIDE_DIR := {"ember": Vector2(1, 0), "frost": Vector2(-1, 0), "arc": Vector2(0, 0.6)}
-const ART_FOCUS_Y := {"ember": 0.44, "frost": 0.42, "arc": 0.40}
 ## Where the demon stands in the sky layer (uv x): away from where the effect comes in (rocks from the upper left, wind from the upper right).
 const SKY_X := {"ember": 0.72, "frost": 0.28, "arc": 0.5}
 ## The sweep's tail after its last tick (the scorch of the rocks stays 3 s).
 const TAIL := {"ember": 3.2, "frost": 3.0, "arc": 1.3}
 const DEFAULT_AREA := {"right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4}
 
-## The cut-in's own clock, in the seconds of the long one (D14 4.4); the short one scales all of it by SHORT_SECONDS / LONG_SECONDS.
+## The band's own clock, in wall seconds while the core stands still (A11 4.2, 12.3.3 as cut to 3 s by U-101). Three shapes:
+##   cut-scene (the run's first descent, with the demon's video): dark 0..0.12, the strip opens 0.12..0.30 round the first frame, the video runs from 0.30 for its
+##       own length V, then the strip narrows to the band's height (0.18 s), the skill's name stands (0.12 s), the core lets go 0.55 s after the narrowing began
+##       (about 3.85 s in all). A key press after the first 0.5 s skips the rest of the video (it goes dark in 0.10 s, then the same narrowing).
+##   long band (no video, or the video's first frame did not come in 0.5 s): 0.9 s as before: the release at 0.70
+##   short band (every later descent): 0.5 s, the release at 0.389
+## The band leaves on the SWEEP's clock after the release (A11 4.2): ember s12..s24, frost s6..s15, lightning s4..s15 (no slide).
 const LONG_SECONDS := 0.9
 const SHORT_SECONDS := 0.5
-const T_DARK_END := 0.10
-const T_SLIT_END := 0.20
-const T_OPEN_END := 0.36
-const T_SLIDE_END := 0.50
-const T_FLASH_PEAK := 0.52
-const T_FLASH_END := 0.62
 const T_RELEASE := 0.70
 const T_END := 0.90
-## The app's own watchdog is longer than this; the picture never holds the core for more than this wall time.
+const LONG_BAND := {"dark": [0.0, 0.10], "band": [0.06, 0.24], "demon": [0.24, 0.44], "name": [0.38, 0.50], "line": [0.46, 0.56]}
+const SHORT_BAND := {"dark": [0.0, 0.06], "band": [0.04, 0.16], "demon": [0.08, 0.22], "name": [0.16, 0.26], "line": [0.22, 0.30]}
+const CUT_DARK_END := 0.12
+const CUT_OPEN_END := 0.30
+const CUT_CLOSE_SECONDS := 0.18
+const CUT_NAME_SECONDS := 0.12
+const CUT_RELEASE_AFTER := 0.55          ## from the narrowing's start to the release
+const CUT_SKIP_LOCK := 0.5               ## no input counts in the first 0.5 s after the call
+const CUT_SKIP_FADE := 0.10
+const CUT_FRAME_WAIT := 0.5              ## the video's first frame must be on hand by then, else the long band
+const BAND_OUT := {"ember": [12.0, 24.0], "frost": [6.0, 15.0], "arc": [4.0, 15.0]}
+## The app's hold limit is this much past the video's length (none: this much alone); the picture's own watchdog sits 0.5 s under it.
+const HOLD_PAD := 2.5
 const WATCHDOG_SECONDS := 2.0
 
 const GROUND_Y := 0.045
+const KILL_NUMBER_SIZE := 60      ## A11 6 D2: the end-of-sweep number (code units, 1600 x 900)
+const KILL_RISE := 60.0           ## the number's foot stands this far above the hood's top
 ## A11 5.1: the sign under the hero. Slot fx.descent.sigil.<element> (a picture, when one is chosen) else the shader's own sign.
 const SIGIL_SLOT_PREFIX := "fx.descent.sigil."
 const SIGIL_SIZE_M := 6.0
@@ -83,6 +99,9 @@ const DEMON_IN := 0.35
 const DEMON_OUT := 0.4
 
 var cutin_short := false
+var cutscene_mode := "first"
+## QA only (descent_fx_shots.gd --fx-off): everything this file draws is hidden, so the same frame can be taken with and without the descent.
+var qa_hidden := false
 var reduced_motion := false
 var flash_scale := 1.0
 var shake_scale := 1.0
@@ -91,7 +110,7 @@ var low := false
 
 var view: Node3D
 var stats := {"cutins": 0, "sweeps": 0, "bolts": 0, "bolts_dropped": 0, "peak_bolts": 0, "flights": 0, "lights_peak": 0, "particles": 0,
-	"rocks": 0, "impacts": 0, "pulses": 0, "breaks": 0, "kicks": 0, "peak_alpha_layers": 0, "bolts_recycled": 0, "sigils": 0}
+	"rocks": 0, "impacts": 0, "pulses": 0, "breaks": 0, "kicks": 0, "peak_alpha_layers": 0, "bolts_recycled": 0, "sigils": 0, "cutscenes": 0, "skips": 0, "bands": 0}
 
 ## Values the element's module sets each frame for the one screen shader (read by _push_screen).
 var scr := {"sky": 0.0, "sky_flash": 0.0, "storm": 0.0, "gust": 0.0, "fire_cover": 0.0, "fire_alpha": 0.0, "whiteout": 0.0, "demon_pose": 0.0}
@@ -112,6 +131,18 @@ var _layer: CanvasLayer
 var _screen: ColorRect
 var _screen_mat: ShaderMaterial
 var _kill_label: Label
+var _kill_tail: Label
+var _kill_total := 0
+var _band: Control
+var _band_layer: CanvasLayer
+var _cutscene: Control
+var _cutscene_layer: CanvasLayer
+var _calls := 0                 ## descents called in this run (the first one is the cut-scene's)
+var _scene_failed := false      ## the video could not be used in this run: no second try (A11 12.3.3)
+var _preopen_done := false
+var _bonus := 0.0
+var _hud_hidden := false
+var _band_flag := false
 var _sigil: MeshInstance3D
 var _sigil_mat: ShaderMaterial
 var _sigil_age := -1.0
@@ -124,8 +155,6 @@ var _light_total := PackedFloat32Array([0.1, 0.1, 0.1])
 var _light_energy := PackedFloat32Array([0.0, 0.0, 0.0])
 var _light_next := 0
 var _ult: RefCounted = null
-var _art: Texture2D = null
-var _art_checked := false
 var _sky_art_checked := false
 
 var _aura := 0.0
@@ -159,6 +188,12 @@ func reset() -> void:
 	_clock = 0.0
 	_release_due = false
 	_cut = {}
+	if _cutscene != null: _cutscene.close()
+	if _band != null: _band.close()
+	_calls = 0
+	_scene_failed = false
+	_preopen_done = false
+	_bonus = 0.0
 	sw = {}
 	_aura = 0.0
 	_aura_pulse = 0.0
@@ -175,13 +210,14 @@ func reset() -> void:
 	_flights = PackedFloat32Array()
 	_kill_label_age = -1.0
 	_element = ""
-	_art = null
-	_art_checked = false
+	_kill_total = 0
 	_sky_art_checked = false
 	_sigil_age = -1.0
 	_sigil_alpha = 0.0
 	_sigil_art_checked = false
 	_reset_scr()
+	_set_hud_hidden(false)
+	_set_band_flag(false)
 	if _built:
 		_hide_all()
 		if _flight != null: _flight.multimesh.visible_instance_count = 0
@@ -199,7 +235,9 @@ func take_release() -> bool:
 
 ## A read-only digest for tools and tests.
 func status() -> Dictionary:
-	return {"built": _built, "element": _element, "cutin": not _cut.is_empty(), "cut_t": float(_cut.get("t", 0.0)), "cut_dur": float(_cut.get("dur", 0.0)),
+	return {"built": _built, "element": _element, "cutin": not _cut.is_empty(), "cut_t": float(_cut.get("t", 0.0)), "cut_dur": float(_cut.get("dur", 0.0)), "cut_kind": String(_cut.get("kind", "")),
+		"video_s": float(_cut.get("video_s", 0.0)), "skipped": float(_cut.get("skip_at", -1.0)) >= 0.0, "hud_hidden": _hud_hidden, "band_up": _band != null and _band.visible,
+		"hold_limit": hold_limit(),
 		"sweep": not sw.is_empty(), "sweep_t": float(sw.get("t", 0.0)), "aura": _aura, "bolts": int(_ult.live_bolts()) if _ult != null and _element == "arc" else 0,
 		"release_due": _release_due, "demon": _demon, "low": low, "stats": stats.duplicate(),
 		"sigil": _sigil_age >= 0.0, "sigil_alpha": _sigil_alpha, "sigil_age": _sigil_age}
@@ -329,17 +367,53 @@ func consume(events: Array) -> void:
 			"orb_vacuum":
 				if String(event.get("by", "")) == "descent": _start_flights()
 
+## true when this call should play the demon's cut-scene (A11 12.3.1: the run's first descent, or every one with "always"; never with the 0.5 s setting).
+func _wants_scene(variant: String) -> bool:
+	if cutin_short or cutscene_mode == "off" or _scene_failed: return false
+	return cutscene_mode == "always" or variant == "long"
+
+## The gauge is full: open the video now, held on its first frame, so the call meets no loading (A11 12.3.6).
+func _preopen() -> void:
+	if view == null or not _wants_scene("long" if _calls == 0 else "short") or _element == "": return
+	_ensure_cutscene()
+	if _cutscene != null and not _cutscene.has_video():
+		if not _cutscene.open_stream(_element): _scene_failed = true
+
+func _ensure_cutscene() -> void:
+	if _cutscene != null or view == null: return
+	_cutscene = DescentCutscene.attach(view)
+	_cutscene_layer = _cutscene.get_parent()
+
 func _on_called(event: Dictionary) -> void:
 	_ensure_built(String(event.element))
 	if not _built: return
-	var short := cutin_short or String(event.get("variant", "long")) == "short"
-	var dur := SHORT_SECONDS if short else LONG_SECONDS
-	_cut = {"t": 0.0, "dur": dur, "release_at": dur * T_RELEASE / T_END, "released": false, "wall": 0.0, "short": short}
+	var variant := String(event.get("variant", "long"))
+	var scene := _wants_scene(variant)
+	var video_s := 0.0
+	if scene:
+		_ensure_cutscene()
+		if not _cutscene.has_video() and not _cutscene.open_stream(_element):
+			_scene_failed = true
+			scene = false
+		else:
+			video_s = _cutscene.video_seconds()
+	var short := not scene and (cutin_short or variant == "short")
+	_calls += 1
+	if scene:
+		var close_at := CUT_OPEN_END + video_s
+		_cut = {"t": 0.0, "wall": 0.0, "kind": "video", "short": false, "released": false, "video_s": video_s, "skip_at": -1.0, "close_at": close_at,
+			"release_at": close_at + CUT_RELEASE_AFTER, "dur": close_at + CUT_RELEASE_AFTER + 0.3, "started": false}
+		stats.cutscenes += 1
+	else:
+		var dur := SHORT_SECONDS if short else LONG_SECONDS
+		_cut = {"t": 0.0, "wall": 0.0, "kind": "band", "short": short, "released": false, "video_s": 0.0, "skip_at": -1.0, "release_at": dur * T_RELEASE / T_END, "dur": dur}
 	_release_due = false
+	_preopen_done = false
+	_bonus = clampf(float(int(event.get("hold_bonus_bps", 0))) / 10000.0, 0.0, 0.3)
 	stats.cutins += 1
-	_load_art()
 	_sigil_age = 0.0
 	stats.sigils += 1
+	_open_band()
 
 func _on_released(event: Dictionary) -> void:
 	_ensure_built(String(event.element))
@@ -355,6 +429,7 @@ func _on_released(event: Dictionary) -> void:
 	_kick_hold = 0.0
 	_reset_scr()
 	stats.sweeps += 1
+	if not _cut.is_empty(): _cut["sweep"] = true   # the band leaves on THIS sweep's clock (an earlier sweep's tail may still be running)
 	_load_sky_art()
 	_ult.begin(event)
 	# the shots that were wiped: small flashes where they were
@@ -387,9 +462,12 @@ func _on_end(event: Dictionary) -> void:
 	if not sw.is_empty(): sw["ended_at"] = float(sw.t)
 	kick(0.25)
 	if numbers_on and shown > 0 and _kill_label != null:
-		_kill_label.text = Loc.tn("descent.kills", shown)
+		_kill_total = shown
+		_kill_label.text = str(shown)
+		_kill_tail.text = Loc.t("descent.kills.tail")
 		_kill_label_age = 0.0
 		_kill_label.visible = true
+		_kill_tail.visible = true
 
 # ---------------------------------------------------------------- build (lazy)
 
@@ -405,7 +483,11 @@ func _free_built() -> void:
 		if _ult != null: _ult.reset()
 		if holder != null: holder.queue_free()
 		if _layer != null: _layer.queue_free()
-		holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null; _flight = null; _ult = null; _sigil = null; _sigil_mat = null
+		if _band_layer != null: _band_layer.queue_free()
+		if _cutscene != null: _cutscene.close()
+		if _cutscene_layer != null: _cutscene_layer.queue_free()
+		holder = null; _layer = null; _screen = null; _screen_mat = null; _kill_label = null; _kill_tail = null; _flight = null; _ult = null; _sigil = null; _sigil_mat = null
+		_band = null; _band_layer = null; _cutscene = null; _cutscene_layer = null
 		_lights.clear()
 		_built = false
 		_shown = false
@@ -416,6 +498,7 @@ func _build() -> void:
 	# Orb flights and the puffs of wiped shots: one MultiMesh.
 	var spark := QuadMesh.new(); spark.size = Vector2(0.34, 0.34)
 	var spark_material := StandardMaterial3D.new()
+	spark_material.albedo_texture = soft_dot()   # untextured these read as white squares (the orbs' flight after the sweep)
 	spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	spark_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	spark_material.vertex_color_use_as_albedo = true
@@ -478,55 +561,61 @@ func _build() -> void:
 	_screen.material = _screen_mat
 	_screen.visible = false
 	_layer.add_child(_screen)
+	# The band goes above the screen layer (same canvas layer number, later in the tree), under the HUD's.
+	_band = DescentBand.attach(view)
+	_band_layer = _band.get_parent()
+	# The kill number over the hero's head at the sweep's end (A11 6): the big number and a small word under it.
 	_kill_label = Label.new(); _kill_label.name = "Kills"
 	_kill_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_kill_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_kill_label.position = Vector2(-300, 150)
-	_kill_label.size = Vector2(600, 90)
+	_kill_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_kill_label.size = Vector2(320, 90)
 	_kill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_kill_label.add_theme_font_override("font", Loc.font("heading"))
-	_kill_label.add_theme_font_size_override("font_size", 54)
-	_kill_label.add_theme_color_override("font_color", tint.lerp(Color.WHITE, .35))
-	_kill_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, .9))
-	_kill_label.add_theme_constant_override("outline_size", 8)
+	_kill_label.add_theme_font_override("font", Loc.font("heading_black"))
+	_kill_label.add_theme_font_size_override("font_size", KILL_NUMBER_SIZE)
+	_kill_label.add_theme_color_override("font_color", Palette.INK)
+	_kill_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.03, .95))
+	_kill_label.add_theme_constant_override("outline_size", 10)
+	_kill_label.add_theme_color_override("font_shadow_color", Color(tint, .55))
+	_kill_label.add_theme_constant_override("shadow_outline_size", 22)
 	_kill_label.visible = false
 	_layer.add_child(_kill_label)
+	_kill_tail = Label.new(); _kill_tail.name = "KillsTail"
+	_kill_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_kill_tail.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_kill_tail.size = Vector2(320, 28)
+	_kill_tail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_kill_tail.add_theme_font_override("font", Loc.font("heading"))
+	_kill_tail.add_theme_font_size_override("font_size", 17)
+	_kill_tail.add_theme_color_override("font_color", Palette.INK_DIM)
+	_kill_tail.add_theme_color_override("font_outline_color", Color(0, 0, 0, .9))
+	_kill_tail.add_theme_constant_override("outline_size", 5)
+	_kill_tail.visible = false
+	_layer.add_child(_kill_tail)
 	_screen_mat.set_shader_parameter("tint", tint)
 	_screen_mat.set_shader_parameter("element_id", float(ELEMENT_ID.get(_element, 0.0)))
-	_screen_mat.set_shader_parameter("slide_dir", SLIDE_DIR.get(_element, Vector2(1, 0)))
-	_screen_mat.set_shader_parameter("art_focus_y", float(ART_FOCUS_Y.get(_element, 0.44)))
 	_screen_mat.set_shader_parameter("demon_x", float(SKY_X.get(_element, 0.7)))
 	_screen_mat.set_shader_parameter("low", 1.0 if low else 0.0)
 	_built = true
 	_warm = 5
 
-func _load_art() -> void:
-	if _art_checked: return
-	_art_checked = true
-	var slot := SLOT_PREFIX + _element
-	if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot):
-		_art = AssetSlots.texture(slot)
-		# A placeholder checkerboard is never shown: it means the file was missing.
-		if slot in AssetSlots.missing(): _art = null
-	_screen_mat.set_shader_parameter("art", _art)
-	_screen_mat.set_shader_parameter("has_art", 1.0 if _art != null else 0.0)
-
-## The demon of the sky layer: the picture of the slot illustration.sky.descent.<element> when there is one, else the code silhouette.
+## The demon of the sky layer (A11 4.6): illustration.sky.descent.<element>, else the band's own picture illustration.cutin.descent.<element> (so the sky and the band
+## show one demon), else the grace screen's demon, else the code silhouette (also with --chapter1-descent-sky=silhouette). sky_art_kind: 1 a waist-up picture, 0 a full-length one.
 func _load_sky_art() -> void:
 	if _sky_art_checked or _screen_mat == null: return
 	_sky_art_checked = true
-	var slot := SKY_SLOT_PREFIX + _element
 	var tex: Texture2D = null
-	if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot):
-		tex = AssetSlots.texture(slot)
-		if slot in AssetSlots.missing(): tex = null
-	if tex == null and not ("--chapter1-descent-sky=silhouette" in OS.get_cmdline_user_args()):
-		var grace := GRACE_SLOT_PREFIX + _element
-		if AssetSlots.has_slot(grace) and not AssetSlots.is_planned(grace):
-			tex = AssetSlots.texture(grace)
-			if grace in AssetSlots.missing(): tex = null
+	var kind := 0.0
+	if not ("--chapter1-descent-sky=silhouette" in OS.get_cmdline_user_args()):
+		for candidate in [[SKY_SLOT_PREFIX, 1.0], [CUTIN_SLOT_PREFIX, 1.0], [GRACE_SLOT_PREFIX, 0.0]]:
+			var slot := String(candidate[0]) + _element
+			if AssetSlots.has_slot(slot) and not AssetSlots.is_planned(slot) and not (slot in AssetSlots.missing()):
+				tex = AssetSlots.texture(slot)
+				if tex != null:
+					kind = float(candidate[1])
+					break
 	_screen_mat.set_shader_parameter("sky_art", tex)
 	_screen_mat.set_shader_parameter("has_sky_art", 1.0 if tex != null else 0.0)
+	_screen_mat.set_shader_parameter("sky_art_kind", kind)
 
 func _reset_scr() -> void:
 	for key in scr: scr[key] = 0.0
@@ -552,7 +641,11 @@ func sync(run: RefCounted, delta: float) -> void:
 	_aura = move_toward(_aura, aura_target, dt * 2.0)
 	_aura_pulse = maxf(0.0, _aura_pulse - dt * 1.2)
 	_pulse = maxf(0.0, _pulse - dt * 4.5)
+	if state == "ready" and not _preopen_done:
+		_preopen_done = true
+		_preopen()
 	_update_cutin(run, mode, state, dt, delta)
+	_update_parts(mode)
 	_update_warm()
 	_update_sweep(run, mode, dt)
 	_update_sigil(dt)
@@ -560,45 +653,179 @@ func sync(run: RefCounted, delta: float) -> void:
 	_update_lights(dt)
 	_update_label(dt)
 	_push_screen()
+	if qa_hidden: _qa_hide()
+
+func _qa_hide() -> void:
+	if _screen != null: _screen.visible = false
+	if holder != null: holder.visible = false
+	if _band_layer != null: _band_layer.visible = false
+	if _kill_label != null: _kill_label.visible = false
+	if _kill_tail != null: _kill_tail.visible = false
 
 func _hide_all() -> void:
 	_shown = false
 	if _screen != null: _screen.visible = false
 	if _kill_label != null: _kill_label.visible = false
+	if _kill_tail != null: _kill_tail.visible = false
 	if _sigil != null: _sigil.visible = false
 	if _ult != null: _ult.hide_all()
 
+## The hold limit the app uses (chapter_one.gd): the video's length plus HOLD_PAD while the cut-scene plays, HOLD_PAD alone otherwise. A floor under a broken
+## picture: the core never stands still longer than this.
+func hold_limit() -> float:
+	var extra := 0.0
+	if not _cut.is_empty() and String(_cut.get("kind", "")) == "video": extra = float(_cut.get("video_s", 0.0))
+	return HOLD_PAD + extra
+
+## The picture's own watchdog: half a second under the app's limit.
+func watchdog_seconds() -> float:
+	return hold_limit() - (HOLD_PAD - WATCHDOG_SECONDS)
+
+## true while the cut-scene owns the keys (the video is up and the core has not been let go): the app hands every press to try_skip() and does not pass it on.
+func input_guard() -> bool:
+	return not _cut.is_empty() and String(_cut.kind) == "video" and not bool(_cut.released)
+
+## A press while the cut-scene plays (A11 12.3.4). Always consumed while input_guard(); it skips the rest of the video only after the first 0.5 s and once.
+func try_skip() -> bool:
+	if not input_guard(): return false
+	if float(_cut.wall) < CUT_SKIP_LOCK or float(_cut.skip_at) >= 0.0: return true
+	var t := float(_cut.t)
+	if t + CUT_SKIP_FADE >= float(_cut.close_at): return true
+	_cut["skip_at"] = t
+	_cut["close_at"] = t + CUT_SKIP_FADE
+	_cut["release_at"] = float(_cut.close_at) + CUT_RELEASE_AFTER
+	stats.skips += 1
+	return true
+
 func _update_cutin(run: RefCounted, mode: String, state: String, dt: float, wall_dt: float) -> void:
 	if _cut.is_empty(): return
-	# the cut-in is shown only while the core holds (or just after it let go, for the picture's leaving)
+	# the picture runs only while the core holds (or just after it let go, for the band's leaving)
 	if mode == "descent" or (bool(_cut.released) and mode == "playing"):
-		_cut["t"] = float(_cut.t) + dt
 		_cut["wall"] = float(_cut.wall) + wall_dt
-	if mode == "descent" and not bool(_cut.released) and (float(_cut.t) >= float(_cut.release_at) or float(_cut.wall) >= WATCHDOG_SECONDS):
+		var step := dt
+		if String(_cut.kind) == "video" and not bool(_cut.started) and float(_cut.t) + dt > CUT_DARK_END and not _cutscene.first_frame_ready():
+			# the strip opens round the video's first frame: the clock waits for it, but not longer than CUT_FRAME_WAIT (then the long band, A11 12.3.3)
+			if float(_cut.wall) >= CUT_FRAME_WAIT:
+				_scene_failed = true
+				_fall_back_to_band()
+				step = 0.0
+			else:
+				step = maxf(0.0, CUT_DARK_END - float(_cut.t))
+		_cut["t"] = float(_cut.t) + step
+	if String(_cut.kind) == "video" and not bool(_cut.started) and float(_cut.t) >= CUT_OPEN_END:
+		_cut["started"] = true
+		_cutscene.start()
+	if String(_cut.kind) == "video" and bool(_cut.started) and not bool(_cut.released):
+		_cutscene.set_paused(mode != "descent")
+	if mode == "descent" and not bool(_cut.released) and (float(_cut.t) >= float(_cut.release_at) or float(_cut.wall) >= watchdog_seconds()):
 		_cut["released"] = true
 		_release_due = true
 	if state != "hold" and not bool(_cut.released) and mode == "playing":
 		# the core is no longer holding (someone else released it): end the picture
 		_cut["released"] = true
-	if float(_cut.t) >= float(_cut.dur):
+	if bool(_cut.released) and (_band_out_value() >= 1.0 or float(_cut.t) >= float(_cut.release_at) + 2.0):
 		_cut = {}
-		return
+		if _cutscene != null: _cutscene.close()
+
+## The video did not give a frame in time: the long band, from where its dark phase ends.
+func _fall_back_to_band() -> void:
+	if _cutscene != null: _cutscene.close()
+	_cut = {"t": LONG_BAND.dark[1], "wall": float(_cut.wall), "kind": "band", "short": false, "released": false, "video_s": 0.0, "skip_at": -1.0,
+		"release_at": LONG_SECONDS * T_RELEASE / T_END, "dur": LONG_SECONDS}
+
+## 0..1 how far the band has left: on the sweep's clock after the release (ember s12..s24, frost s6..s15, lightning s4..s15), on the picture's own clock if no sweep is running.
+func _band_out_value() -> float:
+	if _cut.is_empty() or not bool(_cut.released): return 0.0
+	var window: Array = BAND_OUT.get(_element, [12.0, 24.0])
+	if not sw.is_empty() and bool(_cut.get("sweep", false)): return ramp_t(float(sw.t) * 60.0, float(window[0]), float(window[1]))
+	return ramp_t(float(_cut.t) - float(_cut.release_at), 0.0, 0.4)
 
 func _cut_uniforms() -> Dictionary:
-	var u := {"scrim": 0.0, "rift": 0.0, "slide": 0.0, "retract": 0.0, "flash": 0.0}
+	var u := {"scrim": 0.0}
 	if _cut.is_empty(): return u
-	var tt := float(_cut.t) / float(_cut.dur) * T_END
-	u.scrim = ramp_t(tt, 0.0, T_DARK_END) * (1.0 - ramp_t(tt, T_RELEASE, T_END - 0.03))
-	if tt < T_SLIT_END: u.rift = ramp_t(tt, T_DARK_END, T_SLIT_END) * 0.2
-	else: u.rift = 0.2 + 0.8 * ease_out(ramp_t(tt, T_SLIT_END, T_OPEN_END))
-	u.slide = ramp_t(tt, T_SLIT_END, T_SLIDE_END)
-	u.retract = ease_out(ramp_t(tt, T_RELEASE, T_END))
-	if not reduced_motion and flash_scale > 0.0:
-		var up := ramp_t(tt, T_SLIDE_END, T_FLASH_PEAK)
-		var down := 1.0 - ramp_t(tt, T_FLASH_PEAK, T_FLASH_END)
-		u.flash = minf(up, down) * flash_scale
-	if reduced_motion: u.slide = 1.0
+	var dark_end: float = CUT_DARK_END if String(_cut.kind) == "video" else float((SHORT_BAND if bool(_cut.short) else LONG_BAND).dark[1])
+	u.scrim = ramp_t(float(_cut.t), 0.0, dark_end) * (1.0 - _band_out_value())
 	return u
+
+# ---- the band and the cut-scene (A11): this file pushes the values on its timetable, the parts only draw
+
+func _open_band() -> void:
+	if _band == null: return
+	_band.reduced_motion = reduced_motion
+	_band.open(_element)
+	stats.bands += 1
+
+func _set_hud_hidden(hidden: bool) -> void:
+	if hidden == _hud_hidden: return
+	_hud_hidden = hidden
+	var hud: Variant = view.get("hud") if view != null else null
+	if hud != null and hud.has_method("set_hud_hidden"): hud.set_hud_hidden(hidden)
+
+func _set_band_flag(up: bool) -> void:
+	if up == _band_flag: return
+	_band_flag = up
+	var hud: Variant = view.get("hud") if view != null else null
+	if hud == null: return
+	var bar: Variant = hud.get("combat_bar")
+	if bar != null and is_instance_valid(bar) and bar.has_method("set_descent_band"): bar.set_descent_band(up)
+
+func _update_parts(mode: String) -> void:
+	if _band == null: return
+	if _cut.is_empty():
+		if _band.visible or _band.band_in > 0.0: _band.close()
+		_set_band_flag(false)
+		_set_hud_hidden(false)
+		return
+	var t := float(_cut.t)
+	var kind := String(_cut.kind)
+	var out := _band_out_value()
+	var hu := hero_uv()
+	var screen_size: Vector2 = _band.size if _band.size.x > 1.0 else Vector2(1600.0, 900.0)
+	var hero_top: Vector2 = DescentBand.hero_top_from_uv(hu, screen_size) if hu.x >= 0.0 else DescentBand.DEFAULT_HERO_TOP
+	var flashy := 0.0 if reduced_motion else flash_scale
+	var values := {"band_out": out, "hero_top": hero_top, "reduced_motion": reduced_motion, "slide_out": _element != "arc", "bonus": _bonus}
+	var name_start := 0.0
+	var scene_on := false
+	if kind == "video":
+		var cs := float(_cut.close_at)
+		var bs := cs + CUT_CLOSE_SECONDS
+		var skipped := float(_cut.skip_at) >= 0.0
+		if t < bs:
+			scene_on = true
+			var open := ramp_t(t, CUT_DARK_END, CUT_OPEN_END)
+			if t >= cs: open = 1.0 - ramp_t(t, cs, bs)
+			var tag_off := 1.0 - ramp_t(t, cs - 0.06, cs)
+			var lay := DescentBand.layout(hero_top, screen_size)
+			_cutscene.apply({"element": _element, "open": open, "plate": ramp_t(t, 0.50, 0.70) * tag_off, "skip_hint": (0.0 if skipped else ramp_t(t, 1.0, 1.2)) * tag_off,
+				"fade": (1.0 - ramp_t(t, float(_cut.skip_at), float(_cut.skip_at) + CUT_SKIP_FADE)) if skipped else 1.0, "reduced_motion": reduced_motion,
+				"closed_cy": float(lay.centre.y), "closed_h": float(lay.height)})
+			values["band_in"] = 0.0
+		else:
+			if _cutscene.has_video():
+				_cutscene.apply({"open": 0.0})
+				_cutscene.close()
+			var bt := t - bs
+			name_start = bs
+			values["band_in"] = 1.0
+			values["demon"] = ramp_t(bt, 0.0, 0.10)
+			values["name"] = ramp_t(bt, 0.0, CUT_NAME_SECONDS)
+			values["line"] = ramp_t(bt, 0.06, 0.18)
+	else:
+		var tab: Dictionary = SHORT_BAND if bool(_cut.short) else LONG_BAND
+		values["band_in"] = ramp_t(t, tab.band[0], tab.band[1])
+		values["demon"] = ramp_t(t, tab.demon[0], tab.demon[1])
+		values["name"] = ramp_t(t, tab.name[0], tab.name[1])
+		values["line"] = ramp_t(t, tab.line[0], tab.line[1])
+		name_start = float(tab.name[0])
+	if not scene_on:
+		var since := t - name_start
+		var pulse := sin(PI * ramp_t(since, 0.0, 0.10)) if since > 0.0 and since < 0.10 else 0.0
+		var sweep_v := ramp_t(since, 0.08, 0.58)
+		values["trim_flash"] = pulse * flashy
+		values["sweep"] = sweep_v if flashy > 0.0 and sweep_v > 0.0 and sweep_v < 1.0 else -1.0
+	_band.apply(values)
+	_set_band_flag(_band.visible)
+	_set_hud_hidden(kind == "video" and t >= CUT_DARK_END and not bool(_cut.released))
 
 func _push_screen() -> void:
 	var cu := _cut_uniforms()
@@ -621,11 +848,6 @@ func _push_screen() -> void:
 	var aspect_ := size_.x / maxf(1.0, size_.y)
 	_screen_mat.set_shader_parameter("hero_on", 1.0 if hu.x >= 0.0 else 0.0)
 	_screen_mat.set_shader_parameter("hero_sc", Vector2((hu.x - 0.5) * aspect_, hu.y - 0.5))
-	_screen_mat.set_shader_parameter("rift", cu.rift)
-	_screen_mat.set_shader_parameter("slide", cu.slide)
-	_screen_mat.set_shader_parameter("retract", cu.retract)
-	_screen_mat.set_shader_parameter("flash", cu.flash)
-	_screen_mat.set_shader_parameter("slide_dir", Vector2.ZERO if reduced_motion else SLIDE_DIR.get(_element, Vector2(1, 0)))
 	_screen_mat.set_shader_parameter("freeze", _freeze)
 	_screen_mat.set_shader_parameter("shatter", _shatter)
 	_screen_mat.set_shader_parameter("pulse", _pulse * flash_scale)
@@ -690,16 +912,24 @@ func _update_warm() -> void:
 		_ult.warm(true)
 		# the merged kill number's glyphs (a CJK heading font with an outline) are rasterised on first use: a 400 ms hitch at the sweep's last tick
 		if _kill_label != null and _kill_label_age < 0.0:
-			_kill_label.text = Loc.tn("descent.kills", 8888)
+			_kill_label.text = "8888"
+			_kill_tail.text = Loc.t("descent.kills.tail")
 			_kill_label.modulate = Color(1, 1, 1, 0.01)
+			_kill_tail.modulate = Color(1, 1, 1, 0.01)
 			_kill_label.visible = true
+			_kill_tail.visible = true
 		if _warm == 0:
 			_ult.warm(false)
-			if _kill_label != null and _kill_label_age < 0.0: _kill_label.visible = false
+			_hide_kill_warm()
 	elif _warm > 0:
 		_warm = 0
 		_ult.warm(false)
-		if _kill_label != null and _kill_label_age < 0.0: _kill_label.visible = false
+		_hide_kill_warm()
+
+func _hide_kill_warm() -> void:
+	if _kill_label != null and _kill_label_age < 0.0:
+		_kill_label.visible = false
+		_kill_tail.visible = false
 
 func _update_sweep(run: RefCounted, mode: String, dt: float) -> void:
 	if sw.is_empty():
@@ -852,15 +1082,27 @@ func _update_lights(dt: float) -> void:
 				_lights[i].visible = false
 				_lights[i].light_energy = 0.0
 
+## A11 6: the end-of-sweep number stands over the hero's head (the foot of the number KILL_RISE above the hood's top, the small word under it), follows the hero,
+## pops 1.25 -> 1.00 in 0.12 s, stays 1.6 s, sinks a little as it goes out.
 func _update_label(dt: float) -> void:
 	if _kill_label == null or _kill_label_age < 0.0: return
 	_kill_label_age += dt
 	var a := _kill_label_age
-	var pop := 1.0 + 0.35 * (1.0 - ramp_t(a, 0.0, 0.18))
-	var alpha := ramp_t(a, 0.0, 0.08) * (1.0 - ramp_t(a, 1.1, 1.6))
-	_kill_label.pivot_offset = _kill_label.size * 0.5
+	var pop := 1.0 + 0.25 * (1.0 - ramp_t(a, 0.0, 0.12))
+	var alpha := ramp_t(a, 0.0, 0.06) * (1.0 - ramp_t(a, 1.2, 1.6))
+	var size_ := _screen.size if _screen != null and _screen.size.y > 1.0 else Vector2(1600.0, 900.0)
+	var k := size_.y / 900.0
+	var hu := hero_uv()
+	var cx := hu.x * size_.x if hu.x >= 0.0 else size_.x * 0.5
+	var top_y := (hu.y - DescentBand.HERO_TOP_ABOVE_UV) * size_.y if hu.x >= 0.0 else size_.y * 0.35
+	var sink := 14.0 * k * ramp_t(a, 1.2, 1.6)
+	_kill_tail.position = Vector2(cx - _kill_tail.size.x * 0.5, top_y - 44.0 * k + sink)
+	_kill_label.position = Vector2(cx - _kill_label.size.x * 0.5, top_y - 44.0 * k - _kill_label.size.y + 6.0 * k + sink)
+	_kill_label.pivot_offset = Vector2(_kill_label.size.x * 0.5, _kill_label.size.y)
 	_kill_label.scale = Vector2.ONE * (1.0 if reduced_motion else pop)
 	_kill_label.modulate = Color(1, 1, 1, alpha)
+	_kill_tail.modulate = Color(1, 1, 1, alpha)
 	if a >= 1.6:
 		_kill_label.visible = false
+		_kill_tail.visible = false
 		_kill_label_age = -1.0

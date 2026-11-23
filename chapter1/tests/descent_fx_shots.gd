@@ -15,6 +15,10 @@ extends SceneTree
 ##   --cutin-at=<seconds,...> (core and fake) pictures of the cut-in at these times after the call (frame clock: with --fixed-fps 60 one frame is 1/60 s), files <tag>-cutin-t<ms>.png
 ##   --cutin-shot (fake source) alias of --cutin-at=0.43   --end-shots=<frames,...> (core) pictures this many frames after the sweep ended (state left "sweep"), files <tag>-end-f<n>.png
 ##   --luma-series=<json under _local/> (core) mean luma of the play area per frame from sweep s1 to end+30 frames, and the most swings above 0.08 inside any 1 s window (light sensitivity)
+##   --skip-at=<seconds> (core) a key press (--skip-key=esc|space|mouse, default esc) this long after the call; DESCENT_SKIP lines say what the core did (mode, tick, hero) at the press and after it
+##   --call=long|short (fake, with --perf) a descent_called of that variant is fed before each sweep and its frames are timed as the "cut" phase (long = the demon's video when the slot has one)
+##   --fx-off (core) the presenter draws nothing: the same scene (same seed, same step) without the descent's own layers, to measure what the descent adds
+##   --second=<n> (core) after the first descent has ended fill the gauge (QA only) and call a second one: the cut-in pictures of it (--second-at=<seconds,...>, default 0.1,0.3) are <tag>-b-cutin-t<ms>.png
 ##   --wall-s=<seconds> (core) safety stop by wall clock, default 780   --out=<json under _local/>  --first-wait=<frames>  --every=<n> (only every n-th default step)
 ## Prints DESCENT_SHOT lines and DESCENT_FX_PERF / DESCENT_SHOTS_RESULT.
 const Fake = preload("res://chapter1/tests/support/descent_fake_events.gd")
@@ -39,6 +43,15 @@ var cutin_shot := false
 var cutin_at: Array = []
 var end_shots: Array = []
 var luma_path := ""
+var call_mode := ""           ## --call=long|short (fake source, with --perf): a descent_called of that variant before the sweep; its frames are the "cut" phase
+var phase_now := ""
+var fx_off := false           ## --fx-off: the presenter draws nothing (descent_fx.qa_hidden): the same scene without the descent's layers, for the "what the descent adds" difference
+var skip_at := -1.0
+var skip_key := "esc"
+var second_n := 0
+var second_at: Array = [0.1, 0.3]
+var _skip_sent := false
+var _skip_probes: Array = []   ## call-clock seconds at which the state after the press is printed
 var wall_s := 780.0
 const PLAY_BOX := [0, 90, 1920, 900]            ## same as tools/dev/shot_review.py DEFAULTS["play"] / ["exclude"] (1080p coordinates)
 const EXCLUDE_BOX := [1500, 0, 1920, 200]
@@ -53,7 +66,7 @@ var sim_total := 0
 var acc := 0.0
 var wall_clock_steps := true
 var frame_ms: Array = []
-var phase_ms := {"idle": [], "sweep": [], "tail": []}
+var phase_ms := {"idle": [], "cut": [], "sweep": [], "tail": []}
 var _rng := RandomNumberGenerator.new()
 var _last_us := -1
 var _tail_left := 0
@@ -83,6 +96,15 @@ func _initialize() -> void:
 			for part in arg.trim_prefix("--end-shots=").split(",", false): end_shots.append(int(part))
 			end_shots.sort()
 		elif arg.begins_with("--luma-series="): luma_path = arg.trim_prefix("--luma-series=")
+		elif arg == "--fx-off": fx_off = true
+		elif arg.begins_with("--call="): call_mode = arg.trim_prefix("--call=")
+		elif arg.begins_with("--skip-at="): skip_at = float(arg.trim_prefix("--skip-at="))
+		elif arg.begins_with("--skip-key="): skip_key = arg.trim_prefix("--skip-key=")
+		elif arg.begins_with("--second="): second_n = int(arg.trim_prefix("--second="))
+		elif arg.begins_with("--second-at="):
+			second_at = []
+			for part in arg.trim_prefix("--second-at=").split(",", false): second_at.append(float(part))
+			second_at.sort()
 		elif arg.begins_with("--wall-s="): wall_s = float(arg.trim_prefix("--wall-s="))
 		elif arg.begins_with("--every="): every = maxi(1, int(arg.trim_prefix("--every=")))
 	if cutin_shot and cutin_at.is_empty(): cutin_at = [26.0 / 60.0]
@@ -158,6 +180,17 @@ func execute() -> void:
 			# idle frames first (the presenter has nothing to draw), then the sweep, then its tail
 			_last_us = -1
 			for i in 90: await process_frame
+		if call_mode != "":
+			run.mode = "descent"
+			phase_now = "cut"
+			fx.consume([{"type": "descent_called", "seq": 99990 + rep, "tick": run.tick, "element": element, "variant": call_mode, "position": run.hero.position, "center": run.hero.position, "hold_bonus_bps": 0}])
+			var cut_guard := 0
+			await process_frame
+			while bool(fx.status().cutin) and cut_guard < 900:
+				cut_guard += 1
+				await process_frame
+			phase_now = ""
+			run.mode = "playing"
 		sim_total = total
 		sim_step = 0
 		acc = 0.0
@@ -198,6 +231,7 @@ func _process(delta: float) -> bool:
 		var phase := "idle"
 		if sim_step >= 1 and sim_step <= sim_total: phase = "sweep"
 		elif sim_step > sim_total: phase = "tail"
+		if phase_now != "": phase = phase_now
 		(phase_ms[phase] as Array).append(ms)
 		if ms > 50.0 and phase != "idle": spikes.append([snappedf(ms, 0.1), sim_step])
 	_last_us = now
@@ -224,7 +258,8 @@ func save_shot(index: int, step: int, fx: RefCounted, file_name := "") -> void:
 	image.save_png(ProjectSettings.globalize_path("res://").path_join(path))
 	var st: Dictionary = fx.status()
 	print("DESCENT_SHOT ", JSON.stringify({"file": path, "step": step, "t": snappedf(float(st.sweep_t), 0.001), "element": element, "demon": snappedf(float(st.demon), 0.01),
-		"particles": st.stats.particles, "lights_peak": st.stats.lights_peak, "bolts": st.bolts, "w": image.get_width(), "h": image.get_height()}))
+		"particles": st.stats.particles, "lights_peak": st.stats.lights_peak, "bolts": st.bolts, "w": image.get_width(), "h": image.get_height(),
+		"cut": st.get("cut_kind", ""), "cut_t": snappedf(float(st.cut_t), 0.001), "hud_hidden": st.get("hud_hidden", false), "band_up": st.get("band_up", false), "skipped": st.get("skipped", false), "call_clock": snappedf(_call_clock, 0.001)}))
 
 func pct(list: Array, q: float) -> float:
 	if list.is_empty(): return 0.0
@@ -362,9 +397,65 @@ func write_luma(series: Array) -> void:
 ## The real core's events: the tool presses R once the gauge is full and takes the pictures at the sweep steps it reaches.
 ## After the sweep ends (state leaves "sweep") the --end-shots pictures and the luma tail are taken, then it ends. A step beyond the sweep length is reported, not waited for.
 ## Safety: the wall clock (--wall-s) ends the run with a warning and whatever was taken.
+## A key press as the player would make it (Input.parse_input_event goes through the viewport, so the app's _input sees it first).
+func send_skip(run: RefCounted, fx: RefCounted) -> void:
+	print_skip_state("press", run, fx)
+	if skip_key == "mouse":
+		var m := InputEventMouseButton.new()
+		m.button_index = MOUSE_BUTTON_LEFT
+		m.pressed = true
+		m.position = Vector2(400, 300)
+		Input.parse_input_event(m)
+	else:
+		var k := InputEventKey.new()
+		k.keycode = KEY_SPACE if skip_key == "space" else KEY_ESCAPE
+		k.physical_keycode = k.keycode
+		k.pressed = true
+		Input.parse_input_event(k)
+	for dt in [0.1, 0.3, 0.6, 1.0, 1.5, 2.2]: _skip_probes.append(_call_clock + dt)
+
+func print_skip_state(label: String, run: RefCounted, fx: RefCounted) -> void:
+	var st: Dictionary = fx.status()
+	print("DESCENT_SKIP ", JSON.stringify({"when": label, "call_clock": snappedf(_call_clock, 0.001), "mode": run.mode, "tick": int(run.tick), "hero": [snappedf(run.hero.position.x, 0.001), snappedf(run.hero.position.y, 0.001)],
+		"cut": st.get("cut_kind", ""), "cut_t": snappedf(float(st.cut_t), 0.001), "skipped": st.get("skipped", false), "hud_hidden": st.get("hud_hidden", false), "band_up": st.get("band_up", false), "release_due": st.release_due,
+		"paused": run.mode == "paused"}))
+
+## The second descent of the run (--second): the gauge is filled by the QA tool (a cheat that only this tool has), then the same call; the cut-in pictures are <tag>-b-cutin-t<ms>.png.
+func second_descent() -> void:
+	var run: RefCounted = view.run
+	var fx = view.descent_fx
+	run._descent_add(5000)
+	var guard := 0
+	while guard < 1200 and not (run.mode == "playing" and bool(run.descent_view().get("ready", false))):
+		guard += 1
+		await process_frame
+	_skip_sent = false
+	_call_clock = 0.0
+	view.call_descent()
+	var cut_i := 0
+	var end_f := -1
+	var number_shot := false
+	var frames := 0
+	while frames < 1500:
+		frames += 1
+		await process_frame
+		while cut_i < second_at.size() and _call_clock >= float(second_at[cut_i]):
+			await RenderingServer.frame_post_draw
+			save_shot(95, 0, fx, "%s-b-cutin-t%04d.png" % [tag, int(round(float(second_at[cut_i]) * 1000.0))])
+			cut_i += 1
+		var st := String(run.descent_view().get("state", ""))
+		if st != "sweep" and st != "hold" and frames > 30 and cut_i >= second_at.size():
+			end_f += 1
+			if end_f == 0 or end_f == 30:
+				await RenderingServer.frame_post_draw
+				save_shot(96, 0, fx, "%s-b-end-f%03d.png" % [tag, end_f])
+			if end_f > 30: break
+	print("DESCENT_SECOND ", JSON.stringify({"frames": frames, "shots": cut_i, "stats": fx.status().stats}))
+
 func execute_core() -> void:
 	var run: RefCounted = view.run
 	var fx = view.descent_fx
+	if fx_off: fx.qa_hidden = true
 	var shot_i := 0
 	var cut_i := 0
 	var seen_step := -1
@@ -391,6 +482,12 @@ func execute_core() -> void:
 			_called = true
 			_call_clock = 0.0
 			view.call_descent()
+		if _called and skip_at >= 0.0 and not _skip_sent and _call_clock >= skip_at:
+			_skip_sent = true
+			send_skip(run, fx)
+		while not _skip_probes.is_empty() and _call_clock >= float(_skip_probes[0]):
+			_skip_probes.pop_front()
+			print_skip_state("after", run, fx)
 		if _called and cut_i < cutin_at.size() and _call_clock >= float(cutin_at[cut_i]):
 			await RenderingServer.frame_post_draw
 			save_shot(90, 0, fx, "%s-cutin-t%04d.png" % [tag, int(round(float(cutin_at[cut_i]) * 1000.0))])
@@ -435,6 +532,7 @@ func execute_core() -> void:
 		if not need_end and shot_i >= steps.size() and cut_i >= cutin_at.size():
 			break
 	write_luma(series)
+	if second_n > 0 and stop_reason == "end_scene_done": await second_descent()
 	if cut_i < cutin_at.size(): print("DESCENT_SHOTS_WARN cut-in times not taken: %s" % str(cutin_at.slice(cut_i)))
 	print("DESCENT_CORE_STOP ", JSON.stringify({"reason": stop_reason, "wall_s": snappedf(float(Time.get_ticks_msec() - start_ms) / 1000.0, 0.1), "steps_taken": shot_i, "steps_asked": steps.size(),
 		"end_shots_taken": end_i, "cutin_taken": cut_i, "called": _called, "sweep_seen": seen_sweep}))

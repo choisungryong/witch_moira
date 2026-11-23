@@ -21,8 +21,20 @@ class FakeWorld extends RefCounted:
 		kicks += 1
 		strength += s
 
+class FakeBar extends RefCounted:
+	var flags: Array = []
+	func set_descent_band(up: bool) -> void:
+		flags.append(up)
+
+class FakeHud extends RefCounted:
+	var combat_bar := FakeBar.new()
+	var hidden_calls: Array = []
+	func set_hud_hidden(hidden: bool) -> void:
+		hidden_calls.append(hidden)
+
 class Stage extends Node3D:
 	var world: FakeWorld
+	var hud: FakeHud
 
 func _initialize() -> void:
 	call_deferred("execute")
@@ -42,6 +54,12 @@ func make_run(element: String, on: bool, seed_: int = 11) -> RefCounted:
 		check(run.set_descent(doc), "make_run: the descent document is accepted " + str(run.errors))
 	check(run.start(seed_, "chapter1.skill." + element), "make_run: the run starts " + str(run.errors))
 	return run
+
+## The presenter with the cut-scene off (the timing parts below are about the band; scene_part() is about the video).
+func new_fx(mode: String = "off") -> RefCounted:
+	var fx = DescentFx.new()
+	fx.cutscene_mode = mode
+	return fx
 
 func make_stage() -> Stage:
 	var stage := Stage.new()
@@ -97,7 +115,7 @@ func fill_and_call(run: RefCounted, fx: RefCounted) -> void:
 func off_part() -> void:
 	var run := make_run("ember", false)
 	var stage := make_stage()
-	var fx = DescentFx.new()
+	var fx = new_fx()
 	fx.setup(stage)
 	var children := stage.get_child_count()
 	check(not bool(run.descent_view().enabled), "off: the view says off")
@@ -117,7 +135,7 @@ func cutin_part() -> void:
 		var short_setting: bool = pair[1]
 		var run := make_run(element, true)
 		var stage := make_stage()
-		var fx = DescentFx.new()
+		var fx = new_fx()
 		fx.setup(stage)
 		fx.cutin_short = short_setting
 		play(run, fx, 30)
@@ -137,7 +155,7 @@ func cutin_part() -> void:
 	# the second call of a run is the short one by itself
 	var run2 := make_run("frost", true)
 	var stage2 := make_stage()
-	var fx2 = DescentFx.new()
+	var fx2 = new_fx()
 	fx2.setup(stage2)
 	play(run2, fx2, 10)
 	fill_and_call(run2, fx2)
@@ -153,7 +171,7 @@ func cutin_part() -> void:
 func pause_part() -> void:
 	var run := make_run("ember", true)
 	var stage := make_stage()
-	var fx = DescentFx.new()
+	var fx = new_fx()
 	fx.setup(stage)
 	play(run, fx, 10)
 	fill_and_call(run, fx)
@@ -175,7 +193,7 @@ func sweep_part() -> void:
 	for element in ["ember", "frost", "arc"]:
 		var run := make_run(element, true)
 		var stage := make_stage()
-		var fx = DescentFx.new()
+		var fx = new_fx()
 		fx.setup(stage)
 		play(run, fx, 10)
 		fill_and_call(run, fx)
@@ -215,7 +233,7 @@ func purity_part() -> void:
 	for with_fx in [true, false]:
 		var run := make_run("arc", true, 23)
 		var stage := make_stage()
-		var fx = DescentFx.new() if with_fx else null
+		var fx = new_fx() if with_fx else null
 		if fx != null: fx.setup(stage)
 		play_to_tick(run, fx, 90, false)
 		run._descent_add(1000)
@@ -231,7 +249,7 @@ func watchdog_part() -> void:
 	# the picture's own floor: even a clock that never reaches the release point lets go after the wall limit
 	var run := make_run("frost", true)
 	var stage := make_stage()
-	var fx = DescentFx.new()
+	var fx = new_fx()
 	fx.setup(stage)
 	play(run, fx, 5)
 	fill_and_call(run, fx)
@@ -247,7 +265,7 @@ func watchdog_part() -> void:
 func settings_part() -> void:
 	var run := make_run("ember", true)
 	var stage := make_stage()
-	var fx = DescentFx.new()
+	var fx = new_fx()
 	fx.setup(stage)
 	fx.reduced_motion = true
 	fx.shake_scale = 0.0
@@ -264,7 +282,7 @@ func sigil_part() -> void:
 	for element in ["ember", "frost", "arc"]:
 		var run := make_run(element, true)
 		var stage := make_stage()
-		var fx = DescentFx.new()
+		var fx = new_fx()
 		fx.setup(stage)
 		play(run, fx, 10)
 		check(not bool(fx.status().sigil), element + ": no sign before the call")
@@ -305,7 +323,7 @@ func sigil_part() -> void:
 func fake_run_one(element: String, low: bool, shake_scale: float = 1.0, reduced: bool = false) -> Dictionary:
 	var run := make_run(element, true)
 	var stage := make_stage()
-	var fx = DescentFx.new()
+	var fx = new_fx()
 	fx.setup(stage)
 	fx.low = low
 	fx.shake_scale = shake_scale
@@ -371,6 +389,81 @@ func fake_part() -> void:
 		var calm := fake_run_one(element, false, 1.0, true)
 		check(int(calm.kicks) == 0, "fake %s: reduced motion means no impulse (%d)" % [element, int(calm.kicks)])
 
+## A11 VFX-B: the band's timetable, the cut-scene's rules (hold limit, lock and skip, the fall-back), the HUD hooks. The video itself is not decoded in a headless run, so the video-only
+## rules are checked on a hand-made cut state (the real video and a real key press are checked by descent_fx_shots.gd in a window).
+func band_part() -> void:
+	for pair in [["ember", false], ["frost", true], ["arc", false]]:
+		var element: String = pair[0]
+		var run := make_run(element, true)
+		var stage := make_stage()
+		stage.hud = FakeHud.new()
+		var fx = new_fx()
+		fx.setup(stage)
+		fx.cutin_short = pair[1]
+		play(run, fx, 20)
+		fill_and_call(run, fx)
+		var tag := "%s/%s" % [element, "short" if pair[1] else "long"]
+		check(String(fx.status().cut_kind) == "band", tag + ": the band (cut-scene off)")
+		check(absf(float(fx.status().hold_limit) - 2.5) < 0.0001, tag + ": no video, the hold limit is 2.5 s")
+		check(not fx.input_guard() and not fx.try_skip(), tag + ": no cut-scene, so no key is taken")
+		var seen_up := false
+		var seen_out := false
+		for i in 600:
+			if run.mode == "playing":
+				run.hero.hp_raw = run.hero.max_hp_raw
+				run.step(Vector2.ZERO)
+			fx.consume(run.events)
+			fx.sync(run, 1.0 / 60.0)
+			if run.mode == "descent" and fx.take_release(): run.release_descent()
+			if bool(fx.status().band_up): seen_up = true
+			elif seen_up: seen_out = true
+		check(seen_up and seen_out, tag + ": the band came up and went out again")
+		var flags: Array = stage.hud.combat_bar.flags
+		check(not flags.is_empty() and flags[0] == true and flags[flags.size() - 1] == false, tag + ": the medal was told the band is up, then down " + str(flags))
+		check(stage.hud.hidden_calls.is_empty(), tag + ": the band alone does not hide the HUD " + str(stage.hud.hidden_calls))
+		check(not bool(fx.status().cutin), tag + ": idle afterwards")
+		stage.queue_free()
+	# the hold limit and the key rules on a hand-made video state
+	var run2 := make_run("ember", true)
+	var stage2 := make_stage()
+	var fx2 = new_fx("first")
+	fx2.setup(stage2)
+	fx2._cut = {"t": 0.3, "wall": 0.3, "kind": "video", "short": false, "released": false, "video_s": 3.0, "skip_at": -1.0, "close_at": 3.3, "release_at": 3.85, "dur": 4.15, "started": true}
+	check(absf(fx2.hold_limit() - 5.5) < 0.0001 and absf(fx2.watchdog_seconds() - 5.0) < 0.0001, "video: hold limit is the length + 2.5 s (%.2f), the watchdog 0.5 s under it (%.2f)" % [fx2.hold_limit(), fx2.watchdog_seconds()])
+	check(fx2.input_guard(), "video: the cut-scene owns the keys")
+	check(fx2.try_skip() and float(fx2._cut.skip_at) < 0.0, "video: a press in the first 0.5 s is taken and does not skip")
+	fx2._cut["wall"] = 0.8
+	fx2._cut["t"] = 1.0
+	check(fx2.try_skip() and absf(float(fx2._cut.skip_at) - 1.0) < 0.0001, "video: a later press skips")
+	check(absf(float(fx2._cut.close_at) - 1.1) < 0.0001 and absf(float(fx2._cut.release_at) - 1.65) < 0.0001, "video: the narrowing starts 0.10 s after the press, the release 0.55 s after that (%.2f / %.2f)" % [float(fx2._cut.close_at), float(fx2._cut.release_at)])
+	fx2._cut["t"] = 1.3
+	check(fx2.try_skip() and absf(float(fx2._cut.skip_at) - 1.0) < 0.0001, "video: a second press skips nothing more")
+	fx2._cut["released"] = true
+	check(not fx2.input_guard() and not fx2.try_skip(), "video: after the release the keys are the game's again")
+	fx2._cut = {}
+	stage2.queue_free()
+	# the fall-back: a run whose video cannot be used shows the long band (0.70 s) and does not try again
+	var run3 := make_run("frost", true)
+	var stage3 := make_stage()
+	var fx3 = new_fx("first")
+	fx3.setup(stage3)
+	fx3._scene_failed = true
+	play(run3, fx3, 10)
+	fill_and_call(run3, fx3)
+	check(String(fx3.status().cut_kind) == "band", "fallback: no video, the long band")
+	var r3 := play(run3, fx3, 120)
+	check(absf(float(r3.released_at) - 0.70) < 0.04, "fallback: released at %.3f s (the long band's 0.70)" % float(r3.released_at))
+	stage3.queue_free()
+	# "off" and the 0.5 s setting never play the video, "always" would
+	var fx4 = new_fx("off")
+	check(not fx4._wants_scene("long"), "setting off: never")
+	fx4.cutscene_mode = "first"
+	check(fx4._wants_scene("long") and not fx4._wants_scene("short"), "setting first: the first descent only")
+	fx4.cutscene_mode = "always"
+	check(fx4._wants_scene("short"), "setting always: every descent")
+	fx4.cutin_short = true
+	check(not fx4._wants_scene("long"), "the 0.5 s cut-in setting wins over the video")
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_DESCENT_FX_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -378,6 +471,7 @@ func execute() -> void:
 		return
 	off_part()
 	cutin_part()
+	band_part()
 	pause_part()
 	sweep_part()
 	purity_part()

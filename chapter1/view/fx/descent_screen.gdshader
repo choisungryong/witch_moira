@@ -3,7 +3,7 @@ render_mode blend_mix;
 // The descent's whole-screen layer (D15 A, D14 4.4). ONE full-rect control, ordinary alpha blending only: no additive full-screen
 // area. Four things share it, never at the same time except the edge aura, which is a thin edge ring:
 //   aura   the gauge is full: the element colour at the very edge of the screen
-//   cut-in dark scrim, a slit in the element colour that tears open across the screen, the demon's bust slides in, one flash
+//   cut-in the dark scrim under the band (the band and the cut-scene are canvas parts of view/hud: no bust, no slit, no gesture flash here since A11)
 //   freeze (frost sweep) crystal rim that closes in, then shatters cell by cell
 //   pulse  a short tint wash for a bolt round or a break
 // Colours are the element's tint only; never the enemy-telegraph crimson. No manga speed lines.
@@ -17,14 +17,6 @@ uniform float scrim = 0.0;         // 0..1 darkness of the cut-in (A11 4.3: near
 uniform float dim = 0.0;           // 0..1 the sweep's own dim (arc's silence): the old mapping, so the arc's sweep keeps its look
 uniform vec2 hero_sc = vec2(0.0);  // the hero's place in `sc` (centred, in screen heights)
 uniform float hero_on = 0.0;       // 1 when hero_sc is valid
-uniform float rift = 0.0;          // 0..1 how far the slit has opened (1 = the full bust band)
-uniform float slide = 0.0;         // 0..1 the bust coming in (1 = settled)
-uniform float retract = 0.0;       // 0..1 the picture leaving
-uniform float flash = 0.0;         // 0..1 the single flash of the gesture
-uniform vec2 slide_dir = vec2(1.0, 0.0);
-uniform float has_art : hint_range(0.0, 1.0) = 0.0;
-uniform sampler2D art : source_color, filter_linear;
-uniform float art_focus_y = 0.42;  // the part of the picture's height that sits at the band centre
 uniform float freeze = 0.0;        // 0..1 the crystal rim
 uniform float shatter = 0.0;       // 0..1 the rim breaking away
 uniform float pulse = 0.0;         // 0..1 a tint wash
@@ -44,6 +36,7 @@ uniform float demon_pose = 0.0;    // 0..1 the arm swung down / the fist closed
 uniform float demon_x = 0.7;       // where it stands (uv x)
 uniform float has_sky_art : hint_range(0.0, 1.0) = 0.0;
 uniform sampler2D sky_art : source_color, filter_linear;
+uniform float sky_art_kind = 0.0;  // 1: a waist-up 3:2 picture (the band's own demon), 0: a full-length figure (the grace screen's)
 
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -162,6 +155,11 @@ void fragment() {
 	vec2 uv = UV;
 	vec2 sc = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);   // centred, in screen heights
 	float edge_d = min(min(uv.x * aspect, (1.0 - uv.x) * aspect), min(uv.y, 1.0 - uv.y));
+	// A11 VFX-B 8: the cold rim of the frost sweep follows a wide oval and a wandering line, not the screen's rectangle (the straight frame read as a plate)
+	vec2 e2 = (uv - 0.5) * 2.0;
+	float rr = max(length(e2), 0.001);
+	float edge_oval = max(0.0, (1.0 - rr) * 0.5 * length(vec2(aspect * e2.x, e2.y)) / rr);
+	float edge_w = mix(edge_d, edge_oval, 0.8) + (vnoise(sc * 2.2 + 4.0) - 0.5) * 0.07;
 	vec4 out_c = vec4(0.0);
 
 	// ---- aura: the gauge is full ----
@@ -178,12 +176,12 @@ void fragment() {
 		float close_in = 0.05 + 0.10 * freeze;   // A11 5.2: the rim is at most 0.15 H deep
 		vec4 v = voronoi(vec2(sc.x, sc.y) * 7.0 + 3.0);
 		float crack = 1.0 - smoothstep(0.0, 0.05, v.y);
-		float rimmask = 1.0 - smoothstep(close_in * 0.35, close_in, edge_d + (v.x - 0.5) * 0.04);
+		float rimmask = 1.0 - smoothstep(close_in * 0.35, close_in, edge_w + (v.x - 0.5) * 0.04);
 		float cell_h = hash21(v.zw);
 		float alive = step(shatter * 1.15, cell_h + 0.001) ;
 		float a = (rimmask * (0.30 + 0.40 * (0.5 + 0.5 * cell_h)) + crack * rimmask * 0.35) * alive;
 		vec3 c = mix(tint.rgb, vec3(0.92, 0.98, 1.0), 0.35 + 0.4 * crack);
-		float fa = clamp(a, 0.0, 0.32) * (1.0 - shatter * 0.4);
+		float fa = clamp(a, 0.0, 0.26) * (1.0 - shatter * 0.4);
 		out_c = vec4(mix(out_c.rgb, c, fa / max(0.001, fa + out_c.a)), clamp(out_c.a + fa * (1.0 - out_c.a), 0.0, 1.0));
 	}
 
@@ -199,56 +197,14 @@ void fragment() {
 		float hole = hero_on > 0.5 ? mix(0.4, 1.0, smoothstep(0.09, 0.16, length(sc - hero_sc))) : 1.0;
 		float dark = clamp(scrim * mix(0.50, 0.62, vig) * hole, 0.0, 0.62);
 		out_c = vec4(vec3(0.02, 0.02, 0.03), max(out_c.a, dark));
-		float hb = 0.36 * rift * (1.0 - retract);
-		float band = 1.0 - smoothstep(hb - 0.004, hb + 0.002, abs(sc.y));
-		// the slit: a thin line of the element colour before the band opens
-		float slit_w = mix(0.0045, 0.0009, smoothstep(0.0, 0.2, rift));
-		float slit = (1.0 - smoothstep(slit_w * 0.4, slit_w, abs(sc.y))) * smoothstep(0.0, 0.08, rift) * (1.0 - smoothstep(0.35, 1.0, rift)) * (1.0 - retract);
-		float tear = smoothstep(0.0, 1.0, clamp(rift * 6.0 - abs(sc.x) / (aspect * 0.5), 0.0, 1.0));
-		slit *= max(tear, 0.0);
-		out_c.rgb = mix(out_c.rgb, tint.rgb * 1.2, slit);
-		out_c.a = max(out_c.a, slit);
-		if (rift > 0.2 && band > 0.0) {
-			float s_e = 1.0 - pow(1.0 - slide, 3.0);
-			vec2 off = slide_dir * (1.0 - s_e) * 0.16;
-			// the ground of the band: near black with a glow of the element colour behind the head
-			float glow = exp(-dot(sc - vec2(0.12, 0.05), sc - vec2(0.12, 0.05)) * 6.0);
-			vec3 bg = vec3(0.015, 0.015, 0.02) + tint.rgb * glow * 0.20;
-			vec3 col = bg;
-			float cov = 1.0;
-			float scale = mix(1.06, 1.0, s_e);
-			if (has_art > 0.5) {
-				vec2 auv = vec2(0.5 + (sc.x - off.x) / (aspect * scale), art_focus_y + (sc.y - off.y) / (aspect / 1.5 * scale));
-				if (auv.x >= 0.0 && auv.x <= 1.0 && auv.y >= 0.0 && auv.y <= 1.0) {
-					vec4 t = texture(art, auv);
-					col = mix(bg, t.rgb * 0.94, s_e);
-				}
-			} else {
-				// the stand-in is drawn y up and the screen's y runs down: flip it (it hung upside down before D24)
-				vec2 sp = (sc - off) - vec2(0.12, 0.0);
-				vec4 sil = silhouette(vec2(sp.x, -sp.y), element_id);
-				col = mix(bg, sil.rgb, sil.a * s_e);
-				col += tint.rgb * 0.0;
-			}
-			// the band's edges stay dark so the picture reads as lit from the slit
-			float edge_fade = smoothstep(hb, hb - 0.05, abs(sc.y)) * (0.35 + 0.65 * smoothstep(0.0, 0.30, aspect * 0.5 - abs(sc.x)));
-			col *= mix(0.55, 1.0, edge_fade);
-			float line = (1.0 - smoothstep(0.0, 0.006, abs(abs(sc.y) - hb))) * 0.9;
-			col = mix(col, tint.rgb * 1.15, line * band);
-			out_c.rgb = mix(out_c.rgb, col, band * (1.0 - retract * 0.5));
-			out_c.a = max(out_c.a, band);
-		}
-		if (flash > 0.001) {
-			// bright near-white of the element colour; weight is the flash itself, so it reads as light, not as a brown wash
-			vec3 fc = mix(tint.rgb, vec3(1.0), 0.8);
-			out_c = vec4(mix(out_c.rgb, fc, flash * 0.7), max(out_c.a, flash * 0.9));
-		}
 	}
 
 	// ---- a tint wash ----
 	if (pulse > 0.001) {
 		vec3 pc = mix(tint.rgb, vec3(1.0), 0.6);
 		float pa = pulse * 0.34 * (0.5 + 0.5 * smoothstep(0.0, 0.6, length(sc)));
+		// A11 VFX-B 8: the wash keeps off the hero (the hero's own staff, ring and ice fan are the white there; the descent adds none)
+		if (hero_on > 0.5) pa *= mix(0.30, 1.0, smoothstep(0.10, 0.28, length(sc - hero_sc)));
 		out_c = vec4(mix(out_c.rgb, pc, pa / max(0.001, pa + out_c.a)), clamp(out_c.a + pa * (1.0 - out_c.a), 0.0, 1.0));
 	}
 	// ---- D24 sky band: the cloud ceiling the demon works in ----
@@ -305,10 +261,10 @@ void fragment() {
 			streak = max(streak, s1 * lane * step(0.42, h) * amp);
 		}
 		float swirl = low > 0.5 ? 0.0 : smoothstep(0.46, 0.82, band) * 0.07;   // A11 5.2 (extra): the snow veil 0.20 -> 0.07, it was the wash of the whole middle
-		float rim = 1.0 - smoothstep(0.0, 0.34, edge_d);
+		float rim = 1.0 - smoothstep(0.0, 0.34, edge_w);
 		// A11 5.2: streaks and a rim only (no flat wash in the middle), a hole round the hero, a deeper cold colour; white only at a streak's tip
 		float hero_keep = hero_on > 0.5 ? mix(0.35, 1.0, smoothstep(0.10, 0.28, length(sc - hero_sc))) : 1.0;
-		float wa = clamp(cov * ((streak + swirl) * (1.0 + gust * 0.9) + 0.11 * rim), 0.0, 0.42) * hero_keep;
+		float wa = clamp(cov * ((streak + swirl) * (1.0 + gust * 0.9) + 0.09 * rim), 0.0, 0.42) * hero_keep;
 		vec3 wc = mix(vec3(0.40, 0.62, 0.82), vec3(0.97, 0.99, 1.0), clamp((streak - 0.30) * 4.0, 0.0, 1.0));
 		float oa2 = out_c.a;
 		out_c.rgb = mix(out_c.rgb, wc, wa / max(0.001, wa + oa2));
@@ -358,11 +314,13 @@ void fragment() {
 			float tilt = (demon_pose - 0.35) * 0.10;
 			vec2 rp = vec2(dp.x, uv.y - 0.20);
 			rp = vec2(rp.x * cos(tilt) - rp.y * sin(tilt), rp.x * sin(tilt) + rp.y * cos(tilt));
-			vec2 auv = vec2(0.5 + rp.x / 0.56, (rp.y + 0.20) / 0.42 * 0.5);
+			vec2 auv = sky_art_kind > 0.5 ? vec2(0.5 + rp.x / 0.62, (rp.y + 0.20) / 0.40) : vec2(0.5 + rp.x / 0.56, (rp.y + 0.20) / 0.42 * 0.5);
 			if (auv.x >= 0.0 && auv.x <= 1.0 && auv.y >= 0.0 && auv.y <= 1.0) {
 				vec3 t = texture(sky_art, auv).rgb;
 				float lum = max(t.r, max(t.g, t.b));
-				da = smoothstep(0.07, 0.30, lum);
+				da = sky_art_kind > 0.5 ? smoothstep(0.14, 0.42, lum) : smoothstep(0.07, 0.30, lum);
+				// a waist-up picture has a painted ground: its box melts into the sky over a tenth of its size (no rectangle shows)
+				if (sky_art_kind > 0.5) da *= smoothstep(0.0, 0.14, auv.x) * smoothstep(0.0, 0.14, 1.0 - auv.x) * smoothstep(0.0, 0.10, auv.y) * smoothstep(0.0, 0.22, 1.0 - auv.y);
 				dc = t * (1.0 + 0.6 * demon_pose) + tint.rgb * 0.18 * (1.0 + demon_pose);
 				float hand = exp(-dot(auv - vec2(0.12, 0.2), auv - vec2(0.12, 0.2)) * 60.0) * demon_pose;
 				dc += tint.rgb * hand * 1.5;

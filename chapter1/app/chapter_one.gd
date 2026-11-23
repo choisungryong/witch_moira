@@ -18,8 +18,8 @@ var juice: RefCounted
 ## The descent's screen (D15 U-2): edge aura, cut-in, sweep. Makes no node until a run with the descent on asks for one.
 const DescentFx=preload("res://chapter1/view/fx/descent_fx.gd")
 var descent_fx=DescentFx.new()
-## The cut-in hold in wall seconds (the core stands still in mode "descent"): the app lets go after this even if the picture never does.
-const DESCENT_HOLD_LIMIT := 2.5
+## The cut-in hold in wall seconds (the core stands still in mode "descent"): the app lets go after descent_fx.hold_limit() even if the picture never does
+## (2.5 s; with the demon's video the video's length more: A11 12.3.2).
 var _descent_wait := 0.0
 ## Gamepad: no pad input exists in this app yet (D15 A2.3, recommended Y); the button is named here for when it does.
 const DESCENT_PAD_BUTTON := JOY_BUTTON_Y
@@ -85,6 +85,7 @@ func _ready__chapter() -> void:
 		elif arg=="--chapter1-descent-shake=off":descent_fx.shake_scale=0.0
 		elif arg=="--chapter1-descent-shake=weak":descent_fx.shake_scale=0.5
 		elif arg=="--chapter1-descent-numbers=off":descent_fx.numbers_on=false
+		elif arg in ["--chapter1-descent-cutscene=always","--chapter1-descent-cutscene=first","--chapter1-descent-cutscene=off"]:descent_fx.cutscene_mode=arg.trim_prefix("--chapter1-descent-cutscene=")
 	hud.temporary_art=actors.temporary_art
 	hud.setup(self)
 	hud.start.connect(start_run)
@@ -747,7 +748,7 @@ func call_descent() -> bool:
 func _descent_hold_check(delta: float) -> void:
 	if run.mode!="descent":_descent_wait=0.0;return
 	_descent_wait+=delta
-	if descent_fx.take_release() or _descent_wait>=DESCENT_HOLD_LIMIT:
+	if descent_fx.take_release() or _descent_wait>=descent_fx.hold_limit():
 		_descent_wait=0.0
 		if run.release_descent():_consume_events()
 func _capture_file(filename: String) -> void:
@@ -797,9 +798,18 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	_unhandled_key_input__chapterx(event)
 
 # ---- chapter1/chapter_one_input48.gd ----
+func _is_press(event: InputEvent) -> bool:
+	if event is InputEventKey:return event.pressed and not event.echo
+	if event is InputEventMouseButton or event is InputEventJoypadButton:return event.pressed
+	return false
+
 ## Space is a combat dodge, never an implicit modal confirmation.
 ## Keep explicit click/Enter choices and the existing R retry shortcut.
 func _input(event: InputEvent) -> void:
+	# The descent's cut-scene owns the keys while it plays (A11 12.3.4): a press is the skip (after the first 0.5 s) and is not passed on, so it cannot
+	# pause the game (Esc) or move the hero when the core lets go.
+	if run.mode=="descent" and descent_fx.input_guard() and _is_press(event):
+		descent_fx.try_skip();get_viewport().set_input_as_handled();return
 	_input__chapter(event)
 	if event is InputEventJoypadButton and event.pressed and event.button_index==DESCENT_PAD_BUTTON and run.mode=="playing":
 		call_descent()

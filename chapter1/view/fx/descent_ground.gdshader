@@ -77,7 +77,14 @@ void fragment() {
 	float inside = 1.0 - smoothstep(reach - 1.6, reach, r);
 	if (rect.x > 0.0) {
 		float rd = max(abs(lp.x) - rect.x, abs(lp.y) - rect.y);
-		inside = 1.0 - smoothstep(-1.2, 1.2, rd);
+		if (mode == 1 && floor_dark > 0.0) {
+			// A11 VFX-B 8: the dark floor is not a plate with a straight edge. It fades as a wide oval vignette (full to 62 % of the half size, gone at 112 %) whose
+			// line wanders with a slow noise, so no rectangle shows near the screen's borders
+			float oval = length(lp / max(rect, vec2(0.001))) + (vnoise(lp * 0.21 + 3.0) - 0.5) * 0.24 + (vnoise(lp * 0.7) - 0.5) * 0.05;
+			inside = 1.0 - smoothstep(0.62, 1.12, oval);
+		} else {
+			inside = 1.0 - smoothstep(-1.2, 1.2, rd);
+		}
 	}
 	float hero_clear = smoothstep(1.2, 4.0, length(lp - hero_local));
 	vec3 col = vec3(0.0);
@@ -98,8 +105,12 @@ void fragment() {
 		a = clamp(soot * 0.62 + crack * 0.38 * pulse + strip * 0.55, 0.0, 1.0);
 	} else {
 		float grown = smoothstep(reach * progress + 0.8, reach * progress - 0.8, r);
-		vec4 v = voronoi(lp * 0.85);
-		float line = 1.0 - smoothstep(0.0, 0.06, v.y);
+		vec2 warp = (vec2(vnoise(lp * 0.27), vnoise(lp * 0.27 + 9.0)) - 0.5) * 2.6;
+		vec4 v = voronoi(lp * 0.85 + warp);
+		// A11 VFX-B 8: the veins are uneven (width and presence wander with a slow noise, a share of the cells has none), not a net of one thickness
+		float width = mix(0.025, 0.085, vnoise(lp * 0.45 + 3.0));
+		float patch_mask = smoothstep(0.30, 0.72, vnoise(lp * 0.16 + 5.0));
+		float line = (1.0 - smoothstep(0.0, width, v.y)) * step(0.38, hash21(v.zw + 3.0)) * mix(0.35, 1.0, patch_mask);
 		float cell = hash21(v.zw);
 		float alive = step(shatter * 1.15, cell + 0.001);
 		float ringfront = exp(-pow((r - reach * progress) / 0.7, 2.0)) * (1.0 - shatter);
@@ -108,7 +119,7 @@ void fragment() {
 		if (floor_dark > 0.0) {
 			// the floor goes dark, the crystal veins stay cold-bright; the hero's spot stays lighter (hero_clear below)
 			float fill = floor_dark * grown * alive;
-			float vein = (line * 0.17 + ringfront * 0.14) * grown * alive;
+			float vein = (line * 0.095 + ringfront * 0.10) * grown * alive;
 			a = fill + vein * (1.0 - fill);
 			// ALBEDO is linear: these read as a near-black blue and a pale cyan on the screen
 			col = mix(vec3(0.001, 0.003, 0.010), vec3(0.25, 0.55, 0.80), vein / max(a, 0.0001));
