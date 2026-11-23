@@ -283,16 +283,16 @@
 
 | # | 샷 | 시점 | 한글 | 음절 / 읽는 시간 | 원문의 대목 | English(초안) |
 |---|---|---|---|---|---|---|
-| N1 | S01~S02 | 0:00.5~0:06.5 | 세상은 셋이었다. 사람의 세계와 마계, 그리고 그 사이의 중간계. | 25 / 약 6초 | 원 2절(세 세계). U-106의 "중간계", "마계와 인간계"를 부르기 위한 바탕 | There were three worlds. The Human World, the Demon Realm, and the Between that lay beneath them. |
-| N2 | S03~S04 | 0:07.5~0:14.5 | 마계와 사람의 세계 사이에는 균형이 있었다. 마계는 사람의 세계에 닿지 못했다. | 32 / 약 7초 | U-106 D "마계와 인간계는 평행을 유지 하기 때문에 못하다가" | Between the Demon Realm and the Human World there was a balance. The Demon Realm could not reach the world of men. |
-| N3 | S05~S06 | 0:15.5~0:21 | 어느 날, 중간계가 무너지기 시작했다. 아무도 까닭을 몰랐다. | 24 / 약 5.5초 | U-106 A "중간계의 마물들이 원인을 알 수 없는 이유로 무너지기 시작하고" | Then the Between began to crumble. No one knew why. |
-| N4 | S07~S08 | 0:22~0:28 | 마수들이 무너지는 땅을 버리고 사람의 세계로 넘어왔다. | 23 / 약 5.5초 | U-106 A·B "인간계로 침범이 시작되고". "땅을 버리고"는 원 4절(생존 본능) | Fleeing the crumbling land, the beasts crossed into the Human World. |
-| N5 | S09 | 0:30.5~0:34.5 | 그녀들에게는 어린 날의 기억이 없었다. | 16 / 약 4초 | U-106 G "여마법사들은 어렸을 때 기억을 잃고" | Of their childhood, they remembered nothing. |
-| N6a | S10 | 0:35.5~0:37.5 | 가진 힘은 미약했다. | 8 / 약 2초 | U-106 H "미약한 자기의 능력으로" | Their power was faint. |
-| N6b | S12 | 0:41.5~0:45 | 그래도 그녀들은 사람들 앞에 섰다. | 14 / 약 3.3초 | U-106 H "인간들을 도우러 나서고", U-86 "인간들은 지킨다" | Still, they stood before the people. |
-| N7 | S14 | 0:48.5~0:52 | 그때, 그녀들의 등 뒤에 악마가 섰다. | 14 / 약 3.3초 | U-106 I "이 때 세 악마들은 각기 이들을 뒤에서" | Then, behind each of them, a demon stood. |
-| N8 | S15 | 0:52~0:54.5 | 악마는 권능을 내렸다. | 9 / 약 2.2초 | U-106 I "권능을 줌으로서", U-86 "악마의 권능으로 … 도와 주는 거지" | The demons granted them power. |
-| N9 | S19 | 1:07.5~1:10.5 | 왜 돕는지, 악마는 말하지 않았다. | 13 / 약 3초 | U-106 J "악마신의 명령을 따르려 한다"와 U-86 "악마신의 숨은 의도"를 **감추는 자리**. 말은 원 7절 "중요한 질문에는 답하지 않는다" | Why, the demons never said. |
+| 내1 | S01~S02 | 0:00.5~0:06.5 | 세상은 셋이었다. 사람의 세계와 마계, 그리고 그 사이의 중간계. | 25 / 약 6초 | 원 2절(세 세계). U-106의 "중간계", "마계와 인간계"를 부르기 위한 바탕 | There were three worlds. The Human World, the Demon Realm, and the Between that lay beneath them. |
+| 내2 | S03~S04 | 0:07.5~0:14.5 | 마계와 사람의 세계 사이에는 균형이 있었다. 마계는 사람의 세계에 닿지 못했다. | 32 / 약 7초 | U-106 D "마계와 인간계는 평행을 유지 하기 때문에 못하다가" | Between the Demon Realm and the Human World there was a balance. The Demon Realm could not reach the world of men. |
+| 내3 | S05~S06 | 0:15.5~0:21 | 어느 날, 중간계가 무너지기 시작했다. 아무도 까닭을 몰랐다. | 24 / 약 5.5초 | U-106 A "중간계의 마물들이 원인을 알 수 없는 이유로 무너지기 시작하고" | Then the Between began to crumble. No one knew why. |
+| 내4 | S07~S08 | 0:22~0:28 | 마수들이 무너지는 땅을 버리고 사람의 세계로 넘어왔다. | 23 / 약 5.5초 | U-106 A·B "인간계로 침범이 시작되고". "땅을 버리고"는 원 4절(생존 본능) | Fleeing the crumbling land, the beasts crossed into the Human World. |
+| 내5 | S09 | 0:30.5~0:34.5 | 그녀들에게는 어린 날의 기억이 없었다. | 16 / 약 4초 | U-106 G "여마법사들은 어렸을 때 기억을 잃고" | Of their childhood, they remembered nothing. |
+| 내6a | S10 | 0:35.5~0:37.5 | 가진 힘은 미약했다. | 8 / 약 2초 | U-106 H "미약한 자기의 능력으로" | Their power was faint. |
+| 내6b | S12 | 0:41.5~0:45 | 그래도 그녀들은 사람들 앞에 섰다. | 14 / 약 3.3초 | U-106 H "인간들을 도우러 나서고", U-86 "인간들은 지킨다" | Still, they stood before the people. |
+| 내7 | S14 | 0:48.5~0:52 | 그때, 그녀들의 등 뒤에 악마가 섰다. | 14 / 약 3.3초 | U-106 I "이 때 세 악마들은 각기 이들을 뒤에서" | Then, behind each of them, a demon stood. |
+| 내8 | S15 | 0:52~0:54.5 | 악마는 권능을 내렸다. | 9 / 약 2.2초 | U-106 I "권능을 줌으로서", U-86 "악마의 권능으로 … 도와 주는 거지" | The demons granted them power. |
+| 내9 | S19 | 1:07.5~1:10.5 | 왜 돕는지, 악마는 말하지 않았다. | 13 / 약 3초 | U-106 J "악마신의 명령을 따르려 한다"와 U-86 "악마신의 숨은 의도"를 **감추는 자리**. 말은 원 7절 "중요한 질문에는 답하지 않는다" | Why, the demons never said. |
 
 합계 약 44초의 말이 75초에 놓인다. 말이 없는 자리(S11, S13, S16~S18, S20)는 그림과 소리가 맡는다. 특히 S17(타키타)은 말을 얹지 않는다 — 침묵이 그 악마의 몫이다(원 10.6).
 
