@@ -990,8 +990,23 @@ func _spawn_squad(rule: Dictionary,squad: Dictionary,cap: int) -> void:
 		if count>=cap:break
 		var angle := direction+_spawn_rng.randf_range(-half,half)
 		var point := _clamp_point(hero.position+Vector2(cos(angle),sin(angle))*_spawn_rng.randf_range(lo,hi))
-		if _spawn("ranged",point):count+=1;placed+=1
+		if _spawn("ranged",point):
+			count+=1;placed+=1
+			if squad.has("volley"):_start_volley(enemies[_enemy_sequence],squad.volley)
 	if placed>0:_emit("wave_squad",hero.position,{"beat":String(rule.id),"direction":Vector2(cos(direction),sin(direction)),"count":placed})
+
+## TP2 first volley (optional squad.volley {windup_ticks, damage_bps}): the placed body starts in "windup" at once, aimed at the hero from
+## where it stands (position only, no random draw), with the same fan telegraph an ordinary ranged body shows. When the windup ends
+## the combat core fires its three shots at damage_bps/10000 of the zone's ranged damage, tags them "volley" and erases `volley`.
+func _start_volley(e: Dictionary,volley: Dictionary) -> void:
+	var delta: Vector2=hero.position-e.position
+	var toward := delta/delta.length() if delta.length()>.001 else Vector2.UP
+	e.direction=toward;e.attack_direction=toward;e.attack_kind="fan"
+	e.state="windup";e.state_until=tick+int(volley.windup_ticks)
+	e.volley={"damage_bps":int(volley.damage_bps)}
+	var rays: Array[Vector2]=[]
+	for ray in 3:rays.append(toward.rotated((float(ray)-1.0)*.14))
+	e.telegraph={"shape":"fan","direction":toward,"radius":14.7+.44,"length":14.7,"width":.88,"rays":rays,"remaining_ticks":int(volley.windup_ticks)}
 
 ## Spawning under the beat table (or the trial's rule): amount per interval, a cap per beat, waves and lulls.
 func _spawn_rhythm_wave() -> void:

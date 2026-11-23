@@ -960,6 +960,93 @@ func threat_checks() -> void:
 		off_ref.step(Vector2.ZERO)
 	check(JSON.stringify(off_run.snapshot()) == JSON.stringify(off_ref.snapshot()) and not off_run.snapshot().has("rhythm"), "R1B the keys in a document with the rhythm off change nothing")
 
+# ------------------------------------------------------------------ TP2: the squad's first volley (squad.volley, optional key)
+
+## Runs until the first wave_squad event of the squad document; returns {run, events, members (spawn target ids)}.
+func volley_start(volley: Variant, seed_: int = 11) -> Dictionary:
+	var doc := document(false, func(d):
+		d.rhythm.beats[0].max_ticks = 60
+		d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840}
+		if volley != null: d.rhythm.beats[1].wave.squad.volley = volley)
+	var run := make_run(doc, seed_)
+	for id_ in run._skill_ids: run._next_cast[id_] = 1 << 30
+	var events: Array = []
+	for i in 2400:
+		pump(run, events, 300)
+		if not of_kind(events, "wave_squad").is_empty(): break
+	var index := events.size() - 1
+	while index >= 0 and events[index].type != "wave_squad": index -= 1
+	var ids: Array = []
+	if index >= 0: ids = placed_by(events, index).map(func(b): return int(b.target_id))
+	return {"run": run, "events": events, "members": ids}
+
+func volley_checks() -> void:
+	# 1. without the key the placed bodies are ordinary ranged bodies in "move"
+	var plain := volley_start(null)
+	check(plain.members.size() == 4 and plain.members.all(func(id_): return plain.run.enemies.has(id_) and plain.run.enemies[id_].state == "move" and not plain.run.enemies[id_].has("volley")), "TP2 volley: without the key the placed bodies are not in windup")
+	# 2. with the key every placed body is in windup; windup_ticks later each has fired three shots
+	var volley := {"windup_ticks": 60, "damage_bps": 5000}
+	var fired := volley_start(volley)
+	var run: RefCounted = fired.run
+	var members: Array = fired.members
+	check(members.size() == 4 and members.all(func(id_): return run.enemies.has(id_) and run.enemies[id_].state == "windup" and int(run.enemies[id_].state_until) - int(run.tick) >= 59 and int(run.enemies[id_].state_until) - int(run.tick) <= 61), "TP2 volley: every placed body stands in windup (windup_ticks 60)")
+	check(members.all(func(id_): return run.enemies[id_].telegraph.get("shape", "") == "fan" and run.enemies[id_].telegraph.rays.size() == 3), "TP2 volley: the telegraph is the ordinary three-ray fan")
+	var expected: Array = members.map(func(id_): return int(run.enemies[id_].definition.damage) * 256 * 5000 / 10000)
+	var snap := JSON.stringify(run.snapshot())
+	var events: Array = fired.events.duplicate()
+	var early := 0
+	for i in 58:
+		pump(run, events, 0)
+	for id_ in members:
+		if run._hostile_src.values().any(func(s): return int(s.id) == int(id_)): early += 1
+	check(early == 0, "TP2 volley: nothing is fired before the windup ends")
+	for i in 8:
+		pump(run, events, 0)
+	var volley_shots := 0
+	var per_body := {}
+	for uid in run._hostile_src:
+		var src: Dictionary = run._hostile_src[uid]
+		if String(src.get("attack_id", "")) == "volley":
+			volley_shots += 1
+			per_body[int(src.id)] = int(per_body.get(int(src.id), 0)) + 1
+	check(volley_shots == 12 and members.all(func(id_): return int(per_body.get(id_, 0)) == 3), "TP2 volley: three shots per placed body (%d shots)" % volley_shots)
+	check(members.all(func(id_): return not run.enemies.has(id_) or not run.enemies[id_].has("volley")), "TP2 volley: the body forgets the volley when it recovers")
+	# 3. the shot's damage and name: damage = zone ranged damage x damage_bps / 10000, attack_id volley, source_kind ranged
+	for i in 260:
+		pump(run, events, 0)
+	var hits := of_kind(events, "hero_hit").filter(func(e): return String(e.get("attack_id", "")) == "volley")
+	check(hits.size() >= 1, "TP2 volley: the hero is hit by volley shots (%d)" % hits.size())
+	check(hits.all(func(e): return e.source_kind == "ranged" and int(e.incoming_raw) == expected[0] and expected.all(func(x): return x == expected[0])), "TP2 volley: incoming damage = ranged damage x damage_bps/10000 (%d raw), source_kind ranged" % expected[0])
+	var later := of_kind(events, "hero_hit").filter(func(e): return String(e.get("attack_id", "")) != "volley" and e.source_kind == "ranged" and int(e.incoming_raw) != expected[0])
+	check(later.all(func(e): return String(e.get("attack_id", "")) in ["fan", ""]), "TP2 volley: a later ordinary shot is still named fan (or nameless when its body is gone)")
+	# 4. a body that dies in its windup does not fire
+	var dying := volley_start(volley)
+	var run4: RefCounted = dying.run
+	var ev4: Array = dying.events.duplicate()
+	var victim := int(dying.members[0])
+	run4.enemies.erase(victim)
+	run4._alive = run4.enemies.size()
+	for i in 70:
+		pump(run4, ev4, 0)
+	var shots4 := {}
+	for uid in run4._hostile_src:
+		var src4: Dictionary = run4._hostile_src[uid]
+		if String(src4.get("attack_id", "")) == "volley": shots4[int(src4.id)] = int(shots4.get(int(src4.id), 0)) + 1
+	check(not shots4.has(victim) and shots4.size() == 3 and shots4.values().all(func(n): return n == 3), "TP2 volley: a body dead in its windup fires nothing, the other three fire three each")
+	# 5. same seed, same snapshot; validator range
+	var again := volley_start(volley)
+	check(JSON.stringify(again.run.snapshot()) == snap, "TP2 volley: the same seed gives the same snapshot")
+	for bad in [{"windup_ticks": 39, "damage_bps": 10000}, {"windup_ticks": 121, "damage_bps": 10000}, {"windup_ticks": 60, "damage_bps": -1}, {"windup_ticks": 60, "damage_bps": 30001}, {"windup_ticks": 60}, {"windup_ticks": 60, "damage_bps": 10000, "x": 1}]:
+		var probe := document(false, func(d):
+			d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840, "volley": bad})
+		var probe_run = Chapter.new()
+		check(not probe_run.set_tuning(probe), "TP2 volley: rejects %s" % JSON.stringify(bad))
+	for good in [{"windup_ticks": 40, "damage_bps": 0}, {"windup_ticks": 120, "damage_bps": 30000}]:
+		var probe_ok := document(false, func(d):
+			d.rhythm.beats[1].wave.squad = {"count": 4, "ring_m": [9, 12], "at_ticks": 840, "volley": good})
+		var probe_run_ok = Chapter.new()
+		check(probe_run_ok.set_tuning(probe_ok), "TP2 volley: accepts %s" % JSON.stringify(good))
+
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):
 		print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": 0, "failures": ["user data dir is not isolated: refusing to run"]}))
@@ -980,5 +1067,6 @@ func execute() -> void:
 	opening_off_checks()
 	first_visit_checks()
 	threat_checks()
+	volley_checks()
 	print("CHAPTER1_RHYTHM_TEST_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

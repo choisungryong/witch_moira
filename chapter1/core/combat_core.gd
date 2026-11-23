@@ -707,6 +707,7 @@ func _step_enemies() -> void:
 			else:
 				if distance <= 1.15: _hero_damage(int(def.damage)*UNIT,e.position,_source_kind_of(e),int(e.id))
 			e.attack_index += 1
+			e.erase("volley")
 			e.state = "recover"
 			e.state_until = tick+int(def.recover)
 			continue
@@ -836,7 +837,7 @@ func _approach_crowd(e: Dictionary, speed: float, attack_distance: float) -> Dic
 ## `source_kind` / `source_id` say who did it (the event carries them, the snapshot does not): walker | ranged | charger | elite |
 ## champion | boss for a body, a dash or a shot, boss_ward for the final boss's floor strike, hazard for any other floor danger
 ## (id 0). A blocked hit (invulnerable) makes no event.
-func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", source_id: int = 0) -> void:
+func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", source_id: int = 0, attack_id: String = "") -> void:
 	if tick < _invulnerable_until or not _terminal_mode.is_empty(): return
 	var incoming := raw
 	var iframes := 24
@@ -859,6 +860,7 @@ func _hero_damage(raw: int, from: Vector2, source_kind: String = "hazard", sourc
 	var source_body: Dictionary = enemies.get(source_id,{}) if source_id > 0 else {}
 	details.source_key = String(source_body.get("title_key",""))
 	details.attack_id = "floor_strike" if source_kind == "boss_ward" else String(source_body.get("attack_kind",""))
+	if not attack_id.is_empty(): details.attack_id = attack_id
 	if graze: details.graze = true
 	_emit("hero_hit",hero.position,details)
 	# D23 T17: thorns give back thorns_bps of the hit as it was after the graze and before the reduction. Only a body that did the hit
@@ -920,13 +922,18 @@ func _enemy_projectiles(e: Dictionary) -> void:
 	for p in projectiles:
 		if p.hostile: hostile += 1
 	var count := 7 if e.elite else 3
+	# TP2 first volley: the body carries `volley` only between its placement and its first shot; the shots scale and are named.
+	var volley: Variant = e.get("volley")
+	var damage_raw := int(_enemy_definition(e).damage)*UNIT
+	if volley is Dictionary: damage_raw = damage_raw*int(volley.damage_bps)/10000
 	for i in count:
 		if hostile >= MAX_HOSTILE_PROJECTILES or projectiles.size() >= MAX_PROJECTILES: break
 		var spread: float = (float(i)-float(count-1)*.5)*(.18 if e.elite else .14)
 		_projectile_sequence += 1
 		projectiles.append({"uid":_projectile_sequence,"position":e.position,"previous":e.position,"direction":e.attack_direction.rotated(spread),
-			"speed":5.0 if e.elite else 4.2,"radius":.16,"skill_id":"hostile."+e.kind,"hostile":true,"damage_raw":int(_enemy_definition(e).damage)*UNIT,"expires":tick+210,"cast_id":0,"pierce_left":0,"hit_ids":[]})
+			"speed":5.0 if e.elite else 4.2,"radius":.16,"skill_id":"hostile."+e.kind,"hostile":true,"damage_raw":damage_raw,"expires":tick+210,"cast_id":0,"pierce_left":0,"hit_ids":[]})
 		_hostile_src[_projectile_sequence] = {"id":int(e.id),"kind":_source_kind_of(e)}
+		if volley is Dictionary: _hostile_src[_projectile_sequence].attack_id = "volley"
 		hostile += 1
 
 ## The kind a hero_hit event names for a body: its kind (walker, ranged, charger) or, for the strong ones, its role.
@@ -1284,7 +1291,7 @@ func _step_projectiles() -> void:
 		if p.hostile:
 			if _segment_distance_sq(hero.position,p.previous,p.position) <= pow(float(p.radius)+.28,2):
 				var shooter: Dictionary = _hostile_src.get(int(p.uid),{})
-				_hero_damage(int(p.damage_raw),p.position,String(shooter.get("kind",String(p.skill_id).trim_prefix("hostile."))),int(shooter.get("id",0)))
+				_hero_damage(int(p.damage_raw),p.position,String(shooter.get("kind",String(p.skill_id).trim_prefix("hostile."))),int(shooter.get("id",0)),String(shooter.get("attack_id","")))
 				_hostile_src.erase(int(p.uid))
 				remove = true
 		else:

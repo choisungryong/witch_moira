@@ -422,7 +422,15 @@ static func _crest_issues(crest: Variant,tag: String) -> Array[String]:
 
 ## squad {count 0..SQUAD_MAX (12), ring_m [lo, hi] inside 6..14, at_ticks inside the part of the period before the lull}.
 static func _squad_valid(sq: Variant, w: Dictionary) -> bool:
-	if not sq is Dictionary or not GrowthCatalog.keys_match(sq,["count","ring_m","at_ticks"]): return false
+	if not sq is Dictionary: return false
+	# TP2: `volley` {windup_ticks 40..120, damage_bps 0..30000} is the one optional key (the first shot of each placed body).
+	var base_keys := ["count","ring_m","at_ticks"]
+	if sq.has("volley"):
+		var v: Variant = sq.volley
+		if not v is Dictionary or not GrowthCatalog.keys_match(v,["windup_ticks","damage_bps"]): return false
+		if not integer(v.windup_ticks,40,120) or not integer(v.damage_bps,0,30000): return false
+		base_keys.append("volley")
+	if not GrowthCatalog.keys_match(sq,base_keys): return false
 	if not integer(sq.count,0,SQUAD_MAX) or not sq.ring_m is Array or sq.ring_m.size() != 2: return false
 	if not number(sq.ring_m[0],6.0,14.0) or not number(sq.ring_m[1],6.0,14.0) or float(sq.ring_m[0]) > float(sq.ring_m[1]): return false
 	if not integer(w.period_ticks,60,36000) or not integer(w.lull_ticks,0,36000): return false
