@@ -2,6 +2,7 @@ extends SceneTree
 ## Loot grammar v2 checks: data validity, generated items, v1 compatibility, tamper detection.
 const Loot = preload("res://chapter1/core/loot.gd")
 const ItemsV1 = preload("res://chapter1/core/chapter_items.gd")
+const Chapter = preload("res://chapter1/core/chapter_core.gd")
 var failures: Array[String] = []
 var checks := 0
 
@@ -109,6 +110,7 @@ func execute() -> void:
 	roll_checks(loot)
 	pity_checks(loot)
 	luck_checks()
+	verdict_checks()
 	finish()
 
 ## D5 (a): names and descriptions are presentation. validate() checks ids and numbers; dress() rebuilds the text.
@@ -953,6 +955,176 @@ func luck_checks() -> void:
 			if bool(row.core_reads): grace_ok = false
 	check(luck_rows == 5 and luck_ok and "luck_bps" in Loot.STATS_READ, "LK9 the five luck_* rows are read (core_reads true, luck_bps in STATS_READ)")
 	check(grace_rows == 3 and grace_ok and not "grace_luck_bps" in Loot.STATS_READ, "LK9 the grace_luck_* rows stay unread (core_reads false, not in STATS_READ)")
+
+## GM5 / GM-B: equipment verdict v2 (loot.upgrade_verdict). Items are made by hand so every V is known.
+func mutate_verdict_missing_key(doc: Dictionary) -> void:
+	doc.upgrade_verdict.erase("shots_r1")
+
+func mutate_verdict_extra_key(doc: Dictionary) -> void:
+	doc.upgrade_verdict["more"] = 1
+
+func mutate_verdict_read_outside(doc: Dictionary) -> void:
+	doc.upgrade_verdict.reads["chapter1.skill.frost"].append("max_hp_raw")
+
+func mutate_verdict_shape_key_unread(doc: Dictionary) -> void:
+	doc.upgrade_verdict.shape_keys["chapter1.skill.frost"] = ["chain_targets"]
+
+func mutate_verdict_unknown_stat(doc: Dictionary) -> void:
+	doc.upgrade_verdict.attack_keys.append("no_such_stat")
+
+func mutate_verdict_enabled_text(doc: Dictionary) -> void:
+	doc.upgrade_verdict.enabled = "yes"
+
+func mutate_verdict_absent(doc: Dictionary) -> void:
+	doc.erase("upgrade_verdict")
+
+func verdict_item(slot_: String, quality: String, stats: Dictionary) -> Dictionary:
+	return {"name":"v_"+slot_,"slot":slot_,"stats":stats,"quality":quality,"item_level":1,"affixes":[],"description":""}
+
+func verdict_checks() -> void:
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Loot.DATA_PATH))
+	var loot = Loot.new()
+	check(loot.load_file(),"GM5 loot data loads")
+	check(loot.data.has("upgrade_verdict") and loot.data.upgrade_verdict.enabled == false and not loot.verdict_on(),"GM5 the shipped data has the upgrade_verdict block, off")
+	# The block shape.
+	var bad := {"missing_key":mutate_verdict_missing_key,"extra_key":mutate_verdict_extra_key,"read_outside":mutate_verdict_read_outside,"shape_key_unread":mutate_verdict_shape_key_unread,"unknown_stat":mutate_verdict_unknown_stat,"enabled_text":mutate_verdict_enabled_text}
+	for name_ in bad:
+		check(not bad_block_loads(raw,bad[name_],"verdict_"+name_),"GM5 an upgrade_verdict block with "+name_+" fails load_file")
+	check(bad_block_loads(raw,mutate_verdict_absent,"verdict_absent"),"GM5 data without an upgrade_verdict block loads")
+	var none = Loot.new()
+	check(none.load_file(BAD_DIR+"/verdict_absent.json") and not none.verdict_on() and not none.set_verdict(true) and not none.verdict_on(),"GM5 without a block set_verdict(true) is refused")
+	# Off: is_upgrade is what it was, for 10,000 random pairs (the old rule is written out here).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261124
+	var primaries := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc",""]
+	var qualities := ["common","magic","rare","legendary"]
+	var same := 0
+	var upgrades := 0
+	for i in 10000:
+		var slot_: String = loot.data.slots[rng.randi_range(0,loot.data.slots.size()-1)]
+		var a: Dictionary = loot.roll_item(rng,rng.randi_range(1,30),qualities[rng.randi_range(0,3)],slot_)
+		var b: Dictionary = loot.roll_item(rng,rng.randi_range(1,30),qualities[rng.randi_range(0,3)],slot_) if rng.randi_range(0,9) > 0 else {}
+		var primary_: String = primaries[rng.randi_range(0,3)]
+		var expected := true
+		if not b.is_empty():
+			expected = true if a.quality in ["legendary","unique"] else loot.score(a,primary_) > loot.score(b,primary_)*1.05+.5
+		if loot.is_upgrade(a,b,primary_) == expected: same += 1
+		if expected: upgrades += 1
+	check(same == 10000 and not loot.verdict_on() and upgrades > 1000 and upgrades < 9500,"GM5 switch off: is_upgrade equals the old rule on 10000 random pairs (%d same, %d upgrades)" % [same,upgrades])
+	check(loot.set_verdict(true) and loot.verdict_on(),"GM5 set_verdict(true) works with the block")
+	var is_up_on := 0
+	rng.seed = 20261124
+	for i in 2000:
+		var slot2: String = loot.data.slots[rng.randi_range(0,loot.data.slots.size()-1)]
+		var a2: Dictionary = loot.roll_item(rng,rng.randi_range(1,30),qualities[rng.randi_range(0,3)],slot2)
+		var b2: Dictionary = loot.roll_item(rng,rng.randi_range(1,30),qualities[rng.randi_range(0,3)],slot2)
+		var p2: String = primaries[rng.randi_range(0,2)]
+		var old_rule: bool = true if a2.quality in ["legendary","unique"] else loot.score(a2,p2) > loot.score(b2,p2)*1.05+.5
+		if loot.is_upgrade(a2,b2,p2) == old_rule: is_up_on += 1
+	check(is_up_on == 2000,"GM5 is_upgrade itself does not look at the switch (2000 pairs with the switch on)")
+	var frost := "chapter1.skill.frost"
+	var arc := "chapter1.skill.arc"
+	var ember := "chapter1.skill.ember"
+	var splitting := {"projectiles":2,"damage_bps":-1500}
+	# Case 1: arc, a splitting weapon against a magic +10% damage weapon. The core turns every projectile of the gear into a chain target of
+	# an arc (see the reads check below), so splitting is not worthless for arc: at c=3 (rank 1) it is a close call, from c=4 on it is a loss.
+	var worn1 := {"weapon":verdict_item("weapon","magic",{"damage_bps":1000})}
+	var v1: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),worn1,"weapon",arc,{"chain_targets":5})
+	check(not v1.better and v1.note == "weak_for_primary" and v1.delta < 0.0,"GM5 case 1: arc, splitting weapon (c=5) against +10%% magic weapon is not better (delta %.2f)" % v1.delta)
+	var v1c: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),worn1,"weapon",arc,{"chain_targets":4})
+	check(not v1c.better,"GM5 case 1: the same at c=4 is not better (delta %.2f)" % v1c.delta)
+	var v1b: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),worn1,"weapon",arc,{"chain_targets":3})
+	print("GM5 case 1 at r1 (c=3), recorded, not asserted as a pass of the spec case: better=%s delta=%.3f" % [str(v1b.better),v1b.delta])
+	# Case 2: frost b=2, one splitting against +30% damage, the same empty slot: the +30% one is worth more, and it is better.
+	var shots2 := {"projectiles":2}
+	var split_empty: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),{},"weapon",frost,shots2)
+	var rare_empty: Dictionary = loot.upgrade_verdict(verdict_item("weapon","rare",{"damage_bps":3000}),{},"weapon",frost,shots2)
+	check(rare_empty.better and split_empty.better and rare_empty.delta > split_empty.delta,"GM5 case 2: frost b=2, +30%% rare (%.2f) is worth more than splitting (%.2f)" % [rare_empty.delta,split_empty.delta])
+	var worn2 := {"weapon":verdict_item("weapon","legendary",splitting)}
+	var rare_hands: Dictionary = loot.upgrade_verdict(verdict_item("hands","rare",{"damage_bps":3000}),worn2,"hands",frost,shots2)
+	var split_hands: Dictionary = loot.upgrade_verdict(verdict_item("hands","legendary",splitting),worn2,"hands",frost,shots2)
+	check(rare_hands.better and rare_hands.delta > split_hands.delta,"GM5 case 2: with one splitting worn, +30%% in the hands (%.2f) beats a second splitting (%.2f)" % [rare_hands.delta,split_hands.delta])
+	var rare_weapon: Dictionary = loot.upgrade_verdict(verdict_item("weapon","rare",{"damage_bps":3000}),worn2,"weapon",frost,shots2)
+	check(rare_weapon.v_after > rare_weapon.v_before,"GM5 case 2: +30%% rare replacing the splitting weapon raises V (delta %.2f, below better_min %.1f: the rule gives no notice)" % [rare_weapon.delta,float(loot.data.upgrade_verdict.better_min)])
+	# Case 3: frost, an empty ring slot, a galvanic ring: not better, nothing to wear.
+	var galvanic := verdict_item("ring","legendary",{"chain_targets":3,"arc_damage_bps":-1000})
+	var v3: Dictionary = loot.upgrade_verdict(galvanic,{},"",frost,shots2)
+	check(not v3.better and v3.empty_slot and v3.note == "empty_no_effect" and v3.slot == "ring" and absf(v3.delta) < 0.000001,"GM5 case 3: frost, empty ring slot, galvanic: not better, empty_no_effect (delta %.4f)" % v3.delta)
+	check(loot.upgrade_verdict(galvanic,{},"",arc,{"chain_targets":3}).better,"GM5 case 3: the same ring is better for arc")
+	# Case 4: another witch's legendary into a filled slot: not better, weak_for_primary; the opening is the core's (test_chapter_run).
+	var worn4 := {"weapon":verdict_item("weapon","magic",{"damage_bps":1000})}
+	var v4: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",{"chain_targets":3,"arc_damage_bps":-1000}),worn4,"weapon",frost,shots2)
+	check(not v4.better and v4.note == "weak_for_primary","GM5 case 4: an arc legendary weapon over a +10%% frost weapon: not better, weak_for_primary (delta %.2f)" % v4.delta)
+	# Rings: the free slot first; with both full, the ring whose replacement lifts V most (the weaker one).
+	var strong_ring := verdict_item("ring","rare",{"damage_bps":2500})
+	var weak_ring := verdict_item("ring","magic",{"damage_bps":300})
+	var full := {"ring":strong_ring,"ring2":weak_ring}
+	var v5: Dictionary = loot.upgrade_verdict(verdict_item("ring","rare",{"damage_bps":1500}),full,"",frost,shots2)
+	check(v5.slot == "ring2" and v5.better,"GM5 rings: both worn, a +15%% ring replaces the weaker one and is better (delta %.2f)" % v5.delta)
+	var v5b: Dictionary = loot.upgrade_verdict(verdict_item("ring","rare",{"damage_bps":1500}),{"ring":weak_ring},"",frost,shots2)
+	check(v5b.slot == "ring2" and v5b.empty_slot and v5b.better,"GM5 rings: one worn, the free slot is chosen")
+	# Pure: nothing in the arguments changed; same answer twice.
+	var snapshot_before := JSON.stringify(full)
+	var again: Dictionary = loot.upgrade_verdict(verdict_item("ring","rare",{"damage_bps":1500}),full,"",frost,shots2)
+	check(JSON.stringify(full) == snapshot_before and JSON.stringify(again) == JSON.stringify(v5),"GM5 upgrade_verdict changes nothing in its arguments and answers the same twice")
+	# Threshold: the delta must reach better_min on a filled slot.
+	var worn6 := {"hands":verdict_item("hands","common",{"damage_bps":300})}
+	var small: Dictionary = loot.upgrade_verdict(verdict_item("hands","magic",{"damage_bps":500}),worn6,"hands",frost,shots2)
+	var big: Dictionary = loot.upgrade_verdict(verdict_item("hands","magic",{"damage_bps":800}),worn6,"hands",frost,shots2)
+	check(not small.better and big.better and small.delta < 1.5 and big.delta >= 1.5,"GM5 threshold: +2%% damage over the worn one (%.2f) is not better, +5%% (%.2f) is" % [small.delta,big.delta])
+	# Unread keys count 0: frost reads no fire_damage_bps, arc no pierce.
+	check(absf(loot.upgrade_verdict(verdict_item("charm","magic",{"fire_damage_bps":1500}),{},"charm",frost,shots2).delta) < 0.000001,"GM5 frost: fire_damage_bps is worth nothing")
+	check(loot.upgrade_verdict(verdict_item("charm","magic",{"fire_damage_bps":1500}),{},"charm",ember,{"projectiles":2}).better,"GM5 ember: fire_damage_bps counts")
+	check(absf(loot.upgrade_verdict(verdict_item("weapon","magic",{"pierce":1}),{},"weapon",arc,{"chain_targets":3}).delta) < 0.000001,"GM5 arc: pierce is worth nothing")
+	check(loot.upgrade_verdict(verdict_item("body","magic",{"max_hp_raw":5000,"damage_reduction_bps":500}),{},"body",frost,shots2).better,"GM5 defence keeps its linear weight for every witch")
+	check(bool(loot.upgrade_verdict(verdict_item("weapon","magic",{"damage_bps":900}),{},"weapon","",{}).fallback),"GM5 an unknown primary falls back to is_upgrade")
+	# The reads table against the core: for each primary, every attack key that changes a field the skill's cast uses is in the table; the table's
+	# extras are only keys that act at a higher rank than rank 1 (frost shatter_count and ember radius_cm: the base is 0 at rank 1 and the core adds gear only to a skill that has some).
+	var used_fields := {
+		"ember":["damage_raw","cooldown_ticks","projectiles","pierce","radius_cm","death_burst"],
+		"frost":["damage_raw","cooldown_ticks","projectiles","pierce","slow_bps","freeze_stacks","shatter_count"],
+		"arc":["damage_raw","cooldown_ticks","chain_targets","branches","radius_cm"]}
+	var rank_gated := {"chapter1.skill.frost":["shatter_count"],"chapter1.skill.ember":["radius_cm"],"chapter1.skill.arc":[]}
+	var reads_ok := true
+	var reads_report := {}
+	var block: Dictionary = loot.data.upgrade_verdict
+	for primary_id in block.reads:
+		var core = Chapter.new()
+		if not core.start(11,primary_id):
+			check(false,"GM5 reads: the core starts for "+primary_id)
+			continue
+		var short: String = primary_id.trim_prefix("chapter1.skill.")
+		var base_effects: Dictionary = core._skill_with(primary_id,{}).effects
+		var seen: Array = []
+		for key in block.attack_keys:
+			if key == "streak_projectiles": continue
+			var amount := 1000 if String(key).ends_with("_bps") else 1
+			var effects: Dictionary = core._skill_with(primary_id,{key:amount}).effects
+			for field in used_fields[short]:
+				if str(effects[field]) != str(base_effects[field]) and not key in seen: seen.append(key)
+		var table: Array = block.reads[primary_id]
+		for key in seen:
+			if not key in table:
+				reads_ok = false
+				push_error("core reads %s for %s but the table does not" % [key,primary_id])
+		for key in table:
+			if key == "streak_projectiles": continue
+			if not key in seen and not key in rank_gated[primary_id]:
+				reads_ok = false
+				push_error("the table reads %s for %s but the core does not" % [key,primary_id])
+		reads_report[short] = seen
+		check("streak_projectiles" in table,"GM5 reads: streak_projectiles is read by "+short)
+	check(reads_ok,"GM5 reads: the table equals what the core's skill reads %s" % JSON.stringify(reads_report))
+	var arc_core = Chapter.new()
+	arc_core.start(11,arc)
+	var arc_base: int = int(arc_core._skill_with(arc,{}).effects.chain_targets)
+	var arc_more: int = int(arc_core._skill_with(arc,{"projectiles":2}).effects.chain_targets)
+	check(arc_more == arc_base+2 and arc_base == int(block.shots_r1[arc]),"GM5 reads: arc turns projectiles into chain targets (%d -> %d), and shots_r1 is the core's r1 count" % [arc_base,arc_more])
+	for primary_id in [ember,frost]:
+		var core2 = Chapter.new()
+		core2.start(11,primary_id)
+		check(int(core2._skill_with(primary_id,{}).effects.projectiles) == int(block.shots_r1[primary_id]),"GM5 shots_r1 equals the core's r1 shot count for "+primary_id)
+
 
 func finish() -> void:
 	print("CHAPTER1_LOOT_RESULT ",JSON.stringify({"checks":checks,"failures":failures,"scope":"loot grammar v2 only; not wired into the running chapter"}))

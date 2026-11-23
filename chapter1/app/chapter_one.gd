@@ -705,7 +705,7 @@ func _offer_if_better(item: Dictionary) -> void:
 	if data.is_empty() or not data.can_equip or not run.equip_slot_of(int(item.uid)).is_empty():return
 	var verdict: Dictionary=run.pickup_verdict(int(item.uid))
 	if verdict.is_empty():
-		if run.loot.is_upgrade(data.candidate,data.equipped,primary):hud.offer_upgrade(data.candidate,data.equipped,data.slot)
+		if run.is_better_gear(data.candidate,data.equipped,String(data.slot)):hud.offer_upgrade(data.candidate,data.equipped,data.slot)
 		return
 	if String(verdict.react) in ["card","open","auto_equip"]:hud.offer_upgrade(data.candidate,data.equipped,data.slot,verdict)
 func _consume_events() -> void:

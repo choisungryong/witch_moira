@@ -1748,9 +1748,52 @@ func execute() -> void:
 	abandon_checks()
 	sheet_checks()
 	pickup_flow_checks()
+	verdict_v2_checks()
 	if "--negative" in OS.get_cmdline_user_args():check(false,"Intentional checker failure")
 	print("CHAPTER_FULL_TEST ",JSON.stringify({"checks":checks,"failures":failures,"scope":"Fixtures and12000 item rolls; not normal-run pacing or visual approval"}))
 	quit(0 if failures.is_empty() else 1)
+
+## GM-B: pickup_verdict with loot.json upgrade_verdict on (switched in memory). Items are made by hand. Off, every answer is the one the D21 checks above pin.
+func verdict_v2_checks() -> void:
+	var mk := func(uid: int,slot_: String,stats: Dictionary,quality: String="magic") -> Dictionary:
+		return {"uid":uid,"name":"item%d"%uid,"slot":slot_,"stats":stats,"quality":quality,"item_level":1,"affixes":[],"description":"","required_level":1}
+	var run=Chapter.new();check(run.start(43,FROST),"GM-B run starts")
+	check(not run.loot.verdict_on() and run.loot.data.upgrade_verdict.enabled==false,"GM-B the shipped switch is off")
+	run.inventory.clear();run.equipped.clear();run._recompute_gear()
+	run.inventory.append(mk.call(961,"ring",{"chain_targets":3,"arc_damage_bps":-1000},"legendary"))
+	run.inventory.append(mk.call(962,"weapon",{"projectiles":2,"damage_bps":-1500},"legendary"))
+	run.inventory.append(mk.call(963,"weapon",{"damage_bps":1000}))
+	run.inventory.append(mk.call(964,"hands",{"damage_bps":3000},"rare"))
+	run.inventory.append(mk.call(965,"charm",{"fire_damage_bps":1500}))
+	var off_ring: Dictionary=run.pickup_verdict(961)
+	check(off_ring.react=="open" and off_ring.better=="yes" and not off_ring.has("note"),"GM-B off: a legendary ring in an empty slot is open and better yes, no note key")
+	var off_charm: Dictionary=run.pickup_verdict(965)
+	check(off_charm.react=="auto_equip" and off_charm.better=="yes" and not off_charm.has("verdict_delta"),"GM-B off: an item the witch does not read still auto-equips into an empty slot")
+	var before := fingerprint(run)
+	check(run.loot.set_verdict(true),"GM-B switch on in memory")
+	# Case 3 (core): frost, empty ring, a galvanic ring: nothing is worn, the card says it does nothing.
+	var on_ring: Dictionary=run.pickup_verdict(961)
+	check(on_ring.react=="open" and on_ring.better=="no" and on_ring.note=="empty_no_effect","GM-B on: frost, empty ring, galvanic: open (the cue stays), better no, note empty_no_effect")
+	var on_charm: Dictionary=run.pickup_verdict(965)
+	check(on_charm.react=="card" and on_charm.better=="no" and on_charm.note=="empty_no_effect","GM-B on: an empty slot with nothing the witch reads is a card, never auto_equip")
+	var on_hands: Dictionary=run.pickup_verdict(964)
+	check(on_hands.react=="auto_equip" and on_hands.better=="yes" and on_hands.note=="" and float(on_hands.verdict_delta)>0.0,"GM-B on: an empty slot that raises V still auto-equips")
+	check(fingerprint(run)==before,"GM-B on: pickup_verdict leaves the state byte-identical")
+	# Case 4 (core): another witch's legendary: the opening stays, better is not.
+	run.equipped.weapon=963;run._recompute_gear()
+	run.inventory.append(mk.call(966,"weapon",{"chain_targets":3,"arc_damage_bps":-1000},"legendary"))
+	var worn_state := fingerprint(run)
+	var other: Dictionary=run.pickup_verdict(966)
+	check(other.react=="open" and other.better=="no" and other.note=="weak_for_primary","GM-B on: an arc legendary weapon for frost: open true, better no, weak_for_primary")
+	# Case 1 / 2 (core): a splitting weapon over +10%: the core's own shots are read (frost r1 = 2).
+	var split: Dictionary=run.pickup_verdict(962)
+	check(split.react=="open" and split.better in ["yes","no"],"GM-B on: splitting weapon over a +10% weapon is open")
+	var rare_hands: Dictionary=run.pickup_verdict(964)
+	check(rare_hands.better=="yes","GM-B on: +30% hands with a weapon worn is better")
+	check(fingerprint(run)==worn_state,"GM-B on: with gear worn the state is byte-identical")
+	check(run.is_better_gear(run.inventory[3],{},"hands") and not run.is_better_gear(run.inventory[4],{},"charm"),"GM-B on: is_better_gear follows the verdict (the app's fallback path)")
+	run.loot.set_verdict(false)
+	check(run.is_better_gear(run.inventory[4],{},"charm") and run.pickup_verdict(965).react=="auto_equip" and not run.pickup_verdict(965).has("note"),"GM-B off again: the old answers return")
 
 ## D21 W1: pickup_verdict (N1), pickup_flow (N3), loot_flow (N2). Items and stats are made by hand so every verdict is known.
 func pickup_flow_checks() -> void:

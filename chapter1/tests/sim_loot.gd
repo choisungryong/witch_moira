@@ -72,6 +72,7 @@ func execute() -> void:
 	var wear_seeds: Array = [11,12,13]
 	var kits_out := ""
 	var seed_arg := 4141
+	var wear_policy := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--runs="): runs = maxi(1,int(arg.trim_prefix("--runs=")))
 		elif arg.begins_with("--primary="): primary = arg.trim_prefix("--primary=")
@@ -85,6 +86,9 @@ func execute() -> void:
 			wear_seeds = []
 			for part in arg.trim_prefix("--wear-seeds=").split(","): wear_seeds.append(int(part))
 		elif arg.begins_with("--kits-out="): kits_out = arg.trim_prefix("--kits-out=")
+		elif arg.begins_with("--wear-policy="): wear_policy = arg.trim_prefix("--wear-policy=")
+	if not wear_policy in ["","f2","score","verdict"]:
+		push_error("usage: --wear-policy=f2|score|verdict (with --wear)"); quit(2); return
 	if not affix_arg in ["on","off"] or not pity_arg in ["on","off"] or luck < 0 or luck > 3000:
 		push_error("usage: --affix-rolls=on|off  --pity=on|off  --luck=0..3000"); quit(2); return
 	var pity_on := pity_arg == "on"
@@ -125,7 +129,7 @@ func execute() -> void:
 	var pity_fired_runs := 0
 	var mods: Dictionary = {"luck_bps":luck} if luck > 0 else {}
 	if wear_on:
-		quit(_wear_main(loot,wear_runs,wear_seeds,kits_out,mods,affix_arg))
+		quit(_wear_main(loot,wear_runs,wear_seeds,kits_out,mods,affix_arg,wear_policy))
 		return
 	var tier_of := _tier_table(loot)
 	var rng := RandomNumberGenerator.new()
@@ -271,14 +275,39 @@ func _run_drops(loot, rng: RandomNumberGenerator, primary: String, mods: Diction
 
 ## Wear one drop by the game's own rule (loot.is_upgrade). worn = {equip slot: item}.
 func _wear(loot, worn: Dictionary, item: Dictionary, primary: String) -> void:
+	if wear_verdict_policy:
+		_wear_verdict(loot,worn,item,primary)
+		return
 	var slot: String = item.slot
 	if slot != "ring":
-		if loot.is_upgrade(item,worn.get(slot,{}),primary): worn[slot] = item
+		if _wear_takes(loot,item,worn.get(slot,{}),primary): worn[slot] = item
 		return
 	if not worn.has("ring"): worn["ring"] = item; return
 	if not worn.has("ring2"): worn["ring2"] = item; return
 	var low := "ring" if loot.score(worn["ring"],primary) <= loot.score(worn["ring2"],primary) else "ring2"
-	if loot.is_upgrade(item,worn[low],primary): worn[low] = item
+	if _wear_takes(loot,item,worn[low],primary): worn[low] = item
+
+## F2: loot.is_upgrade (legendary and unique always). F2b (--wear-policy=score): everything, legendary and unique too, only by score > current*1.05+.5.
+## Counts the swaps where the score went down (CB-G3 G3a); the count is read by _wear_main only when --wear-policy is given.
+var wear_score_policy := false
+var wear_downs := 0
+## GM-B (--wear-policy=verdict): the game's equipment verdict v2 (loot.upgrade_verdict, switched on in memory), the same function the core's
+## pickup_verdict uses. The slot is the function's own choice (a free ring slot, else the ring whose replacement lifts V most); an item is worn when
+## the verdict says better (an empty slot: only when V rises). Shots are the r1 values of the data. wear_downs counts the same thing as before: swaps by score.
+var wear_verdict_policy := false
+
+func _wear_verdict(loot, worn: Dictionary, item: Dictionary, primary: String) -> void:
+	var answer: Dictionary = loot.upgrade_verdict(item,worn,"",primary,{})
+	if not bool(answer.better): return
+	var current: Dictionary = worn.get(answer.slot,{})
+	if not current.is_empty() and loot.score(item,primary) < loot.score(current,primary): wear_downs += 1
+	worn[answer.slot] = item
+
+func _wear_takes(loot, item: Dictionary, current: Dictionary, primary: String) -> bool:
+	if current.is_empty(): return true
+	var take: bool = (loot.score(item,primary) > loot.score(current,primary)*1.05+.5) if wear_score_policy else loot.is_upgrade(item,current,primary)
+	if take and loot.score(item,primary) < loot.score(current,primary): wear_downs += 1
+	return take
 
 func _percentile(sorted_values: Array, share: float) -> float:
 	if sorted_values.is_empty(): return 0.0
@@ -302,7 +331,14 @@ func _kit_item(equip: String, item: Dictionary) -> Dictionary:
 		spec["affixes"] = lines
 	return spec
 
-func _wear_main(loot, wear_runs: int, seeds: Array, kits_out: String, mods: Dictionary, affix_arg: String) -> int:
+func _wear_main(loot, wear_runs: int, seeds: Array, kits_out: String, mods: Dictionary, affix_arg: String, wear_policy: String = "") -> int:
+	wear_score_policy = wear_policy == "score"
+	wear_verdict_policy = wear_policy == "verdict"
+	if wear_verdict_policy and not loot.set_verdict(true):
+		push_error("--wear-policy=verdict needs loot.json upgrade_verdict")
+		return 2
+	var kit_prefix := "kit.f2v." if wear_verdict_policy else ("kit.f2b." if wear_score_policy else "kit.f2.")
+	var diag := {}
 	if kits_out != "" and (not kits_out.begins_with("_local/") or kits_out.contains("..") or kits_out.contains(":") or kits_out.begins_with("/")):
 		push_error("--kits-out must be a relative path under _local/ (got %s)" % kits_out)
 		return 2
@@ -322,13 +358,15 @@ func _wear_main(loot, wear_runs: int, seeds: Array, kits_out: String, mods: Dict
 			rng.seed = int(seed_)*1000003+series_index*7919+1
 			for career in careers_per_seed:
 				var worn := {}
+				wear_downs = 0
 				for run in WEAR_CAREER_RUNS:
 					for item in _run_drops(loot,rng,primary,mods): _wear(loot,worn,item,primary)
 					if (run+1) in WEAR_SNAPS:
 						var score := 0.0
 						for slot in worn: score += loot.score(worn[slot],primary)
-						samples[run+1].append({"score":score,"sums":_worn_sums(worn),"worn":worn.duplicate()})
+						samples[run+1].append({"score":score,"sums":_worn_sums(worn),"worn":worn.duplicate(),"downs":wear_downs})
 		var series_report := {}
+		var series_diag := {}
 		for snap in WEAR_SNAPS:
 			var list: Array = samples[snap]
 			list.sort_custom(func(a, b): return float(a.score) < float(b.score))
@@ -356,11 +394,24 @@ func _wear_main(loot, wear_runs: int, seeds: Array, kits_out: String, mods: Dict
 					invalid += 1
 					push_error("kit item %s %s refused: %s" % [series,slot,str(check)])
 				kit_specs.append(spec)
-			kits["kit.f2.%s.r%d" % [series,snap]] = {"what":"F2 wear policy, series %s, after run %d of a career: the real wear of the median-score career (of %d, seeds %s pooled)" % [series,snap,list.size(),str(seeds)],
+			var downs: Array = list.map(func(e): return float(e.downs))
+			var downs_sorted := downs.duplicate()
+			downs_sorted.sort()
+			var downs_sum := 0.0
+			for d in downs: downs_sum += float(d)
+			var kit_sums := {}
+			for stat in ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","fire_damage_bps","chain_targets","arc_branches","arc_damage_bps","slow_bps","shatter_count","frost_threshold","projectiles"]:
+				if median.sums.has(stat): kit_sums[stat] = int(median.sums[stat])
+			series_diag["r%d"%snap] = {"careers":list.size(),"downs_mean":snappedf(downs_sum/maxf(1.0,float(list.size())),.001),"downs_p10_p50_p90":[_percentile(downs_sorted,.1),_percentile(downs_sorted,.5),_percentile(downs_sorted,.9)],
+				"median_kit_downs":int(median.downs),"median_kit_sums":kit_sums}
+			kits[kit_prefix+"%s.r%d" % [series,snap]] = {"what":("F2v" if wear_verdict_policy else ("F2b" if wear_score_policy else "F2"))+" wear policy, series %s, after run %d of a career: the real wear of the median-score career (of %d, seeds %s pooled)" % [series,snap,list.size(),str(seeds)],
 				"items":kit_specs,"budget_layer2":{"r3":"A.5 row 1","r15":"A.5 row 2","r30":"A.5 row 3"}["r%d" % snap]}
 		report[series] = series_report
+		diag[series] = series_diag
 	print("LOOT_WEAR ",JSON.stringify({"policy":"F2: loot.is_upgrade on every drop, rings into free slot or replace the worse, required level ignored","careers_per_series_and_seed":careers_per_seed,"career_runs":WEAR_CAREER_RUNS,"seeds":seeds,
 		"affix_rolls":affix_arg,"kit_items":kit_items,"kit_items_refused_by_validate":invalid,"series":report,"note":"drop rolls and a bot-free wear rule only; nothing here says how a kit plays"}))
+	if wear_policy != "":
+		print("LOOT_WEAR_DIAG ",JSON.stringify({"policy":wear_policy,"downs":"swaps that took an item with a lower score than the worn one (cumulative in a career, careers pooled over seeds)","series":diag}))
 	if kits_out != "":
 		var out := {"schema":1,"note":"D23 T1 appendix A.6 (1): kits made by sim_loot.gd --wear (F2 wear policy). Same shape as gear_kits.json; build with tests/support/gear_kits.gd.","affix_rolls":affix_arg,"kits":kits}
 		var abs_path := ProjectSettings.globalize_path("res://"+kits_out)

@@ -264,5 +264,30 @@
     ]
   },
   "pity": {"enabled": false, "runs_without_legendary": 5, "upgrade": "first_guaranteed_to_legendary"},
-  "luck": {"enabled": false, "stat": "luck_bps", "cap_bps": 3000, "k": {"rare": 6000, "legendary": 40000, "unique": 2500}, "snapshot": "run_start"}
+  "luck": {"enabled": false, "stat": "luck_bps", "cap_bps": 3000, "k": {"rare": 6000, "legendary": 40000, "unique": 2500}, "snapshot": "run_start"},
+  "upgrade_verdict": {
+    "enabled": false,
+    "log_weight": 60,
+    "shape_share": 0.5,
+    "better_min": 1.5,
+    "attack_keys": ["damage_bps", "cooldown_bps", "projectiles", "pierce", "chain_targets", "shatter_count", "radius_cm", "slow_bps", "fire_damage_bps", "fire_burst", "frost_threshold", "arc_branches", "arc_damage_bps", "streak_projectiles"],
+    "reads": {
+      "chapter1.skill.ember": ["damage_bps", "cooldown_bps", "fire_damage_bps", "projectiles", "pierce", "radius_cm", "fire_burst", "streak_projectiles"],
+      "chapter1.skill.frost": ["damage_bps", "cooldown_bps", "projectiles", "pierce", "slow_bps", "shatter_count", "frost_threshold", "streak_projectiles"],
+      "chapter1.skill.arc": ["damage_bps", "cooldown_bps", "projectiles", "chain_targets", "arc_branches", "arc_damage_bps", "radius_cm", "streak_projectiles"]
+    },
+    "damage_keys": {
+      "chapter1.skill.ember": ["damage_bps", "fire_damage_bps"],
+      "chapter1.skill.frost": ["damage_bps"],
+      "chapter1.skill.arc": ["damage_bps", "arc_damage_bps"]
+    },
+    "cooldown_key": "cooldown_bps",
+    "shape_keys": {
+      "chapter1.skill.ember": ["projectiles"],
+      "chapter1.skill.frost": ["projectiles"],
+      "chapter1.skill.arc": ["projectiles", "chain_targets"]
+    },
+    "shape_base": {"chapter1.skill.ember": "projectiles", "chapter1.skill.frost": "projectiles", "chapter1.skill.arc": "chain_targets"},
+    "shots_r1": {"chapter1.skill.ember": 2, "chapter1.skill.frost": 2, "chapter1.skill.arc": 3}
+  }
 }

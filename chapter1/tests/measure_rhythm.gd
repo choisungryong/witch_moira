@@ -100,6 +100,8 @@ var tuning_path := ""
 var descent_doc_path := ""
 var policy_name := ""
 var thirds_on := false
+## --hurt-by-source (GM-A): per run, the damage taken split by source (whole run and the worst 60 s window), hits, heavy hits and grazes, into the JSON "hurt". Read-only; absent = the output is unchanged.
+var hurt_on := false
 ## The sweep counts are always collected into the JSON ("sweep" per run); they are printed only with --thirds.
 const SWEEP_WINDOW_TICKS := 30        ## "0.5 s" window
 const SWEEP_MIN_KILLS := 10
@@ -142,6 +144,7 @@ func execute() -> void:
 				quit(1)
 				return
 		elif arg == "--thirds": thirds_on = true
+		elif arg == "--hurt-by-source": hurt_on = true
 		elif arg == "--no-trial-arena": no_trial_arena = true
 		elif arg == "--stand": stand_on = true
 		elif arg.begins_with("--stand-from="):
@@ -335,6 +338,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			push_error("measure_rhythm: " + kit_problem)
 			return {}
 	var dmg_raw_s: Array = []
+	var hurt_log: Array = []
 	var policy_rng := RandomNumberGenerator.new()
 	policy_rng.seed = (seed_ * 2654435761) ^ (GracePolicies.ALL_POLICIES.find(policy_name) * 40503 + 977)
 	var sw := new_sweep(run)
@@ -411,7 +415,9 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 							sf.zone = int(ev.get("zone", -1))
 					"chapter_champion": sf.champs[int(ev.get("zone", -1))] = snappedf(esec, 0.1)
 					"hero_hit": sf.last_hit = {"kind": String(ev.get("source_kind", "")), "attack": String(ev.get("attack_id", "")), "s": snappedf(esec, 0.1)}
-			if String(ev.type) == "hero_hit": bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
+			if String(ev.type) == "hero_hit":
+				bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
+				if hurt_on: hurt_log.append(hurt_note(run, ev))
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
@@ -516,12 +522,54 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		print("  XPTRACE %s seed=%d [s,xp,level,alive]: %s" % [prim.trim_prefix("chapter1.skill."), seed_, str(xp_trace)])
 	if stand_from != "" or stand_on:
 		defeat["stand"] = {"from": stand_from, "started": bool(sf.on), "start_s": sf.start_s, "zone": sf.zone, "champions_s": sf.champs.duplicate(), "last_hit": sf.last_hit, "cause": hit_cause(sf.last_hit)}
-	return {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
+	var result := {"primary": prim.trim_prefix("chapter1.skill."), "seed": seed_, "mode": String(run.mode), "secs": snappedf(secs, 0.1), "kills": int(run.kills),
 		"beat_source": "beat_started event" if event_beats else "time table (A2)", "marks": marks, "summary": summary,
 		"descent": {"policy": descent_policy, "metrics": run.metrics.get("descent", {}).duplicate(true), "ends": descent_ends, "calls": descent_calls, "view": run.descent_view()},
 		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
 		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
+	if hurt_on: result["hurt"] = hurt_summary(hurt_log)
+	return result
+
+# ---------- GM-A: damage taken by source (read-only) ----------
+## One hero_hit as [second, source_kind, attack_id, damage_raw, graze, heavy]. heavy = the hit before any graze was at least heavy_bps of the maximum life (the core's own test).
+func hurt_note(run, ev: Dictionary) -> Array:
+	var rule: Dictionary = run.tuning.get("heavy_hit", {})
+	var heavy_bps := int(rule.get("heavy_bps", 0))
+	var heavy: bool = heavy_bps > 0 and int(ev.get("incoming_raw", 0)) * 10000 >= heavy_bps * int(run.hero.max_hp_raw)
+	return [int(int(ev.tick) / 60), String(ev.get("source_kind", "")), String(ev.get("attack_id", "")), int(ev.get("damage_raw", 0)), bool(ev.get("graze", false)), heavy]
+
+func hurt_summary(log_: Array) -> Dictionary:
+	var per_sec: Array = []
+	for h in log_: bump(per_sec, int(h[0]), float(h[3]))
+	var worst := -1.0
+	var worst_lo := 0
+	var window := 0.0
+	for i in per_sec.size():
+		window += float(per_sec[i])
+		if i >= 60: window -= float(per_sec[i - 60])
+		if window > worst:
+			worst = window
+			worst_lo = maxi(0, i - 59)
+	var worst_hi := worst_lo + 59
+	var out := {"worst_window_s": [worst_lo, worst_hi], "all": {}, "w60": {}, "attack_all": {}, "attack_w60": {}, "hits": 0, "heavy": 0, "graze": 0, "hits_w60": 0, "heavy_w60": 0, "graze_w60": 0}
+	for h in log_:
+		var inw: bool = int(h[0]) >= worst_lo and int(h[0]) <= worst_hi
+		var dmg := float(h[3]) / 256.0
+		var kind := String(h[1])
+		var atk := "%s/%s" % [kind, String(h[2])]
+		out.all[kind] = snappedf(float(out.all.get(kind, 0.0)) + dmg, 0.001)
+		out.attack_all[atk] = snappedf(float(out.attack_all.get(atk, 0.0)) + dmg, 0.001)
+		out.hits += 1
+		if bool(h[5]): out.heavy += 1
+		if bool(h[4]): out.graze += 1
+		if inw:
+			out.w60[kind] = snappedf(float(out.w60.get(kind, 0.0)) + dmg, 0.001)
+			out.attack_w60[atk] = snappedf(float(out.attack_w60.get(atk, 0.0)) + dmg, 0.001)
+			out.hits_w60 += 1
+			if bool(h[5]): out.heavy_w60 += 1
+			if bool(h[4]): out.graze_w60 += 1
+	return out
 
 # ---------- D22 R0-A helpers (read-only) ----------
 ## The name (as the beat tables use), cap and lull length of a core beat id; the opening steps report as the opening. {} = not a beat of the table.
@@ -638,7 +686,7 @@ func sweep_event(sw: Dictionary, ev: Dictionary, run, prim: String) -> void:
 			var cid := int(ev.target_id)
 			sw.born.erase(cid)
 			sw.hitn.erase(cid)
-			sw.big_open[cid] = {"kind": "guardian%d" % (int(ev.zone) + 1), "spawn_s": snappedf(float(ev.tick) / 60.0, 0.1)}
+			sw.big_open[cid] = {"kind": "guardian%d" % (int(ev.zone) + 1), "spawn_s": snappedf(float(ev.tick) / 60.0, 0.1), "g_start": float(sw.get("prim_total", 0.0))}
 		"elite_spawned":
 			var eid := int(ev.target_id)
 			sw.born.erase(eid)
@@ -646,7 +694,13 @@ func sweep_event(sw: Dictionary, ev: Dictionary, run, prim: String) -> void:
 		"hit":
 			var tid := int(ev.target_id)
 			sw.hitn[tid] = int(sw.hitn.get(tid, 0)) + 1
-			if String(ev.get("skill_id", "")) == prim: bump(s.pk, sec)
+			if String(ev.get("skill_id", "")) == prim:
+				bump(s.pk, sec)
+				# CB-G1: the primary's damage (dealt_raw, else damage_raw) in total and on an open guardian (the role is known from chapter_champion, the same as the enemies' role).
+				var pdmg := float(ev.get("dealt_raw", ev.get("damage_raw", 0)))
+				sw.prim_total = float(sw.get("prim_total", 0.0)) + pdmg
+				if sw.big_open.has(tid) and String(sw.big_open[tid].kind).begins_with("guardian"):
+					sw.big_open[tid]["g_hit"] = float(sw.big_open[tid].get("g_hit", 0.0)) + pdmg
 		"death":
 			var did := int(ev.target_id)
 			bump(s.kills, sec)
@@ -654,6 +708,7 @@ func sweep_event(sw: Dictionary, ev: Dictionary, run, prim: String) -> void:
 			sw.kills_by_skill[dsk] = int(sw.kills_by_skill.get(dsk, 0)) + 1
 			if sw.big_open.has(did):
 				var o: Dictionary = sw.big_open[did]
+				if o.has("g_start"): o["g_all"] = float(sw.get("prim_total", 0.0)) - float(o.g_start)
 				o["death_s"] = snappedf(float(ev.tick) / 60.0, 0.1)
 				o["lived_s"] = snappedf(float(o.death_s) - float(o.spawn_s), 0.1)
 				sw.big.append(o)
@@ -719,6 +774,7 @@ func finish_sweep(sw: Dictionary, secs: float, end_tick: int, prim: String) -> D
 	var big: Array = sw.big.duplicate(true)
 	for id in sw.big_open:
 		var o: Dictionary = sw.big_open[id].duplicate()
+		if o.has("g_start"): o["g_all"] = float(sw.get("prim_total", 0.0)) - float(o.g_start)
 		o["death_s"] = -1.0
 		o["lived_s"] = snappedf(secs - float(o.spawn_s), 0.1)
 		big.append(o)
@@ -927,7 +983,17 @@ func guardian_times(r: Dictionary) -> Dictionary:
 func gear_line(r: Dictionary) -> String:
 	var g: Dictionary = r.gear
 	var times := guardian_times(r)
-	return "RUN %s seed=%d kit=%s mode=%s secs=%.1f kills=%d level=%d maxhp=%.0f dmg_hp=%.0f worst60_hp=%.0f guardians_s=%s" % [r.primary, r.seed, String(r.kit), r.mode, r.secs, r.kills, r.summary.level, float(g.max_hp), float(g.dmg_hp), float(g.dmg_worst60_hp), str(times)]
+	return "RUN %s seed=%d kit=%s mode=%s secs=%.1f kills=%d level=%d maxhp=%.0f dmg_hp=%.0f worst60_hp=%.0f guardians_s=%s guardian_share=%s" % [r.primary, r.seed, String(r.kit), r.mode, r.secs, r.kills, r.summary.level, float(g.max_hp), float(g.dmg_hp), float(g.dmg_worst60_hp), str(times), guardian_share_text(r)]
+
+## CB-G1: the share of the primary's damage on the guardian(s), over the guardian fights (spawn to death, or to the run end): sum on guardians / sum of all primary damage in those windows.
+func guardian_share_text(r: Dictionary) -> String:
+	var hit := 0.0
+	var all := 0.0
+	for b in r.sweep.big:
+		if String(b.kind).begins_with("guardian") and b.has("g_all"):
+			hit += float(b.get("g_hit", 0.0))
+			all += float(b.g_all)
+	return "%.3f" % (hit / all) if all > 0.0 else "-"
 
 func kit_row(kit: String) -> String:
 	for key in ["r3", "r15", "r30"]:

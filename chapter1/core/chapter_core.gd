@@ -1522,7 +1522,14 @@ func pickup_verdict(uid: int) -> Dictionary:
 	# D21 v2: an unappraised item (veiled:true; none exist while identify is off) only counts its base numbers, so "better" is unknown.
 	var veiled: bool=bool(item.get("veiled",false))
 	var better := "unknown"
-	if not veiled:better="yes" if not worn and bool(loot.is_upgrade(item,current,_primary_id)) else "no"
+	# GM5: with loot.json upgrade_verdict.enabled the answer is loot.upgrade_verdict() over the whole worn set (the same function the tools use);
+	# off, it is the old is_upgrade() line, untouched. `note` is "" | "empty_no_effect" | "weak_for_primary" and only the new path sets it.
+	var judged: Dictionary={}
+	if not veiled and not worn and loot.verdict_on():judged=loot.upgrade_verdict(item,_verdict_worn(),slot,_primary_id,_verdict_shots())
+	var note: String=String(judged.get("note",""))
+	if not veiled:
+		if judged.is_empty():better="yes" if not worn and bool(loot.is_upgrade(item,current,_primary_id)) else "no"
+		else:better="yes" if bool(judged.better) else "no"
 	var react := "quiet"
 	if not worn and can_equip(item):
 		var order: Array=loot.data.qualities
@@ -1530,12 +1537,39 @@ func pickup_verdict(uid: int) -> Dictionary:
 		elif veiled:
 			if empty_slot and bool(flow.auto_equip_veiled):react="auto_equip"
 			else:react="card"
+		# GM5: an empty slot is filled only when the new item raises V; otherwise a card says it does nothing for this witch and nothing is worn.
+		elif empty_slot and not judged.is_empty() and not bool(judged.better):react="card"
 		elif empty_slot:react="auto_equip" if bool(flow.auto_equip_empty) else "card"
 		elif better=="yes" or String(flow.card_min)=="any":react="card"
 	var top: Array[Dictionary]=[]
 	if react!="quiet":top=_top_rows(preview_equip(uid,slot).get("rows",[]))
 	# Callers read the result by key; keys may be added.
-	return {"react":react,"veiled":veiled,"better":better,"empty_slot":empty_slot,"slot":slot,"replaces_uid":int(current.get("uid",0)),"top_rows":top}
+	var result := {"react":react,"veiled":veiled,"better":better,"empty_slot":empty_slot,"slot":slot,"replaces_uid":int(current.get("uid",0)),"top_rows":top}
+	if not judged.is_empty():
+		result.note=note
+		result.verdict_delta=float(judged.delta)
+	return result
+
+## GM5: the worn items as {equip slot: item} (the bag's own dictionaries, read only) and the primary's own shot counts without gear: the same
+## numbers loot.upgrade_verdict reads. Pure; the second one is {} when the primary is not in the run.
+func _verdict_worn() -> Dictionary:
+	var result := {}
+	for slot in equipped:
+		var worn_item := _owned(int(equipped[slot]))
+		if not worn_item.is_empty():result[slot]=worn_item
+	return result
+
+func _verdict_shots() -> Dictionary:
+	var base: Dictionary=_skill_with(_primary_id,{})
+	if base.is_empty():return {}
+	return {"projectiles":int(base.effects.projectiles),"chain_targets":int(base.effects.chain_targets)}
+
+## GM5: the one place the app asks "is this a better item than the worn one" when it has no pickup_verdict: the verdict v2 when it is on,
+## else loot.is_upgrade(). `slot` is where the item would go.
+func is_better_gear(candidate: Dictionary,current: Dictionary,slot: String) -> bool:
+	if loot==null:return false
+	if not loot.verdict_on():return bool(loot.is_upgrade(candidate,current,_primary_id))
+	return bool(loot.upgrade_verdict(candidate,_verdict_worn(),slot,_primary_id,_verdict_shots()).better)
 
 ## The (at most) three rows that change the most in relative size. Stable on ties; copies the rows.
 func _top_rows(rows: Array) -> Array[Dictionary]:

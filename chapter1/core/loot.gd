@@ -43,6 +43,10 @@ var _pity_on := false
 const LUCK_KEYS := ["enabled","stat","cap_bps","k","snapshot"]
 const LUCK_K_KEYS := ["rare","legendary","unique"]
 var _luck_on := false
+## GM5: the equipment verdict v2 block (optional) and its switch in memory.
+const VERDICT_KEYS := ["enabled","log_weight","shape_share","better_min","attack_keys","reads","damage_keys","cooldown_key","shape_keys","shape_base","shots_r1"]
+const VERDICT_PRIMARIES := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
+var _verdict_on := false
 
 func load_file(path: String = DATA_PATH) -> bool:
 	errors.clear()
@@ -67,6 +71,7 @@ func load_file(path: String = DATA_PATH) -> bool:
 	_index_affix_rolls()
 	_pity_on = data.has("pity") and data.pity.enabled == true
 	_luck_on = data.has("luck") and data.luck.enabled == true
+	_verdict_on = data.has("upgrade_verdict") and data.upgrade_verdict.enabled == true
 	return true
 
 ## D23 T1: the pool rows join the id table (validate and the read helpers find them; the off roll walks data.affixes only), the ladders
@@ -120,6 +125,16 @@ func luck_cap_bps() -> int:
 func set_luck(enabled: bool) -> bool:
 	if enabled and not data.has("luck"): return false
 	_luck_on = enabled
+	return true
+
+## GM5: equipment verdict v2. verdict_on() = the block is there and enabled; set_verdict() switches it in memory (on is refused without a block;
+## the data file is never written). While off, is_upgrade() and the core's pickup_verdict() are exactly what they were.
+func verdict_on() -> bool:
+	return _verdict_on
+
+func set_verdict(enabled: bool) -> bool:
+	if enabled and not data.has("upgrade_verdict"): return false
+	_verdict_on = enabled
 	return true
 
 ## D23 T8: the quality weights roll_class draws from for one class. Pure. The shrine's quality_bps is applied first; then, when luck is on
@@ -237,6 +252,48 @@ func _check(doc: Dictionary) -> Array[String]:
 			if not pity.runs_without_legendary is int or pity.runs_without_legendary < 1 or pity.runs_without_legendary > 50: issues.append("pity runs_without_legendary")
 			if pity.upgrade != "first_guaranteed_to_legendary": issues.append("pity upgrade")
 	if doc.has("luck"): issues.append_array(_check_luck(doc))
+	if doc.has("upgrade_verdict"): issues.append_array(_check_verdict(doc))
+	return issues
+
+## GM5: the `upgrade_verdict` block. A wrong block fails load_file. Every key named in it must be a stat of `limits`; the shape keys and the damage
+## keys of a primary must be among the keys it reads; the reads must lie inside attack_keys.
+func _check_verdict(doc: Dictionary) -> Array[String]:
+	var block: Variant = doc.upgrade_verdict
+	var shape_ok: bool = block is Dictionary and block.size() == VERDICT_KEYS.size()
+	if shape_ok:
+		for key in VERDICT_KEYS:
+			if not block.has(key): shape_ok = false
+	if not shape_ok: return ["upgrade_verdict keys"]
+	var issues: Array[String] = []
+	if not block.enabled is bool: issues.append("upgrade_verdict enabled")
+	for key in ["log_weight","shape_share","better_min"]:
+		if not (block[key] is int or block[key] is float) or float(block[key]) <= 0.0 or float(block[key]) > 1000.0: issues.append("upgrade_verdict "+key)
+	if not block.attack_keys is Array or block.attack_keys.is_empty(): return issues+(["upgrade_verdict attack_keys"] as Array[String])
+	for key in block.attack_keys:
+		if not key is String or not doc.limits.has(key): issues.append("upgrade_verdict attack key")
+	if not block.cooldown_key is String or not block.cooldown_key in block.attack_keys: issues.append("upgrade_verdict cooldown_key")
+	for table in ["reads","damage_keys","shape_keys","shape_base","shots_r1"]:
+		var rows: Variant = block[table]
+		if not rows is Dictionary or rows.size() != VERDICT_PRIMARIES.size():
+			issues.append("upgrade_verdict "+table)
+			continue
+		for primary in VERDICT_PRIMARIES:
+			if not rows.has(primary): issues.append("upgrade_verdict "+table+" "+primary)
+	if not issues.is_empty(): return issues
+	for primary in VERDICT_PRIMARIES:
+		var reads: Variant = block.reads[primary]
+		if not reads is Array: issues.append("upgrade_verdict reads"); continue
+		for key in reads:
+			if not key in block.attack_keys: issues.append("upgrade_verdict read outside attack_keys "+str(key))
+		if not block.cooldown_key in reads: issues.append("upgrade_verdict cooldown not read "+primary)
+		for table in ["damage_keys","shape_keys"]:
+			var list: Variant = block[table][primary]
+			if not list is Array or list.is_empty(): issues.append("upgrade_verdict "+table+" "+primary); continue
+			for key in list:
+				if not key in reads: issues.append("upgrade_verdict "+table+" key not read "+str(key))
+		if not block.shape_base[primary] in ["projectiles","chain_targets"]: issues.append("upgrade_verdict shape_base "+primary)
+		var shots: Variant = block.shots_r1[primary]
+		if not shots is int or shots < 1 or shots > 32: issues.append("upgrade_verdict shots_r1 "+primary)
 	return issues
 
 ## D23 T8: the `luck` block. A wrong block fails load_file.
@@ -769,3 +826,72 @@ func is_upgrade(candidate: Dictionary, current: Dictionary, primary: String = ""
 	if current.is_empty(): return true
 	if candidate.quality in ["legendary","unique"]: return true
 	return score(candidate,primary) > score(current,primary)*1.05+.5
+
+## GM5: the verdict of wearing `candidate` in `slot` (equip slot id; "" = the game's own choice: a free ring slot first, else the ring whose
+## replacement lifts V most) over `worn` ({equip slot: item}). Pure: no state, no random number. `shots` = {"projectiles":b,"chain_targets":c}, the
+## primary's own count without gear (in a run the core reads it; off a run the r1 values of the data). Returns
+## {better, v_before, v_after, delta, slot, empty_slot, note, fallback}. note is "" | "empty_no_effect" (empty slot, V does not rise) |
+## "weak_for_primary" (legendary or unique that is not better); the screen words it. Without the block, or for a primary it does not know, the
+## answer is the old is_upgrade() (fallback true). Legendary and unique get no free pass here: their opening cue is the caller's business.
+func upgrade_verdict(candidate: Dictionary, worn: Dictionary, slot: String, primary: String, shots: Dictionary = {}) -> Dictionary:
+	var block: Dictionary = data.get("upgrade_verdict",{})
+	var usable: bool = not block.is_empty() and primary in VERDICT_PRIMARIES
+	var chosen := slot
+	if chosen.is_empty(): chosen = _verdict_slot(candidate,worn,primary,shots) if usable else String(candidate.slot)
+	var current: Dictionary = worn.get(chosen,{})
+	if not usable:
+		return {"better":is_upgrade(candidate,current,primary),"v_before":0.0,"v_after":0.0,"delta":0.0,"slot":chosen,"empty_slot":current.is_empty(),"note":"","fallback":true}
+	var before := _verdict_worth(worn,primary,shots)
+	var after_worn: Dictionary = worn.duplicate()
+	after_worn[chosen] = candidate
+	var after := _verdict_worth(after_worn,primary,shots)
+	var delta := after-before
+	var better: bool = delta > 0.000001 if current.is_empty() else delta >= float(block.better_min)-0.000001
+	var note := ""
+	if not better:
+		if current.is_empty(): note = "empty_no_effect"
+		elif candidate.quality in ["legendary","unique"]: note = "weak_for_primary"
+	return {"better":better,"v_before":before,"v_after":after,"delta":delta,"slot":chosen,"empty_slot":current.is_empty(),"note":note,"fallback":false}
+
+func _verdict_slot(candidate: Dictionary, worn: Dictionary, primary: String, shots: Dictionary) -> String:
+	if candidate.slot != "ring": return candidate.slot
+	if not worn.has("ring"): return "ring"
+	if not worn.has("ring2"): return "ring2"
+	var best := "ring"
+	var best_value := -INF
+	for slot in ["ring","ring2"]:
+		var trial: Dictionary = worn.duplicate()
+		trial[slot] = candidate
+		var value := _verdict_worth(trial,primary,shots)
+		if value > best_value+0.000001:
+			best = slot
+			best_value = value
+	return best
+
+## V of a whole worn set: log_weight * ln(P) + the linear rest. P = damage factors * (1 + cooldown_bps/10000) * shape factor, each as the core
+## applies it; the attack keys the primary does not read count 0; every other key keeps its weight from score().
+func _verdict_worth(worn: Dictionary, primary: String, shots: Dictionary) -> float:
+	var block: Dictionary = data.upgrade_verdict
+	var totals := {}
+	for slot in worn:
+		for stat in worn[slot].stats: totals[stat] = int(totals.get(stat,0))+int(worn[slot].stats[stat])
+	var reads: Array = block.reads[primary]
+	var damage := 1.0
+	var used := {}
+	for key in block.damage_keys[primary]:
+		damage *= maxf(.05,1.0+float(totals.get(key,0))/10000.0)
+		used[key] = true
+	used[block.cooldown_key] = true
+	var rate := maxf(.1,1.0+float(totals.get(block.cooldown_key,0))/10000.0)
+	var count := 0
+	for key in block.shape_keys[primary]:
+		count += int(totals.get(key,0))
+		used[key] = true
+	var base := maxi(1,int(shots.get(block.shape_base[primary],block.shots_r1[primary])))
+	var shape := maxf(.05,1.0+float(block.shape_share)*float(count)/float(base))
+	var rest := {}
+	for stat in totals:
+		if used.has(stat): continue
+		if stat in block.attack_keys and not stat in reads: continue
+		rest[stat] = totals[stat]
+	return float(block.log_weight)*log(damage*rate*shape)+score({"stats":rest},primary)
