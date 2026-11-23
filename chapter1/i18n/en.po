@@ -79,13 +79,37 @@ msgstr "Quit game"
 msgid "menu.quit"
 msgstr "Quit game"
 
-#. Result window button: new run with the same witch. The key hint stays in the text
-msgid "result.button.retry"
-msgstr "Retry with same witch [R]"
+#. Player character name (the person; shown large). Class title is character.ember.class
+msgid "character.ember.name"
+msgstr "Tessa"
 
-#. Result window button: back to the title menu where another witch can be picked
+#. Player character class title (shown small under the name)
+msgid "character.ember.class"
+msgstr "Fire Sorceress"
+
+#. Player character name (the person; shown large). Class title is character.frost.class
+msgid "character.frost.name"
+msgstr "Eileen"
+
+#. Player character class title (shown small under the name)
+msgid "character.frost.class"
+msgstr "Frost Sorceress"
+
+#. Player character name (the person; shown large). Class title is character.arc.class
+msgid "character.arc.name"
+msgstr "Veronica"
+
+#. Player character class title (shown small under the name)
+msgid "character.arc.class"
+msgstr "Lightning Sorceress"
+
+#. Result window button: new run with the same sorceress. The key hint stays in the text
+msgid "result.button.retry"
+msgstr "Retry with same sorceress [R]"
+
+#. Result window button: back to the title menu where another sorceress can be picked
 msgid "result.button.menu"
-msgstr "Menu · change witch"
+msgstr "Menu · change sorceress"
 
 #. Result window button: quit the game
 msgid "result.button.quit"
@@ -517,7 +541,7 @@ msgstr "The stash is full"
 
 #. Save refusal text
 msgid "profile.error.tree_locked"
-msgstr "This witch's skill tree is not open yet"
+msgstr "This sorceress's skill tree is not open yet"
 
 #. Save refusal text
 msgid "profile.error.tree_rejected"

@@ -26,7 +26,8 @@
  },
  "selected": "witch.frost.volley",
  "info": {
-  "name": "서리의 마녀",
+  "name": "아일린",
+  "class": "냉기 소서리스",
   "xp": 3880,
   "xp_floor": 3600,
   "xp_next": 4500,

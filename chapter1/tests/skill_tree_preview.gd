@@ -60,7 +60,7 @@ func _sum(ranks: Dictionary) -> int:
 func _info(level: int, xp: int) -> Dictionary:
 	var floor_xp: int = XP_CURVE[level-1]
 	var next_xp: int = XP_CURVE[level] if level < XP_CURVE.size() else -1
-	return {"name":"서리의 마녀","xp":xp,"xp_floor":floor_xp,"xp_next":next_xp,"essence":31,"respec_cost":0,"portrait":portrait}
+	return {"name":"아일린","class":"냉기 소서리스","xp":xp,"xp_floor":floor_xp,"xp_next":next_xp,"essence":31,"respec_cost":0,"portrait":portrait}
 
 func _show(level: int, xp: int, free: int, ranks: Dictionary, selected: String) -> void:
 	panel.set_data(tree,ranks,level,free,_info(level,xp))

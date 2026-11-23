@@ -32,7 +32,8 @@
  },
  "selected": "witch.frost.dominion",
  "info": {
-  "name": "서리의 마녀 · 가장 긴 이름을 붙인 경우",
+  "name": "아일린 · 가장 긴 이름을 붙인 경우",
+  "class": "냉기 소서리스",
   "xp": 25000,
   "xp_floor": 25000,
   "xp_next": -1,

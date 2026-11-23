@@ -510,8 +510,8 @@ func _draw_header() -> void:
 	if _portrait != null:
 		draw_texture_rect_region(_portrait,_ur(box),PORTRAITS[_portrait_key].face)
 	_rect_line(box,BRASS,2.0)
-	_text(Vector2(110,52),String(info.get("name","서리의 마녀")),24,INK,_head)
-	_text(Vector2(110,76),"스킬 트리 · 영구 성장",13,INK_DIM)
+	_text(Vector2(110,52),String(info.get("name",Loc.t("character.frost.name"))),24,INK,_head)
+	_text(Vector2(110,76),"%s · %s"%[String(info.get("class",Loc.t("character.frost.class"))),"스킬 트리"],13,INK_DIM)
 	_text(Vector2(300,64),"Lv %d" % level,28,GOLD,_head)
 	var xp := int(info.get("xp",0)); var floor_xp := int(info.get("xp_floor",0)); var next_xp := int(info.get("xp_next",-1))
 	var bar := Rect2(392,50,360,14)

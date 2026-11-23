@@ -84,13 +84,37 @@ msgstr "게임 종료"
 msgid "menu.quit"
 msgstr "게임 종료"
 
-#. Result window button: new run with the same witch. The key hint stays in the text
-msgid "result.button.retry"
-msgstr "같은 마녀로 다시 도전 [R]"
+#. Player character name (the person; shown large). Class title is character.ember.class
+msgid "character.ember.name"
+msgstr "테사"
 
-#. Result window button: back to the title menu where another witch can be picked
+#. Player character class title (shown small under the name)
+msgid "character.ember.class"
+msgstr "화염 소서리스"
+
+#. Player character name (the person; shown large). Class title is character.frost.class
+msgid "character.frost.name"
+msgstr "아일린"
+
+#. Player character class title (shown small under the name)
+msgid "character.frost.class"
+msgstr "냉기 소서리스"
+
+#. Player character name (the person; shown large). Class title is character.arc.class
+msgid "character.arc.name"
+msgstr "베로니카"
+
+#. Player character class title (shown small under the name)
+msgid "character.arc.class"
+msgstr "번개 소서리스"
+
+#. Result window button: new run with the same sorceress. The key hint stays in the text
+msgid "result.button.retry"
+msgstr "같은 소서리스로 다시 도전 [R]"
+
+#. Result window button: back to the title menu where another sorceress can be picked
 msgid "result.button.menu"
-msgstr "메뉴로 · 마녀 바꾸기"
+msgstr "메뉴로 · 소서리스 바꾸기"
 
 #. Result window button: quit the game
 msgid "result.button.quit"
@@ -522,7 +546,7 @@ msgstr "장비 보관 공간이 부족합니다"
 
 #. Save refusal text
 msgid "profile.error.tree_locked"
-msgstr "이 마녀의 스킬 트리는 아직 열리지 않았습니다"
+msgstr "이 소서리스의 스킬 트리는 아직 열리지 않았습니다"
 
 #. Save refusal text
 msgid "profile.error.tree_rejected"

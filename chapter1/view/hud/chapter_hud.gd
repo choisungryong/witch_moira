@@ -1638,7 +1638,9 @@ func _draw_route_marker() -> void:
 const SkillTreePanel=preload("res://chapter1/view/hud/skill_tree_panel.gd")
 const ProfileData=preload("res://chapter1/core/chapter_profile.gd")
 const START_SKILLS=["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
-const WITCH_NAMES=["홍염의 마녀","서리의 마녀","뇌우의 마녀"]
+const WITCH_KEYS=["ember","frost","arc"]  # po keys character.<key>.name / .class, same order as START_SKILLS
+static func _witch_name(index: int) -> String:return Loc.t("character.%s.name"%WITCH_KEYS[index])
+static func _witch_class(index: int) -> String:return Loc.t("character.%s.class"%WITCH_KEYS[index])
 const PORTRAIT_KEYS=["ember","frost","storm"]
 const GROWTH_FILL_SECONDS := 1.2
 signal skill_tree_open(character_id: String)
@@ -1658,6 +1660,7 @@ var _menu_tree_button: Button
 var _menu_badge: Label
 var _menu_name: Label
 var _menu_xp: Label
+var _menu_class: Label
 var _menu_bar: ProgressBar
 var _menu_points: Label
 var _growth_played := false
@@ -1690,6 +1693,7 @@ func _build_witch_summary(column: VBoxContainer) -> void:
 	panel.add_theme_stylebox_override("panel",frame);column.add_child(panel)
 	var box := VBoxContainer.new();box.add_theme_constant_override("separation",3);panel.add_child(box)
 	_menu_name=_label("",18,Palette.INK);_menu_name.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_name)
+	_menu_class=_label("",14,Palette.INK_DIM);_menu_class.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_class)
 	_menu_xp=_label("",14,Palette.INK_DIM);_menu_xp.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_xp)
 	_menu_bar=_bar(Palette.GROWTH,6);_menu_bar.max_value=1;box.add_child(_menu_bar)
 	_menu_points=_label("",15,Palette.GROWTH);_menu_points.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_points)
@@ -1706,7 +1710,7 @@ func _build_witch_summary(column: VBoxContainer) -> void:
 func _refresh_witch_summary() -> void:
 	if not is_instance_valid(_menu_tree_button):return
 	var view: Dictionary=character_views.get(_character_for_skill(START_SKILLS[_menu_witch]),{})
-	_menu_name.text=WITCH_NAMES[_menu_witch]
+	_menu_name.text=_witch_name(_menu_witch);_menu_class.text=_witch_class(_menu_witch)
 	_menu_badge.text=""
 	if view.is_empty():
 		# Nothing to show: one line, no empty bar, no empty points row, no dead button.
@@ -1714,7 +1718,7 @@ func _refresh_witch_summary() -> void:
 		_menu_tree_button.text="스킬 트리 · 저장 비활성";_menu_tree_button.disabled=true;_menu_tree_button.visible=false
 		return
 	_menu_points.visible=true;_menu_tree_button.visible=true
-	_menu_name.text="%s  Lv %d"%[WITCH_NAMES[_menu_witch],int(view.level)]
+	_menu_name.text="%s  Lv %d"%[_witch_name(_menu_witch),int(view.level)]
 	var capped := int(view.xp_to_next)<=0
 	_menu_xp.text="최대 레벨" if capped else "경험치 %s / %s"%[_commas(int(view.xp)),_commas(int(view.xp_for_next))]
 	_menu_bar.visible=true;_menu_bar.max_value=1.0
@@ -1798,7 +1802,7 @@ func _add_growth_box(run: RefCounted) -> void:
 	if not data.is_empty():
 		for i in START_SKILLS.size():
 			if _character_for_skill(START_SKILLS[i])==String(data.character_id):index=i
-	column.add_child(_label("영구 성장" if index<0 else "영구 성장 · "+WITCH_NAMES[index],20,Palette.GROWTH))
+	column.add_child(_label("영구 성장" if index<0 else "영구 성장 · "+_witch_name(index),20,Palette.GROWTH))
 	var before: Dictionary=data.before
 	var after: Dictionary=data.after
 	var progress: Dictionary=data.progress

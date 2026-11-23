@@ -613,18 +613,19 @@ func _sync_profile(note: String) -> void:
 	hud.invalidate()
 
 # Skill-tree screen (G1 P4). The screen only asks; the profile's public functions decide and save.
-const WITCH_DISPLAY := {"chapter1.character.frost":["서리의 마녀","frost"],"chapter1.character.ember":["홍염의 마녀","ember"],"chapter1.character.arc":["뇌우의 마녀","storm"]}
+# [name key, class key, portrait]. The names and class titles live in the .po (character.<ember|frost|arc>.name / .class).
+const WITCH_DISPLAY := {"chapter1.character.frost":["character.frost.name","character.frost.class","frost"],"chapter1.character.ember":["character.ember.name","character.ember.class","ember"],"chapter1.character.arc":["character.arc.name","character.arc.class","storm"]}
 
 func _tree_info(character_id: String,view: Dictionary) -> Dictionary:
-	var shown: Array=WITCH_DISPLAY.get(character_id,["마녀","frost"])
-	return {"name":shown[0],"portrait":shown[1],"xp":int(view.xp),"xp_floor":int(view.xp_level_start),
+	var shown: Array=WITCH_DISPLAY.get(character_id,["character.frost.name","character.frost.class","frost"])
+	return {"name":Loc.t(shown[0]),"class":Loc.t(shown[1]),"portrait":shown[2],"xp":int(view.xp),"xp_floor":int(view.xp_level_start),
 		"xp_next":-1 if int(view.xp_to_next)<=0 else int(view.xp_for_next),
 		"essence":int(profile.state.essence),"respec_cost":profile.respec_cost(character_id)}
 
 func _open_skill_tree(character_id: String) -> void:
 	if run.mode not in ["menu","victory","defeat"]:return
 	var view: Dictionary=profile.character_view(character_id)
-	if view.is_empty() or not bool(view.has_tree):hud.notify("이 마녀의 스킬 트리는 아직 열리지 않았습니다");return
+	if view.is_empty() or not bool(view.has_tree):hud.notify(Loc.t("profile.error.tree_locked"));return
 	var tree: Dictionary=ChapterProfile.trees().get(String(view.tree_id),{})
 	if tree.is_empty():hud.notify("스킬 트리 데이터를 읽지 못했습니다");return
 	hud.show_skill_tree(character_id,tree,view,_tree_info(character_id,view))

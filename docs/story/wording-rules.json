@@ -97,6 +97,9 @@
   },
 
   "banned": [
+    {"word": "거둔 칭호(옛 마녀 칭호)", "stems": ["홍염의 마녀", "서리의 마녀", "뇌우의 마녀", "홍염 다루는 마녀", "서리 다루는 마녀", "뇌우 부르는 마녀"], "grade": "fail", "rule": "NAMES-CAST 3절(U-96)", "note": "주인공의 직업은 화염·냉기·번개 소서리스. 세계 안 사람들이 부르는 말로서의 '마녀'와 제목은 남긴다"},
+    {"word": "거둔 직업 표기(영어 음차)", "stems": ["파이어 소서리스", "프로스트 소서리스", "라이트닝 소서리스", "파이어 소서러스", "프로스트 소서러스", "라이트닝 소서러스", "화염 소서러스", "냉기 소서러스", "번개 소서러스"], "grade": "fail", "rule": "NAMES-CAST 3절(U-96)", "note": "직업은 한글 꼴 '화염·냉기·번개 소서리스'"},
+    {"word": "인물 이름(장비·적·장소에 쓰지 않음)", "stems": ["테사", "아일린", "베로니카", "페로니아", "마르자나", "타키타", "사클라스"], "grade": "fail", "rule": "NAMES-CAST N8", "applies_to": ["@item_names"], "note": "인물 이름은 장비 이름에 쓰지 않는다"},
     {"word": "잿빛", "stems": ["잿빛"], "grade": "fail", "rule": "WR 1.2 #1", "note": "색이면 '회색'과 색값, 물질이면 '재'·'그을음'"},
     {"word": "재(잿~·재의~·화폐 재)", "pattern": "잿|(^|[^가-힣])재(의|가|를|는|로|도|만|와|과|에|밟[가-힣]*)([^가-힣]|$)|(^|[^가-힣])재\\s?[0-9%{]", "grade": "fail", "rule": "기획자 2026-11-17·11-20(AI 티 나는 표현), NAMES-V3", "note": "잿빛·잿불·잿더미·잿꽃·재의 ~·재밟이·화폐 재 전부. 낱말 속의 재(재료·현재·재빨리·존재)는 걸리지 않는다. 물질이면 숯·그을음·불티, 화폐는 오리칼쿰"},
     {"word": "심연", "stems": ["심연"], "grade": "fail", "rule": "WR 1.2 #2", "note": "'구덩이', '갈라진 틈', 깊이 몇 m"},
@@ -262,11 +265,15 @@
       {"ko": "칸토르", "en": "Cantor", "status": "확정(사용자, 2026-11-20 이름 한 벌)", "rule": "NAMES-V3"},
       {"ko": "티폰", "en": "Typhon", "status": "확정(사용자, 2026-11-20 이름 한 벌)", "rule": "NAMES-V3"},
       {"ko": "오리칼쿰", "en": "Orichalcum", "status": "확정(사용자, 2026-11-20 이름 한 벌)", "rule": "NAMES-V3"},
-      {"ko": "서리의 마녀", "en": "Frost Witch", "status": "잠정", "rule": "WR 6.1"},
-      {"ko": "뇌우의 마녀", "en": "Storm Witch", "status": "잠정", "rule": "WR 6.1"}
+      {"ko": "테사", "en": "Tessa", "status": "확정(사용자, U-95~U-97)", "rule": "NAMES-CAST 0절"},
+      {"ko": "아일린", "en": "Eileen", "status": "확정(사용자, U-95~U-97)", "rule": "NAMES-CAST 0절"},
+      {"ko": "베로니카", "en": "Veronica", "status": "확정(사용자, U-95~U-97)", "rule": "NAMES-CAST 0절"},
+      {"ko": "화염 소서리스", "en": "Fire Sorceress", "status": "확정(사용자, U-96)", "rule": "NAMES-CAST 3절"},
+      {"ko": "냉기 소서리스", "en": "Frost Sorceress", "status": "확정(사용자, U-96)", "rule": "NAMES-CAST 3절"},
+      {"ko": "번개 소서리스", "en": "Lightning Sorceress", "status": "확정(사용자, U-96)", "rule": "NAMES-CAST 3절"}
     ],
     "banned_en": [
-      "Ashen", "Abyss", "Whisper", "Whispers", "Echo", "Echoes", "Tapestry", "Journey", "Fate", "Destiny",
+      "Fire Witch", "Frost Witch", "Storm Witch", "Lightning Witch", "Ember Witch", "Ashen", "Abyss", "Whisper", "Whispers", "Echo", "Echoes", "Tapestry", "Journey", "Fate", "Destiny",
       "Forgotten", "Eternal", "Undying", "Veil", "Veiled", "Sanctum of", "of Shadows", "Realm of",
       "Covenant", "Boon", "Middle-earth", "Middle World", "Midgard", "Hell", "true demon"
     ],

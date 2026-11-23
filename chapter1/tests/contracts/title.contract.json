@@ -1,7 +1,7 @@
 {
  "screen": "title",
  "contract_version": 0,
- "_note": "0판(시안 단계): 시안 픽스처에서 뽑은 꼴. 1판으로 닫을 때 S1이 고친다. 코어의 원료: 앱의 profile_state, character_views, 고른 마녀 번호(menu_character_id), temporary_art, motion_enabled, profile_note (T8 S2). 줄 이름은 보고서의 \"시스템에 요청\" 표(T1~T8).",
+ "_note": "0판(시안 단계): 시안 픽스처에서 뽑은 꼴. 1판으로 닫을 때 S1이 고친다. 코어의 원료: 앱의 profile_state, character_views, 고른 소서리스 번호(menu_character_id), temporary_art, motion_enabled, profile_note (T8 S2). 줄 이름은 보고서의 \"시스템에 요청\" 표(T1~T8).",
  "fields": {
   "variant": {
    "type": "string",
@@ -231,7 +231,7 @@
      },
      "title": {
       "type": "string",
-      "max_len": 10
+      "max_len": 16
      },
      "skill_name": {
       "type": "string",

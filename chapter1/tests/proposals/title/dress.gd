@@ -305,7 +305,7 @@ static func build_block(i: int, w: Dictionary, ui: Dictionary, profile: Dictiona
 	if bool(spec.get("hint", true)):
 		var hr := HintRow.new()
 		hr.name = "Keys"
-		hr.setup([["Q/E", String(ui.get("hint_witch", "마녀"))], ["Enter", String(ui.get("hint_start", "시작"))], ["Esc", String(ui.get("hint_menu", "메뉴"))]], width)
+		hr.setup([["Q/E", String(ui.get("hint_witch", "소서리스"))], ["Enter", String(ui.get("hint_start", "시작"))], ["Esc", String(ui.get("hint_menu", "메뉴"))]], width)
 		hr.position = Vector2(0, y)
 		root.add_child(hr)
 		y += hr.size.y
