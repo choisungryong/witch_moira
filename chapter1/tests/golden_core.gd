@@ -35,9 +35,9 @@ var dump_out := ""
 ## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
 ## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
 ## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes). The sixth is the
-## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start().
+## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start(); the ninth (luck-on) turns the D23 T8 luck on in this run's loot tables and wears kit.golden.t8 (luck lines over the cap, grace_luck_4 on the head).
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"]]
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"],[11,"chapter1.skill.frost","luck-on","","luck-on"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -77,6 +77,9 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 	elif setup=="pity-armed":
 		var pity_problem := TrialDocs.enable_pity_problem(run)
 		if not pity_problem.is_empty():return {"error":"setup rejected: "+pity_problem}
+	elif setup=="luck-on":
+		var luck_problem := TrialDocs.enable_luck_problem(run)
+		if not luck_problem.is_empty():return {"error":"setup rejected: "+luck_problem}
 	if not build_path.is_empty():
 		var build: Variant=JSON.parse_string(FileAccess.get_file_as_string(build_path))
 		if not build is Dictionary or not run.configure_build(build):
@@ -88,6 +91,10 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 	if setup=="gear-t17":
 		var gear_problem := TrialDocs.wear_fixture_kit_problem(run,"kit.golden.t17")
 		if not gear_problem.is_empty():return {"error":"setup rejected: "+gear_problem}
+	# D23 T8: the luck kit (four luck lines, sum over the cap; grace_luck_4 on the head, dead while the grace grades are off) goes on the same way.
+	if setup=="luck-on":
+		var luck_gear_problem := TrialDocs.wear_fixture_kit_problem(run,"kit.golden.t8")
+		if not luck_gear_problem.is_empty():return {"error":"setup rejected: "+luck_gear_problem}
 	if observe:probe.begin()
 	var checkpoints: Array[String]=[]
 	var checkpoints_textless: Array[String]=[]

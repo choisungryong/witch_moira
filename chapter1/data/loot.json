@@ -256,12 +256,13 @@
       {"id": "harvest_h_3", "name": "수습", "kind": "suffix", "group": "harvest_h", "slots": ["hands"], "level": 9, "max_level": 30, "stat": "pickup_radius_cm", "low": 160, "high": 230, "weight": 100, "tier": 3, "class": "number", "core_reads": true},
       {"id": "harvest_h_4", "name": "수습", "kind": "suffix", "group": "harvest_h", "slots": ["hands"], "level": 13, "max_level": 30, "stat": "pickup_radius_cm", "low": 230, "high": 300, "weight": 100, "tier": 4, "class": "number", "core_reads": true},
       {"id": "harvest_h_5", "name": "수습", "kind": "suffix", "group": "harvest_h", "slots": ["hands"], "level": 15, "max_level": 30, "stat": "pickup_radius_cm", "low": 300, "high": 400, "weight": 100, "tier": 5, "class": "number", "core_reads": true},
-      {"id": "luck_1", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 1, "max_level": 12, "stat": "luck_bps", "low": 200, "high": 500, "weight": 100, "tier": 1, "class": "number", "core_reads": false},
-      {"id": "luck_2", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 5, "max_level": 14, "stat": "luck_bps", "low": 500, "high": 800, "weight": 100, "tier": 2, "class": "number", "core_reads": false},
-      {"id": "luck_3", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 9, "max_level": 30, "stat": "luck_bps", "low": 800, "high": 1100, "weight": 100, "tier": 3, "class": "number", "core_reads": false},
-      {"id": "luck_4", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 13, "max_level": 30, "stat": "luck_bps", "low": 1100, "high": 1400, "weight": 100, "tier": 4, "class": "number", "core_reads": false},
-      {"id": "luck_5", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 15, "max_level": 30, "stat": "luck_bps", "low": 1400, "high": 1800, "weight": 100, "tier": 5, "class": "number", "core_reads": false}
+      {"id": "luck_1", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 1, "max_level": 12, "stat": "luck_bps", "low": 200, "high": 500, "weight": 100, "tier": 1, "class": "number", "core_reads": true},
+      {"id": "luck_2", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 5, "max_level": 14, "stat": "luck_bps", "low": 500, "high": 800, "weight": 100, "tier": 2, "class": "number", "core_reads": true},
+      {"id": "luck_3", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 9, "max_level": 30, "stat": "luck_bps", "low": 800, "high": 1100, "weight": 100, "tier": 3, "class": "number", "core_reads": true},
+      {"id": "luck_4", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 13, "max_level": 30, "stat": "luck_bps", "low": 1100, "high": 1400, "weight": 100, "tier": 4, "class": "number", "core_reads": true},
+      {"id": "luck_5", "name": "행운", "kind": "suffix", "group": "luck", "slots": ["head", "charm", "ring"], "level": 15, "max_level": 30, "stat": "luck_bps", "low": 1400, "high": 1800, "weight": 100, "tier": 5, "class": "number", "core_reads": true}
     ]
   },
-  "pity": {"enabled": false, "runs_without_legendary": 5, "upgrade": "first_guaranteed_to_legendary"}
+  "pity": {"enabled": false, "runs_without_legendary": 5, "upgrade": "first_guaranteed_to_legendary"},
+  "luck": {"enabled": false, "stat": "luck_bps", "cap_bps": 3000, "k": {"rare": 6000, "legendary": 4000, "unique": 2500}, "snapshot": "run_start"}
 }

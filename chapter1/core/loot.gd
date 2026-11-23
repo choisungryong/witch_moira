@@ -20,7 +20,7 @@ const AFFIX_CLASSES := ["number","shape","condition","skill"]
 const LINE_PROFILES := {"magic":"magic","rare":"rare","rare_boss":"rare","legendary":"legendary"}
 ## The stat keys the running core reads (D23 T1 2.2-7). The affix_rolls roll draws no row whose stat is not listed here. A patch that
 ## makes the core read one more key adds it HERE in the same patch; the data's `core_reads` flag is a mirror that test_loot compares.
-const STATS_READ := ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","pickup_radius_cm","projectiles","pierce","chain_targets","shatter_count","radius_cm","slow_bps","fire_damage_bps","fire_burst","frost_threshold","arc_branches","arc_damage_bps","move_speed_bps","dash_cooldown_bps","soul_gain_bps","max_hp_bps","after_dash_guard_bps","after_dash_bps","moving_damage_bps","lowhp_cooldown_bps","vs_elite_bps","vs_frozen_bps","vs_marked_bps","thorns_bps","streak_projectiles"]
+const STATS_READ := ["damage_bps","cooldown_bps","max_hp_raw","damage_reduction_bps","pickup_radius_cm","projectiles","pierce","chain_targets","shatter_count","radius_cm","slow_bps","fire_damage_bps","fire_burst","frost_threshold","arc_branches","arc_damage_bps","move_speed_bps","dash_cooldown_bps","soul_gain_bps","max_hp_bps","after_dash_guard_bps","after_dash_bps","moving_damage_bps","lowhp_cooldown_bps","vs_elite_bps","vs_frozen_bps","vs_marked_bps","thorns_bps","streak_projectiles","luck_bps"]
 
 var data: Dictionary = {}
 var errors: Array[String] = []
@@ -36,6 +36,10 @@ var _legacy_windows: Dictionary = {}
 ## D23 T9: the drop pity block (optional) and its switch in memory.
 const PITY_KEYS := ["enabled","runs_without_legendary","upgrade"]
 var _pity_on := false
+## D23 T8: the luck block (optional) and its switch in memory.
+const LUCK_KEYS := ["enabled","stat","cap_bps","k","snapshot"]
+const LUCK_K_KEYS := ["rare","legendary","unique"]
+var _luck_on := false
 
 func load_file(path: String = DATA_PATH) -> bool:
 	errors.clear()
@@ -59,6 +63,7 @@ func load_file(path: String = DATA_PATH) -> bool:
 	for row in data.uniques: _uniques[row.id] = row
 	_index_affix_rolls()
 	_pity_on = data.has("pity") and data.pity.enabled == true
+	_luck_on = data.has("luck") and data.luck.enabled == true
 	return true
 
 ## D23 T1: the pool rows join the id table (validate and the read helpers find them; the off roll walks data.affixes only), the ladders
@@ -100,6 +105,44 @@ func set_pity(enabled: bool) -> bool:
 	if enabled and not data.has("pity"): return false
 	_pity_on = enabled
 	return true
+
+## D23 T8: luck. luck_on() = the block is there and enabled; luck_cap_bps() = the ceiling of the run's luck sum; set_luck() switches it in
+## memory (on is refused without a block; the data file is never written).
+func luck_on() -> bool:
+	return _luck_on
+
+func luck_cap_bps() -> int:
+	return int(data.get("luck",{}).get("cap_bps",0))
+
+func set_luck(enabled: bool) -> bool:
+	if enabled and not data.has("luck"): return false
+	_luck_on = enabled
+	return true
+
+## D23 T8: the quality weights roll_class draws from for one class. Pure. The shrine's quality_bps is applied first; then, when luck is on
+## and mods.luck_bps (cut at the cap) is above 0, rare/legendary/unique get w*(10000+L*K/(L+K))/10000 (integer division, this order).
+## Without mods, or at luck 0, or with luck off, it is the data's own dictionary (same values, same order).
+func quality_weights(class_id: String, mods: Dictionary = {}) -> Dictionary:
+	if not data.treasure_classes.has(class_id): return {}
+	var weights: Dictionary = data.treasure_classes[class_id].quality
+	if mods.is_empty(): return weights
+	var shares: Dictionary = mods.get("quality_bps",{})
+	var copied := false
+	if not shares.is_empty():
+		weights = weights.duplicate()
+		copied = true
+		for quality in shares:
+			if weights.has(quality): weights[quality] = int(weights[quality])*int(shares[quality])/10000
+	if _luck_on and data.has("luck"):
+		var luck := mini(int(mods.get("luck_bps",0)),luck_cap_bps())
+		if luck > 0:
+			if not copied: weights = weights.duplicate()
+			var ks: Dictionary = data.luck.k
+			for quality in ks:
+				if weights.has(quality):
+					var k := int(ks[quality])
+					weights[quality] = int(weights[quality])*(10000+luck*k/(luck+k))/10000
+	return weights
 
 ## Turn the affix_rolls roll on or off in memory (the data file is never written). On is refused (false) when the data has no valid block.
 func set_affix_rolls(enabled: bool) -> bool:
@@ -188,6 +231,27 @@ func _check(doc: Dictionary) -> Array[String]:
 			if not pity.enabled is bool: issues.append("pity enabled")
 			if not pity.runs_without_legendary is int or pity.runs_without_legendary < 1 or pity.runs_without_legendary > 50: issues.append("pity runs_without_legendary")
 			if pity.upgrade != "first_guaranteed_to_legendary": issues.append("pity upgrade")
+	if doc.has("luck"): issues.append_array(_check_luck(doc))
+	return issues
+
+## D23 T8: the `luck` block. A wrong block fails load_file.
+func _check_luck(doc: Dictionary) -> Array[String]:
+	var issues: Array[String] = []
+	var luck: Variant = doc.luck
+	var shape_ok: bool = luck is Dictionary and luck.size() == LUCK_KEYS.size()
+	if shape_ok:
+		for key in LUCK_KEYS:
+			if not luck.has(key): shape_ok = false
+	if not shape_ok: return ["luck keys"]
+	if not luck.enabled is bool: issues.append("luck enabled")
+	if not luck.stat is String or luck.stat != "luck_bps" or not doc.limits.has("luck_bps"): issues.append("luck stat")
+	if not luck.cap_bps is int or luck.cap_bps < 1 or luck.cap_bps > 10000: issues.append("luck cap_bps")
+	var k_ok: bool = luck.k is Dictionary and luck.k.size() == LUCK_K_KEYS.size()
+	if k_ok:
+		for key in LUCK_K_KEYS:
+			if not luck.k.has(key) or not luck.k[key] is int or luck.k[key] < 1: k_ok = false
+	if not k_ok: issues.append("luck k")
+	if not luck.snapshot is String or luck.snapshot != "run_start": issues.append("luck snapshot")
 	return issues
 
 ## D23 T1 2.2-6: the `affix_rolls` block. A wrong block fails load_file like a wrong `affixes` list does.
@@ -557,14 +621,10 @@ func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, p
 	if not data.treasure_classes.has(class_id): return drops
 	var tc: Dictionary = data.treasure_classes[class_id]
 	var drop_weight := int(tc.drop)
-	var quality_weights: Dictionary = tc.quality
+	var drawn_weights: Dictionary = tc.quality
 	if not mods.is_empty():
 		drop_weight = drop_weight*int(mods.get("drop_bps",10000))/10000
-		var shares: Dictionary = mods.get("quality_bps",{})
-		if not shares.is_empty():
-			quality_weights = tc.quality.duplicate()
-			for quality in shares:
-				if quality_weights.has(quality): quality_weights[quality] = int(quality_weights[quality])*int(shares[quality])/10000
+		drawn_weights = quality_weights(class_id,mods)
 	var level := _clamp_level(zone_level+int(tc.level_bonus))
 	var weights: Dictionary = tc.get("slot_weights",{})
 	var guaranteed: Array = tc.get("guaranteed",[])
@@ -579,7 +639,7 @@ func roll_class(rng: RandomNumberGenerator, class_id: String, zone_level: int, p
 				item = roll_item(rng,level,guaranteed_quality,"",weights,lines_profile)
 		else:
 			if rng.randi_range(1,int(tc.no_drop)+drop_weight) <= int(tc.no_drop): continue
-			var quality := _weighted(rng,quality_weights,data.qualities)
+			var quality := _weighted(rng,drawn_weights,data.qualities)
 			if quality == "unique":
 				item = _roll_unique(rng,level,primary,false)
 				if item.is_empty(): quality = "legendary"

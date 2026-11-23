@@ -70,6 +70,15 @@ static func enable_pity_problem(run: RefCounted) -> String:
 	run.drop_dry_runs = tables.pity_runs()
 	return ""
 
+## The D23 T8 luck (loot.json `luck`) on, for this run only (its own loot tables, as above). The gear that carries the luck is worn after start().
+## "" when it worked, else one sentence.
+static func enable_luck_problem(run: RefCounted) -> String:
+	var tables = LootTables.new()
+	if not tables.load_file(): return "loot.json could not be loaded: " + str(tables.errors)
+	if not tables.set_luck(true): return "luck block refused"
+	run.loot = tables
+	return ""
+
 ## D23 T17: wears a fixed kit of tests/fixtures/golden_gear.json on a run that was just started (tick 0, empty bag), through the same
 ## import_starting_gear a run from town uses. Call it right after start() succeeded and before the first step. "" when it worked, else one sentence.
 const GOLDEN_GEAR_PATH := "res://chapter1/tests/fixtures/golden_gear.json"

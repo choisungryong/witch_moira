@@ -108,6 +108,7 @@ func execute() -> void:
 	affix_checks(loot)
 	roll_checks(loot)
 	pity_checks(loot)
+	luck_checks()
 	finish()
 
 ## D5 (a): names and descriptions are presentation. validate() checks ids and numbers; dress() rebuilds the text.
@@ -497,7 +498,7 @@ func affix_checks(loot: RefCounted) -> void:
 # ROLL_HASH: if the data or the roll order changes ON PURPOSE, run this test, copy the "got" value from the failing line and update it
 # in the same commit (say so in the message). An unplanned change of the hash is the finding.
 const ROLL_SEED := 20261124
-const ROLL_HASH := "ec0e18ce172ddd5004e139aaef7cd6bafb631b0f206cb2f892f8a0a4f9e67cea"
+const ROLL_HASH := "3c87957fd56293156975d00c5cb66053491ec88127656293ee529670df78b684"
 const SIGMAS := 5.0
 
 func sigma_ok(observed: int, n: int, p: float) -> bool:
@@ -792,6 +793,154 @@ func pity_checks(loot: RefCounted) -> void:
 		for i in 300:
 			if JSON.stringify(loot.roll_class(plain,class_id,12,"chapter1.skill.arc")) != JSON.stringify(loot.roll_class(empty,class_id,12,"chapter1.skill.arc",{},"")): identity_ok = false
 	check(identity_ok,"T9 an empty first_quality draws exactly what the call without it draws (6 classes x 300 rolls)")
+
+## D23 T8: the luck block, quality_weights and the weights roll_class draws from. LK1~LK9 of the T11 directive.
+func mutate_luck_missing_key(doc: Dictionary) -> void:
+	doc.luck.erase("snapshot")
+
+func mutate_luck_extra_key(doc: Dictionary) -> void:
+	doc.luck["more"] = 1
+
+func mutate_luck_enabled_text(doc: Dictionary) -> void:
+	doc.luck.enabled = "yes"
+
+func mutate_luck_cap_zero(doc: Dictionary) -> void:
+	doc.luck.cap_bps = 0
+
+func mutate_luck_k_rare_zero(doc: Dictionary) -> void:
+	doc.luck.k.rare = 0
+
+func mutate_luck_snapshot_other(doc: Dictionary) -> void:
+	doc.luck.snapshot = "every_roll"
+
+func mutate_luck_absent(doc: Dictionary) -> void:
+	doc.erase("luck")
+
+func luck_expected(base: Dictionary, shrine: Dictionary, luck: int, ks: Dictionary, cap: int) -> Dictionary:
+	var out: Dictionary = base.duplicate()
+	for quality in shrine:
+		if out.has(quality): out[quality] = int(out[quality]) * int(shrine[quality]) / 10000
+	var l := mini(luck, cap)
+	if l > 0:
+		for quality in ks:
+			var k := int(ks[quality])
+			out[quality] = int(out[quality]) * (10000 + l * k / (l + k)) / 10000
+	return out
+
+func luck_checks() -> void:
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Loot.DATA_PATH))
+	var loot = Loot.new()
+	check(loot.load_file(), "LK loot data loads")
+	check(loot.data.has("luck") and not loot.luck_on() and loot.luck_cap_bps() == 3000, "LK1 the shipped data has the luck block, off, cap 3000")
+	# LK1 the block shape. (The directive says six keys; the block it shows has five: enabled, stat, cap_bps, k, snapshot.)
+	var bad := {"missing_key": mutate_luck_missing_key, "extra_key": mutate_luck_extra_key, "enabled_text": mutate_luck_enabled_text, "cap_zero": mutate_luck_cap_zero, "k_rare_zero": mutate_luck_k_rare_zero, "snapshot_other": mutate_luck_snapshot_other}
+	for name_ in bad:
+		check(not bad_block_loads(raw, bad[name_], "luck_" + name_), "LK1 a luck block with " + name_ + " fails load_file")
+	check(bad_block_loads(raw, mutate_luck_absent, "luck_absent"), "LK1 data without a luck block loads")
+	var none = Loot.new()
+	check(none.load_file(BAD_DIR + "/luck_absent.json") and not none.luck_on() and not none.set_luck(true) and none.set_luck(false) and none.luck_cap_bps() == 0, "LK1 without a block set_luck(true) is refused and the luck stays off")
+	# LK2 quality_weights without effect
+	var plain := JSON.stringify(loot.data.treasure_classes.normal.quality)
+	check(JSON.stringify(loot.quality_weights("normal")) == plain and JSON.stringify(loot.quality_weights("normal", {})) == plain and JSON.stringify(loot.quality_weights("normal", {"luck_bps": 0})) == plain and JSON.stringify(loot.quality_weights("normal", {"luck_bps": 3000})) == plain, "LK2 quality_weights: no mods, {}, luck 0 and luck-off luck 3000 all give the data weights (same values, same order)")
+	check(loot.quality_weights("no_such_class", {"luck_bps": 3000}).is_empty(), "LK2 an unknown class has no weights")
+	# LK3 / LK4 the formula
+	check(loot.set_luck(true) and loot.luck_on(), "LK3 set_luck(true) works with the block")
+	var ks: Dictionary = loot.data.luck.k
+	var cap: int = loot.luck_cap_bps()
+	var formula_ok := true
+	var rest_ok := true
+	var shrine_ok := true
+	var cap_ok := true
+	var shrine := {"rare": 20000, "legendary": 20000, "unique": 20000, "magic": 5000}
+	for class_id in ["normal", "elite", "chest", "boss"]:
+		var base: Dictionary = loot.data.treasure_classes[class_id].quality
+		for luck in [1, 500, 1000, 3000]:
+			var got: Dictionary = loot.quality_weights(class_id, {"luck_bps": luck})
+			if JSON.stringify(got) != JSON.stringify(luck_expected(base, {}, luck, ks, cap)): formula_ok = false
+			for quality in ["common", "magic"]:
+				if int(got[quality]) != int(base[quality]): rest_ok = false
+			var with_shrine: Dictionary = loot.quality_weights(class_id, {"luck_bps": luck, "quality_bps": shrine})
+			if JSON.stringify(with_shrine) != JSON.stringify(luck_expected(base, shrine, luck, ks, cap)): shrine_ok = false
+		if JSON.stringify(loot.quality_weights(class_id, {"luck_bps": 9000})) != JSON.stringify(loot.quality_weights(class_id, {"luck_bps": 3000})): cap_ok = false
+	check(formula_ok, "LK3 luck on: rare, legendary and unique weights are w*(10000+L*K/(L+K))/10000 to the integer (K from the data)")
+	check(rest_ok, "LK3 common and magic weights are untouched by luck")
+	check(shrine_ok, "LK3 the shrine quality_bps is applied first, then luck")
+	check(cap_ok, "LK4 luck_bps 9000 gives the weights of 3000 (cap)")
+	# LK5 luck off: the draws are the draws of a call without mods
+	var off = Loot.new()
+	check(off.load_file() and not off.luck_on(), "LK5 a fresh table has the luck off")
+	var identity_ok := true
+	for class_id in ["normal", "elite", "champion", "boss", "chest", "ritual_chest"]:
+		var a := RandomNumberGenerator.new()
+		a.seed = 5151
+		var b := RandomNumberGenerator.new()
+		b.seed = 5151
+		for i in 300:
+			if JSON.stringify(off.roll_class(a, class_id, 12, "chapter1.skill.arc")) != JSON.stringify(off.roll_class(b, class_id, 12, "chapter1.skill.arc", {"luck_bps": 3000})): identity_ok = false
+	check(identity_ok, "LK5 with the luck off, luck_bps 3000 in mods draws exactly what a call without mods draws (6 classes x 300 rolls)")
+	# LK6 distribution: chest class (one pick, no_drop 0), level 8. The directive names normal; its 0.55% drop makes 200000 rolls only ~1100 items.
+	var rolls := 200000
+	var expected_on: Dictionary = loot.quality_weights("chest", {"luck_bps": 3000})
+	var expected_off: Dictionary = loot.data.treasure_classes.chest.quality
+	var counts_on := {"common": 0, "magic": 0, "rare": 0, "legendary": 0, "unique": 0}
+	var counts_off := counts_on.duplicate()
+	var rng_on := RandomNumberGenerator.new()
+	rng_on.seed = 777
+	var rng_off := RandomNumberGenerator.new()
+	rng_off.seed = 777
+	for i in rolls:
+		for item in loot.roll_class(rng_on, "chest", 8, "chapter1.skill.frost", {"luck_bps": 3000}): counts_on[item.quality] += 1
+		for item in loot.roll_class(rng_off, "chest", 8, "chapter1.skill.frost", {}): counts_off[item.quality] += 1
+	var total_on := 0
+	var total_off := 0
+	for quality in expected_on: total_on += int(expected_on[quality])
+	for quality in expected_off: total_off += int(expected_off[quality])
+	var dist_ok := true
+	var more_ok := true
+	for quality in ["magic", "rare", "legendary", "unique"]:
+		if not sigma_ok(int(counts_on[quality]), rolls, float(expected_on[quality]) / float(total_on)): dist_ok = false
+		if not sigma_ok(int(counts_off[quality]), rolls, float(expected_off[quality]) / float(total_off)): dist_ok = false
+	for quality in ["rare", "legendary", "unique"]:
+		if int(counts_on[quality]) <= int(counts_off[quality]): more_ok = false
+	print("LK6 chest x%d level 8, luck 3000 / luck 0: rare %d/%d legendary %d/%d unique %d/%d magic %d/%d" % [rolls, counts_on.rare, counts_off.rare, counts_on.legendary, counts_off.legendary, counts_on.unique, counts_off.unique, counts_on.magic, counts_off.magic])
+	check(dist_ok, "LK6 the grade counts are within 5 sigma of the formula shares, with luck 3000 and with luck 0")
+	check(more_ok, "LK6 with luck 3000 rare, legendary and unique all come more often than with luck 0 on the same seed")
+	# LK7 the guaranteed line is not touched
+	var guaranteed_ok := true
+	for i in 300:
+		var x := RandomNumberGenerator.new()
+		x.seed = 8000 + i
+		var y := RandomNumberGenerator.new()
+		y.seed = 8000 + i
+		var with_luck: Array[Dictionary] = loot.roll_class(x, "boss", 15, "chapter1.skill.frost", {"luck_bps": 3000})
+		var without: Array[Dictionary] = loot.roll_class(y, "boss", 15, "chapter1.skill.frost", {})
+		if with_luck[0].quality != "rare" or JSON.stringify(with_luck[0]) != JSON.stringify(without[0]): guaranteed_ok = false
+	var pity_first_ok := true
+	for i in 100:
+		var z := RandomNumberGenerator.new()
+		z.seed = 9000 + i
+		var drops: Array[Dictionary] = loot.roll_class(z, "boss", 15, "chapter1.skill.frost", {"luck_bps": 3000}, "legendary")
+		if drops[0].quality != "legendary": pity_first_ok = false
+	check(guaranteed_ok, "LK7 the boss guaranteed first line (rare) is the same item with luck 3000 as with luck 0 (300 seeds)")
+	check(pity_first_ok, "LK7 the pity first_quality line is untouched by luck")
+	loot.set_luck(false)
+	# LK8 data consistency
+	var luck_block_on := bool(raw.get("luck", {}).get("enabled", false))
+	check(not bool(raw.get("affix_rolls", {}).get("enabled", false)) or luck_block_on, "LK8 affix_rolls.enabled in the data implies luck.enabled (no luck lines rolled with no effect)")
+	# LK9 core_reads mirror (T1-A also checks it for all rows); grace_luck stays unread
+	var luck_rows := 0
+	var grace_rows := 0
+	var luck_ok := true
+	var grace_ok := true
+	for row in raw.affix_rolls.pool:
+		if String(row.stat) == "luck_bps":
+			luck_rows += 1
+			if not bool(row.core_reads): luck_ok = false
+		if String(row.stat) == "grace_luck_bps":
+			grace_rows += 1
+			if bool(row.core_reads): grace_ok = false
+	check(luck_rows == 5 and luck_ok and "luck_bps" in Loot.STATS_READ, "LK9 the five luck_* rows are read (core_reads true, luck_bps in STATS_READ)")
+	check(grace_rows == 3 and grace_ok and not "grace_luck_bps" in Loot.STATS_READ, "LK9 the grace_luck_* rows stay unread (core_reads false, not in STATS_READ)")
 
 func finish() -> void:
 	print("CHAPTER1_LOOT_RESULT ",JSON.stringify({"checks":checks,"failures":failures,"scope":"loot grammar v2 only; not wired into the running chapter"}))

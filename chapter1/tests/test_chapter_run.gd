@@ -1470,6 +1470,175 @@ func t17_golden_checks() -> void:
 	check(worn_kit,"T17 golden fixture: the pilot still wears the thorns body and the streak boots at tick %d"%run.tick)
 	print("T17_GOLDEN_FIXTURE ",JSON.stringify({"tick":run.tick,"mode":run.mode,"thorns":thorns,"streak_ready":ready,"streak_casts":streak_casts,"first":first,"worn_kit":worn_kit}))
 
+## D23 T8 helpers. The shipped tuning (the shrines' luck buff and the grace block live there), the grace grades switched in memory only.
+func t8_tuning(grace: bool,grades: bool) -> Dictionary:
+	var doc: Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
+	if grace:doc.grace.enabled=true
+	if grades:doc.grace.grades.enabled=true
+	return doc
+
+## A started run (tick 0, nothing worn yet) with its own loot tables, the luck switch as asked. The field is quiet.
+func t8_run(luck_on: bool,grace: bool=false,grades: bool=false,seed_: int=11) -> RefCounted:
+	var r := Chapter.new()
+	var tables = load("res://chapter1/core/loot.gd").new()
+	check(tables.load_file() and tables.set_luck(luck_on),"T8 run: own loot tables, luck "+str(luck_on))
+	r.loot=tables
+	check(r.set_tuning(t8_tuning(grace,grades)) and r.start(seed_,FROST),"T8 run starts ("+str(r.errors)+")")
+	clear_field(r)
+	for id_ in r._skill_ids:r._next_cast[id_]=10000000
+	return r
+
+## Items by spec ({"equip","slot","quality","base","item_level","affixes"}) through import_starting_gear, the town-to-run path.
+func t8_wear(r: RefCounted,specs: Array) -> bool:
+	var GearKits := preload("res://chapter1/tests/support/gear_kits.gd")
+	var gear: Array[Dictionary]=[]
+	for i in specs.size():
+		var built: Dictionary=GearKits.build_item(r.loot,specs[i])
+		check(not built.has("error"),"T8 fixture item built "+str(built.get("error","")))
+		var item: Dictionary=built.item.duplicate(true)
+		item["uid"]=9000+i;item["storage_id"]=9000+i;item["equip_slot"]=String(specs[i].equip)
+		gear.append(item)
+	return r.import_starting_gear(gear)
+
+func t8_spec(equip: String,slot: String,base: String,affixes: Array) -> Dictionary:
+	return {"equip":equip,"slot":slot,"quality":"rare","base":base,"item_level":16,"affixes":affixes}
+
+func t8_two_luck(r: RefCounted) -> bool:
+	return t8_wear(r,[t8_spec("head","head","iron_circlet",[["luck_5",1800],["haste5",3800],["vigor5",28000]]),t8_spec("ring","ring","quick_loop",[["wrath5",5700],["luck_5",1800],["vigor5",28000]])])
+
+func t8_events(r: RefCounted,type_: String) -> Array:
+	var found: Array=[]
+	for event in r.events:
+		if event.type==type_:found.append(event)
+	return found
+
+func t8_checks() -> void:
+	# R1: no luck gear: nothing is taken, nothing is said, no key anywhere.
+	var none := t8_run(true)
+	check(none.luck_state().run_bps==0 and not none.luck_state().locked and none.luck_state().enabled and none.luck_state().cap_bps==3000,"T8 R1 before the first step: luck_state is run_bps 0, not locked, enabled, cap 3000")
+	none.step(Vector2.ZERO)
+	check(none.luck_state().run_bps==0 and none.luck_state().locked and t8_events(none,"luck_locked").is_empty() and not none.metrics.has("luck") and not none.snapshot().chapter.has("luck"),"T8 R1 no luck gear: run_bps 0, locked after the first step, no luck_locked, no metrics.luck, no chapter.luck")
+	# R2: two lines of 1800: 3600 worn, 3000 taken at the first step, announced once, not before.
+	var two := t8_run(true)
+	check(t8_two_luck(two),"T8 R2 the two luck items are worn through import_starting_gear")
+	var before: Dictionary=two.luck_state()
+	check(before.run_bps==0 and not before.locked and before.worn_bps==3600,"T8 R2 right after start and the import (no step yet): locked false, run_bps 0, worn_bps 3600")
+	two.step(Vector2.ZERO)
+	var locked_events := t8_events(two,"luck_locked")
+	check(two.luck_state().run_bps==3000 and two.luck_state().locked and two.luck_state().worn_bps==3600,"T8 R2 after the first step run_bps is 3000 (worn 3600)")
+	check(locked_events.size()==1 and locked_events[0].luck_bps==3000 and locked_events[0].worn_bps==3600 and locked_events[0].capped==true,"T8 R2 luck_locked once with luck_bps 3000, worn_bps 3600, capped true")
+	check(two.metrics.has("luck") and two.metrics.luck.rolls==0 and two.snapshot().chapter.luck.run_bps==3000,"T8 R2 metrics.luck exists (rolls 0) and the snapshot says run_bps 3000")
+	two.step(Vector2.ZERO)
+	check(t8_events(two,"luck_locked").is_empty(),"T8 R2 luck_locked is not said again on the next tick")
+	# A luck below the cap is taken as it is, capped false.
+	var one := t8_run(true)
+	check(t8_wear(one,[t8_spec("head","head","iron_circlet",[["luck_5",1500],["haste5",3800],["vigor5",28000]])]),"T8 R2 one luck item worn")
+	one.step(Vector2.ZERO)
+	var one_event := t8_events(one,"luck_locked")
+	check(one.luck_state().run_bps==1500 and one_event.size()==1 and one_event[0].capped==false,"T8 R2 luck 1500 is taken as 1500, capped false")
+	# R3: taking a luck piece off and putting it back during the run changes worn_bps, never run_bps.
+	var mid := t8_run(true)
+	check(t8_two_luck(mid),"T8 R3 worn")
+	mid.step(Vector2.ZERO)
+	check(mid.open_inventory() and mid.unequip("head") and mid.luck_state().worn_bps==1800 and mid.luck_state().run_bps==3000,"T8 R3 head taken off: worn_bps 1800, run_bps still 3000")
+	check(mid.unequip("ring") and mid.luck_state().worn_bps==0 and mid.luck_state().run_bps==3000,"T8 R3 ring taken off: worn_bps 0, run_bps still 3000")
+	var head_uid := -1
+	for item in mid.inventory:
+		if item.slot=="head":head_uid=int(item.uid)
+	# (equip() would refuse the level-16 item at run level 1, so the worn map is set the way import_starting_gear does.)
+	if head_uid>0:mid.equipped["head"]=head_uid;mid._recompute_gear()
+	check(head_uid>0 and mid.luck_state().worn_bps==1800 and mid.luck_state().run_bps==3000,"T8 R3 put back on during the run: worn_bps 1800 again, run_bps still 3000")
+	mid.close_inventory();mid.step(Vector2.ZERO)
+	check(mid.luck_state().run_bps==3000 and t8_events(mid,"luck_locked").is_empty() and mid.snapshot().chapter.luck.run_bps==3000,"T8 R3 stepping on keeps run_bps and says nothing new")
+	# R4: the luck switch off: gear or not, nothing is taken.
+	var off := t8_run(false)
+	check(t8_two_luck(off),"T8 R4 worn with the luck off")
+	off.step(Vector2.ZERO)
+	check(off.luck_state().run_bps==0 and not off.luck_state().enabled and off.luck_state().worn_bps==3600 and t8_events(off,"luck_locked").is_empty() and not off.metrics.has("luck") and not off.snapshot().chapter.has("luck"),"T8 R4 luck off: run_bps 0 although 3600 is worn, no event, no metrics.luck, no chapter.luck")
+	var flipped := t8_run(true)
+	check(flipped.loot.set_luck(false) and t8_two_luck(flipped),"T8 R4 set_luck(false) after the run was built")
+	flipped.step(Vector2.ZERO)
+	check(flipped.luck_state().run_bps==0,"T8 R4 set_luck(false): run_bps 0")
+	# R5: _drop_mods. Shrine of luck on: its two keys plus luck_bps; off: only luck_bps; the guard/boss/chest call (false) never takes the shrine.
+	var mods := t8_run(true)
+	check(t8_two_luck(mods),"T8 R5 worn")
+	mods.step(Vector2.ZERO)
+	check(JSON.stringify(mods._drop_mods(true))==JSON.stringify({"luck_bps":3000}) and JSON.stringify(mods._drop_mods(false))==JSON.stringify({"luck_bps":3000}),"T8 R5 no shrine: _drop_mods(true) and (false) are {luck_bps: 3000}")
+	mods._buffs.append({"kind":"luck","until_tick":mods.tick+1800})
+	var shrine_mods: Dictionary=mods._drop_mods(true)
+	var plain_shrine: Dictionary=mods._luck_mods()
+	check(shrine_mods.has("drop_bps") and shrine_mods.has("quality_bps") and shrine_mods.luck_bps==3000 and int(shrine_mods.drop_bps)==int(plain_shrine.drop_bps) and JSON.stringify(shrine_mods.quality_bps)==JSON.stringify(plain_shrine.quality_bps) and shrine_mods.size()==3,"T8 R5 shrine on: _drop_mods(true) is the shrine's drop_bps and quality_bps plus luck_bps")
+	check(JSON.stringify(mods._drop_mods(false))==JSON.stringify({"luck_bps":3000}),"T8 R5 shrine on: _drop_mods(false) is still only {luck_bps: 3000}")
+	var bare := t8_run(true)
+	bare.step(Vector2.ZERO)
+	check(bare._drop_mods(true).is_empty() and bare._drop_mods(false).is_empty(),"T8 R5 no luck gear, no shrine: both are {} (the plain draw)")
+	bare._buffs.append({"kind":"luck","until_tick":bare.tick+1800})
+	check(JSON.stringify(bare._drop_mods(true))==JSON.stringify(bare._luck_mods()) and bare._drop_mods(false).is_empty(),"T8 R5 no luck gear, shrine on: _drop_mods(true) is the shrine's mods exactly, (false) is {}")
+	# The rolls are counted where luck goes in (ordinary kill, elite, chest/guard/boss), not in the first-kill unique.
+	var counted := t8_run(true)
+	check(t8_two_luck(counted),"T8 R5 worn for the roll count")
+	counted.step(Vector2.ZERO)
+	var rolls_before: int=counted.metrics.luck.rolls
+	counted._maybe_drop_item({"elite":false,"position":Vector2.ZERO,"kind":"walker","role":"normal"})
+	check(int(counted.metrics.luck.rolls)==rolls_before+1,"T8 R5 an ordinary kill's drop counts one luck roll")
+	# R6: grace on but the grades off: the grace luck of the gear is a dead line and says no error.
+	var dead := t8_run(true,true,false)
+	check(not dead.growth.grades_on() and t8_wear(dead,[t8_spec("head","head","iron_circlet",[["luck_5",1800],["grace_luck_4",2500],["haste5",3800],["vigor5",28000]])]),"T8 R6 grades off, grace_luck_4 on the head")
+	check(int(dead._gear_totals(dead.equipped).get("grace_luck_bps",0))==2500,"T8 R6 the head really carries grace_luck_bps 2500")
+	dead.step(Vector2.ZERO)
+	check(int(dead.growth.snapshot().grace.luck.gear_bps)==0 and dead.errors.is_empty() and dead.growth.errors.is_empty(),"T8 R6 grades off: gear_bps is 0 and there is no error")
+	var no_grace := t8_run(true)
+	check(t8_wear(no_grace,[t8_spec("head","head","iron_circlet",[["luck_5",1800],["grace_luck_4",2500],["haste5",3800],["vigor5",28000]])]),"T8 R6 grace off too: worn")
+	no_grace.step(Vector2.ZERO)
+	check(no_grace.errors.is_empty() and not no_grace.snapshot().has("grace_gap") and no_grace.luck_state().run_bps==1800,"T8 R6 grace off: no error and the luck is taken normally")
+	# R7: grades on: the gear's share is taken at the same first step, survives taking the head off and the shrine's start and end.
+	var graded := t8_run(true,true,true)
+	check(graded.growth.grades_on() and t8_wear(graded,[t8_spec("head","head","iron_circlet",[["luck_5",1800],["grace_luck_4",2500],["haste5",3800],["vigor5",28000]])]),"T8 R7 grades on, grace_luck_4 on the head")
+	check(int(graded.growth.snapshot().grace.luck.gear_bps)==0,"T8 R7 before the first step gear_bps is 0")
+	graded.step(Vector2.ZERO)
+	check(int(graded.growth.snapshot().grace.luck.gear_bps)==2500 and graded.luck_state().run_bps==1800,"T8 R7 after the first step gear_bps is the gear's 2500 (and the drop luck 1800)")
+	check(graded.open_inventory() and graded.unequip("head") and int(graded.growth.snapshot().grace.luck.gear_bps)==2500,"T8 R7 taking the head off keeps gear_bps 2500")
+	graded.close_inventory()
+	graded._buffs.append({"kind":"luck","until_tick":graded.tick+1800});graded._buffs_changed()
+	var mul_on: int=graded.growth.snapshot().grace.luck.shrine_mul_bps
+	check(mul_on==int(graded.tuning.grace.grades.luck.shrine_mul_bps) and mul_on>10000 and int(graded.growth.snapshot().grace.luck.gear_bps)==2500,"T8 R7 the luck shrine starts: the multiplier %d goes in, gear_bps stays 2500"%mul_on)
+	graded._buffs.clear();graded._buffs_changed()
+	check(int(graded.growth.snapshot().grace.luck.shrine_mul_bps)==10000 and int(graded.growth.snapshot().grace.luck.gear_bps)==2500,"T8 R7 the shrine ends: multiplier 1.0x, gear_bps still 2500")
+	var big := t8_run(true,true,true)
+	check(t8_wear(big,[t8_spec("head","head","iron_circlet",[["luck_5",1800],["grace_luck_5",4000],["haste5",3800],["vigor5",28000]])]),"T8 R7 grace_luck_5 worn")
+	big.step(Vector2.ZERO)
+	check(int(big.growth.snapshot().grace.luck.gear_bps)==4000,"T8 R7 a gear share of 4000 is passed on as it is (run_growth cuts it at gear_cap_bps when the offer is read)")
+
+## D23 T8 "no empty golden": the golden case luck-on (seed 11, frost, luck on in the run's own tables, kit.golden.t8, the QA pilot) must show luck_locked
+## with 3000 and capped, count luck rolls, and still run on with luck_bps 3000 after the head is taken off. The pilot may play on after that.
+func t8_golden_checks() -> void:
+	var TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
+	var Pilot := preload("res://chapter1/core/chapter_pilot.gd")
+	var run := Chapter.new();var pilot: RefCounted=Pilot.new();pilot.run=run
+	check(TrialDocs.enable_luck_problem(run).is_empty(),"T8 golden fixture: the run's own loot tables take the luck on")
+	check(run.start(11,FROST),"T8 golden fixture: the run starts")
+	var problem: String=TrialDocs.wear_fixture_kit_problem(run,"kit.golden.t8")
+	check(problem.is_empty(),"T8 golden fixture: the kit is worn through import_starting_gear ("+problem+")")
+	check(int(run.luck_state().worn_bps)==7200 and not run.luck_state().locked,"T8 golden fixture: 7200 worn (over the 3000 cap), not locked before the first step (%s)"%str(run.luck_state()))
+	var locked_events := 0;var capped_ok := false;var luck_bps_ok := false
+	var head_uid: int=int(run.equipped.get("head",-1))
+	var grace_share_ok := int(run._gear_totals(run.equipped).get("grace_luck_bps",0))==2500
+	var stop := 6000
+	while run.mode not in ["victory","defeat"] and run.tick<stop:
+		run.step(pilot.decide())
+		for event in run.events:
+			if event.type=="luck_locked":
+				locked_events+=1;capped_ok=bool(event.capped);luck_bps_ok=int(event.luck_bps)==3000 and int(event.worn_bps)==7200
+	check(locked_events==1 and capped_ok and luck_bps_ok,"T8 golden fixture: luck_locked once with luck_bps 3000, worn_bps 7200 and capped true by tick %d (seen %d)"%[run.tick,locked_events])
+	check(run.metrics.has("luck") and int(run.metrics.luck.rolls)>=1,"T8 golden fixture: metrics.luck.rolls >= 1 by tick %d (%s)"%[run.tick,str(run.metrics.get("luck",{}))])
+	check(grace_share_ok,"T8 golden fixture: the head carries grace_luck_bps 2500 (a dead line while the grades are off)")
+	var worn_before: int=run.luck_state().worn_bps
+	var head_luck: int=int(run._owned(head_uid).get("stats",{}).get("luck_bps",0))
+	check(run.mode=="playing" and run.open_inventory() and run.unequip("head"),"T8 golden fixture: the head can be taken off mid-run (mode %s)"%run.mode)
+	var after: Dictionary=run.luck_state()
+	check(after.run_bps==3000 and after.worn_bps==worn_before-head_luck and (head_luck==0 or after.worn_bps<worn_before),"T8 golden fixture: with the head off run_bps is still 3000 and worn_bps fell by the head's %d (%s)"%[head_luck,str(after)])
+	print("T8_GOLDEN_FIXTURE ",JSON.stringify({"tick":run.tick,"mode":run.mode,"luck_locked":locked_events,"rolls":run.metrics.get("luck",{}).get("rolls",-1)}))
+
 func execute() -> void:
 	var rng := RandomNumberGenerator.new();rng.seed=672384
 	var seen := {};var groups_ok := true;var valid := true
@@ -1573,6 +1742,8 @@ func execute() -> void:
 	t9_core_checks()
 	t17_checks()
 	t17_golden_checks()
+	t8_checks()
+	t8_golden_checks()
 	build_checks()
 	abandon_checks()
 	sheet_checks()

@@ -25,6 +25,10 @@ var _world_uniques36: Dictionary={}
 var drop_dry_runs := 0
 var _pity_armed := false
 var _pity_fired := false
+## D23 T8: the luck of this run, taken once at the first tick (worn sum cut at loot.luck_cap_bps()), and what was worn then.
+var _luck_taken := false
+var _run_luck_bps := 0
+var _run_luck_worn := 0
 ## The loot tables are read once and shared by every run in the process.
 static var _shared_loot: RefCounted
 var loot: RefCounted
@@ -1177,7 +1181,7 @@ func _maybe_drop_item(e: Dictionary) -> void:
 		var drops: Array[Dictionary]=[]
 		if boss and first_boss_kill:drops.append_array(loot.roll_class(_loot_rng,"boss_first_kill",level,primary_))
 		var first_kill_drops := drops.size()
-		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_,{},"legendary" if boss and _pity_armed else ""))
+		drops.append_array(loot.roll_class(_loot_rng,"boss" if boss else "champion",level,primary_,_drop_mods(false),"legendary" if boss and _pity_armed else ""))
 		var marked := false
 		var spray := _spray_enabled()
 		var spilled: Array[Dictionary]=[]
@@ -1203,7 +1207,7 @@ func _maybe_drop_item(e: Dictionary) -> void:
 	# A strong body (grade "elite", D13 W4-a): the elite table, on the floor like any ordinary drop; a guard opens its site after it.
 	if e.get("grade","")=="elite":
 		_elite_died(e)
-		for item in loot.roll_class(_loot_rng,"elite",level,primary_,_luck_mods()):
+		for item in loot.roll_class(_loot_rng,"elite",level,primary_,_drop_mods(true)):
 			if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
 				metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
 			_publish_item(item,e.position,false,false,"elite")
@@ -1217,7 +1221,7 @@ func _maybe_drop_item(e: Dictionary) -> void:
 			_publish_item(loot.roll_item(_loot_rng,level,"magic",forced_slots[_guaranteed_drops]),e.position,false,false,"forced")
 		_guaranteed_drops+=1
 		return
-	for item in loot.roll_class(_loot_rng,"normal",level,primary_,_luck_mods()):
+	for item in loot.roll_class(_loot_rng,"normal",level,primary_,_drop_mods(true)):
 		if items.size()>=MAX_GROUND_ITEMS or inventory.size()>=MAX_INVENTORY:
 			metrics.overflow_items=int(metrics.get("overflow_items",0))+1;continue
 		_publish_item(item,e.position,false,false,"normal")
@@ -1656,7 +1660,12 @@ func _step_chapter_hazards() -> void:
 
 func step(move: Vector2=Vector2.ZERO) -> void:
 	if mode!="playing":return
+	# D23 T8: the luck is taken before anything of the first tick (so before any roll, after import_starting_gear); its event comes after
+	# super.step because step() clears the event list first.
+	var luck_now := tick==0 and not _luck_taken
+	if luck_now:_take_luck()
 	super.step(move)
+	if luck_now and _run_luck_bps>0:_emit("luck_locked",hero.position,{"luck_bps":_run_luck_bps,"worn_bps":_run_luck_worn,"capped":_run_luck_worn>_run_luck_bps})
 	if mode!="playing":return
 	_step_chapter_hazards()
 	if mode!="playing":return
@@ -1729,6 +1738,7 @@ func _prepare_loot_flow() -> bool:
 	_kept_qualities.clear();_gate_sweep_qualities.clear();_spray.clear();_spray_done_boss=false
 	# D23 T9: whether this run carries the drop pity is decided once, here, from the number the app put in before start().
 	_pity_armed=loot!=null and loot.pity_on() and drop_dry_runs>=loot.pity_runs();_pity_fired=false
+	_luck_taken=false;_run_luck_bps=0;_run_luck_worn=0
 	if not tuning.has("loot_flow") or not bool(tuning.loot_flow.enabled):return true
 	if loot==null:errors.assign(["loot_flow needs the loot tables"]);return false
 	var order: Array=loot.data.qualities
@@ -1969,7 +1979,7 @@ func _guard_unlock(e: Dictionary) -> void:
 	var chest_class := ""
 	for tier in g.tiers:
 		if tier.id==site.tier:chest_class=String(tier.chest_class)
-	var drops: Array[Dictionary]=loot.roll_class(_loot_rng,chest_class,ZONE_LEVELS[int(site.zone)],String(growth.snapshot().primary))
+	var drops: Array[Dictionary]=loot.roll_class(_loot_rng,chest_class,ZONE_LEVELS[int(site.zone)],String(growth.snapshot().primary),_drop_mods(false))
 	metrics.sites.chests_opened=int(metrics.sites.chests_opened)+1
 	_emit("chest_opened",site.position,{"uid":int(site.uid),"guarded":true,"count":drops.size()})
 	for index in drops.size():
@@ -2040,6 +2050,34 @@ func _apply_buff_stats(stats: Dictionary) -> void:
 			stats[stat]=int(stats.get(stat,0))+int(add[stat]);touched[stat]=true
 	var limits: Dictionary=loot.data.limits
 	for stat in touched:stats[stat]=clampi(int(stats[stat]),int(limits[stat][0]),int(limits[stat][1]))
+
+## D23 T8: the drop mods of one roll_class call. `shrine` = ordinary kills and elites, which also take the shrine of luck's mods; the run's luck
+## (fixed at the first tick) goes to every call that passes through here. {} when there is neither, which is the plain draw.
+func _drop_mods(shrine: bool) -> Dictionary:
+	var mods: Dictionary=_luck_mods() if shrine else {}
+	if _run_luck_bps>0:
+		mods=mods.duplicate(true);mods["luck_bps"]=_run_luck_bps
+		metrics.luck.rolls=int(metrics.luck.rolls)+1
+	return mods
+
+## D23 T8: the luck of the gear worn at the first tick, cut at the cap, kept for the whole run; and, with the grace grades on, the gear's
+## share of the grade luck at the same moment. Worn-gear sums only (no shrine buff).
+func _take_luck() -> void:
+	_luck_taken=true
+	var totals: Dictionary=_gear_totals(equipped)
+	_run_luck_worn=int(totals.get("luck_bps",0))
+	_run_luck_bps=mini(_run_luck_worn,loot.luck_cap_bps()) if loot!=null and loot.luck_on() else 0
+	if _run_luck_bps>0:metrics["luck"]={"rolls":0}
+	if _grace_on and growth.grades_on():
+		var grace_share := mini(int(totals.get("grace_luck_bps",0)),10000)
+		if grace_share>0:
+			var luck: Dictionary=growth.snapshot().grace.luck
+			set_grace_luck(int(luck.shrine_mul_bps),int(luck.reward_grade),grace_share)
+
+## Read only: {"enabled","worn_bps" (worn now, may change during the run),"cap_bps","run_bps" (fixed at the first tick),"locked"}.
+func luck_state() -> Dictionary:
+	var on: bool=loot!=null and loot.luck_on()
+	return {"enabled":on,"worn_bps":int(_gear_totals(equipped).get("luck_bps",0)),"cap_bps":loot.luck_cap_bps() if loot!=null else 0,"run_bps":_run_luck_bps,"locked":_luck_taken}
 
 ## The shrine of luck's drop mods for roll_class (ordinary kills and elites only); {} without it, which is the plain draw.
 func _luck_mods() -> Dictionary:
@@ -2790,6 +2828,7 @@ func snapshot() -> Dictionary:
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
 	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
 	if _pity_armed:result.chapter.pity={"armed":true,"fired":_pity_fired}
+	if _run_luck_bps>0:result.chapter.luck={"run_bps":_run_luck_bps,"worn_bps":_run_luck_worn}
 	if not _spray.is_empty():
 		var groups: Array=[]
 		for group in _spray:groups.append({"source":group.source,"start":group.start,"arrive":group.arrive,"uids":group.uids.duplicate(),"notable":group.notable,"boss":group.boss})
