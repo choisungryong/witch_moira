@@ -1034,7 +1034,8 @@ func verdict_checks() -> void:
 	var v1c: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),worn1,"weapon",arc,{"chain_targets":4})
 	check(not v1c.better,"GM5 case 1: the same at c=4 is not better (delta %.2f)" % v1c.delta)
 	var v1b: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),worn1,"weapon",arc,{"chain_targets":3})
-	print("GM5 case 1 at r1 (c=3), recorded, not asserted as a pass of the spec case: better=%s delta=%.3f" % [str(v1b.better),v1b.delta])
+	# VO1/VO2: arc rank 1 (c=3) takes the splitting weapon's two projectiles as two more chain targets (D6 7.4): better, about +1.79.
+	check(v1b.better and absf(v1b.delta-1.79) < 0.02,"VO1 case 1: arc c=3 (rank 1), splitting weapon against +10%% magic weapon is better (delta %.3f, expected about 1.79)" % v1b.delta)
 	# Case 2: frost b=2, one splitting against +30% damage, the same empty slot: the +30% one is worth more, and it is better.
 	var shots2 := {"projectiles":2}
 	var split_empty: Dictionary = loot.upgrade_verdict(verdict_item("weapon","legendary",splitting),{},"weapon",frost,shots2)
@@ -1061,6 +1062,11 @@ func verdict_checks() -> void:
 	var full := {"ring":strong_ring,"ring2":weak_ring}
 	var v5: Dictionary = loot.upgrade_verdict(verdict_item("ring","rare",{"damage_bps":1500}),full,"",frost,shots2)
 	check(v5.slot == "ring2" and v5.better,"GM5 rings: both worn, a +15%% ring replaces the weaker one and is better (delta %.2f)" % v5.delta)
+	# VO7: both rings worn and a ring stronger than both comes: the weaker ring is the one replaced (slot asked for as "", the game's own choice).
+	var stronger_ring := verdict_item("ring","rare",{"damage_bps":4000})
+	var v5c: Dictionary = loot.upgrade_verdict(stronger_ring,full,"",frost,shots2)
+	var v5d: Dictionary = loot.upgrade_verdict(stronger_ring,{"ring":weak_ring,"ring2":strong_ring},"",frost,shots2)
+	check(v5c.slot == "ring2" and v5c.better and v5d.slot == "ring" and v5d.better,"VO7 rings: a ring stronger than both worn replaces the weaker one in either slot (%s, %s)" % [v5c.slot,v5d.slot])
 	var v5b: Dictionary = loot.upgrade_verdict(verdict_item("ring","rare",{"damage_bps":1500}),{"ring":weak_ring},"",frost,shots2)
 	check(v5b.slot == "ring2" and v5b.empty_slot and v5b.better,"GM5 rings: one worn, the free slot is chosen")
 	# Pure: nothing in the arguments changed; same answer twice.

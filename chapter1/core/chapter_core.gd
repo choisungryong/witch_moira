@@ -1579,6 +1579,14 @@ func _verdict_shots() -> Dictionary:
 	if base.is_empty():return {}
 	return {"projectiles":int(base.effects.projectiles),"chain_targets":int(base.effects.chain_targets)}
 
+## VO7: with loot.json upgrade_verdict on, a ring with both ring slots taken goes where the verdict says V rises most (the weaker ring); a free slot
+## or a worn item keeps the base answer. Off, this is exactly combat_core's target_slot (ring first, then ring2, else ring).
+func target_slot(item: Dictionary) -> String:
+	var base: String=super(item)
+	if loot==null or not loot.verdict_on() or String(item.get("slot",""))!="ring" or not equip_slot_of(int(item.get("uid",-1))).is_empty():return base
+	if not equipped.has("ring") or not equipped.has("ring2"):return base
+	return String(loot.upgrade_verdict(item,_verdict_worn(),"",_primary_id,_verdict_shots()).slot)
+
 ## GM5: the one place the app asks "is this a better item than the worn one" when it has no pickup_verdict: the verdict v2 when it is on,
 ## else loot.is_upgrade(). `slot` is where the item would go.
 func is_better_gear(candidate: Dictionary,current: Dictionary,slot: String) -> bool:

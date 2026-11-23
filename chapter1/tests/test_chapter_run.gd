@@ -1792,8 +1792,21 @@ func verdict_v2_checks() -> void:
 	check(rare_hands.better=="yes","GM-B on: +30% hands with a weapon worn is better")
 	check(fingerprint(run)==worn_state,"GM-B on: with gear worn the state is byte-identical")
 	check(run.is_better_gear(run.inventory[3],{},"hands") and not run.is_better_gear(run.inventory[4],{},"charm"),"GM-B on: is_better_gear follows the verdict (the app's fallback path)")
+	# VO7: both rings worn, a stronger ring: with the switch on target_slot names the weaker ring; off it stays "ring".
+	run.inventory.append(mk.call(971,"ring",{"damage_bps":4000},"rare"));run.inventory.append(mk.call(972,"ring",{"damage_bps":300}));run.inventory.append(mk.call(973,"ring",{"damage_bps":2500}))
+	run.equipped.ring=973;run.equipped.ring2=972;run._recompute_gear()
+	check(run.target_slot(run.inventory[inventory_index(run,971)])=="ring2","VO7 on: both rings worn, the stronger ring goes where the weaker one is (ring2)")
+	check(run.pickup_verdict(971).slot=="ring2" and run.pickup_verdict(971).better=="yes","VO7 on: pickup_verdict judges the same slot")
+	check(run.quick_equip(971) and int(run.equipped.ring2)==971 and int(run.equipped.ring)==973,"VO7 on: quick_equip wears it in the weaker ring's slot")
 	run.loot.set_verdict(false)
+	run.equipped.ring=973;run.equipped.ring2=972
+	check(run.target_slot(run.inventory[inventory_index(run,971)])=="ring","VO7 off: both rings worn, target_slot stays ring")
 	check(run.is_better_gear(run.inventory[4],{},"charm") and run.pickup_verdict(965).react=="auto_equip" and not run.pickup_verdict(965).has("note"),"GM-B off again: the old answers return")
+
+func inventory_index(run, uid: int) -> int:
+	for i in run.inventory.size():
+		if int(run.inventory[i].uid)==uid:return i
+	return -1
 
 ## D21 W1: pickup_verdict (N1), pickup_flow (N3), loot_flow (N2). Items and stats are made by hand so every verdict is known.
 func pickup_flow_checks() -> void:

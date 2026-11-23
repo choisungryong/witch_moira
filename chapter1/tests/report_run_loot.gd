@@ -35,6 +35,10 @@ func execute() -> void:
 		if verdict_arg != "" and not run.loot.set_verdict(verdict_arg == "on"):
 			push_error("loot.json has no upgrade_verdict block"); quit(2); return
 		var counts := {"pickups":0,"better_yes":0,"notice":0,"auto_equip":0,"card_note_empty_no_effect":0,"card_note_weak":0,"open":0,"open_better_yes":0}
+		# VO-B: with the argument the same counts are also kept apart before and after the boss's death (the boss class drops come after it).
+		var before_boss := counts.duplicate()
+		var after_boss := counts.duplicate()
+		var boss_dead := false
 		var dropped := {"common":0,"magic":0,"rare":0,"legendary":0,"unique":0}
 		var dropped_slots: Dictionary = {}
 		var guard := 0
@@ -44,18 +48,21 @@ func execute() -> void:
 				if event.type == "item_drop":
 					dropped[event.item.quality] += 1
 					dropped_slots[event.item.slot] = int(dropped_slots.get(event.item.slot,0))+1
+				elif event.type == "death" and verdict_arg != "" and String(event.get("role","")) == "boss":
+					boss_dead = true
 				elif event.type == "item_pickup" and verdict_arg != "":
 					var answer: Dictionary = run.pickup_verdict(int(event.item.uid))
 					if answer.is_empty(): continue
-					counts.pickups += 1
-					if answer.better == "yes": counts.better_yes += 1
-					if answer.react in ["card","open","auto_equip"]: counts.notice += 1
-					if answer.react == "auto_equip": counts.auto_equip += 1
-					if answer.react == "open":
-						counts.open += 1
-						if answer.better == "yes": counts.open_better_yes += 1
-					if String(answer.get("note","")) == "empty_no_effect": counts.card_note_empty_no_effect += 1
-					if String(answer.get("note","")) == "weak_for_primary": counts.card_note_weak += 1
+					for bucket in [counts, after_boss if boss_dead else before_boss]:
+						bucket.pickups += 1
+						if answer.better == "yes": bucket.better_yes += 1
+						if answer.react in ["card","open","auto_equip"]: bucket.notice += 1
+						if answer.react == "auto_equip": bucket.auto_equip += 1
+						if answer.react == "open":
+							bucket.open += 1
+							if answer.better == "yes": bucket.open_better_yes += 1
+						if String(answer.get("note","")) == "empty_no_effect": bucket.card_note_empty_no_effect += 1
+						if String(answer.get("note","")) == "weak_for_primary": bucket.card_note_weak += 1
 		var worn: Dictionary = {}
 		for slot in run.equipped:
 			for item in run.inventory:
@@ -63,6 +70,6 @@ func execute() -> void:
 		var line := {"seed":seed_,"primary":primary,"mode":run.mode,"seconds":run.tick/60,"kills":run.kills,"level":run.growth.snapshot().level,
 			"dropped":dropped,"dropped_by_slot":dropped_slots,"in_bag":run.inventory.size(),"pending":run.pending_rewards.size(),"overflow":run.metrics.get("overflow_items",0),
 			"worn_slots":run.equipped.size(),"worn":worn,"hero_speed":snappedf(float(run.hero.speed),.01),"max_hp":int(run.hero.max_hp_raw)/256}
-		if verdict_arg != "": line["verdict"] = {"switch":verdict_arg,"counts":counts}
+		if verdict_arg != "": line["verdict"] = {"switch":verdict_arg,"counts":counts,"counts_before_boss":before_boss,"counts_after_boss":after_boss}
 		print("RUN_LOOT ",JSON.stringify(line))
 	quit(0)

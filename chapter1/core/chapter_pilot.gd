@@ -27,7 +27,15 @@ func decide() -> Vector2:
 	if run.mode!="playing":return Vector2.ZERO
 	for item in run.inventory:
 		if not run.equip_slot_of(int(item.uid)).is_empty() or not run.can_equip(item):continue
-		var current: Dictionary=run.compare_item(int(item.uid)).equipped
+		var compared: Dictionary=run.compare_item(int(item.uid))
+		var current: Dictionary=compared.equipped
+		# VO-B: with upgrade_verdict on, wear what the verdict calls better, in the slot the core names. Off, the weights below decide as before.
+		if run.loot!=null and run.loot.verdict_on():
+			if run.is_better_gear(item,current,String(compared.slot)):
+				if not run.open_inventory():push_error("QA inventory open rejected");return Vector2.ZERO
+				if not run.equip(item.uid,String(compared.slot)):push_error("QA equipment rejected");run.close_inventory();return Vector2.ZERO
+				run.close_inventory()
+			continue
 		if current.is_empty() or equipment_score(item)>equipment_score(current)+.01:
 			if not run.open_inventory():push_error("QA inventory open rejected");return Vector2.ZERO
 			if not run.equip(item.uid):push_error("QA equipment rejected");run.close_inventory();return Vector2.ZERO
