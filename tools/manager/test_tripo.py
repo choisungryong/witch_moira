@@ -10,6 +10,10 @@ def glb_bytes(tmp):
     return p.read_bytes()
 
 
+def png_header(w, h):
+    return b'\x89PNG\r\n\x1a\n' + struct.pack('>I', 13) + b'IHDR' + struct.pack('>II', w, h) + bytes(10)
+
+
 class TripoStore(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -201,3 +205,37 @@ class TripoHttp(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_nobody_lines_tripo_works(self):
+        """몸이 아직 없는 줄(ember, arc)도 보낼 그림 정보·받은 모델 저장·폴더 열기가 된다."""
+        calls = []
+        orig = characters._startfile
+        characters._startfile = calls.append
+        try:
+            for line in ('ember', 'arc'):
+                self.assertFalse(next(l for l in json.loads(self.get('/api/characters')[1])['lines'] if l['id'] == line)['has_body'])
+                inp = self.work / 'pipeline' / line / 'tripo_in'
+                inp.mkdir(parents=True, exist_ok=True)
+                (inp / 'front.png').write_bytes(png_header(640, 480))
+                status, body = self.get('/api/characters/%s/tripo' % line)
+                self.assertEqual(status, 200)
+                info = json.loads(body)
+                self.assertEqual([(r['name'], r['width'], r['height']) for r in info['inputs']], [('front.png', 640, 480)])
+                status, v = self.post('/api/characters/%s/tripo_out?name=hand.glb' % line, self.data)
+                self.assertEqual(status, 200, v)
+                self.assertTrue((self.work / 'pipeline' / line / 'tripo_out' / v['saved']).is_file())
+                out = next(o for o in v['tripo']['outputs'] if o['name'] == v['saved'])
+                self.assertEqual(self.get('/media/%s/%s' % (line, out['key'])), (200, self.data))   # 돌려 보기용 파일, 몸 없이도 열림
+                status, o = self.post('/api/characters/%s/open' % line, b'{"folder":"tripo_in"}', 'application/json')
+                self.assertEqual((status, o['opened']), (200, True))
+            self.assertEqual(len(calls), 2)
+        finally:
+            characters._startfile = orig
+
+    def test_nobody_detail_returns_state_without_error(self):
+        status, body = self.get('/api/characters/ember')
+        self.assertEqual(status, 200)
+        d = json.loads(body)
+        self.assertNotIn('body', d['media'])
+        self.assertIsNone(d['body']['info'])
+        self.assertTrue(any('몸 파일이 없' in w for w in d['warnings']))

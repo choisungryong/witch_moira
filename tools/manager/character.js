@@ -300,15 +300,28 @@
 <div class="ch-stage" id="ch-stage-${key}"><p class="ch-note" id="ch-note-${key}"></p></div>
 <table class="data-table ch-metrics" id="ch-metrics-${key}"><tbody></tbody></table></section>`;
   }
+  function buildNoBodyScreen() {
+    const root = $('#character');
+    root.innerHTML = `<h2>캐릭터</h2>
+<div class="ch-bar"><label>캐릭터 줄<select id="ch-line">${lines.lines.map(l => `<option value="${esc(l.id)}" ${l.id === lineId ? 'selected' : ''}>${esc(l.name)}${l.has_body ? '' : ' (몸 없음)'}</option>`).join('')}</select></label></div>
+<p class="alert info" id="ch-nobody">${esc(detail.name)}: 게임 안의 몸이 아직 없습니다. 걸음 비교·동작 고르기·몸 보기 칸은 몸이 생긴 뒤에 열립니다. 아래 「3D 만들기(수동)」 칸은 지금도 쓸 수 있습니다.</p>
+<div id="ch-warn"></div>
+<section class="ch-pick" aria-label="그림과 영상"><h3>그림과 영상</h3><div id="ch-media"></div></section>
+<details class="ch-pick" id="ch-tripo" aria-label="3D 만들기(수동)" open><summary><b>3D 만들기(수동)</b></summary><div id="ch-tripo-body"><p class="bl-help">읽는 중…</p></div></details>`;
+    root.setAttribute('data-nobody', '1');
+    renderMedia();
+    loadTripo();
+  }
   function buildScreen() {
     const root = $('#character');
+    root.removeAttribute('data-nobody');
     const gs = detail.game.base_speed, gc = detail.game.camera;
     const camBtn = (id, label, ok) => `<button type="button" data-cam="${id}" ${ok ? '' : 'disabled'} aria-pressed="false">${label}</button>`;
     root.innerHTML = `<h2>캐릭터</h2>
 <p class="alert info">걸음 값은 계산한 값(모델의 답)과 이 화면 안에서 잰 값입니다. 게임에서 잰 값이 아닙니다. 몸 보고서의 지면 속도는 ±6% 어긋날 수 있습니다. 색과 밝기는 근사이며 게임과 같지 않습니다. 게임 파일은 이 화면이 바꾸지 않습니다.</p>
 <div id="ch-warn"></div>
 <div class="ch-bar">
-<label>캐릭터 줄<select id="ch-line">${lines.lines.map(l => `<option value="${esc(l.id)}" ${l.id === lineId ? 'selected' : ''} ${l.has_body ? '' : 'disabled'}>${esc(l.name)}${l.has_body ? '' : ' (몸 없음)'}</option>`).join('')}</select></label>
+<label>캐릭터 줄<select id="ch-line">${lines.lines.map(l => `<option value="${esc(l.id)}" ${l.id === lineId ? 'selected' : ''}>${esc(l.name)}${l.has_body ? '' : ' (몸 없음)'}</option>`).join('')}</select></label>
 <div><div class="bl-help">카메라</div><div class="ch-group" id="ch-cams">${camBtn('game', gc.size === null ? '게임 (읽지 못함)' : '게임 ' + gc.size, gc.size !== null && gc.offset)}${camBtn('cand', '게임 ' + gc.size_candidate + ' (후보)', gc.size !== null && gc.offset)}${camBtn('free', '자유(돌려 보기)', true)}</div></div>
 <div><div class="bl-help">표시</div><div class="ch-group"><button type="button" id="ch-look" aria-pressed="true">겉모습 반영(근사)</button><button type="button" id="ch-px" aria-pressed="false">1080p 크기</button></div></div>
 </div>
@@ -648,6 +661,12 @@ ${outs ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>이�
       if (gen !== building) return;
       loadError = '';
       state = defaultState(q);
+      if (!detail.media.body) {
+        buildNoBodyScreen();
+        writeHash();
+        markReady();
+        return;
+      }
       let threeOk = true;
       try { await loadThree(); } catch (e) { threeOk = false; loadError = '3D 묶음을 불러오지 못했습니다: ' + e.message; }
       if (threeOk) { try { await loadGlbs(); } catch (e) { loadError += ' 몸 파일을 불러오지 못했습니다: ' + e.message; gltfs = {}; } }
@@ -693,9 +712,9 @@ ${outs ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>이�
       [lines, picks] = await Promise.all([call('/api/characters'), call('/api/picks')]);
     } catch (e) { $('#character').innerHTML = `<p class="empty">캐릭터 목록을 열지 못했습니다. ${esc(e.message)}</p>`; return; }
     const h = parseHash();
-    const first = lines.lines.find(l => l.has_body);
-    const id = (h && h.id && lines.lines.some(l => l.id === h.id && l.has_body)) ? h.id : (first && first.id);
-    if (!id) { $('#character').innerHTML = '<h2>캐릭터</h2><p class="empty">몸 파일이 있는 캐릭터 줄이 없습니다. 주인공 몸은 저장소에 올라가지 않아 이 작업 폴더에 없을 수 있습니다.</p>'; $('#character').setAttribute('data-ready', '1'); return; }
+    const first = lines.lines.find(l => l.has_body) || lines.lines[0];
+    const id = (h && h.id && lines.lines.some(l => l.id === h.id)) ? h.id : (first && first.id);
+    if (!id) { $('#character').innerHTML = '<h2>캐릭터</h2><p class="empty">캐릭터 줄을 읽지 못했습니다.</p>'; $('#character').setAttribute('data-ready', '1'); return; }
     await openLine(id, h && h.id === id ? h.q : null);
   }
 
@@ -763,7 +782,7 @@ ${outs ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>이�
     const h = parseHash();
     if (!h) return;
     if (!open) return show(true);
-    if (lines && h.id && lines.lines.some(l => l.id === h.id && l.has_body)) openLine(h.id, h.q);
+    if (lines && h.id && lines.lines.some(l => l.id === h.id)) openLine(h.id, h.q);
   });
   if (parseHash()) show(true);
 })();

@@ -54,6 +54,14 @@ class CharacterData(unittest.TestCase):
         self.assertEqual([l['has_body'] for l in v['lines']], [True, False])
         self.assertEqual(v['lines'][0]['name'], '냉기 마녀')
 
+    def test_detail_of_line_without_body_is_state_not_error(self):
+        d = characters.detail('ember', self.root, self.work)
+        self.assertIsNotNone(d)
+        self.assertNotIn('body', d['media'])
+        self.assertIsNone(d['body']['info'])
+        self.assertIsNone(d['body']['clips'])
+        self.assertTrue(any('몸 파일이 없' in w for w in d['warnings']))
+
     def test_no_body_means_no_media(self):
         root = make_root(Path(self.tmp.name) / 'repo2', body=False)
         self.assertNotIn('body', characters.media_registry('frost', root, self.work))
