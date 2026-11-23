@@ -36,3 +36,17 @@ v02가 세 주인공의 기준 원화다. v01은 지우지 않고 남긴다(`emb
 | 도구·날짜 | Blender 5.3 묶기 2026-11-24 |
 
 라이선스: Tripo 구독 약관과 Mixamo(Adobe) 약관. 배포에 쓰기 전에 두 약관의 상업 이용 조건을 확인한다.
+
+## 3D 몸 — 번개(베로니카) (2026-11-24)
+
+`chapter1/art/actors/hero/arc/model.glb`(저장소에 올리지 않는다: `.gitignore`의 `chapter1/art/actors/hero/`, 이용 약관 확인 전. 화염·냉기와 같은 처지).
+
+| 단계 | 내용 |
+|---|---|
+| 메시 | Tripo(웹, 구독)로 사용자가 손으로 만든 몸(보라 판)을 15k 삼각형으로 줄임 |
+| 뼈대·동작 | Mixamo(웹)에서 사용자가 손으로 뽑음, 2026-11-23~24: Standing Idle, Fast Run, Walking, Standing 1H Magic Attack 01, Standing 2H Magic Area Attack 01, Standing React Small From Front, Standing React Death Backward, Dodging Right |
+| 묶기 | `tools/art/gen3d_mixamo_pack.py`, 설정 `tools/art/gen3d_mixamo_configs/arc.json`(동작 8개, `dodge_back` 없음). 동작 파일의 기본 자세(T)를 몸의 기본 자세(A)로 옮기는 고침을 넣어 묶음(걷기에서 팔이 몸 앞뒤로 겹치던 것을 고침) |
+| 자리표 | `chapter1/art/asset_slots.json`의 `actor.hero.arc.model` |
+| 도구·날짜 | Blender 5.3 묶기 2026-11-24, 묶음 sha1 4579867e… |
+
+라이선스: Tripo 구독 약관과 Mixamo(Adobe) 약관. 배포에 쓰기 전에 두 약관의 상업 이용 조건을 확인한다.

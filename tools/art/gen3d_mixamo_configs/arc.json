@@ -1,0 +1,52 @@
+{
+  "_about": "Arc (Veronica) witch: Tripo 15k violet body, Mixamo-rigged (rebuilt rig) + 8 motion clips (no dodge_back; clip rest pose retargeted to the body's A-pose, the rest_retarget fix of _local/pack-rest/pack-rest.patch is needed in tools/art/gen3d_mixamo_blender.py, otherwise the walk arms cross) -> chapter1/art/actors/hero/arc/model.glb. Same clip names as frost.json. dodge frames 3-40 chosen from hips height per frame.",
+  "body": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/arc_t15k_violet.fbx",
+  "texture_color": "D:/Project/witch-moira-work/pipeline/arc/game_a/arc_t15k_violet_color.png",
+  "texture_normal": "D:/Project/witch-moira-work/pipeline/arc/game_a/arc_t15k_normal.png",
+  "metallic": 0.0,
+  "roughness": 0.8,
+  "fps": 30,
+  "out": "chapter1/art/actors/hero/arc/model.glb",
+  "clips": [
+    {
+      "name": "idle",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Standing Idle.fbx"
+    },
+    {
+      "name": "run",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Fast Run.fbx",
+      "in_place": true,
+      "ground_speed_mps": 7.25
+    },
+    {
+      "name": "walk",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Walking.fbx",
+      "in_place": true
+    },
+    {
+      "name": "cast",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Standing 1H Magic Attack 01.fbx"
+    },
+    {
+      "name": "cast_area",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Standing 2H Magic Area Attack 01.fbx"
+    },
+    {
+      "name": "hit",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Standing React Small From Front.fbx"
+    },
+    {
+      "name": "death",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Standing React Death Backward.fbx"
+    },
+    {
+      "name": "dodge",
+      "fbx": "D:/Project/witch-moira-work/pipeline/arc/mixamo_out/Dodging Right.fbx",
+      "frames": [
+        3,
+        40
+      ]
+    }
+  ],
+  "hero_json": "tools/art/gen3d_mixamo_configs/arc.hero.json"
+}
