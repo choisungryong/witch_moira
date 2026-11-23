@@ -16,6 +16,9 @@ const FLOAT_KEYS := ["speed","ring_min_m","ring_max_m","radius_m"]
 const RHYTHM_KEYS := ["enabled","initial_pack","gate_rest_ticks","beats","trial","boss"]
 const BEAT_KEYS := ["id","zone","from_bps","max_ticks","amount","interval_ticks","alive_cap","hp_bps","mix","wave"]
 const OPENING_STEP_KEYS := ["id","max_ticks","kills","amount","interval_ticks","alive_cap","ring_m","heading","speed_bps","acquire_m","orb_pull_m","crest","mix","first_visit_only"]
+## N95 (GS-R1): a wave crest head may hold up to 80 bodies and a squad up to 12; taste and opening crests stay at 60.
+const WAVE_CREST_MAX := 80
+const SQUAD_MAX := 12
 const BEAT_OPTIONAL :=["ranged_from_ticks","charger_from_ticks","taste_crest","xp_bps","ranged_cap"]
 ## D19 C1: optional keys of the rhythm block (a level table of its own, seal kills, the guardian's grace, the sweep bonus). Absent = the old rules.
 const RHYTHM_C1 := ["xp_thresholds","seal_kills","guardian_grace","kill_burst","guardian"]
@@ -404,7 +407,7 @@ static func _crest_issues(crest: Variant,tag: String) -> Array[String]:
 	if not crest is Dictionary: return [tag+"wave crest"]
 	var base: Dictionary=crest.duplicate()
 	base.erase("mix");base.erase("count_jitter_bps")
-	if not _fan_valid(base,["count","arc_deg"]): issues.append(tag+"wave crest")
+	if not _fan_valid(base,["count","arc_deg"],WAVE_CREST_MAX): issues.append(tag+"wave crest")
 	if crest.has("count_jitter_bps") and not integer(crest.count_jitter_bps,0,3000): issues.append(tag+"wave crest count_jitter_bps")
 	if crest.has("mix"):
 		var mix: Variant=crest.mix
@@ -417,16 +420,16 @@ static func _crest_issues(crest: Variant,tag: String) -> Array[String]:
 		if not ok or total != 100: issues.append(tag+"wave crest mix")
 	return issues
 
-## squad {count 0..8, ring_m [lo, hi] inside 6..14, at_ticks inside the part of the period before the lull}.
+## squad {count 0..SQUAD_MAX (12), ring_m [lo, hi] inside 6..14, at_ticks inside the part of the period before the lull}.
 static func _squad_valid(sq: Variant, w: Dictionary) -> bool:
 	if not sq is Dictionary or not GrowthCatalog.keys_match(sq,["count","ring_m","at_ticks"]): return false
-	if not integer(sq.count,0,8) or not sq.ring_m is Array or sq.ring_m.size() != 2: return false
+	if not integer(sq.count,0,SQUAD_MAX) or not sq.ring_m is Array or sq.ring_m.size() != 2: return false
 	if not number(sq.ring_m[0],6.0,14.0) or not number(sq.ring_m[1],6.0,14.0) or float(sq.ring_m[0]) > float(sq.ring_m[1]): return false
 	if not integer(w.period_ticks,60,36000) or not integer(w.lull_ticks,0,36000): return false
 	return integer(sq.at_ticks,0,int(w.period_ticks)-int(w.lull_ticks)-1)
 
-static func _fan_valid(entry: Variant, keys: Array) -> bool:
-	return entry is Dictionary and GrowthCatalog.keys_match(entry,keys) and integer(entry.count,1,60) and integer(entry.arc_deg,10,360)
+static func _fan_valid(entry: Variant, keys: Array, count_max: int = 60) -> bool:
+	return entry is Dictionary and GrowthCatalog.keys_match(entry,keys) and integer(entry.count,1,count_max) and integer(entry.arc_deg,10,360)
 
 ## D11 A6 ranges. Every problem is one short path; an empty list means the block is usable.
 static func _rhythm_issues(r: Variant, alive_cap: int) -> Array[String]:
