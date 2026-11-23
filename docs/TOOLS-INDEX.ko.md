@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-23 05:33:35 · 도구 161개
+생성: 2026-11-23 12:30:49 · 도구 161개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -245,7 +245,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/burst_capture.gd` | A6-0: burst screenshots after core events. Used by hud_dump.gd (--burst=<name,...> --burst-frames=<n>, needs --shots=<dir>). |  |
 | `chapter1/tests/choice_frame_probe.gd` | Real-time frame interval while the growth-choice window is open (QA tool, no gameplay writes). The built-in pilot plays to the first choice, is parked, | `python tools/dev/godot.py --resolution 1920x1080 --path . --script res://chapter1/tests/choice_frame_probe.gd -- --chapter1-pilot --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --primary=chapter1.skill.frost` |
 | `chapter1/tests/core_text_probe.gd` | The text checks of test_core_text.gd as an observer. One object can watch a run that something else is stepping |  |
-| `chapter1/tests/descent_fx_shots.gd` | QA tool (never product code): pictures and frame times of the descent's three sweeps (D24 12.2), on the real ChapterOne scene. | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/descent_fx_shots.gd -- \` |
+| `chapter1/tests/descent_fx_shots.gd` | QA tool (never product code): pictures and frame times of the descent's three sweeps (D24 12.2), on the real ChapterOne scene. | `python tools/dev/godot.py --timeout-s=900 --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/descent_fx_shots.gd -- --chapter1-start --chapter1-pilot --chapter1-trial=descent --chapter1-profile-off --chapter1-qa-ignore-focus --chapter1-seed=11 --chapter1-descent-cost=1000 --chapter1-primary=chapter1.skill.ember --element=ember --enemies=70 --shots=_local/shots/d24-fx --tag=ember` |
 | `chapter1/tests/descent_policy.gd` | When a bot uses the descent (D15 A6.5). MEASUREMENT ONLY: chapter_pilot.gd is not touched (the golden replay plays it as it is), |  |
 | `chapter1/tests/elite_sites_shot.gd` | Look study for guarded elites and the shrine/chest they guard (docs/reviews/ELITE-AND-GUARDED-SITES-LOOK-20261120.ko.md). | `python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/elite_sites_shot.gd -- \` |
 | `chapter1/tests/equiv_dump.gd` | Equivalence dump for tools/dev/equiv.py (QA tool, reads presentation state only, writes no game state). | `python tools/dev/godot.py --headless --fixed-fps 60 --path <root> --script res://chapter1/tests/equiv_dump.gd -- --chapter1-pilot` |
