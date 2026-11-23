@@ -294,6 +294,8 @@ const FONT_ROLES := {
 	"bold": [FONT_BODY, 700.0, false],
 	"number": [FONT_BODY, 600.0, true],
 	"heading": [FONT_HEADING, 700.0, false],
+	## A11 12.2: the descent's skill name, the same variable file at its heaviest weight (no new file).
+	"heading_black": [FONT_HEADING, 900.0, false],
 }
 
 static func _font_file(path: String) -> FontFile:

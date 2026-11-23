@@ -1345,6 +1345,88 @@ msgstr "화면을 모두 얼렸다가 한꺼번에 깨뜨린다"
 msgid "descent.desc.arc"
 msgstr "번개 줄기가 화면 곳곳에 내리꽂힌다"
 
+#. The descent's band: the small line under the skill name; the demon is the subject (DESCENT-TEXT 0). {demon}: demon.<element>.name, {witch}: character.<element>.name
+msgid "descent.band.line"
+msgstr "{demon} · {witch}의 부름에 답하여"
+
+#. The flame demon's line on the first descent of a run (the cut-scene's subtitle; the band's own line when there is no cut-scene)
+msgid "descent.say.ember.first"
+msgstr "비켜. 내가 태운다."
+
+#. The flame demon's line from the second descent on (rotating)
+msgid "descent.say.ember.1"
+msgstr "네 몫이 아니다."
+
+#. The flame demon's line from the second descent on (rotating)
+msgid "descent.say.ember.2"
+msgstr "잘 봐 둬라."
+
+#. The flame demon's extra rotating line from character level 12 (the rule that picks it is the presenter's)
+msgid "descent.say.ember.deep"
+msgstr "손 데지 마라."
+
+#. The frost demon's line on the first descent of a run
+msgid "descent.say.frost.first"
+msgstr "물러서. 내가 얼린다."
+
+#. The frost demon's line from the second descent on (rotating)
+msgid "descent.say.frost.1"
+msgstr "뒤에 있어."
+
+#. The frost demon's line from the second descent on (rotating)
+msgid "descent.say.frost.2"
+msgstr "금방 끝나."
+
+#. The frost demon's extra rotating line from character level 12
+msgid "descent.say.frost.deep"
+msgstr "춥게 안 둬."
+
+#. The sorceress's call above the hero's head the moment the descent is pressed (Tessa)
+msgid "descent.call.ember"
+msgstr "지금이야, 와!"
+
+#. Tessa's call from character level 12
+msgid "descent.call.ember.deep"
+msgstr "선생, 지금!"
+
+#. Eileen's call
+msgid "descent.call.frost"
+msgstr "와 줘."
+
+#. Eileen's call from character level 12
+msgid "descent.call.frost.deep"
+msgstr "부탁해."
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.1"
+msgstr "천둥!"
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.2"
+msgstr "천둥, 가자!"
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.3"
+msgstr "천둥, 지금!"
+
+#. Veronica's extra call from character level 12
+msgid "descent.call.arc.deep"
+msgstr "천둥, 같이 가!"
+
+#. The cut-scene's skip hint beside a key plate (max 6 characters)
+msgid "descent.cutscene.skip"
+msgstr "건너뛰기"
+
+#. The descent's band: the sworn demon's name. Provisional (NAMES-CAST 2.1), narrative-lead keeps the table
+msgid "demon.ember.name"
+msgstr "페로니아"
+
+msgid "demon.frost.name"
+msgstr "마르자나"
+
+msgid "demon.arc.name"
+msgstr "타키타"
+
 #. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
 
 #. Title plate of the grace screen

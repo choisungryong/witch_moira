@@ -474,6 +474,105 @@
         "size": [1536, 1024]
       }
     },
+    "ui.descent.band.ember": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P3 (optional): the descent band's body picture, 2048x512, dark (brightness <= 0.12) with the ember (lava cracks) pattern. Until it exists descent_band.gd draws the leather and the pattern with descent_band.gdshader",
+      "contract": {
+        "size": [2048, 512],
+        "alpha": false
+      }
+    },
+    "ui.descent.band.frost": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P3 (optional): the descent band's body picture, 2048x512, dark (brightness <= 0.12) with the frost (hoarfrost crystals) pattern. Until it exists descent_band.gd draws the leather and the pattern with descent_band.gdshader",
+      "contract": {
+        "size": [2048, 512],
+        "alpha": false
+      }
+    },
+    "ui.descent.band.arc": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P3 (optional): the descent band's body picture, 2048x512, dark (brightness <= 0.12) with the lightning (branching bolts in storm cloud) pattern. Until it exists descent_band.gd draws the leather and the pattern with descent_band.gdshader",
+      "contract": {
+        "size": [2048, 512],
+        "alpha": false
+      }
+    },
+    "fx.descent.sigil.ember": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P4 (optional): the sigil under the hero while the descent runs, 1024x1024 transparent, seen from above (three rings, a ring of invented glyphs, one flame mark). No real religious or occult symbols. Until it exists the effect layer draws a code sigil (vfx-feel)",
+      "contract": {
+        "size": [1024, 1024],
+        "alpha": true
+      }
+    },
+    "fx.descent.sigil.frost": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P4 (optional): the sigil under the hero while the descent runs, 1024x1024 transparent, seen from above (three rings, a ring of invented glyphs, one hexagonal crystal mark). No real religious or occult symbols. Until it exists the effect layer draws a code sigil (vfx-feel)",
+      "contract": {
+        "size": [1024, 1024],
+        "alpha": true
+      }
+    },
+    "fx.descent.sigil.arc": {
+      "kind": "texture",
+      "file": "",
+      "planned": true,
+      "source": "A11 3.3 P4 (optional): the sigil under the hero while the descent runs, 1024x1024 transparent, seen from above (three rings, a ring of invented glyphs, one broken bolt mark). No real religious or occult symbols. Until it exists the effect layer draws a code sigil (vfx-feel)",
+      "contract": {
+        "size": [1024, 1024],
+        "alpha": true
+      }
+    },
+    "video.cutscene.descent.ember": {
+      "kind": "video",
+      "file": "",
+      "planned": true,
+      "source": "A11 12.3 (planned): the 3 s cut-scene of Feronia's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "contract": {
+        "size": [1280, 720],
+        "seconds": 3.0,
+        "loop_in": 0.6,
+        "loop_out": 1.8,
+        "aspect": "16:9"
+      }
+    },
+    "video.cutscene.descent.frost": {
+      "kind": "video",
+      "file": "",
+      "planned": true,
+      "source": "A11 12.3 (planned): the 3 s cut-scene of Marzanna's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "contract": {
+        "size": [1280, 720],
+        "seconds": 3.0,
+        "loop_in": 0.6,
+        "loop_out": 1.8,
+        "aspect": "16:9"
+      }
+    },
+    "video.cutscene.descent.arc": {
+      "kind": "video",
+      "file": "",
+      "planned": true,
+      "source": "A11 12.3 (planned): the 3 s cut-scene of Tacita's descent, Ogg Theora .ogv, 1280x720, 30 fps, no sound track (-an), at most 3 MB, 16:9, made from the demon's main image (not made yet). loop_in/loop_out (seconds) name the 1.2 s stretch the band's demon window repeats from the second descent on; Theora cannot seek in this engine, so a loop that starts after 0 falls back to 0..loop_out. ENCODING NOTE (2026-11-23): with the ffmpeg 8.0.1 build on this machine libtheora streams that contain predicted frames (-g above 1) decode to garbage in this engine and in ffmpeg itself (even a test pattern); only all-intra streams (-g 1) are clean, which costs size (about 3.3 MB for 3 s at 406x720 q5, so 1280x720 will exceed the budget). Another encoder or build is needed before the real files are made. Until the file exists the descent shows the long band (descent_cutscene.gd has_video() is false)",
+      "contract": {
+        "size": [1280, 720],
+        "seconds": 3.0,
+        "loop_in": 0.6,
+        "loop_out": 1.8,
+        "aspect": "16:9"
+      }
+    },
     "portrait.frost.cutin_evolve": {
       "kind": "texture",
       "file": "",
@@ -490,10 +589,16 @@
     },
     "portrait.frost.cutin_ultimate": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
-      "contract": {}
+      "file": "characters/frost_witch_v02.png",
+      "used": "unverified",
+      "source": "A11 3.3 stage 1 (TEMPORARY): the sorceress of the descent band (chapter1/view/hud/descent_band.gd) is the existing full-figure picture, shown through a window cut by contract.crops.focus (source pixels x, y, w, h: head to hips). The picture has its scene painted in (no alpha), so the band crops it inside the strip; stage 2 (P1, a transparent knee-up picture) replaces only this file and sets alpha true",
+      "contract": {
+        "size": [1024, 1536],
+        "alpha": false,
+        "crops": {
+          "focus": [130, 0, 800, 560]
+        }
+      }
     },
     "portrait.frost.record": {
       "kind": "texture",
@@ -518,10 +623,16 @@
     },
     "portrait.ember.cutin_ultimate": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
-      "contract": {}
+      "file": "characters/ember_witch_v02.png",
+      "used": "unverified",
+      "source": "A11 3.3 stage 1 (TEMPORARY): the sorceress of the descent band (chapter1/view/hud/descent_band.gd) is the existing full-figure picture, shown through a window cut by contract.crops.focus (source pixels x, y, w, h: head to hips). The picture has its scene painted in (no alpha), so the band crops it inside the strip; stage 2 (P1, a transparent knee-up picture) replaces only this file and sets alpha true",
+      "contract": {
+        "size": [1024, 1536],
+        "alpha": false,
+        "crops": {
+          "focus": [90, 0, 800, 560]
+        }
+      }
     },
     "portrait.ember.record": {
       "kind": "texture",
@@ -546,10 +657,16 @@
     },
     "portrait.arc.cutin_ultimate": {
       "kind": "texture",
-      "file": "",
-      "planned": true,
-      "source": "T7 section 5 (new slots of the redesign); no art yet, so the placeholder is used",
-      "contract": {}
+      "file": "characters/storm_witch_v02.png",
+      "used": "unverified",
+      "source": "A11 3.3 stage 1 (TEMPORARY): the sorceress of the descent band (chapter1/view/hud/descent_band.gd) is the existing full-figure picture, shown through a window cut by contract.crops.focus (source pixels x, y, w, h: head to hips). The picture has its scene painted in (no alpha), so the band crops it inside the strip; stage 2 (P1, a transparent knee-up picture) replaces only this file and sets alpha true",
+      "contract": {
+        "size": [1024, 1536],
+        "alpha": false,
+        "crops": {
+          "focus": [150, 0, 800, 560]
+        }
+      }
     },
     "portrait.arc.record": {
       "kind": "texture",
@@ -1117,7 +1234,10 @@
       "used": "yes",
       "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-ember-full-a1.png, copied as is; replace when the figure is chosen",
       "contract": {
-        "alpha": false
+        "alpha": false,
+        "crops": {
+          "focus": [200, 0, 640, 560]
+        }
       }
     },
     "ui.grace.demon.frost": {
@@ -1126,7 +1246,10 @@
       "used": "yes",
       "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-frost-full-c-a1.png, copied as is; replace when the figure is chosen",
       "contract": {
-        "alpha": false
+        "alpha": false,
+        "crops": {
+          "focus": [180, 20, 640, 560]
+        }
       }
     },
     "ui.grace.demon.arc": {
@@ -1135,7 +1258,10 @@
       "used": "yes",
       "source": "TEMPORARY (the user has not chosen the demon figure yet): Codex queue picture pledge-arc-full-a2.png, copied as is; replace when the figure is chosen",
       "contract": {
-        "alpha": false
+        "alpha": false,
+        "crops": {
+          "focus": [170, 0, 640, 560]
+        }
       }
     },
     "ui.kit.title_plaque": {

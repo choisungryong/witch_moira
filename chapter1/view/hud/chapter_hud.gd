@@ -2209,3 +2209,12 @@ func _open_fresh() -> void:
 	buttons.append({"id":"back","text":Loc.t("profile.fresh.back")})
 	_open_dialog("fresh",{"width":820,"title":Loc.t("profile.fresh.title"),"content":_dialog_text(Loc.t(body_key,args)),
 		"buttons":buttons,"default_id":"back","esc_id":"back"})
+
+## A11 12.3.3: the descent's cut-scene covers the whole screen, so the HUD (the combat bar included) fades out in 0.2 s and comes back in 0.15 s.
+## The presenter calls this; the HUD only changes its own opacity (the core is paused and the hero cannot be hurt while the cut-scene runs).
+var _hud_fade: Tween
+func set_hud_hidden(hidden: bool) -> void:
+	if root == null: return
+	if _hud_fade != null: _hud_fade.kill()
+	_hud_fade = root.create_tween()
+	_hud_fade.tween_property(root,"modulate:a",0.0 if hidden else 1.0,0.2 if hidden else 0.15)

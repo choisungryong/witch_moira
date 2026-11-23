@@ -135,8 +135,9 @@ func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
 		_descent_crest = bool(descent_view.get("crest",false))
 		_descent_bonus = clampf(float(int(descent_view.get("hold_bonus_bps",0)))/10000.0,0,.3)
 		_update_descent_cue(run,descent_view,delta)
+		_update_descent_end(delta)
 	else:
-		_descent_ratio = 0.0; _descent_state = ""; _descent_left = 0.0; _descent_crest = false; _descent_bonus = 0.0; _cue_left = 0.0
+		_descent_ratio = 0.0; _descent_state = ""; _descent_left = 0.0; _descent_crest = false; _descent_bonus = 0.0; _cue_left = 0.0; _end_flash = 0.0; _prev_state = ""
 	# Redraw only when something the picture is made of changed (see _draw_key). A low life pulses with time, so it redraws
 	# every frame, and so does the old look, which the key does not cover. A full descent gauge breathes, so it redraws too.
 	var key := _draw_key()
@@ -157,16 +158,38 @@ var _cue_left := 0.0           ## seconds left of the first-ready line (ember, f
 var _cue_done := false
 var _cue_tick := 0
 const DESCENT_CUE_SECONDS := 2.0
+## A11 6: when the sweep ends the ring is at 0; the medal's brass lights once and an outer ring opens (shape, not only colour), then the ring fills again
+## from the gauge (the sweep does not fill the gauge, so nothing flies to the medal and no kill number sits on it).
+const END_FLASH_SECONDS := .5
+var _end_flash := 0.0          ## seconds left of the end-of-sweep light
+var _prev_state := ""
+var _band_up := false          ## the descent's band is on screen: the name beside the medal is hidden (A11 4.5, the same name must not stand twice)
+
+## The cut-in's presenter says whether the band is up (it hides the medal's own name while it is). The medal's own state also hides it:
+## the name is only ever drawn when the state is "ready", and the band stands from the call, which leaves "ready".
+func set_descent_band(up: bool) -> void:
+	if up != _band_up:
+		_band_up = up
+		_drawn_key = []
+		queue_redraw()
 
 ## D24 12.4: the cue of the first time the descent is ready in a run: a line beside the medal for 2 s (ember, frost), or two beats of
 ## the medal without words (arc). It runs on the frame time while playing, and starts again with a new run (the tick goes back).
 func _update_descent_cue(run: RefCounted, view: Dictionary, delta: float) -> void:
-	if int(run.tick) < _cue_tick: _cue_done = false; _cue_left = 0.0
+	if int(run.tick) < _cue_tick: _cue_done = false; _cue_left = 0.0; _end_flash = 0.0
 	_cue_tick = int(run.tick)
 	if String(view.state) == "ready" and int(view.get("uses",0)) == 0 and not _cue_done:
 		_cue_done = true; _cue_left = DESCENT_CUE_SECONDS
 	elif _cue_left > 0.0 and _playing:
 		_cue_left = maxf(0.0,_cue_left-delta)
+
+## The end-of-sweep light (A11 6): starts on the frame the state leaves "sweep", runs on the frame time while playing.
+func _update_descent_end(delta: float) -> void:
+	if _prev_state == "sweep" and _descent_state != "sweep":
+		_end_flash = END_FLASH_SECONDS
+	elif _end_flash > 0.0 and _playing:
+		_end_flash = maxf(0.0,_end_flash-delta)
+	_prev_state = _descent_state
 
 ## The gauge ring around the medal slot: a dim ring, the filled arc in the element's colour from the top, and once full a
 ## breathing double ring (the same breath as the screen's edge aura). `c` is the medal's centre, `r` its ring radius.
@@ -196,8 +219,13 @@ func _draw_descent(c: Vector2, r: float) -> void:
 					if k >= 0.0 and k <= 1.0: draw_arc(c,r+4.0+16.0*k,0,TAU,48,Color(_descent_color,.7*(1.0-k)),4.0,true)
 	elif _descent_ratio > 0.0:
 		draw_arc(c,r,-PI*.5,-PI*.5+TAU*_descent_ratio,maxi(4,int(48.0*_descent_ratio)),Color(_descent_color,.9),3.6,true)
-	# Beside the medal, when it is ready: the descent's name (descent.name.<element>) and, once per run, the cue line.
-	if _descent_state == "ready" and _descent_element != "":
+	if _end_flash > 0.0:
+		var k := _end_flash/END_FLASH_SECONDS
+		draw_circle(c,r-5.0,Color(BRASS_HI,.22*k))
+		draw_arc(c,r,0,TAU,48,Color(BRASS_HI,.95*k),rim+2.0,true)
+		draw_arc(c,r+4.0+12.0*(1.0-k),0,TAU,48,Color(BRASS_HI,.7*k),3.0,true)
+	# Beside the medal, when it is ready: the descent's name (descent.name.<element>) and, once per run, the cue line. Not while the band stands.
+	if _descent_state == "ready" and _descent_element != "" and not _band_up:
 		_text(c+Vector2(0,-r-14.0),Loc.t("descent.name."+_descent_element),17,INK,170)
 		if _cue_left > 0.0 and _descent_element != "arc":
 			var fade := clampf(_cue_left/.5,0,1)
@@ -213,7 +241,7 @@ func _draw_descent(c: Vector2, r: float) -> void:
 ## Every value _draw_bound reads. Exact values, not rounded ones: the cooldown sweeps and the seconds follow the tick, so
 ## the bar redraws while anything is cooling down and stands still when nothing moves.
 func _draw_key() -> Array:
-	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable,_descent_on,_descent_ratio,_descent_state,_descent_left,_descent_crest,_descent_bonus,_cue_left,_descent_element]
+	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable,_descent_on,_descent_ratio,_descent_state,_descent_left,_descent_crest,_descent_bonus,_cue_left,_descent_element,_end_flash,_band_up]
 	for state in _skill_state:
 		parts.append(state.rank); parts.append(state.evolved); parts.append(state.wait); parts.append(state.seconds)
 	return parts

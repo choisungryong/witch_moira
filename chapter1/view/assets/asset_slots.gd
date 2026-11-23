@@ -16,8 +16,8 @@ const ARG_PREFIX := "--chapter1-asset-slots="
 const SCHEMA := 1
 const CHECKER_SIZE := 64
 const CHECKER_CELL := 8
-const KINDS: Array[String] = ["model", "sprite_sheet", "texture", "atlas", "nine_slice", "portrait_rig", "prop_atlas", "font"]
-const ID_PREFIXES: Array[String] = ["actor", "portrait", "illustration", "ui", "icon", "world", "fx", "font"]
+const KINDS: Array[String] = ["model", "sprite_sheet", "texture", "atlas", "nine_slice", "portrait_rig", "prop_atlas", "font", "video"]
+const ID_PREFIXES: Array[String] = ["actor", "portrait", "illustration", "ui", "icon", "world", "fx", "font", "video"]
 const USED_VALUES: Array[String] = ["unverified", "yes", "no"]
 const SLOT_KEYS: Array[String] = ["kind", "file", "meta", "fallback", "extra_files", "contract", "planned", "inherit", "used", "source", "optional"]
 ## Contract keys each kind knows. An unknown key is a warning in validate_table() (a column nobody reads rots).
@@ -30,6 +30,7 @@ const CONTRACT_KEYS := {
 	"portrait_rig": ["canvas", "eyes"],
 	"prop_atlas": ["group", "ids_required", "import"],
 	"font": ["axes", "features", "import"],
+	"video": ["size", "seconds", "loop_in", "loop_out", "aspect"],
 }
 ## Bone-group names whose entries are name prefixes or fragments, not logical bone names.
 const PATTERN_GROUPS: Array[String] = ["upper_prefixes", "upper_contains"]
@@ -292,6 +293,16 @@ static func scene(id: String) -> PackedScene:
 			return res
 		_demote(id, st, "is not loadable as a scene")
 	return placeholder_scene()
+
+## A video slot as a stream (Ogg Theora, .ogv: the only video format this engine build reads). null when the slot is planned, its file is missing or
+## it is not a Theora file. Callers fall back (the cut-scene to the band). The stream is not cached: each call gives a fresh one, a player owns it.
+static func video(id: String) -> VideoStream:
+	var st := _status(id)
+	if st.placeholder or String(st.path) == "":
+		return null
+	var stream := VideoStreamTheora.new()
+	stream.file = String(st.path)
+	return stream
 
 static func font(id: String) -> FontFile:
 	var st := _status(id)
@@ -572,6 +583,13 @@ static func _validate_contract(id: String, kind_name: String, c: Dictionary, err
 	for key in ["states", "directions", "pieces_required", "ids_required", "axes", "features"]:
 		if c.has(key) and not _is_string_array(c[key]):
 			errors.append("%s: contract.%s must be an array of strings" % [id, key])
+	for key in ["seconds", "loop_in", "loop_out"]:
+		if c.has(key) and not (_is_num(c[key]) and float(c[key]) >= 0.0):
+			errors.append("%s: contract.%s must be a number >= 0" % [id, key])
+	if c.has("loop_in") and c.has("loop_out") and _is_num(c.loop_in) and _is_num(c.loop_out) and float(c.loop_out) <= float(c.loop_in):
+		errors.append("%s: contract.loop_out must be after loop_in" % id)
+	if c.has("aspect") and not c.aspect is String:
+		errors.append("%s: contract.aspect must be a string like 16:9" % id)
 	if c.has("size") and not (c.size is Array and (c.size as Array).size() == 2 and _is_num(c.size[0]) and _is_num(c.size[1])):
 		errors.append("%s: contract.size must be [width, height]" % id)
 	if c.has("crops"):

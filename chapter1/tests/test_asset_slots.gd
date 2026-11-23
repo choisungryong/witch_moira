@@ -240,6 +240,8 @@ func slot_checks(id: String, s: Dictionary, c: Dictionary) -> void:
 			sheet_checks(id, c)
 		"texture", "atlas", "nine_slice", "prop_atlas":
 			texture_checks(id, c)
+		"video":
+			check(Slots.video(id) != null, "%s: the video does not load as a Theora stream" % id)
 		"font":
 			var font := Slots.font(id)
 			check(font != null, "%s: font does not load" % id)

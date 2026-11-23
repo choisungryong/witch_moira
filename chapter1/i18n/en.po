@@ -1341,6 +1341,88 @@ msgstr "Freezes the whole screen, then shatters it at once."
 msgid "descent.desc.arc"
 msgstr "Bolts of lightning strike all across the screen."
 
+#. The descent's band: the small line under the skill name; the demon is the subject (DESCENT-TEXT 0). {demon}: demon.<element>.name, {witch}: character.<element>.name
+msgid "descent.band.line"
+msgstr "{demon} · Answering {witch}'s Call"
+
+#. The flame demon's line on the first descent of a run (the cut-scene's subtitle; the band's own line when there is no cut-scene)
+msgid "descent.say.ember.first"
+msgstr "Stand aside. I'll burn them."
+
+#. The flame demon's line from the second descent on (rotating)
+msgid "descent.say.ember.1"
+msgstr "Not yours to take."
+
+#. The flame demon's line from the second descent on (rotating)
+msgid "descent.say.ember.2"
+msgstr "Watch closely."
+
+#. The flame demon's extra rotating line from character level 12 (the rule that picks it is the presenter's)
+msgid "descent.say.ember.deep"
+msgstr "Mind your hands."
+
+#. The frost demon's line on the first descent of a run
+msgid "descent.say.frost.first"
+msgstr "Stand back. I'll freeze them."
+
+#. The frost demon's line from the second descent on (rotating)
+msgid "descent.say.frost.1"
+msgstr "Stay behind me."
+
+#. The frost demon's line from the second descent on (rotating)
+msgid "descent.say.frost.2"
+msgstr "Won't take long."
+
+#. The frost demon's extra rotating line from character level 12
+msgid "descent.say.frost.deep"
+msgstr "You won't be cold."
+
+#. The sorceress's call above the hero's head the moment the descent is pressed (Tessa)
+msgid "descent.call.ember"
+msgstr "Now! Come!"
+
+#. Tessa's call from character level 12
+msgid "descent.call.ember.deep"
+msgstr "Now, Teach!"
+
+#. Eileen's call
+msgid "descent.call.frost"
+msgstr "Come."
+
+#. Eileen's call from character level 12
+msgid "descent.call.frost.deep"
+msgstr "Please. Come."
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.1"
+msgstr "Thunder!"
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.2"
+msgstr "Go, Thunder!"
+
+#. Veronica's call (rotating)
+msgid "descent.call.arc.3"
+msgstr "Now, Thunder!"
+
+#. Veronica's extra call from character level 12
+msgid "descent.call.arc.deep"
+msgstr "Together, Thunder!"
+
+#. The cut-scene's skip hint beside a key plate (max 6 characters)
+msgid "descent.cutscene.skip"
+msgstr "Skip"
+
+#. The descent's band: the sworn demon's name. Provisional (NAMES-CAST 2.1)
+msgid "demon.ember.name"
+msgstr "Feronia"
+
+msgid "demon.frost.name"
+msgstr "Marzanna"
+
+msgid "demon.arc.name"
+msgstr "Tacita"
+
 #. A8 G6: the grace screen (chapter1/view/hud/screens/growth_choice.gd and its adapter)
 
 #. Title plate of the grace screen
