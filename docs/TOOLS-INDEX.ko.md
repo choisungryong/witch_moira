@@ -75,6 +75,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/measure_combat.gd` | 수치를 고친 뒤 전투 지표 재측정 | Plays whole pilot runs on the real core and measures the combat-pressure targets of | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_combat.gd -- [options]` |
 | `chapter1/tests/sim_loot.gd` | 드랍을 고친 뒤 | Drop simulation for loot grammar v2. Rolls the treasure classes for a whole | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd` |
 | `chapter1/tests/report_run_loot.gd` | 실제 코어 한 판에서 무엇이 떨어졌는지 | Plays whole pilot runs on the real core and reports what actually dropped, | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_run_loot.gd -- --seeds=11,12,13 --primary=chapter1.skill.frost` |
+| `chapter1/tests/report_kit_reads.gd` | 장비 묶음 × 계열마다 주력이 읽는 몫(피해·재사용·모양 배율, 판정 v2의 값, 읽지 않는 공격 줄)을 센다. 전투를 돌리지 않는 빠른 셈(모델의 답) | Per kit and primary: what the primary actually reads (damage, cooldown and shape multipliers, the verdict worth, unread attack lines). No combat is run. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_kit_reads.gd -- --kits-file=_local/d24-vr2/kits.json --kits=kit.d1_end,kit.f2.@.r15 --primaries=ember,frost,arc --cross --out=_local/d24-vr2/reads.json` |
 | `tools/dev/run_all.py` | 마지막 전체 회귀 | Single regression entry point for the current working tree. | `python tools/dev/run_all.py`<br>`python tools/dev/run_all.py --quick` |
 
 ## 기획 수치(content-balance)

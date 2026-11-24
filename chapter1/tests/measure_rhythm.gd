@@ -342,6 +342,8 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	var volley_placed := 0
 	var volley_shooters := {}
 	var volley_beats := {}
+	var volley_marked := {}   ## VR-B: id -> {"frozen": bool}; bodies seen carrying `volley` (the first-shot mark) after a placement, until they fire or die
+	var volley_tally := {"marked": 0, "killed_before_fire": 0, "stopped_frozen": 0, "frozen_killed": 0}
 	if hurt_on:
 		for b in run.tuning.get("rhythm", {}).get("beats", []):
 			if JSON.stringify(b).contains("\"volley\""): volley_beats[String(b.get("id", ""))] = true
@@ -399,6 +401,18 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			for uid in run._hostile_src:
 				var hs = run._hostile_src[uid]
 				if String(hs.get("attack_id", "")) == "volley": volley_shooters[int(hs.id)] = true
+			for vid in volley_marked.keys():
+				var ve = run.enemies.get(int(vid))
+				var vm: Dictionary = volley_marked[vid]
+				if volley_shooters.has(int(vid)) or ve == null or int(ve.hp_raw) <= 0:
+					# resolved: fired, or died / left with the mark still on
+					volley_marked.erase(vid)
+					volley_tally.marked += 1
+					if bool(vm.frozen): volley_tally.stopped_frozen += 1
+					if not volley_shooters.has(int(vid)):
+						volley_tally.killed_before_fire += 1
+						if bool(vm.frozen): volley_tally.frozen_killed += 1
+				elif run.tick < int(ve.frozen_until): vm.frozen = true
 		guard += 1
 		if xp_trace_s > 0.0 and int(run.tick) % int(xp_trace_s * 60.0) == 0 and (xp_trace.is_empty() or int(xp_trace[xp_trace.size() - 1][0]) != int(int(run.tick) / 60)):
 			var gs0: Dictionary = run.growth.snapshot()
@@ -428,7 +442,10 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			if String(ev.type) == "hero_hit":
 				bump(dmg_raw_s, int(int(ev.tick) / 60), float(ev.get("damage_raw", 0)))
 				if hurt_on: hurt_log.append(hurt_note(run, ev))
-			if hurt_on and String(ev.type) == "wave_squad" and volley_beats.has(String(ev.get("beat", ""))): volley_placed += int(ev.get("count", 0))
+			if hurt_on and String(ev.type) == "wave_squad" and volley_beats.has(String(ev.get("beat", ""))):
+				volley_placed += int(ev.get("count", 0))
+				for eid in run.enemies:
+					if run.enemies[eid].has("volley") and not volley_marked.has(int(eid)): volley_marked[int(eid)] = {"frozen": false}
 			if extras_on: ex_event(ex, ev)
 			if String(ev.type) == "beat_started":
 				event_beats = true
@@ -542,6 +559,16 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	if hurt_on:
 		result["hurt"] = hurt_summary(hurt_log)
 		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}
+		# VR-B (record only): of the bodies that carried the first-shot mark, killed_before_fire = died with the mark still on (never in volley_shooters), stopped_frozen = frozen at
+		# least one tick while marked (a freeze pauses the windup clock, it does not cancel the shot), frozen_killed = both; unresolved = still marked and alive at the end.
+		for vid in volley_marked:
+			volley_tally.marked += 1
+			if bool(volley_marked[vid].frozen): volley_tally.stopped_frozen += 1
+		result["volley"]["marked"] = volley_tally.marked
+		result["volley"]["killed_before_fire"] = volley_tally.killed_before_fire
+		result["volley"]["stopped_frozen"] = volley_tally.stopped_frozen
+		result["volley"]["frozen_killed"] = volley_tally.frozen_killed
+		result["volley"]["unresolved"] = volley_marked.size()
 	return result
 
 # ---------- GM-A: damage taken by source (read-only) ----------
