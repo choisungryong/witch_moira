@@ -148,6 +148,8 @@ func _row(loot, block: Dictionary, fixture: Dictionary, kit_name: String, prim: 
 		rest[stat] = totals[stat]
 	var own_v: float = float(block.log_weight) * log(p) + loot.score({"stats": rest}, primary)
 	var game_v: float = loot._verdict_worth(worn, primary, {})
+	var item_rows: Array = []
+	for entry in built.items: item_rows.append({"equip": String(entry.equip), "name": String(entry.item.name), "quality": String(entry.item.quality), "stats": entry.item.stats.duplicate(true)})
 	var carriers := {}
 	for stat in unread:
 		var names: Array = []
@@ -155,4 +157,4 @@ func _row(loot, block: Dictionary, fixture: Dictionary, kit_name: String, prim: 
 			if int(entry.item.stats.get(stat, 0)) != 0: names.append("%s:%s=%d" % [entry.equip, entry.item.name, int(entry.item.stats[stat])])
 		carriers[stat] = names
 	return {"kit": kit_name, "primary": prim, "damage": damage, "rate": rate, "shape": shape, "single": single, "p": p, "v": game_v, "v_own": own_v,
-		"v_check_diff": absf(own_v - game_v), "unread": unread, "unread_carriers": carriers, "totals": totals}
+		"v_check_diff": absf(own_v - game_v), "unread": unread, "unread_carriers": carriers, "totals": totals, "items": item_rows}
