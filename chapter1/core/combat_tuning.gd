@@ -27,7 +27,7 @@ const PACE_KEYS := ["soft_after_ticks","ramp_bps_per_s","max_bps"]
 ## Optional blocks (D13 G0). A document without them runs the plain rules, and so does one with "enabled": false.
 ## "grace" (boon cadence, tools and grades, D13 4.3/4.11), "elites" (W4-a body) and "extras" (W5-a guarded sites, shrines) are
 ## checked in full; extras keeps room for the keys of W5-b/c ("unguarded", "rituals", "grade"), which are only required to be objects.
-const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow","stat_caps","gear_conditions"]
+const OPTIONAL_ROOT := ["rhythm","grace","elites","extras","meteor","loot_flow","stat_caps","gear_conditions","boss_finale"]
 ## D23 T1-B: totals the core cuts whatever the equipment says (absent block = no cap), and the three windows of the gear condition
 ## lines (absent block = those lines never hold).
 const STAT_CAPS_KEYS := ["damage_reduction_bps","condition_damage_bps"]
@@ -120,6 +120,7 @@ static func validate(v: Variant, skill_ids: Array, max_alive: int, max_projectil
 		# The per-beat alive_cap is bounded by the document's own alive_cap, so that one has to be sound first.
 		issues.append_array(_rhythm_issues(v.rhythm,int(v.alive_cap) if integer(v.alive_cap,1,100000) else 1))
 	if v.has("meteor"): issues.append_array(_meteor_issues(v.meteor))
+	if v.has("boss_finale"): issues.append_array(_boss_finale_issues(v.boss_finale,v))
 	if v.has("grace"): issues.append_array(_grace_issues(v.grace))
 	if v.has("elites"): issues.append_array(_elites_issues(v.elites))
 	if v.has("extras"): issues.append_array(_extras_issues(v.extras))
@@ -179,6 +180,83 @@ static func _meteor_issues(m: Variant) -> Array[String]:
 	if not integer(m.scatter_cm,0,600): issues.append("meteor scatter_cm")
 	if not integer(m.radius_bps,3000,30000): issues.append("meteor radius_bps")
 	if not integer(m.damage_bps,3000,30000): issues.append("meteor damage_bps")
+	return issues
+
+## D-boss-finale (BF1~BF9): the final boss's three phases and two breaks. Absent block or "enabled": false = the old fight, nothing below is read.
+const BOSS_FINALE_KEYS := ["enabled","hp","entrance_ticks","phases","breaks"]
+const BF_PHASE_KEYS := ["id","to_hp_bps","recover","ward","adds","slam"]
+const BF_BREAK_KEYS := ["after","ticks","relocate_m","land","escort","storm","potion_drops","chip_bps_per_kill","chip_cap_bps"]
+const BF_SLAM_KEYS := ["every_attacks","windup_ticks","length_m","width_m","damage"]
+const BF_LAND_KEYS := ["windup_ticks","radius_m","damage"]
+const BF_ESCORT_KEYS := ["first","amount","interval_ticks","alive_cap","mix"]
+const BF_STORM_KEYS := ["every_ticks","centers","ring_m","radius_m","windup_ticks","damage"]
+## BF5: an attack that takes this share of the hero's base life (120) or more (heavy_hit.heavy_bps, else 20%) has a wind-up of at least 0.9 s.
+const BF_HERO_BASE_HP := 120
+const BF_MIN_BIG_WINDUP := 54
+const BF_DEFAULT_HEAVY_BPS := 2000
+
+## BF5: is `damage` a big hit (the share of the hero's base life that heavy_hit counts as heavy)? Then its wind-up must be long enough.
+static func _bf_windup_ok(damage: Variant,windup: Variant,heavy_bps: int) -> bool:
+	if not integer(damage,0,500) or not integer(windup,1,600): return false
+	return int(damage)*10000 < heavy_bps*BF_HERO_BASE_HP or int(windup) >= BF_MIN_BIG_WINDUP
+
+static func _bf_mix_valid(mix: Variant) -> bool:
+	if not mix is Dictionary or mix.is_empty(): return false
+	var total := 0
+	for kind in mix:
+		if not kind in KINDS or not integer(mix[kind],0,100): return false
+		total += int(mix[kind])
+	return total >= 1
+
+static func _boss_finale_issues(b: Variant, root: Dictionary) -> Array[String]:
+	if not b is Dictionary or not GrowthCatalog.keys_match(b,BOSS_FINALE_KEYS): return ["boss_finale keys"]
+	var issues: Array[String] = []
+	var heavy_bps := BF_DEFAULT_HEAVY_BPS
+	if root.get("heavy_hit") is Dictionary and integer(root.heavy_hit.get("heavy_bps"),1,10000): heavy_bps = int(root.heavy_hit.heavy_bps)
+	if not b.enabled is bool: issues.append("boss_finale enabled")
+	if not integer(b.hp,1,1000000): issues.append("boss_finale hp")
+	if not integer(b.entrance_ticks,0,1800): issues.append("boss_finale entrance_ticks")
+	if not b.phases is Array or b.phases.size() < 2 or b.phases.size() > 6 or not b.breaks is Array or b.breaks.size() != b.phases.size()-1:
+		issues.append("boss_finale phases and breaks")
+		return issues
+	var previous := 10001
+	var ids: Array[String] = []
+	for i in b.phases.size():
+		var phase: Variant = b.phases[i]
+		var tag := "boss_finale phase %d " % i
+		if not phase is Dictionary or not GrowthCatalog.keys_match(phase,BF_PHASE_KEYS): issues.append(tag+"keys");continue
+		if not phase.id is String or String(phase.id).is_empty() or String(phase.id) in ids: issues.append(tag+"id")
+		else: ids.append(String(phase.id))
+		var last: bool = i == b.phases.size()-1
+		# The thresholds fall strictly and the last one is 0 (that phase ends with the boss's death).
+		if not integer(phase.to_hp_bps,0,9999) or int(phase.to_hp_bps) >= previous or (last and int(phase.to_hp_bps) != 0) or (not last and int(phase.to_hp_bps) < 1): issues.append(tag+"to_hp_bps")
+		else: previous = int(phase.to_hp_bps)
+		if not integer(phase.recover,1,600): issues.append(tag+"recover")
+		if not phase.ward is Dictionary or not GrowthCatalog.keys_match(phase.ward,["every_ticks","centers"]) or not integer(phase.ward.every_ticks,60,1200) or not integer(phase.ward.centers,1,3) or int(phase.ward.centers) == 2: issues.append(tag+"ward")
+		if phase.adds != null:
+			if not phase.adds is Dictionary or not GrowthCatalog.keys_match(phase.adds,["amount","interval_ticks","alive_cap"]) or not integer(phase.adds.amount,0,30) or not integer(phase.adds.interval_ticks,6,1200) or not integer(phase.adds.alive_cap,1,300): issues.append(tag+"adds")
+		if phase.slam != null:
+			var slam: Variant = phase.slam
+			if not slam is Dictionary or not GrowthCatalog.keys_match(slam,BF_SLAM_KEYS) or not integer(slam.every_attacks,1,20) or not number(slam.length_m,1.0,30.0) or not number(slam.width_m,.2,10.0): issues.append(tag+"slam")
+			elif not _bf_windup_ok(slam.damage,slam.windup_ticks,heavy_bps): issues.append(tag+"slam windup (BF5)")
+	if root.get("champions") is Array and root.champions.size() == 3 and root.champions[2] is Dictionary and not _bf_windup_ok(root.champions[2].get("damage"),root.champions[2].get("windup"),heavy_bps): issues.append("boss_finale champion windup (BF5)")
+	if not root.get("boss_ward") is Dictionary or not _bf_windup_ok(root.boss_ward.get("damage"),72,heavy_bps): issues.append("boss_finale boss_ward windup (BF5)")
+	for i in b.breaks.size():
+		var gap: Variant = b.breaks[i]
+		var tag := "boss_finale break %d " % i
+		if not gap is Dictionary or not GrowthCatalog.keys_match(gap,BF_BREAK_KEYS): issues.append(tag+"keys");continue
+		if i < ids.size() and gap.after != ids[i]: issues.append(tag+"after")
+		if not integer(gap.ticks,60,3600): issues.append(tag+"ticks")
+		if not number_array(gap.relocate_m,2,2.0,30.0) or float(gap.relocate_m[0]) > float(gap.relocate_m[1]): issues.append(tag+"relocate_m")
+		if not gap.land is Dictionary or not GrowthCatalog.keys_match(gap.land,BF_LAND_KEYS) or not number(gap.land.radius_m,.5,8.0): issues.append(tag+"land")
+		elif not _bf_windup_ok(gap.land.damage,gap.land.windup_ticks,heavy_bps) or (integer(gap.ticks,60,3600) and int(gap.land.windup_ticks) > int(gap.ticks)): issues.append(tag+"land windup (BF5)")
+		var escort: Variant = gap.escort
+		if not escort is Dictionary or not GrowthCatalog.keys_match(escort,BF_ESCORT_KEYS) or not integer(escort.first,0,100) or not integer(escort.amount,0,30) or not integer(escort.interval_ticks,6,1200) or not integer(escort.alive_cap,1,300) or not _bf_mix_valid(escort.mix): issues.append(tag+"escort")
+		if gap.storm != null:
+			var storm: Variant = gap.storm
+			if not storm is Dictionary or not GrowthCatalog.keys_match(storm,BF_STORM_KEYS) or not integer(storm.every_ticks,12,1200) or not integer(storm.centers,1,12) or not number_array(storm.ring_m,2,.5,12.0) or float(storm.ring_m[0]) > float(storm.ring_m[1]) or not number(storm.radius_m,.5,6.0): issues.append(tag+"storm")
+			elif not _bf_windup_ok(storm.damage,storm.windup_ticks,heavy_bps): issues.append(tag+"storm windup (BF5)")
+		if not integer(gap.potion_drops,0,4) or not integer(gap.chip_bps_per_kill,0,1000) or not integer(gap.chip_cap_bps,0,3000): issues.append(tag+"potion or chip")
 	return issues
 
 static func _bps(v: Variant, high: int = 10000) -> bool:

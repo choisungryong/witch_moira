@@ -604,8 +604,57 @@ func rc_tick(run) -> void:
 	if int(rc.last_pot) >= 0 and int(run.potions) < int(rc.last_pot): rc.ev.append([int(run.tick), "pu", int(run.potions)])
 	rc.last_pot = int(run.potions)
 
+## D-boss-finale (BF-T1..T4, T6, read-only): present in the JSON as rc.fin only for a run in which the finale ran (a boss_entrance event came),
+## so a run without it has the same rc block as before. rows: be [tick,"be",ticks] | bp [tick,"bp",phase,id] | bs [tick,"bs",index,ticks] |
+## bx [tick,"bx",index] | bc [tick,"bc",bps,total_bps] | bo [tick,"bo"]. fin = {boss_id, brk (open break index or -1), phase, kills_break {index: ordinary kills},
+## hurt_break {index: damage taken raw}, hurt_phase {phase: damage taken raw}, hits_break {index: hero hits}, boss_dealt {skill_id: life taken off the boss, raw},
+## other_dealt (life taken off everything else after the boss came, raw), last_hit {tick, source_kind, attack_id, damage_raw, hp_after_raw, telegraphed}}.
+const RC_FINALE := ["boss_entrance", "boss_phase", "boss_break_started", "boss_break_ended", "boss_chip", "boss_potion"]
+const RC_FINALE_TAG := {"boss_entrance": "be", "boss_phase": "bp", "boss_break_started": "bs", "boss_break_ended": "bx", "boss_chip": "bc", "boss_potion": "bo"}
+
+func rc_finale(ev: Dictionary) -> void:
+	var t := String(ev.type)
+	if t == "boss_entrance" and not rc.has("fin"):
+		rc["fin"] = {"boss_id": int(ev.get("target_id", 0)), "brk": -1, "phase": 0, "kills_break": {}, "hurt_break": {}, "hurt_phase": {}, "hits_break": {}, "boss_dealt": {}, "other_dealt": 0, "last_hit": {}}
+	if not rc.has("fin"): return
+	var fin: Dictionary = rc.fin
+	match t:
+		"boss_entrance": rc.ev.append([int(ev.tick), "be", int(ev.get("ticks", 0))])
+		"boss_phase":
+			fin.phase = int(ev.get("phase", 0))
+			rc.ev.append([int(ev.tick), "bp", int(ev.get("phase", 0)), String(ev.get("id", ""))])
+		"boss_break_started":
+			fin.brk = int(ev.get("index", -1))
+			rc.ev.append([int(ev.tick), "bs", int(ev.get("index", -1)), int(ev.get("ticks", 0))])
+		"boss_break_ended":
+			fin.brk = -1
+			rc.ev.append([int(ev.tick), "bx", int(ev.get("index", -1))])
+		"boss_chip": rc.ev.append([int(ev.tick), "bc", int(ev.get("bps", 0)), int(ev.get("total_bps", 0))])
+		"boss_potion": rc.ev.append([int(ev.tick), "bo"])
+		"death":
+			if int(fin.brk) >= 0 and String(ev.get("role", "")) == "normal":
+				var k := str(int(fin.brk))
+				fin.kills_break[k] = int(fin.kills_break.get(k, 0)) + 1
+		"hit":
+			var dealt := int(ev.get("dealt_raw", ev.get("damage_raw", 0)))
+			if int(ev.get("target_id", 0)) == int(fin.boss_id):
+				var sk := String(ev.get("skill_id", ""))
+				fin.boss_dealt[sk] = int(fin.boss_dealt.get(sk, 0)) + dealt
+			else: fin.other_dealt = int(fin.other_dealt) + dealt
+		"hero_hit":
+			var raw := int(ev.get("damage_raw", 0))
+			var ph := str(int(fin.phase))
+			fin.hurt_phase[ph] = int(fin.hurt_phase.get(ph, 0)) + raw
+			if int(fin.brk) >= 0:
+				var b := str(int(fin.brk))
+				fin.hurt_break[b] = int(fin.hurt_break.get(b, 0)) + raw
+				fin.hits_break[b] = int(fin.hits_break.get(b, 0)) + 1
+			fin.last_hit = {"tick": int(ev.tick), "source_kind": String(ev.get("source_kind", "")), "attack_id": String(ev.get("attack_id", "")), "damage_raw": raw, "hp_after_raw": int(ev.get("hp_after_raw", 0))}
+
 func rc_event(ev: Dictionary) -> void:
 	var t := String(ev.type)
+	if rc.has("fin") or t == "boss_entrance": rc_finale(ev)
+	if t in RC_FINALE: return
 	if not RC_EVENTS.has(t): return
 	var row: Array = [int(ev.tick), String(RC_EVENTS[t])]
 	match t:
@@ -643,8 +692,10 @@ func rc_finish(pilot, secs: float) -> Dictionary:
 	for sel in pilot.selections: picks.append([int(sel.tick), String(sel.id), String(sel.kind)])
 	var hp: Array = []
 	for v in rc.hp_s: hp.append(snappedf(float(v), 0.001))
-	return {"secs": snappedf(secs, 0.1), "ev": rc.ev, "hp_s": hp, "pot_s": rc.pot_s, "offers": rc.offers, "picks": picks,
+	var out := {"secs": snappedf(secs, 0.1), "ev": rc.ev, "hp_s": hp, "pot_s": rc.pot_s, "offers": rc.offers, "picks": picks,
 		"defs": "ev rows = [tick, tag, ...]: beat id | crest beat count | gate zone | champ zone | zone zone | pu remaining (read from the potion count falling) | pp remaining | dr uses | dc | lc level | drop quality source. hp_s = lowest life ratio per second; pot_s = potions at the end of the second. offers.crest_age = ticks since the last wave_crest (-1 none)."}
+	if rc.has("fin"): out["fin"] = rc.fin
+	return out
 
 # ---------- GM-A: damage taken by source (read-only) ----------
 ## One hero_hit as [second, source_kind, attack_id, damage_raw, graze, heavy]. heavy = the hit before any graze was at least heavy_bps of the maximum life (the core's own test).

@@ -64,6 +64,36 @@
   "hero_shot": {"spread_mrad": 160},
   "meteor": {"fall_ticks": 24, "lead_bps": 5000, "scatter_cm": 150, "radius_bps": 10000, "damage_bps": 10000},
   "loot_flow": {"enabled": false, "keep_min_quality": "rare", "gate_sweep_min_quality": "rare", "boss_spray": {"enabled": false, "guardian_pull_ticks": 120, "boss_pull_ticks": 150, "arrive_ticks": 30, "ring_min_cm": 200, "ring_max_cm": 350}},
+  "boss_finale": {
+    "enabled": false,
+    "hp": 15000,
+    "entrance_ticks": 120,
+    "phases": [
+      {"id": "p1", "to_hp_bps": 6500, "recover": 90,
+       "ward": {"every_ticks": 240, "centers": 1},
+       "adds": {"amount": 2, "interval_ticks": 60, "alive_cap": 10},
+       "slam": null},
+      {"id": "p2", "to_hp_bps": 3000, "recover": 65,
+       "ward": {"every_ticks": 180, "centers": 3},
+       "adds": {"amount": 2, "interval_ticks": 60, "alive_cap": 10},
+       "slam": {"every_attacks": 3, "windup_ticks": 72, "length_m": 10.0, "width_m": 2.0, "damage": 70}},
+      {"id": "p3", "to_hp_bps": 0, "recover": 55,
+       "ward": {"every_ticks": 150, "centers": 3},
+       "adds": null,
+       "slam": {"every_attacks": 2, "windup_ticks": 72, "length_m": 10.0, "width_m": 2.0, "damage": 70}}
+    ],
+    "breaks": [
+      {"after": "p1", "ticks": 600, "relocate_m": [9.0, 12.0],
+       "land": {"windup_ticks": 72, "radius_m": 3.0, "damage": 55},
+       "escort": {"first": 16, "amount": 3, "interval_ticks": 60, "alive_cap": 28, "mix": {"walker": 70, "charger": 30}},
+       "storm": null, "potion_drops": 0, "chip_bps_per_kill": 25, "chip_cap_bps": 500},
+      {"after": "p2", "ticks": 540, "relocate_m": [9.0, 12.0],
+       "land": {"windup_ticks": 72, "radius_m": 3.0, "damage": 55},
+       "escort": {"first": 16, "amount": 3, "interval_ticks": 60, "alive_cap": 28, "mix": {"walker": 70, "charger": 30}},
+       "storm": {"every_ticks": 90, "centers": 5, "ring_m": [1.5, 4.5], "radius_m": 1.8, "windup_ticks": 60, "damage": 40},
+       "potion_drops": 1, "chip_bps_per_kill": 25, "chip_cap_bps": 500}
+    ]
+  },
   "rhythm": {
     "enabled": false,
     "initial_pack": 0,
