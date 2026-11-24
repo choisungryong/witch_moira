@@ -14,6 +14,10 @@ extends SceneTree
 ##   data files and the saves are untouched) and prints a table against the bare hero ("none", same seed): damage taken (whole run, worst 60 s window), guardian / boss kill time, defeats, run length, with the
 ##   A.5 verdicts. "@" in a kit name = the primary's series (ember / frost / arc). Kits come from tests/fixtures/gear_kits.json plus --kits-file=_local/..json (the F2 kits of sim_loot.gd --wear). The kit order is
 ##   the outer loop, so a run list is kit by kit; the printed per-run lines are short in this mode.
+## D-run-curve RC-A (read-only, this tool only; with no --rc the stdout and the JSON are byte-for-byte the same as before): --rc adds a per-run "rc" block to the JSON (no extra stdout): the raw
+##   records tools/dev/rc_read.py judges the RC-T table from (core events with ticks: beat_started / wave_crest / gate_opened / chapter_champion / potion_pickup / item_drop /
+##   descent_ready / descent_called / level_choice, and a potion drink read from the potion count falling; the hero's lowest life ratio and the potion count per second; every offer with its card ids and the state the 4.3 crisis rule reads;
+##   the picks). It only reads core state and events; nothing here draws a random number or writes the core.
 ## Grouping: fixed-size time bins (--bin seconds), D11 A2 beats, and zones. Beats are grouped by `beat_started` core
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
@@ -102,6 +106,9 @@ var policy_name := ""
 var thirds_on := false
 ## --hurt-by-source (GM-A): per run, the damage taken split by source (whole run and the worst 60 s window), hits, heavy hits and grazes, into the JSON "hurt". Read-only; absent = the output is unchanged.
 var hurt_on := false
+## --rc (RC-A): the raw records of the run-curve meter. `rc` is the record of the run being played (reset in play()).
+var rc_on := false
+var rc: Dictionary = {}
 ## The sweep counts are always collected into the JSON ("sweep" per run); they are printed only with --thirds.
 const SWEEP_WINDOW_TICKS := 30        ## "0.5 s" window
 const SWEEP_MIN_KILLS := 10
@@ -145,6 +152,7 @@ func execute() -> void:
 				return
 		elif arg == "--thirds": thirds_on = true
 		elif arg == "--hurt-by-source": hurt_on = true
+		elif arg == "--rc": rc_on = true
 		elif arg == "--no-trial-arena": no_trial_arena = true
 		elif arg == "--stand": stand_on = true
 		elif arg.begins_with("--stand-from="):
@@ -337,6 +345,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if kit_problem != "":
 			push_error("measure_rhythm: " + kit_problem)
 			return {}
+	if rc_on: rc = rc_new()
 	var dmg_raw_s: Array = []
 	var hurt_log: Array = []
 	var volley_placed := 0
@@ -397,6 +406,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if pilot_extras: mv = extras_move(run, mv)
 		var called_events: Array = DescentPolicy.use(run, descent_policy) if descent_policy != "" else []
 		run.step(mv)
+		if rc_on: rc_tick(run)
 		if hurt_on:
 			for uid in run._hostile_src:
 				var hs = run._hostile_src[uid]
@@ -428,6 +438,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			all_types[String(ev.type)] = int(all_types.get(String(ev.type), 0)) + 1
 			var esec: float = float(ev.tick) / 60.0
 			sweep_event(sw, ev, run, prim)
+			if rc_on: rc_event(ev)
 			if stand_from != "" or stand_on:
 				match String(ev.type):
 					"beat_started":
@@ -556,6 +567,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"elites": extras_summary(run, ex),
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
 		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
+	if rc_on: result["rc"] = rc_finish(pilot, secs)
 	if hurt_on:
 		result["hurt"] = hurt_summary(hurt_log)
 		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}
@@ -570,6 +582,69 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		result["volley"]["frozen_killed"] = volley_tally.frozen_killed
 		result["volley"]["unresolved"] = volley_marked.size()
 	return result
+
+# ---------- RC-A: run-curve raw records (read-only; see the header) ----------
+## core event type -> short tag of the rc record.
+const RC_EVENTS := {"beat_started": "beat", "wave_crest": "crest", "gate_opened": "gate", "chapter_champion": "champ", "zone_entered": "zone",
+	"potion_pickup": "pp", "descent_ready": "dr", "descent_called": "dc", "level_choice": "lc", "item_drop": "drop"}
+
+func rc_new() -> Dictionary:
+	return {"ev": [], "hp_s": [], "pot_s": [], "offers": [], "last_crest_tick": -1, "last_pot": -1}
+
+## Once per core step: the lowest life ratio of each second and the potion count at the last step of it.
+func rc_tick(run) -> void:
+	var sec := int(int(run.tick) / 60)
+	var ratio := clampf(float(run.hero.hp_raw) / maxf(1.0, float(run.hero.max_hp_raw)), 0.0, 1.0)
+	while rc.hp_s.size() <= sec:
+		rc.hp_s.append(ratio)
+		rc.pot_s.append(int(run.potions))
+	rc.hp_s[sec] = minf(float(rc.hp_s[sec]), ratio)
+	rc.pot_s[sec] = int(run.potions)
+	# The pilot drinks BEFORE step() (its potion_used event is gone when the events are read), so a drink is read as the potion count falling (only drinking lowers it): tag "pu".
+	if int(rc.last_pot) >= 0 and int(run.potions) < int(rc.last_pot): rc.ev.append([int(run.tick), "pu", int(run.potions)])
+	rc.last_pot = int(run.potions)
+
+func rc_event(ev: Dictionary) -> void:
+	var t := String(ev.type)
+	if not RC_EVENTS.has(t): return
+	var row: Array = [int(ev.tick), String(RC_EVENTS[t])]
+	match t:
+		"beat_started": row.append(String(ev.get("id", "")))
+		"wave_crest":
+			row.append(String(ev.get("beat", "")))
+			row.append(int(ev.get("count", 0)))
+			rc.last_crest_tick = int(ev.tick)
+		"gate_opened", "chapter_champion", "zone_entered": row.append(int(ev.get("zone", 0)))
+		"potion_pickup": row.append(int(ev.get("remaining", 0)))
+		"descent_ready": row.append(int(ev.get("uses", 0)))
+		"level_choice": row.append(int(ev.get("level", 0)))
+		"item_drop":
+			var item: Dictionary = ev.get("item", {})
+			row.append(String(item.get("quality", "")))
+			row.append(String(ev.get("source", "")))
+	rc.ev.append(row)
+
+## One offer with the state the D-run-curve 4.3 crisis rule reads (alive vs the beat cap, ticks since the last crest, a guardian alive, life, seal progress).
+func rc_offer(run, offer: Dictionary) -> void:
+	var cards: Array = []
+	for c in offer.cards: cards.append([String(c.get("id", "")), String(c.get("kind", ""))])
+	var cap := int(run.tuning.alive_cap)
+	var rh: Dictionary = run.tuning.get("rhythm", {})
+	if bool(run._rhythm_on):
+		if String(run._trial_phase) == "hold": cap = mini(cap, int(rh.get("trial", {}).get("alive_cap", cap)))
+		elif int(run._beat_index) >= 0 and int(run._beat_index) < rh.get("beats", []).size(): cap = mini(cap, int(rh.beats[int(run._beat_index)].alive_cap))
+	var hp_bps := int(float(run.hero.hp_raw) * 10000.0 / maxf(1.0, float(run.hero.max_hp_raw)))
+	rc.offers.append({"tick": int(run.tick), "level": int(run.growth.snapshot().level), "cards": cards, "alive": int(run.alive_count()), "cap": cap,
+		"crest_age": (int(run.tick) - int(rc.last_crest_tick)) if int(rc.last_crest_tick) >= 0 else -1, "champ_alive": bool(run._guardian_alive()),
+		"zone": int(run.zone), "zone_bps": int(run._zone_bps()), "hp_bps": hp_bps})
+
+func rc_finish(pilot, secs: float) -> Dictionary:
+	var picks: Array = []
+	for sel in pilot.selections: picks.append([int(sel.tick), String(sel.id), String(sel.kind)])
+	var hp: Array = []
+	for v in rc.hp_s: hp.append(snappedf(float(v), 0.001))
+	return {"secs": snappedf(secs, 0.1), "ev": rc.ev, "hp_s": hp, "pot_s": rc.pot_s, "offers": rc.offers, "picks": picks,
+		"defs": "ev rows = [tick, tag, ...]: beat id | crest beat count | gate zone | champ zone | zone zone | pu remaining (read from the potion count falling) | pp remaining | dr uses | dc | lc level | drop quality source. hp_s = lowest life ratio per second; pot_s = potions at the end of the second. offers.crest_age = ticks since the last wave_crest (-1 none)."}
 
 # ---------- GM-A: damage taken by source (read-only) ----------
 ## One hero_hit as [second, source_kind, attack_id, damage_raw, graze, heavy]. heavy = the hit before any graze was at least heavy_bps of the maximum life (the core's own test).
@@ -634,6 +709,7 @@ func note_offer(run, offers: Array, offer: Dictionary) -> void:
 	var kinds := {}
 	for c in offer.cards: kinds[String(c.get("kind", ""))] = true
 	offers.append({"token": token, "level": int(run.growth.snapshot().level), "cards": offer.cards.size(), "kinds": kinds.size()})
+	if rc_on: rc_offer(run, offer)
 
 func offers_l12(offers: Array) -> Dictionary:
 	var kinds: Array = []
