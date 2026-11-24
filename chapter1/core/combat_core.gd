@@ -131,6 +131,12 @@ var _thorns_pending: Array[Dictionary] = []
 ## D23 T17: kill ticks inside the streak window, and the projectiles the next primary cast gets (0 = not armed).
 var _streak_kills: Array[int] = []
 var _streak_charge := 0
+## D-boss-finale BF2: the id of the one enemy that is out of play right now (the final boss during its entrance and its breaks), 0 = none.
+## Enemy ids start at 1, so a run that never sets it behaves as before. _near() never lists it, its AI does not run, a hit on it is blocked.
+var _shield_id := 0
+## Tick of the last boss_hit_blocked event (the event comes at most every SHIELD_EVENT_GAP ticks).
+var _shield_blocked_tick := -100000
+const SHIELD_EVENT_GAP := 30
 
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
@@ -185,6 +191,8 @@ func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	_thorns_pending.clear()
 	_streak_kills.clear()
 	_streak_charge = 0
+	_shield_id = 0
+	_shield_blocked_tick = -100000
 	_friendly_tick = -1
 	_last_heavy_tick = -1
 	_guaranteed_drops = 0
@@ -661,6 +669,8 @@ func _step_enemies() -> void:
 	for id_ in ids:
 		var e: Dictionary = enemies[id_]
 		if e.hp_raw <= 0: continue
+		# Out of play (the final boss in its entrance or a break): no move, no attack, no clock.
+		if int(id_) == _shield_id: continue
 		if (tick < int(e.frozen_until) or tick < int(e.get("stunned_until",0))):
 			# Freeze pauses attack/recovery motion time, not just the actor position.
 			# Thaw cannot jump past an unseen windup and attack immediately.
@@ -743,7 +753,12 @@ func _step_enemies() -> void:
 				for ray in count: rays.append(toward.rotated((float(ray)-float(count-1)*.5)*(.18 if e.elite else .14)))
 				hazard_radius = hazard_length+.44
 			e.telegraph = {"shape":e.attack_kind,"direction":toward,"radius":hazard_radius,"length":hazard_length,"width":1.42 if e.kind == "charger" else .88,"rays":rays,"remaining_ticks":int(def.windup)}
+			if e.elite: _on_elite_windup(e)
 		if _terminal_mode == "defeat": return
+
+## A strong body has just begun a wind-up (state, attack kind and telegraph are set). The chapter core may swap the attack here; the base core does nothing.
+func _on_elite_windup(_e: Dictionary) -> void:
+	pass
 
 ## A guarding elite (D13 5.2) never stands farther than its leash from its anchor.
 func _guard_leash(e: Dictionary) -> void:
@@ -964,7 +979,7 @@ func _near(point: Vector2, radius: float) -> Array[int]:
 		for y in range(low.y,high.y+1):
 			for id_ in _grid.get(Vector2i(x,y),[]):
 				var e: Dictionary = enemies[id_]
-				if e.hp_raw > 0 and e.position.distance_squared_to(point) <= radius*radius: result.append(id_)
+				if e.hp_raw > 0 and int(id_) != _shield_id and e.position.distance_squared_to(point) <= radius*radius: result.append(id_)
 	result.sort_custom(func(a: int,b: int) -> bool:
 		var da: float = enemies[a].position.distance_squared_to(point)
 		var db: float = enemies[b].position.distance_squared_to(point)
@@ -1299,6 +1314,8 @@ func _step_projectiles() -> void:
 			var context: Dictionary = _contexts[p.cast_id]
 			var midpoint: Vector2 = (p.previous+p.position)*.5
 			var query_radius: float = p.previous.distance_to(p.position)*.5+float(p.radius)+1.0
+			# The body out of play stops a shot that meets it (nothing is dealt, the shot is gone, boss_hit_blocked says so).
+			if _shield_id > 0 and _shield_stops(p,String(context.skill_id)): continue
 			for id_ in _near(midpoint,query_radius):
 				if id_ in p.hit_ids: continue
 				var e: Dictionary = enemies[id_]
@@ -1329,6 +1346,21 @@ func _step_projectiles() -> void:
 	for uid in _contexts.keys():
 		if not active.has(uid): _contexts.erase(uid)
 
+## True when the friendly shot's step this tick touches the body that is out of play.
+func _shield_stops(p: Dictionary, skill_id: String) -> bool:
+	var body: Variant = enemies.get(_shield_id)
+	if not body is Dictionary or body.hp_raw <= 0: return false
+	if _segment_distance_sq(body.position,p.previous,p.position) > pow(float(body.radius)+float(p.radius),2): return false
+	_shield_block_event(skill_id)
+	return true
+
+## One boss_hit_blocked event for a hit the out-of-play body turned away (at most one every SHIELD_EVENT_GAP ticks).
+func _shield_block_event(skill_id: String) -> void:
+	if tick-_shield_blocked_tick < SHIELD_EVENT_GAP: return
+	_shield_blocked_tick = tick
+	var body: Variant = enemies.get(_shield_id)
+	_emit("boss_hit_blocked",body.position if body is Dictionary else hero.position,{"skill_id":skill_id,"target_id":_shield_id})
+
 func _area_hit(position: Vector2, radius: float, context: Dictionary, exclude: int, depth: int) -> void:
 	for id_ in _near(position,radius):
 		if id_ == exclude or int(context.remaining_hits) <= 0: continue
@@ -1338,6 +1370,9 @@ func _damage_enemy(id_: int, context: Dictionary, depth: int) -> void:
 	if not _terminal_mode.is_empty() or not enemies.has(id_) or int(context.remaining_hits) <= 0: return
 	var e: Dictionary = enemies[id_]
 	if e.hp_raw <= 0 or e.generation != _epoch: return
+	if id_ == _shield_id:
+		_shield_block_event(String(context.skill_id))
+		return
 	# Arc has one hit per entity across both direct branches and death procs in a cast.
 	# Fire/frost may hit an entity with separate projectiles, each with its own hit_ids.
 	if context.skill_id == "chapter1.skill.arc":

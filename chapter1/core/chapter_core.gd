@@ -62,6 +62,24 @@ var _next_potion := 0
 var _champion_id := -1
 var _boss_phase := 0
 var _next_ward := 0
+## D-boss-finale (tuning.boss_finale, BF1~BF9). Everything below stays at rest, and out of snapshot(), while the block is absent or not enabled.
+## _bf_state: "" (boss not here yet) | "entrance" | "phase" | "break" | "done". The boss is out of play (_shield_id) in an entrance and in a break.
+var _bf_on := false
+var _bf: Dictionary = {}
+var _bf_state := ""
+var _bf_phase := 0
+var _bf_break := -1
+var _bf_until := 0
+var _bf_to := Vector2.ZERO
+var _bf_land_started := false
+var _bf_next_adds := 0
+var _bf_next_escort := 0
+var _bf_next_storm := 0
+var _bf_storms := 0
+var _bf_phase_attacks := 0
+var _bf_chip := 0
+var _bf_break_chip := 0
+var _bf_break_kills := 0
 var _hazard_sequence := 0
 var _potion_sequence := 0
 var _zone_entered := false
@@ -243,6 +261,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 	seals.clear();history.clear();potion_pickups.clear();pending_rewards.clear();chapter_hazards.clear();rituals.clear()
 	if _build_potions>0:potions=mini(int(tuning.potion.carry_max),potions+_build_potions)
 	_rhythm_on=tuning.has("rhythm") and bool(tuning.rhythm.enabled)
+	_bf_on=tuning.has("boss_finale") and bool(tuning.boss_finale.enabled);_bf=tuning.boss_finale if _bf_on else {};_bf_reset()
 	_beat_index=-1;_beat_tick=0;_wave_index=-1;_in_lull=false;_taste_done=false;_rest_until=0;_spawn_hp_bps=10000
 	_squad_wave=-1;_wave_heading=0.0;_crest_jitter={};_threat_on=false;_ranged_left=-1
 	if _rhythm_on:
@@ -639,12 +658,15 @@ func _spawn_wave() -> void:
 			_boss_phase=1 if zone==2 else 0;_next_ward=tick+3*HZ
 			_record("boss_spawned" if zone==2 else "champion_spawned")
 			_emit("chapter_champion",e.position,{"zone":zone,"target_id":e.id})
+			if zone==2 and _bf_on:_bf_begin(e)
 			if zone==2 and tuning.final_level_on_boss_spawn:_seal_grace()
 			if zone==2 and _rhythm_on:_spawn_hp_bps=10000;_emit("beat_started",hero.position,{"id":"boss"})
 	# The breath after a descent (from its end tick on): nothing ordinary is sent in (a guardian above is not held back).
 	# During the sweep the ordinary spawn goes on at after.sweep_spawn_bps of its pace (D24 1st edition 4.7).
 	if tick<_d_pause_until:return
 	if not _d_sweep.is_empty() and int(descent.after.sweep_spawn_bps)<=0:return
+	# With the finale on, the boss's escorts and adds come from its own phases and breaks (_bf_step), never from spawn.boss_phase.
+	if _bf_on and zone==2 and _champion_id>0:return
 	if _rhythm_on and not (zone==2 and _champion_id>0):_spawn_rhythm_wave();return
 	if tick<_next_spawn:return
 	# Frequent weak bodies provide sweepable packs, mixed with bounded specialists.
@@ -1082,8 +1104,8 @@ func _step_enemies() -> void:
 	if ward_gap>0 and zone==2 and _champion_id>0 and enemies.has(_champion_id):
 		var warden: Dictionary=enemies[_champion_id]
 		var ready: bool=warden.state=="move" or (warden.state=="recover" and tick>=int(warden.state_until))
-		if warden.hp_raw>0 and ready and tick>=int(warden.frozen_until) and tick>=int(warden.get("stunned_until",0)):
-			var attack_end: int=tick+int(warden.definition.windup)
+		if warden.hp_raw>0 and ready and int(warden.id)!=_shield_id and tick>=int(warden.frozen_until) and tick>=int(warden.get("stunned_until",0)):
+			var attack_end: int=tick+_bf_next_windup(warden)
 			var held: bool=attack_end-_last_ward_burst<ward_gap
 			for hazard in chapter_hazards:
 				if absi(attack_end-int(hazard.expires))<ward_gap:held=true;break
@@ -1100,6 +1122,7 @@ func _step_enemies() -> void:
 	super._step_enemies()
 
 func _resolve_elite_attack(e: Dictionary,definition: Dictionary,distance: float) -> void:
+	if e.attack_kind=="slam":_bf_resolve_slam(e);return
 	if e.attack_kind!="frost_cross":super._resolve_elite_attack(e,definition,distance);return
 	for direction in [e.attack_direction,e.attack_direction.orthogonal()]:
 		if _segment_distance_sq(hero.position,e.position-direction*4.8,e.position+direction*4.8)<=.9*.9:
@@ -1114,6 +1137,7 @@ func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 	# The gauge counts events, and only while no descent is called or sweeping (it never fills itself).
 	if not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent"):_descent_score(type,details)
 	if type=="death" and _kb_on:_kill_burst_note(details,position)
+	if type=="death" and _bf_state=="break" and String(details.get("role","normal"))=="normal":_bf_on_kill()
 	if type=="death" and _zone_entered and position.distance_squared_to(ZONES[zone])<26.0*26.0:
 		zone_kills+=1;seals[zone].kills=zone_kills
 		if _build_active:_progress_seal()
@@ -1137,6 +1161,7 @@ func _on_elite_defeated(e: Dictionary) -> void:
 	if _rhythm_on and zone<2 and bool(tuning.rhythm.get("guardian_grace",false)):_seal_grace("guardian")
 	if zone==2:
 		chapter_hazards.clear();_boss_phase=0
+		if _bf_on:_bf_state="done";_shield_id=0
 		# D23 T5: with boss_spray on the result waits until the spilled loot has been pulled in (_spray_arrive); the hero cannot be
 		# hurt in between (the kill is won).
 		if _spray_has_boss():
@@ -1686,6 +1711,19 @@ func _step_chapter_hazards() -> void:
 	if _champion_id<=0 or not enemies.has(_champion_id) or zone!=2:return
 	var boss: Dictionary=enemies[_champion_id]
 	if boss.hp_raw<=0:return
+	if _bf_on:_bf_step(boss)
+	else:_boss_ward_legacy(boss)
+	var live: Array[Dictionary]=[]
+	for hazard in chapter_hazards:
+		if tick<hazard.expires:live.append(hazard);continue
+		if hero.position.distance_squared_to(hazard.position)<=pow(float(hazard.radius),2):_hero_damage(hazard.damage_raw,hazard.position,"boss_ward",0,String(hazard.get("attack_id","")))
+		_last_ward_burst=tick
+		if hazard.has("kind"):_emit("chapter_burst",hazard.position,{"radius":hazard.radius,"kind":hazard.kind})
+		else:_emit("chapter_burst",hazard.position,{"radius":hazard.radius})
+	chapter_hazards=live
+
+## The fight as it was before D-boss-finale: two phases at half health, floor strikes every 4 s (3 s in phase 2).
+func _boss_ward_legacy(boss: Dictionary) -> void:
 	if _boss_phase==1 and int(boss.hp_raw)*2<=int(boss.max_hp_raw):
 		_boss_phase=2;boss.definition.recover=65;_next_ward=mini(_next_ward,tick+HZ)
 		# The half-health change leaves a breath without floor strikes (D11 A2, rhythm.boss.phase_break_ticks).
@@ -1707,13 +1745,215 @@ func _step_chapter_hazards() -> void:
 				_hazard_sequence+=1
 				chapter_hazards.append({"uid":_hazard_sequence,"position":center,"radius":1.8,"started":tick,"expires":tick+72,"damage_raw":int(tuning.boss_ward.damage)*UNIT})
 				_emit("chapter_warning",center,{"radius":1.8,"duration_ticks":72})
-	var live: Array[Dictionary]=[]
-	for hazard in chapter_hazards:
-		if tick<hazard.expires:live.append(hazard);continue
-		if hero.position.distance_squared_to(hazard.position)<=pow(float(hazard.radius),2):_hero_damage(hazard.damage_raw,hazard.position,"boss_ward",0)
-		_last_ward_burst=tick
-		_emit("chapter_burst",hazard.position,{"radius":hazard.radius})
-	chapter_hazards=live
+
+# ---------------------------------------------------------------- D-boss-finale (tuning.boss_finale): entrance, three phases, two breaks
+# BF1 the fight is an entrance, phase 1, break 1, phase 2, break 2 (the storm), phase 3. BF2 a break is a fixed number of ticks in which the
+# boss is out of play (_shield_id: not aimed at, not hit, no AI); gear, kills and the descent cannot shorten it. BF3 a phase's health
+# threshold holds: damage past it is thrown away (_damage_enemy -> _bf_clamp_damage) and the break begins. All figures are in
+# tuning.boss_finale; the code holds none. Random numbers: only the escorts' and adds' kind and place (_spawn_rng), and only here.
+
+func _bf_reset() -> void:
+	_bf_state="";_bf_phase=0;_bf_break=-1;_bf_until=0;_bf_to=Vector2.ZERO;_bf_land_started=false
+	_bf_next_adds=0;_bf_next_escort=0;_bf_next_storm=0;_bf_storms=0;_bf_phase_attacks=0;_bf_chip=0;_bf_break_chip=0;_bf_break_kills=0
+
+## The final boss has just been made: its health from the block, the entrance begins (out of play for entrance_ticks).
+func _bf_begin(e: Dictionary) -> void:
+	var hp := int(_bf.hp)
+	e.definition.hp=hp;e.hp_raw=hp*UNIT;e.max_hp_raw=e.hp_raw
+	e.definition.recover=int(_bf.phases[0].recover)
+	_bf_reset()
+	_bf_state="entrance";_bf_until=tick+int(_bf.entrance_ticks);_shield_id=int(e.id);_boss_phase=1
+	_emit("boss_entrance",e.position,{"ticks":int(_bf.entrance_ticks),"target_id":int(e.id)})
+
+## One tick of the finale, after the combat step (called from _step_chapter_hazards). `boss` is alive.
+func _bf_step(boss: Dictionary) -> void:
+	match _bf_state:
+		"entrance":
+			if tick>=_bf_until:_bf_start_phase(boss,0)
+		"phase":
+			var rule: Dictionary=_bf.phases[_bf_phase]
+			var to_bps := int(rule.to_hp_bps)
+			if to_bps>0 and int(boss.hp_raw)<=int(boss.max_hp_raw)*to_bps/10000:
+				_bf_start_break(boss);return
+			_bf_ward_step(boss,rule)
+			if rule.adds!=null and tick>=_bf_next_adds:
+				_bf_next_adds=tick+int(rule.adds.interval_ticks)
+				_bf_spawn_group(int(rule.adds.amount),int(rule.adds.alive_cap),{})
+		"break":
+			_bf_break_step(boss)
+
+## A phase begins (the first after the entrance, the others when a break ends). The boss is back in play.
+func _bf_start_phase(boss: Dictionary,index: int) -> void:
+	var rule: Dictionary=_bf.phases[index]
+	_bf_state="phase";_bf_phase=index;_bf_phase_attacks=0;_shield_id=0;_boss_phase=index+1
+	boss.state="move";boss.state_until=0;boss.telegraph={};boss.definition.recover=int(rule.recover)
+	_next_ward=tick+int(rule.ward.every_ticks)
+	_bf_next_adds=tick+(int(rule.adds.interval_ticks) if rule.adds!=null else 0)
+	if index>0:_record("boss_phase%d"%(index+1))
+	_emit("boss_phase",boss.position,{"phase":index+1,"id":String(rule.id)})
+
+## A phase's health threshold was reached: the boss leaps away (out of play) for the break's fixed ticks.
+func _bf_start_break(boss: Dictionary) -> void:
+	var rule: Dictionary=_bf.breaks[_bf_phase]
+	_bf_state="break";_bf_break=_bf_phase;_bf_until=tick+int(rule.ticks);_shield_id=int(boss.id);_bf_land_started=false
+	_bf_break_kills=0;_bf_break_chip=0
+	# Whatever it was doing is cut; the next phase starts clean.
+	boss.state="move";boss.state_until=0;boss.telegraph={}
+	boss.frozen_until=0;boss.stunned_until=0;boss.staggered_until=0;boss.slow_until=0
+	_bf_to=_bf_landing_spot(rule)
+	boss.position=_bf_to
+	_emit("boss_break_started",boss.position,{"index":_bf_break,"ticks":int(rule.ticks),"to":_bf_to,"target_id":int(boss.id)})
+	_bf_next_escort=tick+int(rule.escort.interval_ticks)
+	_bf_spawn_group(int(rule.escort.first),int(rule.escort.alive_cap),rule.escort.mix)
+	if rule.storm!=null:_bf_next_storm=tick+int(rule.storm.every_ticks);_bf_storms=0
+	for i in int(rule.potion_drops):
+		var spot := _clamp_point(_bf_to+Vector2(.7*i,0))
+		_drop_potion(spot);_emit("boss_potion",spot,{"index":_bf_break})
+
+func _bf_break_step(boss: Dictionary) -> void:
+	var rule: Dictionary=_bf.breaks[_bf_break]
+	# The landing is telegraphed for its wind-up before the break ends, and bursts on the tick the break ends.
+	var land: Dictionary=rule.land
+	if not _bf_land_started and tick>=_bf_until-int(land.windup_ticks):
+		_bf_land_started=true
+		_bf_hazard(_bf_to,float(land.radius_m),int(land.windup_ticks),int(land.damage),"land","land",Vector2.ZERO)
+	if tick>=_bf_until:
+		_emit("boss_break_ended",boss.position,{"index":_bf_break,"target_id":int(boss.id)})
+		_bf_start_phase(boss,_bf_break+1)
+		return
+	if rule.storm!=null and tick>=_bf_next_storm:
+		var storm: Dictionary=rule.storm
+		_bf_next_storm=tick+int(storm.every_ticks)
+		# A storm that would burst after the break is over is not sent.
+		if tick+int(storm.windup_ticks)<=_bf_until:_bf_storm(storm)
+	if tick>=_bf_next_escort:
+		_bf_next_escort=tick+int(rule.escort.interval_ticks)
+		_bf_spawn_group(int(rule.escort.amount),int(rule.escort.alive_cap),rule.escort.mix)
+
+## Where the boss lands: ring_m from the hero in the hero's heading (no random number), turned aside when a wall pulls it too close.
+func _bf_landing_spot(rule: Dictionary) -> Vector2:
+	var low := float(rule.relocate_m[0]);var high := float(rule.relocate_m[1])
+	var distance := low+(high-low)*float(tick%7)/6.0
+	var heading: Vector2=hero.direction if hero.direction.length_squared()>.01 else Vector2.UP
+	var best := _clamp_point(hero.position+heading*distance)
+	var best_distance := best.distance_to(hero.position)
+	if best_distance<low*.8:
+		for turn in [PI*.5,-PI*.5,PI]:
+			var candidate := _clamp_point(hero.position+heading.rotated(turn)*distance)
+			var d := candidate.distance_to(hero.position)
+			if d>best_distance:best=candidate;best_distance=d
+			if best_distance>=low*.8:break
+	return best
+
+## A telegraphed circle on the floor (burst after windup ticks): the existing hazard list, so the hero's dodge and the ward gap read it too.
+func _bf_hazard(center: Vector2,radius: float,windup: int,damage: int,kind: String,attack_id: String,direction: Vector2) -> void:
+	_hazard_sequence+=1
+	chapter_hazards.append({"uid":_hazard_sequence,"position":center,"radius":radius,"started":tick,"expires":tick+windup,"damage_raw":damage*UNIT,"kind":kind,"attack_id":"" if attack_id=="ward" else attack_id})
+	_emit("chapter_warning",center,{"radius":radius,"duration_ticks":windup,"kind":kind})
+	if kind!="ward":_emit("boss_telegraph",center,{"attack_id":attack_id,"shape":"circle","position":center,"direction":direction,"length":0.0,"width":0.0,"radius":radius,"windup_ticks":windup})
+
+## The floor strike of a phase (the old one, with the phase's own rhythm and number of circles).
+func _bf_ward_step(boss: Dictionary,rule: Dictionary) -> void:
+	if tick<_next_ward:return
+	# As before: a strike is put off when it would burst within ward_gap_ticks of the end of the boss's own wind-up.
+	var gap: int=int(tuning.heavy_hit.ward_gap_ticks)
+	if gap>0 and boss.state=="windup" and absi(tick+72-int(boss.state_until))<gap:
+		_next_ward=tick+gap;return
+	_next_ward=tick+int(rule.ward.every_ticks)
+	var centers: Array[Vector2]=[hero.position]
+	if int(rule.ward.centers)>=3:
+		centers.append(_clamp_point(hero.position+hero.direction.rotated(PI*.5)*3.8))
+		centers.append(_clamp_point(hero.position-hero.direction.rotated(PI*.5)*3.8))
+	for center in centers:_bf_hazard(center,1.8,72,int(tuning.boss_ward.damage),"ward","ward",Vector2.ZERO)
+
+## The storm of the second break: `centers` circles round the hero between ring_m, placed from the hero's heading and the storm's number only.
+func _bf_storm(storm: Dictionary) -> void:
+	var count := int(storm.centers)
+	var low := float(storm.ring_m[0]);var high := float(storm.ring_m[1])
+	var heading: Vector2=hero.direction if hero.direction.length_squared()>.01 else Vector2.UP
+	var base_angle := heading.angle()+float(_bf_storms)*.9
+	_bf_storms+=1
+	for i in count:
+		var distance := low+(high-low)*float((i*2)%3)/2.0
+		var spot := _clamp_point(hero.position+Vector2.from_angle(base_angle+TAU*float(i)/float(count))*distance)
+		_bf_hazard(spot,float(storm.radius_m),int(storm.windup_ticks),int(storm.damage),"storm","storm",Vector2.ZERO)
+
+func _bf_spawn_blocked() -> bool:
+	return tick<_d_pause_until or (not _d_sweep.is_empty() and int(descent.after.sweep_spawn_bps)<=0)
+
+## Escorts and adds: `amount` bodies round the hero while fewer than `cap` live. An empty mix means the zone's own mix (spawn.mix).
+func _bf_spawn_group(amount: int,cap: int,mix: Dictionary) -> void:
+	if _bf_spawn_blocked():return
+	var count := alive_count()
+	var ring_min := float(tuning.spawn.ring_min_m);var ring_max := float(tuning.spawn.ring_max_m)
+	for i in amount:
+		if count>=cap:break
+		var kind := _bf_pick_kind(mix)
+		if _spawn(kind,_spawn_point(ring_min,ring_max)):count+=1
+
+func _bf_pick_kind(mix: Dictionary) -> String:
+	if mix.is_empty():
+		var rule: Dictionary=tuning.spawn.mix
+		var roll := _spawn_rng.randi_range(0,99)
+		if tick>=int(rule.charger_from_s)*HZ and roll>=(int(rule.charger_roll)-zone*int(rule.zone_step)):return "charger"
+		if tick>=int(rule.ranged_from_s)*HZ and roll>=(int(rule.ranged_roll)-zone*int(rule.zone_step)):return "ranged"
+		return "walker"
+	var total := 0
+	for kind in mix:total+=int(mix[kind])
+	var pick := _spawn_rng.randi_range(0,total-1)
+	for kind in mix:
+		pick-=int(mix[kind])
+		if pick<0:return String(kind)
+	return "walker"
+
+## An ordinary body died during a break: the chain is cut a little (the boss loses chip_bps_per_kill of its health, chip_cap_bps per break),
+## never below the next phase's threshold.
+func _bf_on_kill() -> void:
+	_bf_break_kills+=1
+	var rule: Dictionary=_bf.breaks[_bf_break]
+	var bps := mini(int(rule.chip_bps_per_kill),int(rule.chip_cap_bps)-_bf_break_chip)
+	if bps<=0 or not enemies.has(_champion_id):return
+	var boss: Dictionary=enemies[_champion_id]
+	var floor_hp := int(boss.max_hp_raw)*int(_bf.phases[_bf_break+1].to_hp_bps)/10000
+	var cut := mini(int(boss.max_hp_raw)*bps/10000,maxi(0,int(boss.hp_raw)-floor_hp-1))
+	if cut<=0:return
+	boss.hp_raw=int(boss.hp_raw)-cut
+	_bf_break_chip+=bps;_bf_chip+=bps
+	_emit("boss_chip",boss.position,{"bps":bps,"total_bps":_bf_chip})
+
+## BF3: while a phase runs, damage cannot take the boss under that phase's threshold (the rest is thrown away). The last phase has none.
+func _bf_clamp_damage(e: Dictionary,damage: int) -> int:
+	if _bf_state!="phase":return damage
+	var to_bps := int(_bf.phases[_bf_phase].to_hp_bps)
+	if to_bps<=0:return damage
+	return mini(damage,maxi(0,int(e.hp_raw)-int(e.max_hp_raw)*to_bps/10000))
+
+## The wind-up the boss would get if it began an attack now (the next one may be the slam): the ward gap reads it.
+func _bf_next_windup(warden: Dictionary) -> int:
+	if _bf_on and _bf_state=="phase" and warden.get("chapter_boss",false):
+		var slam: Variant=_bf.phases[_bf_phase].slam
+		if slam!=null and (_bf_phase_attacks+1)%int(slam.every_attacks)==0:return int(slam.windup_ticks)
+	return int(warden.definition.windup)
+
+## The boss began a wind-up: count it, and when it is the phase's every_attacks-th, make it the slam (a long line, a long telegraph).
+func _on_elite_windup(e: Dictionary) -> void:
+	if not _bf_on or _bf_state!="phase" or not e.get("chapter_boss",false):return
+	_bf_phase_attacks+=1
+	var slam: Variant=_bf.phases[_bf_phase].slam
+	if slam==null or _bf_phase_attacks%int(slam.every_attacks)!=0:return
+	var windup := int(slam.windup_ticks)
+	e.attack_kind="slam";e.state_until=tick+windup
+	e.telegraph={"shape":"line","direction":e.attack_direction,"radius":float(slam.length_m),"length":float(slam.length_m),"width":float(slam.width_m),"rays":[],"remaining_ticks":windup}
+	_emit("boss_telegraph",e.position,{"attack_id":"slam","shape":"line","position":e.position,"direction":e.attack_direction,"length":float(slam.length_m),"width":float(slam.width_m),"radius":0.0,"windup_ticks":windup})
+
+## The slam lands: the same capsule that was telegraphed (from the boss along its heading, length x width).
+func _bf_resolve_slam(e: Dictionary) -> void:
+	var slam: Variant=_bf.phases[_bf_phase].slam if _bf_on else null
+	if slam==null:return
+	var direction: Vector2=e.attack_direction
+	var half := float(slam.width_m)*.5+HERO_RADIUS
+	if _segment_distance_sq(hero.position,e.position,e.position+direction*float(slam.length_m))<=half*half:
+		_hero_damage(int(slam.damage)*UNIT,e.position,_source_kind_of(e),int(e.id),"slam")
 
 func step(move: Vector2=Vector2.ZERO) -> void:
 	if mode!="playing":return
@@ -2451,7 +2691,7 @@ func _descent_in_area(center: Vector2) -> Array[int]:
 	var found: Array[int]=[]
 	for id_ in enemies:
 		var e: Dictionary=enemies[id_]
-		if e.hp_raw>0 and e.generation==_epoch and _descent_inside(e.position,center):found.append(int(id_))
+		if e.hp_raw>0 and e.generation==_epoch and int(id_)!=_shield_id and _descent_inside(e.position,center):found.append(int(id_))
 	return _descent_sort(found,center)
 
 ## Alive enemies within a circle of the world, nearest first.
@@ -2460,7 +2700,7 @@ func _descent_near(center: Vector2,radius: float) -> Array[int]:
 	var found: Array[int]=[]
 	for id_ in enemies:
 		var e: Dictionary=enemies[id_]
-		if e.hp_raw>0 and e.generation==_epoch and e.position.distance_squared_to(center)<=limit:found.append(int(id_))
+		if e.hp_raw>0 and e.generation==_epoch and int(id_)!=_shield_id and e.position.distance_squared_to(center)<=limit:found.append(int(id_))
 	return _descent_sort(found,center)
 
 ## Stacks of heat, chill and shock still running on an enemy (only a run with the spell composition has any).
@@ -2885,6 +3125,11 @@ func snapshot() -> Dictionary:
 		if _opening_on:result.rhythm.opening={"step":_op_step if _op_active else -1,"step_tick":(tick-_op_step_start) if _op_active else 0,"step_kills":_op_step_kills if _op_active else 0,"heading":_op_heading if _op_active else Vector2.ZERO,"done":_op_done}
 	# The elite body's and the guarded sites' state exist only while their switches are on; otherwise there is no key.
 	if _pity_armed:result.chapter.pity={"armed":true,"fired":_pity_fired}
+	# The finale's state exists only in a run with boss_finale on (the golden case "boss-finale"); otherwise there is no key.
+	if _bf_on:
+		result.boss_finale={"state":_bf_state,"phase_index":_bf_phase,"break_index":_bf_break,"break_until":_bf_until if _bf_state=="break" else 0,"until":_bf_until,"chip_bps":_bf_chip,
+			"break_chip_bps":_bf_break_chip,"break_kills":_bf_break_kills,"to":_bf_to,"land_started":_bf_land_started,"next_adds":_bf_next_adds,"next_escort":_bf_next_escort,
+			"next_storm":_bf_next_storm,"storms":_bf_storms,"phase_attacks":_bf_phase_attacks,"shield_id":_shield_id}
 	if _run_luck_bps>0:result.chapter.luck={"run_bps":_run_luck_bps,"worn_bps":_run_luck_worn}
 	if not _spray.is_empty():
 		var groups: Array=[]
@@ -2929,6 +3174,8 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if not _terminal_mode.is_empty() or not enemies.has(id_) or int(context.remaining_hits)<=0:return
 	var e: Dictionary=enemies[id_]
 	if e.hp_raw<=0 or e.generation!=_epoch:return
+	# The boss out of play (finale entrance or break) turns every blow away: nothing is spent, nothing is dealt.
+	if id_==_shield_id:_shield_block_event(String(context.skill_id));return
 	if context.skill_id=="chapter1.skill.arc":
 		if id_ in context.hit_ids:return
 		context.hit_ids.append(id_)
@@ -2994,6 +3241,8 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 		for slot in _mark_owners.size():
 			if tick<int(e.get(MARK_KEYS[slot],0)):assisting.append(slot)
 		if not assisting.is_empty():damage=damage*(10000+mark_bps*assisting.size())/10000
+	# BF3: a phase's health threshold holds (this line is the only one that makes the finale's damage differ; off, it never runs).
+	if _bf_on and e.get("chapter_boss",false):damage=_bf_clamp_damage(e,damage)
 	var result: Dictionary=Resolver.damage(damage,int(e.hp_raw))
 	e.hp_raw=int(result.hp_after_raw);metrics.damage_raw+=int(result.total_raw)
 	metrics.hits[context.skill_id]=int(metrics.hits.get(context.skill_id,0))+1

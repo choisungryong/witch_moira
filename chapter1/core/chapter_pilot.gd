@@ -67,10 +67,20 @@ func decide() -> Vector2:
 			if d<safe:danger+=away.normalized()*(safe-d)/safe*(2.2 if e.elite else 1.0)
 			if e.kind=="charger" and e.state=="windup" and d<6:
 				danger+=e.attack_direction.orthogonal()*.9
+			# D-boss-finale: the boss's slam is a telegraphed line (e.attack_kind "slam", only with boss_finale on): step out of it, sideways.
+			if e.elite and e.attack_kind=="slam" and e.state=="windup":
+				var line_dir: Vector2=e.attack_direction
+				var rel: Vector2=at-e.position
+				var along := rel.dot(line_dir)
+				var side := rel.dot(line_dir.orthogonal())
+				if along>-1.5 and along<13.0 and absf(side)<3.0:
+					danger+=line_dir.orthogonal()*(signf(side) if absf(side)>.05 else 1.0)*2.5
 		move=(move+danger*1.7).normalized()
 		for h in run.chapter_hazards:
 			var away: Vector2=at-h.position
-			if away.length()<2.4:
+			# A hazard of the boss finale (it has a "kind": ward, land, storm) is read by its own radius; the old floor strike keeps 2.4 m.
+			var reach := 2.4 if not h.has("kind") else float(h.radius)+.6
+			if away.length()<reach:
 				if away.length()<.05:away=Vector2.UP
 				move=(move*.1+away.normalized()*2).normalized()
 		var relative: Vector2=at-center

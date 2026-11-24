@@ -44,6 +44,18 @@ static func enable_rhythm_problem(run: RefCounted, with_trial_arena := false, wi
 	if not run.set_tuning(doc): return "rhythm document refused: " + str(run.errors)
 	return ""
 
+## The rhythm-c1 path (rhythm, its opening and the growth pace) with the final boss's finale on (`boss_finale.enabled`, D-boss-finale), as ONE tuning
+## document. The data file keeps "enabled": false. "" when it worked, else one sentence.
+static func enable_boss_finale_problem(run: RefCounted) -> String:
+	var doc: Variant = _read(Tuning.DEFAULT_PATH)
+	if not doc is Dictionary or not doc.get("rhythm") is Dictionary or not doc.get("boss_finale") is Dictionary: return "combat_tuning.json has no rhythm or boss_finale block"
+	doc["rhythm"]["enabled"] = true
+	if doc["rhythm"].get("opening") is Dictionary: doc["rhythm"]["opening"]["enabled"] = true
+	TrialPace.apply(doc)
+	doc["boss_finale"]["enabled"] = true
+	if not run.set_tuning(doc): return "boss_finale document refused: " + str(run.errors)
+	return ""
+
 static func enable_descent_problem(run: RefCounted) -> String:
 	var doc: Variant = _read(DescentDoc.DEFAULT_PATH)
 	if not doc is Dictionary: return "descent.json could not be read"

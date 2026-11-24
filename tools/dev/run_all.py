@@ -139,6 +139,8 @@ def checks():
         godot_check('grace', 'res://chapter1/tests/test_grace.gd', 'CHAPTER1_GRACE_RESULT', timeout=600),
         godot_check('descent', 'res://chapter1/tests/test_descent.gd', 'CHAPTER1_DESCENT_TEST_RESULT', timeout=600),
         godot_check('elites', 'res://chapter1/tests/test_elites.gd', 'CHAPTER1_ELITES_TEST_RESULT', timeout=600),
+        # D-boss-finale (BF1~BF9): the final boss's entrance, three phases and two breaks, switched on in memory; the shipped switch stays off.
+        godot_check('boss-finale', 'res://chapter1/tests/test_boss_finale.gd', 'CHAPTER1_BOSS_FINALE_RESULT', timeout=900),
         godot_check('descent-fx', 'res://chapter1/tests/test_descent_fx.gd', 'CHAPTER1_DESCENT_FX_TEST_RESULT', timeout=300),
         # T12 SL-D: the skill lab body (stage, commands, sound overrides, soak) in a headless run; the line SKILL_LAB_TEST {"pass": ...} decides.
         godot_check('skill-lab', 'res://chapter1/tests/test_skill_lab.gd', 'SKILL_LAB_TEST', ['--chapter1-start', '--chapter1-profile-off', '--chapter1-qa-ignore-focus', '--chapter1-trial=descent', '--chapter1-descent-cost=1000'], timeout=600),
