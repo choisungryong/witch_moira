@@ -474,6 +474,13 @@ var _staff_tilt := Basis.IDENTITY
 var _staff_scale_v := Vector3.ONE
 ## 0 = the staff stays upright beside the hand, 1 = it turns fully with the gripping hand (hero.json staff.follow).
 var _staff_follow := 1.0
+## Same, while a cast is playing (staff.follow_cast; defaults to follow). _staff_follow_now eases between the two so the staff does not pop.
+var _staff_follow_cast := 1.0
+var _staff_follow_now := 1.0
+## Largest angle (radians) the staff may stand off the upright while moving / while casting (hero.json staff.max_tilt_deg, max_tilt_cast_deg; PI = no limit). A fist swings far in a run, so the staff is held within this cone.
+var _staff_cap := PI
+var _staff_cap_cast := PI
+var _staff_cap_now := PI
 
 func _load_sprite(kind: String) -> void:
 	if kind!="hero":_load_sprite__cloister(kind)
@@ -599,10 +606,12 @@ func _swap_hero_model(id: String) -> void:
 	_set_hero_light(_hero_key_light,HERO_LIGHT_KEY[0],HERO_LIGHT_KEY[1])
 	_set_hero_light(_hero_fill_light,HERO_LIGHT_FILL[0],HERO_LIGHT_FILL[1])
 	_hero_look_due=not _hero_look.is_empty()
+	# The witch bodies are 2.68 m tall: the owner chevron (2.5 m on the old sprite) sat on the face, so lift it above the head. Only reached with the switch on.
+	if owner_mark!=null:owner_mark.position.y=3.15
 
 ## Staff cell of hero.json: mode "hand" keeps the staff in the gripping hand (rotation follows the hand), anything else is the old upright staff.
 func _setup_staff_grip(id: String,staff: Dictionary) -> void:
-	_staff_hand_mode=false;_staff_tilt=Basis.IDENTITY;_staff_scale_v=Vector3.ONE;_staff_follow=1.0
+	_staff_hand_mode=false;_staff_tilt=Basis.IDENTITY;_staff_scale_v=Vector3.ONE;_staff_follow=1.0;_staff_follow_cast=1.0;_staff_follow_now=1.0;_staff_cap=PI;_staff_cap_cast=PI;_staff_cap_now=PI
 	if _staff!=null:_staff.scale=Vector3.ONE
 	if _staff==null or _hand<0 or _finger<0 or String(staff.get("mode","upright"))!="hand":return
 	var ref: Dictionary=staff.get("grip_ref",{}) if staff.get("grip_ref") is Dictionary else {}
@@ -614,6 +623,8 @@ func _setup_staff_grip(id: String,staff: Dictionary) -> void:
 	_staff_scale_v=Vector3.ONE*float(staff.get("scale",1.0))
 	_staff.scale=_staff_scale_v
 	_staff_follow=clampf(float(staff.get("follow",1.0)),0.0,1.0)
+	_staff_follow_cast=clampf(float(staff.get("follow_cast",_staff_follow)),0.0,1.0);_staff_follow_now=_staff_follow
+	_staff_cap=deg_to_rad(clampf(float(staff.get("max_tilt_deg",180.0)),0.0,180.0));_staff_cap_cast=deg_to_rad(clampf(float(staff.get("max_tilt_cast_deg",rad_to_deg(_staff_cap))),0.0,180.0));_staff_cap_now=_staff_cap
 	_staff_hand_mode=true
 
 func _set_hero_light(light: DirectionalLight3D,energy: float,color: Color) -> void:
@@ -721,9 +732,12 @@ func sync__rigged(run: RefCounted,delta: float) -> void:
 		if not _grip_ready:_grip_basis=hand.basis.orthonormalized().inverse()*hero.global_basis;_grip_ready=true
 		if _staff_hand_mode:
 			var held: Basis=(hand.basis.orthonormalized()*_hand_grip*_staff_tilt).orthonormalized()
-			if _staff_follow<1.0 and run.hero.hp_raw>0:
+			_staff_follow_now=move_toward(_staff_follow_now,_staff_follow_cast if run.tick<_cast_until else _staff_follow,_render_delta*8.0)
+			_staff_cap_now=move_toward(_staff_cap_now,_staff_cap_cast if run.tick<_cast_until else _staff_cap,_render_delta*8.0)
+			if (_staff_follow_now<1.0 or _staff_cap_now<PI) and run.hero.hp_raw>0:
 				var upright: Basis=(hero.global_basis.orthonormalized()*Basis.from_euler(Vector3(deg_to_rad(-3.0),0,deg_to_rad(5.0)))*_staff_tilt).orthonormalized()
-				held=upright.slerp(held,_staff_follow).orthonormalized()
+				var off_upright: float=upright.get_rotation_quaternion().angle_to(held.get_rotation_quaternion())
+				held=upright.slerp(held,minf(_staff_follow_now,_staff_cap_now/maxf(off_upright,0.0001))).orthonormalized()
 			_staff.global_basis=held.scaled(_staff_scale_v)
 		elif run.hero.hp_raw<=0:_staff.global_basis=(hand.basis.orthonormalized()*_grip_basis).orthonormalized()
 		else:_staff.basis=Basis.from_euler(Vector3(deg_to_rad(-3+sin(_phase*TAU)*4),0,deg_to_rad(5)))

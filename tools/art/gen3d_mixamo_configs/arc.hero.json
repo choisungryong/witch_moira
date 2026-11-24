@@ -12,7 +12,9 @@
   },
   "staff": {
     "mode": "hand",
-    "grip_ref": {"clip": "idle", "time": 0},
+    "max_tilt_deg": 15,
+    "max_tilt_cast_deg": 30,
+    "grip_ref": {"clip": "cast", "time": 0.77},
     "tilt_deg": [0, 0, 0],
     "scale": 1.0
   }
