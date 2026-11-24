@@ -608,14 +608,15 @@ func rc_tick(run) -> void:
 ## so a run without it has the same rc block as before. rows: be [tick,"be",ticks] | bp [tick,"bp",phase,id] | bs [tick,"bs",index,ticks] |
 ## bx [tick,"bx",index] | bc [tick,"bc",bps,total_bps] | bo [tick,"bo"]. fin = {boss_id, brk (open break index or -1), phase, kills_break {index: ordinary kills},
 ## hurt_break {index: damage taken raw}, hurt_phase {phase: damage taken raw}, hits_break {index: hero hits}, boss_dealt {skill_id: life taken off the boss, raw},
-## other_dealt (life taken off everything else after the boss came, raw), last_hit {tick, source_kind, attack_id, damage_raw, hp_after_raw, telegraphed}}.
+## other_dealt (life taken off everything else after the boss came, raw), last_hit {tick, source_kind, attack_id, damage_raw, hp_after_raw, telegraphed},
+## hit_by {attack_id or "src_"+source_kind: [hits, damage_raw, grazes]}}.
 const RC_FINALE := ["boss_entrance", "boss_phase", "boss_break_started", "boss_break_ended", "boss_chip", "boss_potion"]
 const RC_FINALE_TAG := {"boss_entrance": "be", "boss_phase": "bp", "boss_break_started": "bs", "boss_break_ended": "bx", "boss_chip": "bc", "boss_potion": "bo"}
 
 func rc_finale(ev: Dictionary) -> void:
 	var t := String(ev.type)
 	if t == "boss_entrance" and not rc.has("fin"):
-		rc["fin"] = {"boss_id": int(ev.get("target_id", 0)), "brk": -1, "phase": 0, "kills_break": {}, "hurt_break": {}, "hurt_phase": {}, "hits_break": {}, "boss_dealt": {}, "other_dealt": 0, "last_hit": {}}
+		rc["fin"] = {"boss_id": int(ev.get("target_id", 0)), "brk": -1, "phase": 0, "kills_break": {}, "hurt_break": {}, "hurt_phase": {}, "hits_break": {}, "boss_dealt": {}, "other_dealt": 0, "last_hit": {}, "hit_by": {}}
 	if not rc.has("fin"): return
 	var fin: Dictionary = rc.fin
 	match t:
@@ -650,6 +651,11 @@ func rc_finale(ev: Dictionary) -> void:
 				fin.hurt_break[b] = int(fin.hurt_break.get(b, 0)) + raw
 				fin.hits_break[b] = int(fin.hits_break.get(b, 0)) + 1
 			fin.last_hit = {"tick": int(ev.tick), "source_kind": String(ev.get("source_kind", "")), "attack_id": String(ev.get("attack_id", "")), "damage_raw": raw, "hp_after_raw": int(ev.get("hp_after_raw", 0))}
+			# hit_by {attack_id (or "src_"+source_kind when the hit has none): [hits, damage_raw taken, grazes]} (BF-B, read-only)
+			var hk := String(ev.get("attack_id", ""))
+			if hk == "": hk = "src_" + String(ev.get("source_kind", ""))
+			var hb: Array = fin.hit_by.get(hk, [0, 0, 0])
+			fin.hit_by[hk] = [int(hb[0]) + 1, int(hb[1]) + raw, int(hb[2]) + (1 if bool(ev.get("graze", false)) else 0)]
 
 func rc_event(ev: Dictionary) -> void:
 	var t := String(ev.type)

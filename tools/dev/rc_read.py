@@ -7,6 +7,9 @@
   judge  the section-5 table RC-T1..RC-T27 from runs made with `measure_rhythm.gd ... --rc` (bare / human proxy / geared / descent now / hold), with bootstrap 10/90 % (4000 draws, seed 20261124).
            python tools/dev/rc_read.py judge --bare _local/rc-a/bare_*.json --human _local/rc-a/human_*.json --geared ... --dnow ... --dhold ... [--out _local/rc-a/judge.txt]
 
+  bf     the boss-finale lines BF-T1..T8 of docs/specs/D-boss-finale-20261124.ko.md (runs made with the finale on and --rc: rc.fin), plus the boss-life shares per skill, per-phase work, breaks.
+           python tools/dev/rc_read.py bf --bare _local/bf-b/bare_*.json --geared ... --human ... --dnow ... --hp 15000 [--out _local/bf-b/bf.txt]
+
 Reads only. "Pass" in the judge table means the observed value meets the target as written; a line whose target lies inside the 10/90 % band is "경계". Values from a
 model (descent gauge) or from a stand-in definition are marked in the line. The bot's results are a stability / balance reference, not evidence of fun (unevaluated).
 """
@@ -872,9 +875,219 @@ def print_out(lines, out):
         p.write_text(text, encoding="utf-8")
 
 
+# ------------------------------------------------------------------ bf: the boss finale lines (D-boss-finale 6절 BF-T1..T8 + the boss-life shares of 7절 (a)(b))
+def bf_of(r, hp):
+    """One run's finale numbers from rc.ev (be / bp / bs / bx / bc / bo / pu rows) and rc.fin; None when the run had no finale."""
+    if not r.rc or "fin" not in r.rc:
+        return None
+    fin = r.rc["fin"]
+    ev = r.rc["ev"]
+    first = lambda tag: next((e for e in ev if e[1] == tag), None)
+    be = first("be")
+    if be is None:
+        return None
+    g3 = r.big.get("guardian3")
+    end = round(float(g3["death_s"]) * 60) if g3 and g3["death_s"] >= 0 else round(r.secs * 60)
+    bp = {e[2]: e[0] for e in ev if e[1] == "bp"}
+    bs = {e[2]: e[0] for e in ev if e[1] == "bs"}
+    bx = {e[2]: e[0] for e in ev if e[1] == "bx"}
+    o = {"fight": (end - be[0]) / 60.0, "entrance": ((bp[1] - be[0]) / 60.0) if 1 in bp else None}
+    ph_end = {1: bs.get(0), 2: bs.get(1), 3: end}
+    o["work"] = [((ph_end[k] - bp[k]) / 60.0) if (k in bp and ph_end[k] is not None) else None for k in (1, 2, 3)]
+    o["brk"] = [((bx[i] - bs[i]) / 60.0) if (i in bs and i in bx) else None for i in (0, 1)]
+    o["brk_ticks"] = [(bx[i] - bs[i]) if (i in bs and i in bx) else None for i in (0, 1)]
+    got = o["entrance"] or 0.0
+    got += sum(b for b in o["brk"] if b is not None)
+    o["brk_share"] = got / o["fight"] if o["fight"] > 0 else None
+    kb, hb, hb_hits = fin.get("kills_break", {}), fin.get("hurt_break", {}), fin.get("hits_break", {})
+    o["kills_brk"] = [int(kb.get(str(i), 0)) if i in bs else None for i in (0, 1)]
+    o["hurt_brk"] = [int(hb.get(str(i), 0)) / 256.0 if i in bs else None for i in (0, 1)]
+    o["hits_brk"] = [int(hb_hits.get(str(i), 0)) if i in bs else None for i in (0, 1)]
+    hp_ph = fin.get("hurt_phase", {})
+    o["hurt_phase"] = [int(hp_ph.get(str(k), 0)) / 256.0 for k in (1, 2, 3)]
+    pu = [e[0] for e in ev if e[1] == "pu" and e[0] >= be[0]]
+    o["pot_fight"] = len(pu)
+    o["pot_brk1"] = sum(1 for t in pu if 1 in bs and 1 in bx and bs[1] <= t <= bx[1])
+    o["pot_brk0"] = sum(1 for t in pu if 0 in bs and 0 in bx and bs[0] <= t <= bx[0])
+    o["chip_bps"] = max([e[3] for e in ev if e[1] == "bc"], default=0)
+    o["potion_drop"] = any(e[1] == "bo" for e in ev)
+    dealt = fin.get("boss_dealt", {})
+    full = float(hp) * 256.0
+    prim = "chapter1.skill." + r.prim
+    o["share_prim"] = float(dealt.get(prim, 0)) / full
+    o["share_aux"] = sum(float(v) for k, v in dealt.items() if k != prim) / full
+    o["share_by"] = {k: float(v) / full for k, v in dealt.items()}
+    o["other_dealt"] = float(fin.get("other_dealt", 0)) / 256.0
+    lh = fin.get("last_hit", {})
+    o["defeat"] = r.mode == "defeat"
+    if o["defeat"]:
+        sec = int(r.secs)
+        lo = max(0, sec - 3)
+        low = min(r.hp_s[lo:sec + 1]) if r.hp_s else None
+        o["death"] = {"attack_id": lh.get("attack_id", ""), "source_kind": lh.get("source_kind", ""), "hp_3s": low}
+    o["hp_min"] = r.hp_min(be[0] / 60.0, end / 60.0)
+    o["hit_by"] = fin.get("hit_by")  # None for a run made before measure_rhythm wrote it
+    return o
+
+
+def cmd_bf(args):
+    sets = {}
+    for name in ("bare", "human", "geared", "dnow"):
+        paths = getattr(args, name)
+        sets[name] = [Run(r) for r in load_runs(paths)] if paths else []
+    BF = {name: {id(r): bf_of(r, args.hp) for r in rs} for name, rs in sets.items()}
+    for name, rs in sets.items():
+        for r in rs:
+            r.bf = BF[name][id(r)]
+    inr = lambda lo, hi: (lambda x: x is not None and lo <= x <= hi)
+    f1 = lambda x: "-" if x is None else "%.1f" % x
+    f2 = lambda x: "-" if x is None else "%.2f" % x
+    f0 = lambda x: "-" if x is None else "%.0f" % x
+    medl = lambda v, k: med([x[k] for x in v if x and x[k] is not None])
+    out = []
+    P = out.append
+    P("BF-T 판정(D-boss-finale 6절). 재표집 %d회, 씨앗 %d, 10/90%% 폭 안에 줄이 있으면 경계. 우두머리 체력 %d(우두머리 몫 = 입힌 피해 ÷ 체력×256). 사람 재미는 미평가." % (DRAWS, SEED, args.hp))
+    P("판 수: " + ", ".join("%s %d (우두머리 싸움이 있었던 판 %d)" % (k, len(v), sum(1 for r in v if r.bf)) for k, v in sets.items()))
+    P("")
+
+    def clause_run(label, cl):
+        P("   - %s" % label)
+        for pr, n, val, q10, q90, vd in run_clause(cl, sets):
+            P("       %-5s n=%-2d 값 %s | 10%% %s | 90%% %s | %s" % (pr, n, val, q10, q90, vd))
+        return [vd for *_x, vd in run_clause(cl, sets)]
+
+    def per(fn):
+        return lambda r: fn(r.bf) if r.bf else None
+
+    verdicts = {}
+
+    def finish(rc_id, vds):
+        vds = [v for v in vds if v != "재지 않음"]
+        v = "재지 않음" if not vds else ("못 미침" if "못 미침" in vds else ("경계" if "경계" in vds else "통과"))
+        verdicts[rc_id] = v
+        P("   => %s 판정: %s" % (rc_id, v))
+        P("")
+
+    # T1
+    P("BF-T1 국면마다의 일(초, 계열 가운데) | 맨몸 1국면 7~20, 2국면 7~20, 3국면 6~17 / 장비 갖춤 각 2.5 이상")
+    w = lambda r: r.bf["work"] if r.bf and None not in r.bf["work"] else None
+    aggw = lambda v: tuple(med([x[i] for x in v if x]) for i in range(3))
+    fw = lambda t: "%s / %s / %s" % tuple(f1(x) for x in t)
+    vds = []
+    vds += clause_run("맨몸 (1/2/3국면)", Clause("맨몸", ["bare"], w, aggw, lambda t: inr(7, 20)(t[0]) and inr(7, 20)(t[1]) and inr(6, 17)(t[2]), fw, ""))
+    vds += clause_run("장비 갖춤 (각 2.5 이상)", Clause("장비", ["geared"], w, aggw, lambda t: all(x is not None and x >= 2.5 for x in t), fw, ""))
+    finish("BF-T1", vds)
+    # T2
+    P("BF-T2 쉼의 실제 길이 | 데이터 값(600, 540틱) ± 6틱, 20/20 (장비·강림 켬 열 포함)")
+    # a run that was lost inside a break has no end to measure: not counted (None), a finished break must be on the data value
+    def brk(r):
+        b = r.bf
+        if not b:
+            return None
+        if b["defeat"] and None in b["brk_ticks"]:
+            return None
+        t0, t1 = b["brk_ticks"]
+        return 1 if (t0 is not None and t1 is not None and abs(t0 - 600) <= 6 and abs(t1 - 540) <= 6) else 0
+    vds = []
+    for nm, lab in (("bare", "맨몸"), ("geared", "장비 갖춤"), ("human", "사람 대리"), ("dnow", "강림 now")):
+        if sets[nm]:
+            vds += clause_run(lab, Clause(lab, [nm], brk, lambda v: (sum(x for x in v if x is not None), len([x for x in v if x is not None])), lambda t: t[0] == t[1], lambda t: "%s/%s" % (f0(t[0]), f0(t[1])), ""))
+    finish("BF-T2", vds)
+    # T3
+    P("BF-T3 쉼(표적 빠짐: 등장 + 쉼 둘)의 몫 | 맨몸 ≤ 45%, 장비 갖춤 ≤ 60%")
+    vds = []
+    vds += clause_run("맨몸", Clause("맨몸", ["bare"], per(lambda b: b["brk_share"]), med, lambda x: x is not None and x <= 0.45, f2, ""))
+    vds += clause_run("장비 갖춤", Clause("장비", ["geared"], per(lambda b: b["brk_share"]), med, lambda x: x is not None and x <= 0.60, f2, ""))
+    finish("BF-T3", vds)
+    # T4
+    P("BF-T4 쉼 동안의 일 | 쉼 하나마다 맨몸 자동 처치 가운데 ≥ 10, 처치도 받은 피해도 없는 쉼 ≤ 10%")
+    k4 = lambda r: (r.bf["kills_brk"], r.bf["hurt_brk"]) if r.bf else None
+
+    def k4agg(v):
+        v = [x for x in v if x]
+        kk = [med([x[0][i] for x in v if x[0][i] is not None]) for i in (0, 1)]
+        empty = sum(1 for x in v for i in (0, 1) if x[0][i] is not None and x[0][i] == 0 and (x[1][i] or 0) == 0)
+        tot = sum(1 for x in v for i in (0, 1) if x[0][i] is not None)
+        return (kk[0], kk[1], empty, tot)
+    vds = clause_run("맨몸", Clause("맨몸", ["bare"], k4, k4agg, lambda t: t[0] is not None and t[1] is not None and t[0] >= 10 and t[1] >= 10 and t[3] > 0 and t[2] / t[3] <= 0.10,
+                                  lambda t: "쉼1 처치 가운데 %s / 쉼2 %s / 빈 쉼 %s/%s" % (f1(t[0]), f1(t[1]), f0(t[2]), f0(t[3])), ""))
+    finish("BF-T4", vds)
+    # T5
+    P("BF-T5 큰 공격의 전조 | 데이터 검사(측정 아님): 코어가 켠 판에서 읽는 값 — 몸 85/54틱, 바닥 65/72, 내리찍기 70/72, 착지 55/72, 폭풍 40/60 (주인공 기본 120의 20% = 24 이상은 모두 54틱 이상) -> 통과(손으로 읽음, 도구가 다시 읽지 않음)")
+    verdicts["BF-T5"] = "통과(데이터 읽기)"
+    P("")
+    # T6
+    P("BF-T6 죽음이 읽히는가 | 진 판의 80% 이상에서 마지막 타격이 전조가 있던 공격(attack_id 있음)이거나 죽기 전 3초 동안 생명이 30% 아래")
+    vds = []
+    for nm, lab in (("bare", "맨몸"), ("human", "사람 대리"), ("geared", "장비 갖춤"), ("dnow", "강림 now")):
+        d = [(r.prim, r.seed, r.bf["death"]) for r in sets[nm] if r.bf and r.bf["defeat"]]
+        if sets[nm]:
+            P("   - %s: 우두머리에서 진 판 %d / %d" % (lab, len(d), len(sets[nm])))
+            for pr, sd, dd in d:
+                P("       %s seed %d: 마지막 타격 attack_id=%r source=%s, 죽기 3초 최저 생명 %s" % (pr, sd, dd["attack_id"], dd["source_kind"], f2(dd["hp_3s"])))
+            if d:
+                ok = sum(1 for _p, _s, dd in d if dd["attack_id"] != "" or (dd["hp_3s"] is not None and dd["hp_3s"] < 0.30))
+                P("       읽히는 죽음 %d/%d (%.0f%%) -> %s" % (ok, len(d), 100.0 * ok / len(d), "통과" if ok / len(d) >= 0.8 else "못 미침"))
+                vds.append("통과" if ok / len(d) >= 0.8 else "못 미침")
+    finish("BF-T6", vds)
+    if not vds:
+        verdicts["BF-T6"] = "재지 못함(진 판 없음)"
+    # T7
+    P("BF-T7 쉼 2의 물약 | 자동(맨몸), 쉼 2 안에서 물약을 쓴 판 ≥ 8/20")
+    vds = clause_run("맨몸", Clause("맨몸", ["bare"], per(lambda b: 1 if b["pot_brk1"] >= 1 else 0), lambda v: sum(x for x in v if x is not None), lambda x: x >= 8, lambda x: "%s/n" % f0(x), ""))
+    finish("BF-T7", vds)
+    # T8
+    P("BF-T8 강림 켬(now) 참고 | 맨몸 싸움 ≥ 45초 (판정에 넣지 않음)")
+    if sets["dnow"]:
+        for pr, n, val, q10, q90, vd in run_clause(Clause("강림 now", ["dnow"], per(lambda b: b["fight"]), med, lambda x: x is not None and x >= 45, f1, ""), sets):
+            P("   - %-5s n=%-2d 값 %s | 10%% %s | 90%% %s | (참고) %s" % (pr, n, val, q10, q90, vd))
+    P("")
+    # records
+    P("[기록, 판정에 쓰지 않음] 계열별 가운데(최소~최대, n)")
+    for nm, lab in (("bare", "맨몸"), ("geared", "장비 갖춤"), ("human", "사람 대리"), ("dnow", "강림 now")):
+        if not sets[nm]:
+            continue
+        P("  %s" % lab)
+        for pr in PRIMS:
+            rs = [r.bf for r in sets[nm] if r.prim == pr and r.bf]
+            if not rs:
+                continue
+            g = lambda k, f="%.1f": rng_txt([x[k] for x in rs if x[k] is not None], f)
+            P("    %-5s 싸움 %s초 | 등장 %s | 1국면 일 %s | 쉼1 %s | 2국면 일 %s | 쉼2 %s | 3국면 일 %s" % (pr, g("fight"), rng_txt([x["entrance"] for x in rs], "%.1f"), rng_txt([x["work"][0] for x in rs if x["work"][0] is not None], "%.1f"),
+                                                                                         rng_txt([x["brk"][0] for x in rs if x["brk"][0] is not None], "%.2f"), rng_txt([x["work"][1] for x in rs if x["work"][1] is not None], "%.1f"),
+                                                                                         rng_txt([x["brk"][1] for x in rs if x["brk"][1] is not None], "%.2f"), rng_txt([x["work"][2] for x in rs if x["work"][2] is not None], "%.1f")))
+            P("          우두머리 몫 주력 %s / 보조 %s / 사슬 깎기 %.0f bps | 쉼 처치 %s / %s | 쉼 받은 피해(생명 단위) %s / %s | 국면 받은 피해 %s / %s / %s" % (
+                rng_txt([x["share_prim"] for x in rs], "%.2f"), rng_txt([x["share_aux"] for x in rs], "%.2f"), med([x["chip_bps"] for x in rs]),
+                rng_txt([x["kills_brk"][0] for x in rs if x["kills_brk"][0] is not None], "%.0f"), rng_txt([x["kills_brk"][1] for x in rs if x["kills_brk"][1] is not None], "%.0f"),
+                rng_txt([x["hurt_brk"][0] for x in rs if x["hurt_brk"][0] is not None], "%.0f"), rng_txt([x["hurt_brk"][1] for x in rs if x["hurt_brk"][1] is not None], "%.0f"),
+                rng_txt([x["hurt_phase"][0] for x in rs], "%.0f"), rng_txt([x["hurt_phase"][1] for x in rs], "%.0f"), rng_txt([x["hurt_phase"][2] for x in rs], "%.0f")))
+            hb = {}
+            for x in rs:
+                for k, v in (x.get("hit_by") or {}).items():
+                    hb.setdefault(k, []).append(v)
+            if hb:
+                P("          맞은 공격(판당 맞은 수 평균 / 한 번이라도 맞은 판 / 스친 수 합 / 받은 피해 합의 판당 평균, 생명 단위): " + " | ".join("%s %.2f / %d판 / %d / %.1f" % (k, sum(v[0] for v in vs) / len(rs), len(vs), sum(v[2] for v in vs), sum(v[1] for v in vs) / 256.0 / len(rs)) for k, vs in sorted(hb.items())))
+            sk = {}
+            for x in rs:
+                for k, v in x["share_by"].items():
+                    sk.setdefault(k.replace("chapter1.skill.", ""), []).append(v)
+            P("          기술별 우두머리 몫(가운데) %s | 싸움 중 최저 생명 %s | 물약 싸움 %s (쉼1 %s / 쉼2 %s), 쉼2 물약 쓴 판 %d/%d | 진 판 %d" % (
+                ", ".join("%s %.3f" % (k, med(v)) for k, v in sorted(sk.items())), rng_txt([x["hp_min"] for x in rs if x["hp_min"] is not None]),
+                rng_txt([x["pot_fight"] for x in rs], "%.0f"), rng_txt([x["pot_brk0"] for x in rs], "%.0f"), rng_txt([x["pot_brk1"] for x in rs], "%.0f"),
+                sum(1 for x in rs if x["pot_brk1"] >= 1), len(rs), sum(1 for x in rs if x["defeat"])))
+    P("")
+    P("한 줄 요약: " + ", ".join("%s %s" % (k, v) for k, v in verdicts.items()))
+    print_out(out, args.out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    b = sub.add_parser("bf")
+    for k in ("bare", "human", "geared", "dnow"):
+        b.add_argument("--" + k, nargs="*")
+    b.add_argument("--hp", type=int, default=15000, help="the boss's health in the tuning (boss_finale.hp)")
+    b.add_argument("--out")
     n = sub.add_parser("now")
     n.add_argument("files", nargs="+")
     n.add_argument("--cost", action="append", help="3000,8000,N (repeatable): the descent costs to try beside the shipped 3000,8000,10000")
@@ -884,7 +1097,7 @@ def main():
         j.add_argument("--" + k, nargs="*")
     j.add_argument("--out")
     args = ap.parse_args()
-    (cmd_now if args.cmd == "now" else cmd_judge)(args)
+    {"now": cmd_now, "judge": cmd_judge, "bf": cmd_bf}[args.cmd](args)
 
 
 if __name__ == "__main__":
