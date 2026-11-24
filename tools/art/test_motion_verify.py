@@ -83,7 +83,10 @@ class CompareRules(unittest.TestCase):
     def test_no_run_exit_codes(self):
         with tempfile.TemporaryDirectory() as d:
             ok = Path(d) / "ok.json"
-            ok.write_text(json.dumps(fake(0.6061, 0.4)))
+            # --current reads the run contract now in asset_slots.json: the fake game-side rate follows it
+            pose = json.loads(mv.SLOTS.read_text(encoding="utf-8"))["slots"]["actor.hero.frost.model"]["contract"]["pose"]
+            cur_rate = mm.rate_from_contract(5.8, float(pose["run_time_scale"]), float(pose["stride_world_m"]))
+            ok.write_text(json.dumps(fake(cur_rate, 0.4)))
             base = ["--current", "--no-run", str(ok), "--report", str(FIXTURE)]
             self.assertEqual(mv.main(base + ["--screen-slip", "0.38"]), 0)
             self.assertEqual(mv.main(base + ["--screen-slip", "0.20"]), 1)

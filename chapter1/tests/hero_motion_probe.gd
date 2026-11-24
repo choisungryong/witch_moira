@@ -20,11 +20,16 @@ extends "res://chapter1/tests/hud_dump.gd"
 ## _clip_run, _run_time_scale and _hero_stride are replaced once. No product file and no core state is touched.
 ## Reading the skeleton in a headless run works if the PROBE_BONES line shows both toe bones found and the toe heights move (R7 of the T9 spec).
 const FROST_SLOT := "actor.hero.frost.model"
+var body_slot := FROST_SLOT   ## --slot=actor.hero.arc.model measures another witch body (default frost)
 const STANCE_BAND_M := .03
 const MIN_SEGMENT_S := 1.0
 const MIN_STRAIGHT_DEFAULT := .99
 const SETTLE_FRAMES := 12   ## the first frames of a run still blend from the idle pose (a 7 m/s toe jump at the start): left out of the windows
 const SHOT_FRAMES := 24
+var shot_frames := SHOT_FRAMES   ## --shot-frames=N saves N frames instead of 24 (a video needs hundreds)
+var shot_step := 1   ## --shot-step=2 saves every 2nd rendered frame (60 fps -> 30 fps video)
+var _shot_tick := 0
+var shot_crop := Rect2i()   ## --shot-crop=x,y,w,h saves only that part of the screen (much faster than a full 1080p png)
 const TOE_NAMES := {"l": ["mixamorig_LeftToeBase", "mixamorig:LeftToeBase", "LeftToeBase"], "r": ["mixamorig_RightToeBase", "mixamorig:RightToeBase", "RightToeBase"]}
 var override: Dictionary = {}
 var override_arg := ""
@@ -52,6 +57,12 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--pose-override="): override_arg = arg.trim_prefix("--pose-override=")
 		elif arg.begins_with("--motion-json="): motion_json = arg.trim_prefix("--motion-json=")
+		elif arg.begins_with("--shot-frames="): shot_frames = maxi(1, int(arg.trim_prefix("--shot-frames=")))
+		elif arg.begins_with("--shot-step="): shot_step = maxi(1, int(arg.trim_prefix("--shot-step=")))
+		elif arg.begins_with("--shot-crop="):
+			var c := arg.trim_prefix("--shot-crop=").split(",")
+			if c.size() == 4: shot_crop = Rect2i(int(c[0]), int(c[1]), int(c[2]), int(c[3]))
+		elif arg.begins_with("--slot="): body_slot = arg.trim_prefix("--slot=")
 		elif arg == "--motion-frames": keep_frames = true
 		elif arg.begins_with("--stop-tick="): stop_tick = int(arg.trim_prefix("--stop-tick="))
 		elif arg.begins_with("--drive="): drive = arg.trim_prefix("--drive=")
@@ -154,7 +165,7 @@ func _probe_frame() -> void:
 	var actors := _actors()
 	if actors == null or actors.get("hero") == null or actors.get("rig_skeleton") == null: return
 	_frames_seen += 1
-	if String(actors.get("_hero_slot_id")) != FROST_SLOT: return
+	if String(actors.get("_hero_slot_id")) != body_slot: return
 	_body_frames += 1
 	if not _override_done: _apply_override(actors)
 	if not _bones_tried: _setup_bones(actors)
@@ -177,12 +188,17 @@ func _probe_frame() -> void:
 		_save_walk_shot()
 
 func _save_walk_shot() -> void:
+	_shot_tick += 1
+	if (_shot_tick - 1) % shot_step != 0: return
 	var image := root.get_viewport().get_texture().get_image()
 	if image == null: return
 	DirAccess.make_dir_recursive_absolute(shots_dir)
+	if shot_crop.size.x > 0: image = image.get_region(shot_crop)
 	image.save_png(shots_dir.path_join("walk_%02d.png" % _shot_count))
 	_shot_count += 1
-	if _shot_count >= SHOT_FRAMES: _shot_done = true
+	if _shot_count >= shot_frames:
+		_shot_done = true
+		if shot_frames > SHOT_FRAMES and stop_tick == 0 or shot_frames > SHOT_FRAMES and stop_tick > int(view.run.tick): stop_tick = int(view.run.tick) + 1   # a video capture ends with its last frame
 
 func _close_segment() -> void:
 	if _seg.is_empty(): return
@@ -190,7 +206,7 @@ func _close_segment() -> void:
 	for k in range(1, _seg.size()): seconds += float(_seg[k].dt)
 	if seconds >= MIN_SEGMENT_S: _segments.append(_seg)
 	_seg = []
-	if not _shot_done and _shot_count > 0 and _shot_count < SHOT_FRAMES: _shot_count = 0   # a walk that ended before 24 frames: start over on the next one
+	if not _shot_done and _shot_count > 0 and _shot_count < shot_frames: _shot_count = 0   # a walk that ended before 24 frames: start over on the next one
 
 ## The pilot sometimes dithers (direction flips every tick, path far longer than the net move). Those stretches are not a walk: each continuous run is
 ## cut into 1 s windows (61 frames) and only windows whose net displacement is at least MIN_STRAIGHT of the path walked count (all counts are reported).

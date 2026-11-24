@@ -122,7 +122,10 @@ class Apply(unittest.TestCase):
         self.assertEqual(self.run_cli("--check"), 0)
 
     def test_current_contract_checks_clean(self):
-        p = make_pick(self.tmp, clip="run", rate=0.606, L=0.5333333, stride_world_m=5.104)
+        # the run contract now in asset_slots.json (the check must hold for whatever run clip the slot carries)
+        pose = json.loads(self.orig)["slots"][SLOT]["contract"]["pose"]
+        L, stride = float(pose["run_time_scale"]), float(pose["stride_world_m"])
+        p = make_pick(self.tmp, clip="run", rate=mm.rate_from_contract(5.8, L, stride), L=L, stride_world_m=stride)
         self.picks = p
         self.assertEqual(self.run_cli("--check"), 0)
         self.assertEqual(self.run_cli("--write"), 0)

@@ -61,7 +61,7 @@
       "meta": "actors/hero/frost/hero.json",
       "optional": true,
       "used": "unverified",
-      "source": "T2-H 3.1: frost witch body (image-to-3D body, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/frost.json; the file is not kept in the repository (terms of use unchecked). Numbers: scale 1.32 = old mage height 2.68 m / body 2.03 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.25 m/s x scale 1.32 x 0.5333 s; idle = full clip 1.8667 s; cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25; hit reaction peak at clip 0.50 s -> hit_start_s 0.35 + age 0.05 s x 3; death = full clip 3.6333 s",
+      "source": "[2026-11-24: run is now Mixamo Jogging (78 frames = 3 cycles = 2.5667 s, in place, toe ground speed 2.4306 m/s measured on this body): run_time_scale 2.5667 (whole clip), stride_world_m = 2.4306 x scale 1.32 x 2.5667 s = 8.235; the Fast Run numbers in the rest of this text are the previous run (config key _prev_run)] T2-H 3.1: frost witch body (image-to-3D body, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/frost.json; the file is not kept in the repository (terms of use unchecked). Numbers: scale 1.32 = old mage height 2.68 m / body 2.03 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.25 m/s x scale 1.32 x 0.5333 s; idle = full clip 1.8667 s; cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25; hit reaction peak at clip 0.50 s -> hit_start_s 0.35 + age 0.05 s x 3; death = full clip 3.6333 s",
       "contract": {
         "scale": 1.32,
         "bones": {
@@ -88,8 +88,8 @@
           "death": "death"
         },
         "pose": {
-          "run_time_scale": 0.5333333,
-          "stride_world_m": 5.104,
+          "run_time_scale": 2.5666667,
+          "stride_world_m": 8.235,
           "idle_loop_s": 1.8666667,
           "cast_start_s": 0.7,
           "cast_time_scale": 2.25,
@@ -106,7 +106,7 @@
       "meta": "actors/hero/ember/hero.json",
       "optional": true,
       "used": "unverified",
-      "source": "T2-H 3.1: ember (Tessa) witch body (Tripo 15k mesh, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/ember.json; the file is not kept in the repository (terms of use unchecked). Eye colour left as the pack has it (user, 2026-11-24). Numbers: scale 1.3176 = old mage height 2.68 m / body 2.034 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.261 m/s (pack-report) x scale 1.3176 x 0.5333 s = 5.1025; walk ground speed 2.355 m/s; idle = full clip 6.0 s (181 frames, head back to start within 0.1 mm, hips span 1.7 cm, so the loop seam does not show; the game reads the loop length from idle_loop_s); cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25 (same peak as frost); hit_start_s 0.35 (hit clip has the same shape as frost); death = full clip 3.6333 s; dodge = frames 3-40 (1.2333 s), no dodge_back",
+      "source": "[2026-11-24: run is now Mixamo Jogging (78 frames = 3 cycles = 2.5667 s, in place, toe ground speed 2.4339 m/s measured on this body): run_time_scale 2.5667 (whole clip), stride_world_m = 2.4339 x scale 1.3176 x 2.5667 s = 8.231; the Fast Run numbers in the rest of this text are the previous run (config key _prev_run)] T2-H 3.1: ember (Tessa) witch body (Tripo 15k mesh, Mixamo rig and motions), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/ember.json; the file is not kept in the repository (terms of use unchecked). Eye colour left as the pack has it (user, 2026-11-24). Numbers: scale 1.3176 = old mage height 2.68 m / body 2.034 m; run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 7.261 m/s (pack-report) x scale 1.3176 x 0.5333 s = 5.1025; walk ground speed 2.355 m/s; idle = full clip 6.0 s (181 frames, head back to start within 0.1 mm, hips span 1.7 cm, so the loop seam does not show; the game reads the loop length from idle_loop_s); cast release (hand speed peak) at clip 0.80 s -> cast_start_s 0.70 + age 0.044 s x 2.25 (same peak as frost); hit_start_s 0.35 (hit clip has the same shape as frost); death = full clip 3.6333 s; dodge = frames 3-40 (1.2333 s), no dodge_back",
       "contract": {
         "scale": 1.3176,
         "bones": {
@@ -133,8 +133,8 @@
           "death": "death"
         },
         "pose": {
-          "run_time_scale": 0.5333333,
-          "stride_world_m": 5.1025,
+          "run_time_scale": 2.5666667,
+          "stride_world_m": 8.231,
           "idle_loop_s": 6.0,
           "cast_start_s": 0.7,
           "cast_time_scale": 2.25,
@@ -151,7 +151,7 @@
       "meta": "actors/hero/arc/hero.json",
       "optional": true,
       "used": "unverified",
-      "source": "T2-H 3.1: arc (Veronica, storm) witch body (Tripo 15k mesh, Mixamo rig and motions, clip rest pose retargeted to the body A-pose), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/arc.json; the file is not kept in the repository (terms of use unchecked); sha1 of the pack 4579867e. Numbers (all from model.pack-report.json of this pack): scale 1.3194 = old mage height 2.68 m / body 2.0312 m (body_height_m); run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 6.9113 m/s (ground_speed_mps) x scale 1.3194 x 0.5333 s = 4.8634 (toe-based 6.989 would give 4.918); walk ground speed 2.024 m/s; idle = full clip 6.0 s (181 frames, head deviation back to 0 at the end, hips span 1.7 cm; the game reads the loop length from idle_loop_s); cast release = hand-speed peak at cast frame index 23 = clip 0.7667 s -> cast_start_s 0.6677 + age 0.044 s x 2.25 (= 0.7667); hit reaction peak = head displacement peak at frame index 15 = clip 0.50 s -> hit_start_s 0.35 + age 0.05 s x 3 (same as frost); death = full clip 3.6333 s; dodge = frames 3-40 (1.2333 s), no dodge_back",
+      "source": "[2026-11-24: run is now Mixamo Jogging (78 frames = 3 cycles = 2.5667 s, in place, toe ground speed 2.3305 m/s measured on this body): run_time_scale 2.5667 (whole clip), stride_world_m = 2.3305 x scale 1.3194 x 2.5667 s = 7.892; the Fast Run numbers in the rest of this text are the previous run (config key _prev_run)] T2-H 3.1: arc (Veronica, storm) witch body (Tripo 15k mesh, Mixamo rig and motions, clip rest pose retargeted to the body A-pose), chosen by the primary skill's last segment; switch --chapter1-hero-models. Built by tools/art/gen3d_mixamo_pack.py from tools/art/gen3d_mixamo_configs/arc.json; the file is not kept in the repository (terms of use unchecked); sha1 of the pack 4579867e. Numbers (all from model.pack-report.json of this pack): scale 1.3194 = old mage height 2.68 m / body 2.0312 m (body_height_m); run = clip 'run' (Fast Run, 16 frames at 30 fps = 0.5333 s, in place), stride_world_m = ground speed 6.9113 m/s (ground_speed_mps) x scale 1.3194 x 0.5333 s = 4.8634 (toe-based 6.989 would give 4.918); walk ground speed 2.024 m/s; idle = full clip 6.0 s (181 frames, head deviation back to 0 at the end, hips span 1.7 cm; the game reads the loop length from idle_loop_s); cast release = hand-speed peak at cast frame index 23 = clip 0.7667 s -> cast_start_s 0.6677 + age 0.044 s x 2.25 (= 0.7667); hit reaction peak = head displacement peak at frame index 15 = clip 0.50 s -> hit_start_s 0.35 + age 0.05 s x 3 (same as frost); death = full clip 3.6333 s; dodge = frames 3-40 (1.2333 s), no dodge_back",
       "contract": {
         "scale": 1.3194,
         "bones": {
@@ -178,8 +178,8 @@
           "death": "death"
         },
         "pose": {
-          "run_time_scale": 0.5333333,
-          "stride_world_m": 4.8634,
+          "run_time_scale": 2.5666667,
+          "stride_world_m": 7.892,
           "idle_loop_s": 6.0,
           "cast_start_s": 0.67,
           "cast_time_scale": 2.25,

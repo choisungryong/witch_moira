@@ -14,9 +14,10 @@
     },
     {
       "name": "run",
-      "fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Fast Run.fbx",
+      "fbx": "D:/Project/witch-moira-work/downloads/mixamo/20261124_jog/Jogging.fbx",
       "in_place": true,
-      "ground_speed_mps": 7.25
+      "ground_speed_mps": 2.33,
+      "_prev_run": {"fbx": "D:/Project/witch-moira-work/pipeline/ember/mixamo_out/Fast Run.fbx", "in_place": true, "ground_speed_mps": 7.25}
     },
     {
       "name": "walk",
