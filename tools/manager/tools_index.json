@@ -123,6 +123,7 @@
       {"path": "tools/art/gen_queue.py", "use": "필요한 그림의 대기열(scan·status·next·run·record). 무료 Codex 길만 자동, 유료는 승인 필요 표시만. 절차는 docs/ART-QUEUE.ko.md"},
       {"path": "tools/art/asset_intake.py", "use": "새 파일을 넣기 전에 자리표(asset_slots.json)의 계약과 대조"},
       {"path": "tools/art/asset_ledger.py", "use": "출처 원장 확인·등록. check는 자리표와 원장을 맞춰 본다"},
+      {"path": "tools/art/tripo_api.py", "use": "Tripo API로 그림→3D·리그·동작 옮기기. 잔액·견적·작업 보기는 무료, 크레딧이 드는 호출은 --confirm-credits가 견적과 같을 때만(승인은 건별). 새 에셋은 asset_ledger.py로 원장에 올린다"},
       {"path": "tools/art/slot_paths.py", "use": "자리표·소리 표·곁 JSON이 가리키는 파일을 읽는 공용 모듈(다른 도구가 불러 씀, 따로 돌리지 않음)"},
       {"path": "tools/dev/asset_usage_report.py", "use": "한 판에서 실제로 로드·그려진 에셋 표(hud_dump --asset-usage 결과를 합침)"}
     ]},

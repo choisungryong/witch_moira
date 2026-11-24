@@ -4,7 +4,7 @@
 
 설명과 예시 명령은 파일 머리 주석에서 그대로 뽑은 글이고, 역할 묶음은 사람이 적은 것입니다. 이 색인이 도구를 돌려 보거나 쓰임새를 잰 것이 아닙니다.
 
-생성: 2026-11-24 00:55:10 · 도구 172개
+생성: 2026-11-24 09:56:44 · 도구 174개
 
 ## 이미 있는데 놓치기 쉬운 것
 
@@ -75,7 +75,6 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/measure_combat.gd` | 수치를 고친 뒤 전투 지표 재측정 | Plays whole pilot runs on the real core and measures the combat-pressure targets of | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/measure_combat.gd -- [options]` |
 | `chapter1/tests/sim_loot.gd` | 드랍을 고친 뒤 | Drop simulation for loot grammar v2. Rolls the treasure classes for a whole | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/sim_loot.gd` |
 | `chapter1/tests/report_run_loot.gd` | 실제 코어 한 판에서 무엇이 떨어졌는지 | Plays whole pilot runs on the real core and reports what actually dropped, | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_run_loot.gd -- --seeds=11,12,13 --primary=chapter1.skill.frost` |
-| `chapter1/tests/report_kit_reads.gd` | 장비 묶음 × 계열마다 주력이 읽는 몫(피해·재사용·모양 배율, 판정 v2의 값, 읽지 않는 공격 줄)을 센다. 전투를 돌리지 않는 빠른 셈(모델의 답) | Per kit and primary: what the primary actually reads (damage, cooldown and shape multipliers, the verdict worth, unread attack lines). No combat is run. | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_kit_reads.gd -- --kits-file=_local/d24-vr2/kits.json --kits=kit.d1_end,kit.f2.@.r15 --primaries=ember,frost,arc --cross --out=_local/d24-vr2/reads.json` |
 | `tools/dev/run_all.py` | 마지막 전체 회귀 | Single regression entry point for the current working tree. | `python tools/dev/run_all.py`<br>`python tools/dev/run_all.py --quick` |
 
 ## 기획 수치(content-balance)
@@ -195,6 +194,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `tools/art/gen_queue.py` | 필요한 그림의 대기열(scan·status·next·run·record). 무료 Codex 길만 자동, 유료는 승인 필요 표시만. 절차는 docs/ART-QUEUE.ko.md | Picture queue: find the pictures the game will need, keep them as a list, and keep Codex making them ahead of time. | `python tools/art/gen_queue.py scan [--write]`<br>`python tools/art/gen_queue.py status [--json [FILE]]` |
 | `tools/art/asset_intake.py` | 새 파일을 넣기 전에 자리표(asset_slots.json)의 계약과 대조 | 외부 에셋 가져오기 검수기(표준 라이브러리만, Python 3.10). | `python tools/art/asset_intake.py FILE.glb [--profile enemy] [--budget tools/art/asset_budget.json] [--json]`<br>`python tools/art/asset_intake.py --scan chapter1/art [--json] [--strict]` |
 | `tools/art/asset_ledger.py` | 출처 원장 확인·등록. check는 자리표와 원장을 맞춰 본다 | 출처 원장 도구: chapter1/art/ASSET-LEDGER.json 을 만들고 점검한다. | `python tools/art/asset_ledger.py check`<br>`python tools/art/asset_ledger.py check --strict` |
+| `tools/art/tripo_api.py` | Tripo API로 그림→3D·리그·동작 옮기기. 잔액·견적·작업 보기는 무료, 크레딧이 드는 호출은 --confirm-credits가 견적과 같을 때만(승인은 건별). 새 에셋은 asset_ledger.py로 원장에 올린다 | Tripo API client for 3D model generation (image to 3D, rig, retarget). Standard library only, Python 3.10. | `python tools/art/tripo_api.py balance`<br>`python tools/art/tripo_api.py estimate --kind image [--hd-geometry] [--texture standard\|hd\|ultra\|none] [--low-poly] [--quad] [--parts] [--rig] [--retarget N]` |
 | `tools/art/slot_paths.py` | 자리표·소리 표·곁 JSON이 가리키는 파일을 읽는 공용 모듈(다른 도구가 불러 씀, 따로 돌리지 않음) | 에셋 자리표(chapter1/art/asset_slots.json)와 소리 표(chapter1/data/audio_map.json)가 가리키는 파일을 읽는 공용 모듈. |  |
 | `tools/dev/asset_usage_report.py` | 한 판에서 실제로 로드·그려진 에셋 표(hud_dump --asset-usage 결과를 합침) | Merge several `hud_dump.gd --asset-usage=` files into one asset usage table (T7-0). | `python tools/dev/asset_usage_report.py --out _local/tools/t7-0/asset-usage` |
 
@@ -273,6 +273,7 @@ Godot를 직접 부르지 말고 godot.py로 부른다(저장 폴더 격리, 시
 | `chapter1/tests/proposal_smoke.gd` | Headless smoke test of the screen proposals: builds every fixture, plays the intro, moves the focus, confirms, re-pulls, and | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/proposal_smoke.gd -- --proposals=growth_choice/e_hand` |
 | `chapter1/tests/record_input_check.gd` | Input check for the battle record window, with real GUI routing (events pushed into the window): | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_input_check.gd -- \` |
 | `chapter1/tests/record_run_shot.gd` | The battle record on a REAL run: the app plays a whole run with the built-in pilot (the core is stepped by calling the | `python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720 --path . --script res://chapter1/tests/record_run_shot.gd -- \` |
+| `chapter1/tests/report_kit_reads.gd` | VR-B: what a gear kit gives each primary, read the way the game's equipment verdict v2 (loot.json upgrade_verdict) reads it. A MODEL answer (a hand calculation on the | `python tools/dev/godot.py --headless --path . --script res://chapter1/tests/report_kit_reads.gd -- --kits-file=_local/x/kits.json --kits=kit.d1_end,kit.f2.@.r15,kit.f2v.@.r15 --primaries=ember,frost,arc --cross --out=_local/x/reads.json` |
 | `chapter1/tests/sim_power.gd` | Power bench ("short proving ground", D12 P3 / P9): measures what a FIXED in-run spell build really does on the real core. |  |
 | `chapter1/tests/skill_lab.gd` | QA tool (never product code): the skill lab window (docs/specs/T12-skill-lab-20261123.ko.md, SL-B). | `python tools/dev/godot.py --timeout-s=14400 --resolution 1600x900 --path . --script res://chapter1/tests/skill_lab.gd -- \` |
 | `chapter1/tests/spells_pick.gd` | Check tool, not product code. How a tool turns the in-run spell composition ON and how it picks growth cards for it |  |
