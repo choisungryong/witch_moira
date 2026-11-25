@@ -44,7 +44,7 @@ const LUCK_KEYS := ["enabled","stat","cap_bps","k","snapshot"]
 const LUCK_K_KEYS := ["rare","legendary","unique"]
 var _luck_on := false
 ## GM5: the equipment verdict v2 block (optional) and its switch in memory.
-const VERDICT_KEYS := ["enabled","log_weight","shape_share","better_min","attack_keys","reads","damage_keys","cooldown_key","shape_keys","shape_base","shots_r1"]
+const VERDICT_KEYS := ["enabled","log_weight","shape_share","better_min","attack_keys","reads","damage_keys","cooldown_key","shape_keys","shape_base","shots_r1","kit_damage_keys"]
 const VERDICT_PRIMARIES := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 var _verdict_on := false
 
@@ -294,6 +294,17 @@ func _check_verdict(doc: Dictionary) -> Array[String]:
 		if not block.shape_base[primary] in ["projectiles","chain_targets"]: issues.append("upgrade_verdict shape_base "+primary)
 		var shots: Variant = block.shots_r1[primary]
 		if not shots is int or shots < 1 or shots > 32: issues.append("upgrade_verdict shots_r1 "+primary)
+	# S1-A (C6): kit_damage_keys = {primary: {stat: weight in bps}} for a witch whose element kit is on: the keys that really grow the damage of the
+	# kit's skills. Only some primaries need a row; a weight is 0..20000 (10000 = the stat counts in full) and the stat must be one the primary reads.
+	var kit_rows: Variant = block.kit_damage_keys
+	if not kit_rows is Dictionary: return issues+(["upgrade_verdict kit_damage_keys"] as Array[String])
+	for primary in kit_rows:
+		if not primary in VERDICT_PRIMARIES or not kit_rows[primary] is Dictionary or kit_rows[primary].is_empty():
+			issues.append("upgrade_verdict kit_damage_keys "+str(primary)); continue
+		for key in kit_rows[primary]:
+			var weight: Variant = kit_rows[primary][key]
+			if not key in block.reads[primary]: issues.append("upgrade_verdict kit_damage_keys key not read "+str(key))
+			if not weight is int or weight < 0 or weight > 20000: issues.append("upgrade_verdict kit_damage_keys weight "+str(key))
 	return issues
 
 ## D23 T8: the `luck` block. A wrong block fails load_file.
@@ -833,18 +844,20 @@ func is_upgrade(candidate: Dictionary, current: Dictionary, primary: String = ""
 ## {better, v_before, v_after, delta, slot, empty_slot, note, fallback}. note is "" | "empty_no_effect" (empty slot, V does not rise) |
 ## "weak_for_primary" (legendary or unique that is not better); the screen words it. Without the block, or for a primary it does not know, the
 ## answer is the old is_upgrade() (fallback true). Legendary and unique get no free pass here: their opening cue is the caller's business.
-func upgrade_verdict(candidate: Dictionary, worn: Dictionary, slot: String, primary: String, shots: Dictionary = {}) -> Dictionary:
+## `kit_on` (S1-A, C6): the caller's witch has her element kit on; then the damage of the verdict is weighed by upgrade_verdict.kit_damage_keys (the
+## stats that grow the kit's skills) when the primary has a row there. False (the default) is the verdict as it was.
+func upgrade_verdict(candidate: Dictionary, worn: Dictionary, slot: String, primary: String, shots: Dictionary = {}, kit_on: bool = false) -> Dictionary:
 	var block: Dictionary = data.get("upgrade_verdict",{})
 	var usable: bool = not block.is_empty() and primary in VERDICT_PRIMARIES
 	var chosen := slot
-	if chosen.is_empty(): chosen = _verdict_slot(candidate,worn,primary,shots) if usable else String(candidate.slot)
+	if chosen.is_empty(): chosen = _verdict_slot(candidate,worn,primary,shots,kit_on) if usable else String(candidate.slot)
 	var current: Dictionary = worn.get(chosen,{})
 	if not usable:
 		return {"better":is_upgrade(candidate,current,primary),"v_before":0.0,"v_after":0.0,"delta":0.0,"slot":chosen,"empty_slot":current.is_empty(),"note":"","fallback":true}
-	var before := _verdict_worth(worn,primary,shots)
+	var before := _verdict_worth(worn,primary,shots,kit_on)
 	var after_worn: Dictionary = worn.duplicate()
 	after_worn[chosen] = candidate
-	var after := _verdict_worth(after_worn,primary,shots)
+	var after := _verdict_worth(after_worn,primary,shots,kit_on)
 	var delta := after-before
 	var better: bool = delta > 0.000001 if current.is_empty() else delta >= float(block.better_min)-0.000001
 	var note := ""
@@ -853,7 +866,7 @@ func upgrade_verdict(candidate: Dictionary, worn: Dictionary, slot: String, prim
 		elif candidate.quality in ["legendary","unique"]: note = "weak_for_primary"
 	return {"better":better,"v_before":before,"v_after":after,"delta":delta,"slot":chosen,"empty_slot":current.is_empty(),"note":note,"fallback":false}
 
-func _verdict_slot(candidate: Dictionary, worn: Dictionary, primary: String, shots: Dictionary) -> String:
+func _verdict_slot(candidate: Dictionary, worn: Dictionary, primary: String, shots: Dictionary, kit_on: bool = false) -> String:
 	if candidate.slot != "ring": return candidate.slot
 	if not worn.has("ring"): return "ring"
 	if not worn.has("ring2"): return "ring2"
@@ -862,7 +875,7 @@ func _verdict_slot(candidate: Dictionary, worn: Dictionary, primary: String, sho
 	for slot in ["ring","ring2"]:
 		var trial: Dictionary = worn.duplicate()
 		trial[slot] = candidate
-		var value := _verdict_worth(trial,primary,shots)
+		var value := _verdict_worth(trial,primary,shots,kit_on)
 		if value > best_value+0.000001:
 			best = slot
 			best_value = value
@@ -870,7 +883,7 @@ func _verdict_slot(candidate: Dictionary, worn: Dictionary, primary: String, sho
 
 ## V of a whole worn set: log_weight * ln(P) + the linear rest. P = damage factors * (1 + cooldown_bps/10000) * shape factor, each as the core
 ## applies it; the attack keys the primary does not read count 0; every other key keeps its weight from score().
-func _verdict_worth(worn: Dictionary, primary: String, shots: Dictionary) -> float:
+func _verdict_worth(worn: Dictionary, primary: String, shots: Dictionary, kit_on: bool = false) -> float:
 	var block: Dictionary = data.upgrade_verdict
 	var totals := {}
 	for slot in worn:
@@ -878,9 +891,19 @@ func _verdict_worth(worn: Dictionary, primary: String, shots: Dictionary) -> flo
 	var reads: Array = block.reads[primary]
 	var damage := 1.0
 	var used := {}
-	for key in block.damage_keys[primary]:
-		damage *= maxf(.05,1.0+float(totals.get(key,0))/10000.0)
-		used[key] = true
+	var kit_rows: Dictionary = block.kit_damage_keys
+	if kit_on and kit_rows.has(primary):
+		# S1-A (C6): with the kit on, most of the damage comes from skills that read arc_damage_bps only (the rod and the overload; at the boss the
+		# overload's share was 0.64..0.82 in the 4-run kit check), the primary alone reads damage_bps. One factor: 1 + sum(weight * stat) over the keys.
+		var sum := 0.0
+		for key in kit_rows[primary]:
+			sum += float(int(kit_rows[primary][key]))/10000.0*float(totals.get(key,0))/10000.0
+			used[key] = true
+		damage = maxf(.05,1.0+sum)
+	else:
+		for key in block.damage_keys[primary]:
+			damage *= maxf(.05,1.0+float(totals.get(key,0))/10000.0)
+			used[key] = true
 	used[block.cooldown_key] = true
 	var rate := maxf(.1,1.0+float(totals.get(block.cooldown_key,0))/10000.0)
 	var count := 0

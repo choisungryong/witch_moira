@@ -35,10 +35,12 @@ var dump_out := ""
 ## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
 ## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
 ## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes). The sixth is the
-## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start(); the ninth (luck-on) turns the D23 T8 luck on in this run's loot tables and wears kit.golden.t8 (luck lines over the cap, grace_luck_4 on the head). The tenth (boss-finale) is the rhythm-c1 path with tuning.boss_finale switched on (D-boss-finale: the final boss's entrance, three phases and two breaks); the data file stays off, so the nine cases above keep their hashes. The eleventh (element-arc) is the rhythm path (no run_spells) with the arc's element kit and the whole permanent tree on (ET-A); its files stay off too.
+## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start(); the ninth (luck-on) turns the D23 T8 luck on in this run's loot tables and wears kit.golden.t8 (luck lines over the cap, grace_luck_4 on the head). The tenth (boss-finale) is the rhythm-c1 path with tuning.boss_finale switched on (D-boss-finale: the final boss's entrance, three phases and two breaks); the data file stays off, so the nine cases above keep their hashes. The eleventh (element-arc) is the rhythm path (no run_spells) with the arc's element kit and the whole permanent tree on (ET-A); its files stay off too. The twelfth and thirteenth (S1-A, docs/specs/T14-slice-s1-20261125.ko.md) are the "one run" trial of chapter1/app/trial_slice.gd: slice-arc (the arc's kit, the finale, the descent called by the policy "now" after every pilot decision, the equipment switches) and slice-ember (the old growth, the same trial, the pity armed at its line before start()). Since S1-A the rhythm-c1, boss-finale and element-arc cases read the data file's rhythm values (TrialPace is a no-op), and every kit card view carries `open`: those three hashes were updated on purpose.
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 const KitDocs := preload("res://chapter1/tests/support/kit_docs.gd")
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"],[11,"chapter1.skill.frost","luck-on","","luck-on"],[11,"chapter1.skill.ember","boss-finale","","boss-finale"],[11,"chapter1.skill.arc","element-arc","","element-arc"]]
+const SliceDocs := preload("res://chapter1/tests/support/slice_docs.gd")
+const DescentPolicy := preload("res://chapter1/tests/descent_policy.gd")
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"],[11,"chapter1.skill.frost","luck-on","","luck-on"],[11,"chapter1.skill.ember","boss-finale","","boss-finale"],[11,"chapter1.skill.arc","element-arc","","element-arc"],[11,"chapter1.skill.arc","slice-arc","","slice-arc"],[11,"chapter1.skill.ember","slice-ember","","slice-ember"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -82,6 +84,12 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 		# on and the whole permanent tree open (ET-A, D-element-trees); the data files stay off, so the ten cases above keep their hashes.
 		var kit_problem := KitDocs.enable_kit_rhythm_problem(run)
 		if not kit_problem.is_empty():return {"error":"setup rejected: "+kit_problem}
+	elif setup=="slice-arc" or setup=="slice-ember":
+		# The twelfth and thirteenth cases: the S1 trial as ONE document set (trial_slice.json through trial_slice.gd). slice-ember also arms the pity at its line,
+		# the way a save with enough dry runs does, so the affix roll, the pity and the boss loot are played together.
+		var slice_problem := SliceDocs.enable_slice_problem(run)
+		if not slice_problem.is_empty():return {"error":"setup rejected: "+slice_problem}
+		if setup=="slice-ember":SliceDocs.arm_pity(run)
 	elif setup=="affix-on":
 		var affix_problem := TrialDocs.enable_affix_rolls_problem(run)
 		if not affix_problem.is_empty():return {"error":"setup rejected: "+affix_problem}
@@ -111,7 +119,10 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 	var checkpoints_textless: Array[String]=[]
 	var iterations := 0
 	while run.mode not in ["victory","defeat"] and run.tick<MAX_TICKS and iterations<MAX_TICKS+500:
-		run.step(pilot.decide())
+		var move: Vector2=pilot.decide()
+		# slice-arc: the descent is called by the policy "now" after the pilot's decision, as measure_rhythm.gd does (the pilot itself never calls it).
+		if setup=="slice-arc":DescentPolicy.use(run,"now")
+		run.step(move)
 		iterations+=1
 		if observe:probe.observe(run)
 		if dump_at>=0 and run.tick==dump_at:

@@ -1213,7 +1213,8 @@ func _seal_grace(cause: String="") -> void:
 ## Nobody calls it in a normal run, so a run that never calls it is byte-for-byte what it was (golden unchanged).
 ## What it does: the two earlier seals are marked cleared, the last seal's kills are filled, the field is emptied, the hero stands at the last
 ## zone, the trial (if any) is skipped, and the experience is raised to the last level threshold - the same top-up a normal run gets at the
-## boss's appearance (final_level_on_boss_spawn) - with every level's card taken by the QA pilot's order of preference (primary's cards first).
+## boss's appearance (final_level_on_boss_spawn) - with every level's card taken by the QA pilot's order of preference (primary's cards first;
+## with the element kit on, the cards that unlock its two new skills come before all, so the boss is met with the three skill slots open).
 ## The boss then appears on the next step (with boss_finale on: from its entrance). NOT filled: gear (the bag stays as it is), potions' count, the
 ## rank of what a normal run would have chosen by hand. Returns false (and changes nothing) when it is too late or the run is not playing.
 func debug_skip_to_boss() -> bool:
@@ -1236,7 +1237,9 @@ func debug_skip_to_boss() -> bool:
 		var best := -1
 		for card in offer.cards:
 			var score := 10
-			if card.skill_id==growth.snapshot().primary:score=100 if card.kind=="evolve" else (90 if card.kind=="rank" else 80)
+			# With the element kit on, the cards that open its new skills (A02, A01) come first, so the boss is met with all three skill slots open.
+			if growth.kit_active() and card.kind=="unlock":score=200
+			elif card.skill_id==growth.snapshot().primary:score=100 if card.kind=="evolve" else (90 if card.kind=="rank" else 80)
 			elif card.kind=="unlock":score=65
 			elif card.kind=="evolve":score=60
 			elif card.kind=="rank":score=50
@@ -1615,7 +1618,7 @@ func pickup_verdict(uid: int) -> Dictionary:
 	# GM5: with loot.json upgrade_verdict.enabled the answer is loot.upgrade_verdict() over the whole worn set (the same function the tools use);
 	# off, it is the old is_upgrade() line, untouched. `note` is "" | "empty_no_effect" | "weak_for_primary" and only the new path sets it.
 	var judged: Dictionary={}
-	if not veiled and not worn and loot.verdict_on():judged=loot.upgrade_verdict(item,_verdict_worn(),slot,_primary_id,_verdict_shots())
+	if not veiled and not worn and loot.verdict_on():judged=loot.upgrade_verdict(item,_verdict_worn(),slot,_primary_id,_verdict_shots(),_kit_on)
 	var note: String=String(judged.get("note",""))
 	if not veiled:
 		if judged.is_empty():better="yes" if not worn and bool(loot.is_upgrade(item,current,_primary_id)) else "no"
@@ -1660,14 +1663,14 @@ func target_slot(item: Dictionary) -> String:
 	var base: String=super(item)
 	if loot==null or not loot.verdict_on() or String(item.get("slot",""))!="ring" or not equip_slot_of(int(item.get("uid",-1))).is_empty():return base
 	if not equipped.has("ring") or not equipped.has("ring2"):return base
-	return String(loot.upgrade_verdict(item,_verdict_worn(),"",_primary_id,_verdict_shots()).slot)
+	return String(loot.upgrade_verdict(item,_verdict_worn(),"",_primary_id,_verdict_shots(),_kit_on).slot)
 
 ## GM5: the one place the app asks "is this a better item than the worn one" when it has no pickup_verdict: the verdict v2 when it is on,
 ## else loot.is_upgrade(). `slot` is where the item would go.
 func is_better_gear(candidate: Dictionary,current: Dictionary,slot: String) -> bool:
 	if loot==null:return false
 	if not loot.verdict_on():return bool(loot.is_upgrade(candidate,current,_primary_id))
-	return bool(loot.upgrade_verdict(candidate,_verdict_worn(),slot,_primary_id,_verdict_shots()).better)
+	return bool(loot.upgrade_verdict(candidate,_verdict_worn(),slot,_primary_id,_verdict_shots(),_kit_on).better)
 
 ## The (at most) three rows that change the most in relative size. Stable on ties; copies the rows.
 func _top_rows(rows: Array) -> Array[Dictionary]:
@@ -2755,6 +2758,8 @@ func _descent_score(type: String,details: Dictionary) -> void:
 				var pct := _d_strong_carry/100
 				if pct>0:_d_strong_carry-=pct*100;_descent_add(pct*int(points.strong_damage_per_pct))
 		"detonate":_descent_combo(int(points.detonate))
+		# S1-A (C5): the element kit's overload says `detonated` (one per body it hit); it earns the combination points the spell composition's detonation does.
+		"detonated":_descent_combo(int(points.kit_detonate))
 
 ## Nearest first (equal distance: the smaller id).
 func _descent_sort(found: Array[int],center: Vector2) -> Array[int]:
@@ -3919,10 +3924,39 @@ func _kit_state() -> Dictionary:
 	if _kit_v16:state.merge({"crest_tick":_kit_crest_tick,"zone_start":_kit_zone_start,"evo_events":_kit_evo_events})
 	return state
 
+## What the kit's skill `id_` is now for a reader that must also see it before it is unlocked: `_kit_skill` (base values plus the rank entries) while it
+## is owned, else the definition's base values (no rank entry applied). Pure.
+func _kit_skill_or_base(id_: String) -> Dictionary:
+	var owned := _kit_skill(id_)
+	if not owned.is_empty():return owned
+	var out := {}
+	var definition: Dictionary=_kit.skills[id_]
+	for key in definition:
+		if key!="role" and key!="ranks":out[key]=definition[key] if definition[key] is String else int(definition[key])
+	return out
+
+## The recharge of a kit skill in ticks as its cast uses it (the rod's floor of 12; the overload's with the cards that change it). 0 for a skill without one.
+func _kit_cooldown_ticks(id_: String) -> int:
+	var s := _kit_skill_or_base(id_)
+	if not s.has("cooldown_ticks"):return 0
+	match String(_kit.skills[id_].role):
+		"lay":return maxi(12,int(s.cooldown_ticks))
+		"burst":return maxi(12,int(s.cooldown_ticks)*(10000+growth.kit_val("overload_cd_bps"))/10000)
+	return int(s.cooldown_ticks)
+
 ## Read only, for the screen and the tools: the kit's state in one dictionary. {"on": false} while off. Changes nothing, draws nothing.
+## S1-A (A-element-kit-screen 9.1) added: skills[id].cooldown_ticks (the rod and the overload, the cards that change them included), next_storm, cap_big
+## (the cap of a big body, A18 included), rod_radius_cm (the radius round a rod within which a shocked body's death draws a spark, rank 3 included) and
+## reach_cm (the overload's reach).
 func kit_view() -> Dictionary:
 	if not _kit_on:return {"on":false}
 	var skills := {}
-	for id_ in _kit.skills:skills[id_]={"rank":growth.kit_rank(id_),"role":String(_kit.skills[id_].role)}
+	for id_ in _kit.skills:skills[id_]={"rank":growth.kit_rank(id_),"role":String(_kit.skills[id_].role),"cooldown_ticks":_kit_cooldown_ticks(id_)}
+	var rod_id := _kit_skill_id("lay")
+	var burst_id := _kit_skill_id("burst")
+	var rod_skill := _kit_skill_or_base(rod_id) if not rod_id.is_empty() else {}
+	var burst_skill := _kit_skill_or_base(burst_id) if not burst_id.is_empty() else {}
 	return {"on":true,"element":ElementKit.element_of_skill(_primary_id),"skills":skills,"rods":_kit_rods.duplicate(),"taken":growth.kit_taken(),
-		"shell_until":_kit_shell_until,"next_overload":_kit_next_overload,"next_rod":_kit_next_rod}
+		"shell_until":_kit_shell_until,"next_overload":_kit_next_overload,"next_rod":_kit_next_rod,"next_storm":_kit_next_storm,
+		"cap_big":int(_kit.status.max_big)+growth.kit_val("max_big"),
+		"rod_radius_cm":int(rod_skill.get("keep_radius_cm",int(_kit.rod.keep_radius_cm))),"reach_cm":int(burst_skill.get("reach_cm",0))}

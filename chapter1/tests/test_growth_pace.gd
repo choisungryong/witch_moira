@@ -40,6 +40,13 @@ func shipped() -> Dictionary:
 	for key in C1_KEYS: doc.rhythm.erase(key)
 	return doc
 
+## The D19 first values (TrialPace.FIRST_VALUES) laid into a document by hand: since S1-A TrialPace.apply leaves the document as it is (the data file's
+## rhythm values are the trial's), so the checks that need these exact values as a FIXTURE put them in themselves.
+func first_values(d: Dictionary) -> void:
+	for key in TrialPace.FIRST_VALUES:
+		var value: Variant = TrialPace.FIRST_VALUES[key]
+		d.rhythm[key] = value.duplicate(true) if (value is Array or value is Dictionary) else value
+
 ## The shipped document with the rhythm (and its opening) on, then `mutate` applied.
 func document(mutate: Callable = Callable(), rhythm_on := true) -> Dictionary:
 	var doc := shipped()
@@ -85,7 +92,7 @@ func accepts(name: String, mutate: Callable) -> void:
 func validator_checks() -> void:
 	var table: Array = TrialPace.FIRST_VALUES.xp_thresholds
 	accepts("the shipped document", func(d): pass)
-	accepts("the first values", func(d): TrialPace.apply(d))
+	accepts("the first values", func(d): first_values(d))
 	accepts("a 12 entry table", func(d): d.rhythm.xp_thresholds = [0, 10, 23, 71, 186, 444, 740, 1167, 1772, 2552, 3898, 12000])
 	accepts("a 20 entry table", func(d): d.rhythm.xp_thresholds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
 	rejects("an 11 entry table", func(d): d.rhythm.xp_thresholds = table.slice(0, 11))
@@ -457,7 +464,7 @@ func off_equals_today_checks() -> void:
 	var snap: Dictionary = plain.snapshot()
 	check(not snap.rhythm.has("kill_burst") and not snap.has("pace") and not snap.metrics.has("kill_burst"), "G a plain rhythm run has none of the new snapshot keys")
 	var ignored := play(document(func(d):
-		TrialPace.apply(d)
+		first_values(d)
 		d.rhythm.beats[0].xp_bps = 30000
 		d.rhythm.trial.xp_bps = 30000, false), 1200)
 	var bare := play(document(Callable(), false), 1200)
@@ -490,7 +497,7 @@ func off_equals_today_checks() -> void:
 # ------------------------------------------------------------------ H
 
 func everything_on(d: Dictionary) -> void:
-	TrialPace.apply(d)
+	first_values(d)
 	d.grace.enabled = true
 	d.grace.pace = {"soft_after_ticks": 600, "ramp_bps_per_s": 800, "max_bps": 25000}
 
@@ -499,13 +506,13 @@ func determinism_checks() -> void:
 	var b := play(document(everything_on), 3000)
 	check(hash_of(a) == hash_of(b) and a.kills == b.kills and a.growth.current_level() == b.growth.current_level(), "H a pilot run with every C1 key on, twice: the same snapshot (tick %d, kills %d, level %d)" % [a.tick, a.kills, a.growth.current_level()])
 	check(int(a.metrics.kill_burst.bursts) == int(b.metrics.kill_burst.bursts), "H the same number of bursts (%d)" % int(a.metrics.kill_burst.bursts))
-	check(a.growth.xp_thresholds().size() == 16 and a._seal_total(0) == 365, "H the trial values reached the run (16 levels, seal 365)")
+	check(a.growth.xp_thresholds().size() == 16 and a._seal_total(0) == 365, "H the first values laid into the document reached the run (16 levels, seal 365)")
 	var run := Chapter.new()
-	check(TrialDocs.TRIAL_NAMES.has("pace") and TrialDocs.enable_rhythm_problem(run, false, true).is_empty() and run.start(11, "chapter1.skill.ember") and run.growth.xp_thresholds().size() == 16 and run.tuning.rhythm.kill_burst.min_kills == 10, "H the trial switch name is pace and it turns the first values on in memory")
+	check(TrialDocs.TRIAL_NAMES.has("pace") and TrialDocs.enable_rhythm_problem(run, false, true).is_empty() and run.start(11, "chapter1.skill.ember") and run.growth.xp_thresholds().size() == data_file().rhythm.xp_thresholds.size() and run.tuning.rhythm.kill_burst.min_kills == 10 and JSON.stringify(run.tuning.rhythm.seal_kills) == JSON.stringify(data_file().rhythm.seal_kills.map(func(v): return int(v))), "H the trial switch name is pace and, since S1-A, it turns the data file's own growth values on in memory (17 levels, the file's seal kills)")
 	var file := data_file()
 	check(bool(file.rhythm.enabled) == false and bool(file.rhythm.opening.enabled) == false and file.rhythm.xp_thresholds.size() == 17 and not file.rhythm.xp_thresholds.has(null), "H the data file keeps its own rhythm table and its switches off after a trial document was built")
 	var run2 := Chapter.new()
-	check(TrialDocs.enable_rhythm_problem(run2).is_empty() and run2.start(11, "chapter1.skill.ember") and run2.growth.xp_thresholds().size() == data_file().rhythm.xp_thresholds.size() and run2.growth.xp_thresholds().size() != 16, "H the rhythm trial without pace takes the file's own table, not the pace first values (17, not 16)")
+	check(TrialDocs.enable_rhythm_problem(run2).is_empty() and run2.start(11, "chapter1.skill.ember") and run2.growth.xp_thresholds().size() == data_file().rhythm.xp_thresholds.size() and run2.growth.xp_thresholds().size() != 16, "H the rhythm trial without pace takes the file's own table, as the pace path does since S1-A (17, not the 16 of the old first values)")
 
 func execute() -> void:
 	if not OS.get_user_data_dir().replace("\\", "/").contains("/_local/appdata/"):

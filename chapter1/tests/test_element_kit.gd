@@ -1312,9 +1312,11 @@ func switched_off_mutation(d: Dictionary) -> void:
 func part_compat() -> void:
 	# The document as it was (no key of the 1st fix, the old values) is the old run: its snapshot at tick 12000 is the hash the golden case
 	# "element-arc" recorded for it before the fix (golden core_runtime.json, checkpoint 12000, 2026-11-25).
+	# S1-A (2026-11-25 night) moved this hash on purpose, once: the rhythm now reads the data file's own growth values (TrialPace no longer lays the D19 first
+	# values over them; they were cbfad532... before) and a kit card view carries `open` (the offer is in the snapshot). The test still pins "the same run twice".
 	var r := run_ticks(legacy_kit(), 12000)
 	var digest: String = JSON.stringify(r.snapshot()).sha256_text()
-	check(r.tick == 12000 and digest == "cbfad53204ea3ef323b3c81a6b32e5d0680758864000bd3f49f091437f2e56f6", "compat: the document without the new keys is the old run (tick %d, %s)" % [r.tick, digest])
+	check(r.tick == 12000 and digest == "a543dbcfead70355c7b655987b7b5d414593ea56a04310bba11e12eb71410a1b", "compat: the document without the new keys is the old run (tick %d, %s)" % [r.tick, digest])
 	check(not r.snapshot().growth.kit.has("floor") and not r.snapshot().kit_core.has("zone_start"), "compat: and it carries none of the new snapshot keys")
 	# The new keys all switched off in place change nothing a player can see: the same kills and life after 3000 ticks.
 	var off_doc := on_kit(switched_off_mutation)

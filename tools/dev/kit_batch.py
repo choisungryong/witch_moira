@@ -5,6 +5,9 @@ It replaces the one-off runners of the element-tree trials (_local/et-b/one.sh, 
 
   run    python tools/dev/kit_batch.py run --dir _local/et-d --tuning _local/et-b/on.json --seeds 11-30 --preset kit140 [--par 6] [--limit-min 40] [--kit-doc _local/et-d/doc.json]
          --preset kit140 = link / link_rank / main (tree all) + rnd1..rnd3 (tree all, random policy, --kit-seed 1..3) + newl (tree none, link policy), the 140-run table of 16.7.
+         --preset slice = the S1 trial ("one run", docs/specs/T14-slice-s1-20261125.ko.md): measure_rhythm.gd --slice, which builds every document itself, so --tuning is NOT taken (and --kit-doc is
+         replaced by --slice-doc). Sets: arc_link / arc_main / arc_rnd1 (the arc with the kit's card policy link / main / random seed 1), ember and frost (the kit is off for them; the policy does not apply);
+         every set uses the descent policy now (`extra` can change it: --set NAME:...,descent=boss_break). Needs --dir and --seeds only.
          --preset bare = the old-growth runs of BF-B (no kit; ember, frost and arc in one file, the tool's "fire" and "arcold" sets) for seeds that BF-B did not run.
          --set NAME:policy=link,tree=all[,kit_seed=N][,kit=off][,primaries=ember;frost;arc][,extra=--flag;--flag2]  (repeatable, in place of / besides a preset)
          Writes <dir>/<name>_s<seed>.json and _stdout.txt, skips a run whose JSON is already complete (re-running a half-done batch picks up where it stopped), retries a run
@@ -41,6 +44,14 @@ PRESETS = {
     },
     "bare": {"bare": {"kit": "off", "primaries": "ember;frost;arc"}},
     "link2": {"link": {"policy": "link", "tree": "all"}, "newl": {"policy": "link", "tree": "none"}},
+    # S1-A: the one-run trial, three families x the kit's policies (the policy only matters where the kit is on: the arc).
+    "slice": {
+        "arc_link": {"slice": True, "primaries": "arc", "policy": "link"},
+        "arc_main": {"slice": True, "primaries": "arc", "policy": "main"},
+        "arc_rnd1": {"slice": True, "primaries": "arc", "policy": "random", "kit_seed": 1},
+        "ember": {"slice": True, "primaries": "ember"},
+        "frost": {"slice": True, "primaries": "frost"},
+    },
 }
 FAIL_MARKS = ("Compilation failed", "Can't open file", "Failed to load script")
 
@@ -79,7 +90,26 @@ def complete(path):
     return '"mode"' in t
 
 
+def cmd_for_slice(name, s, seed, args, out):
+    """The S1 trial: the tool builds every document itself; nothing of --rhythm-on / --tuning / --element-kit / --kit-tree / --kit-doc may be passed."""
+    c = [sys.executable, "tools/dev/godot.py", "--headless", "--path", ".", "--script", "res://chapter1/tests/measure_rhythm.gd", "--",
+         "--slice", "--seeds=%d" % seed, "--primaries=%s" % str(s.get("primaries", args["primary"])).replace(";", ","), "--descent=%s" % s.get("descent", "now"), "--thirds", "--rc"]
+    if "policy" in s:
+        c.append("--kit-policy=%s" % s["policy"])
+    if "kit_seed" in s:
+        c.append("--kit-seed=%d" % s["kit_seed"])
+    if args.get("slice_doc"):
+        c.append("--slice-doc=%s" % args["slice_doc"])
+    for x in str(s.get("extra", "")).split(";"):
+        if x:
+            c.append(x)
+    c.append("--out=%s" % out)
+    return c
+
+
 def cmd_for(name, s, seed, args, out):
+    if s.get("slice"):
+        return cmd_for_slice(name, s, seed, args, out)
     c = [sys.executable, "tools/dev/godot.py", "--headless", "--path", ".", "--script", "res://chapter1/tests/measure_rhythm.gd", "--",
          "--seeds=%d" % seed, "--primaries=%s" % str(s.get("primaries", args["primary"])).replace(";", ","), "--rhythm-on", "--no-trial-arena", "--thirds", "--rc", "--tuning=%s" % args["tuning"]]
     if s.get("kit") != "off":
@@ -151,16 +181,27 @@ def cmd_run(a):
         sets[n] = d
     if not sets:
         sys.exit("kit_batch: no sets (--preset or --set)")
-    args = {"dir": rel(a.dir), "tuning": rel(a.tuning), "seeds": parse_seeds(a.seeds), "sets": sets, "par": a.par, "limit_min": a.limit_min, "primary": a.primary, "kit_doc": rel(a.kit_doc) if a.kit_doc else ""}
+    sliced = [n for n, v in sets.items() if v.get("slice")]
+    if sliced and len(sliced) != len(sets):
+        sys.exit("kit_batch: a slice set (%s) cannot be mixed with sets that use --tuning" % ",".join(sliced))
+    if sliced and (a.tuning or a.kit_doc):
+        sys.exit("kit_batch: the slice preset defines the whole run itself: --tuning and --kit-doc are not taken (use --slice-doc for a copy of trial_slice.json)")
+    if not sliced and (not a.tuning or a.slice_doc):
+        sys.exit("kit_batch: --tuning is required (and --slice-doc is for the slice preset only)")
+    args = {"dir": rel(a.dir), "tuning": rel(a.tuning) if a.tuning else "", "seeds": parse_seeds(a.seeds), "sets": sets, "par": a.par, "limit_min": a.limit_min, "primary": a.primary, "kit_doc": rel(a.kit_doc) if a.kit_doc else "",
+            "slice_doc": rel(a.slice_doc) if a.slice_doc else ""}
     sys.exit(run_batch(args))
 
 
 def cmd_again(a):
     src = json.loads((ROOT / rel(a.dir) / "batch.json").read_text(encoding="utf-8"))
     args = {k: src[k] for k in ("tuning", "seeds", "sets", "par", "limit_min", "primary", "kit_doc")}
+    args["slice_doc"] = src.get("slice_doc", "")
     args["dir"] = rel(a.to)
     if a.tuning:
         args["tuning"] = rel(a.tuning)
+    if a.slice_doc:
+        args["slice_doc"] = rel(a.slice_doc)
     if a.kit_doc:
         args["kit_doc"] = rel(a.kit_doc)
     if a.seeds:
@@ -211,7 +252,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--dir", required=True)
-    r.add_argument("--tuning", required=True)
+    r.add_argument("--tuning")  # required except for the slice preset (checked in cmd_run)
     r.add_argument("--seeds", default="11-30")
     r.add_argument("--preset", choices=sorted(PRESETS))
     r.add_argument("--set", action="append")
@@ -219,11 +260,13 @@ def main():
     r.add_argument("--limit-min", type=float, default=40)
     r.add_argument("--primary", default="arc")
     r.add_argument("--kit-doc")
+    r.add_argument("--slice-doc")  # slice preset only: a copy of data/trial_slice.json under _local/
     g = sub.add_parser("again")
     g.add_argument("--dir", required=True)
     g.add_argument("--to", required=True)
     g.add_argument("--tuning")
     g.add_argument("--kit-doc")
+    g.add_argument("--slice-doc")
     g.add_argument("--seeds")
     g.add_argument("--only")
     g.add_argument("--par", type=int)

@@ -18,6 +18,11 @@ extends SceneTree
 ##   records tools/dev/rc_read.py judges the RC-T table from (core events with ticks: beat_started / wave_crest / gate_opened / chapter_champion / potion_pickup / item_drop /
 ##   descent_ready / descent_called / level_choice, and a potion drink read from the potion count falling; the hero's lowest life ratio and the potion count per second; every offer with its card ids and the state the 4.3 crisis rule reads;
 ##   the picks). It only reads core state and events; nothing here draws a random number or writes the core.
+## S1-A (docs/specs/T14-slice-s1-20261125.ko.md 2.2): --slice plays the "one run" trial (chapter1/app/trial_slice.gd + data/trial_slice.json: rhythm and opening with the data file's own values, the finale, taste crest,
+##   descent, the arc's element kit with the whole tree open, the equipment switches in ONE loot table, no spells / grace / extras / sustain trial) - the same run `--chapter1-trial=slice` plays. The tool builds no document of its own then:
+##   --slice refuses --rhythm-on, --tuning=, --descent-doc=, --element-kit, --kit-tree=, --kit-doc=, --spells-on, --extras-on (exit 1); the rest stays (--seeds --primaries --descent=<policy> --kit-policy= --kit-seed=
+##   --gear-kit= --kits-file= --move-bps= --rc --thirds --hurt-by-source --out=). --slice-doc=_local/x.json reads a copy of trial_slice.json (same check) instead of the shipped one. The JSON gets "slice": true and
+##   "slice_sha256" (of the document the runs used). Without --slice the output is byte-for-byte what it was.
 ## Grouping: fixed-size time bins (--bin seconds), D11 A2 beats, and zones. Beats are grouped by `beat_started` core
 ## events when the core emits them; otherwise by the time boundaries in BEATS (the output says which).
 const Core = preload("res://chapter1/core/chapter_core.gd")
@@ -27,6 +32,8 @@ const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
 const GracePolicies = preload("res://chapter1/tests/support/grace_policies.gd")
 const KitDocs = preload("res://chapter1/tests/support/kit_docs.gd")
 const KitPolicies = preload("res://chapter1/tests/support/kit_policies.gd")
+const SliceDocs = preload("res://chapter1/tests/support/slice_docs.gd")
+const TrialSlice = preload("res://chapter1/app/trial_slice.gd")
 
 ## D11 A2 targets [hypothesis]. from/to are the time boundaries used when the core has no beat_started event.
 ## The guardian windows in the A2 table overlap the neighbouring beats; they are folded into those beats here.
@@ -106,6 +113,10 @@ var kit_doc_path := ""
 ## site within 20 m when the run is in a lull (or has no rhythm), or while its guard is already fighting; it stands still next to the guard.
 var extras_on := false
 var pilot_extras := false
+## S1-A: --slice (the "one run" trial of chapter1/app/trial_slice.gd) and --slice-doc=_local/x.json (a copy of data/trial_slice.json).
+var slice_on := false
+var slice_doc_path := ""
+var slice_doc: Dictionary = {}
 ## D19 V0 (all read-only; none of them changes what the default output prints):
 ## --tuning=_local/x.json     a tuning copy (a whole combat_tuning.json) read instead of the shipped one (make it with a tool, never edit data/).
 ## --descent-doc=_local/y.json  the same for descent.json (used with --descent=...; "enabled" is set true in memory).
@@ -207,12 +218,45 @@ func execute() -> void:
 				quit(1)
 				return
 		elif arg == "--extras-on": extras_on = true
+		elif arg == "--slice": slice_on = true
+		elif arg.begins_with("--slice-doc="): slice_doc_path = arg.trim_prefix("--slice-doc=")
 		elif arg == "--pilot-extras": pilot_extras = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
 	if not out.begins_with("_local/") or out.contains("..") or out.contains(":") or out.begins_with("/"):
 		push_error("measure_rhythm: --out must be a relative path under _local/ (got %s)" % out)
 		quit(1)
 		return
+	if slice_doc_path != "" and not slice_on:
+		push_error("measure_rhythm: --slice-doc needs --slice")
+		quit(1)
+		return
+	if slice_on:
+		# The trial is defined in one place (trial_slice.gd + trial_slice.json); a tool that builds its own documents next to it would measure another run.
+		var refused: Array[String] = []
+		var given := OS.get_cmdline_user_args()
+		for arg in given:
+			for forbidden in ["--rhythm-on", "--element-kit", "--spells-on", "--extras-on"]:
+				if arg == forbidden: refused.append(forbidden)
+			for prefix in ["--tuning=", "--descent-doc=", "--kit-tree=", "--kit-doc="]:
+				if arg.begins_with(prefix): refused.append(prefix)
+		if not refused.is_empty():
+			push_error("measure_rhythm: --slice defines the whole run itself and refuses %s" % ", ".join(refused))
+			quit(1)
+			return
+		if slice_doc_path != "" and (not slice_doc_path.begins_with("_local/") or slice_doc_path.contains("..") or slice_doc_path.contains(":")):
+			push_error("measure_rhythm: --slice-doc must be a relative path under _local/ (got %s)" % slice_doc_path)
+			quit(1)
+			return
+		var slice_read := TrialSlice.read_document(("res://" + slice_doc_path) if slice_doc_path != "" else TrialSlice.DOC_PATH)
+		if not String(slice_read.error).is_empty():
+			push_error("measure_rhythm: " + String(slice_read.error))
+			quit(1)
+			return
+		slice_doc = slice_read.doc
+		kit_tree = String(slice_doc.element_kit.tree)
+		# The reading below (lulls, the table header) asks "is the rhythm on", and the trial has no sustain trial: say so truthfully.
+		rhythm_on = bool(slice_doc.tuning.rhythm.enabled)
+		no_trial_arena = not bool(slice_doc.tuning.rhythm.trial)
 	for p in [tuning_path, descent_doc_path]:
 		if p != "" and (not String(p).begins_with("_local/") or String(p).contains("..") or String(p).contains(":")):
 			push_error("measure_rhythm: --tuning / --descent-doc must be a relative path under _local/ (got %s)" % p)
@@ -276,6 +320,10 @@ func execute() -> void:
 	if thirds_on and not gear_mode: print_thirds(runs)
 	var result := {"targets": (targets_name if targets_name != "" else "d11-a2"), "stand": stand_on, "no_trial_arena": no_trial_arena, "crest_lull": crest_lull_summary(runs), "descent_cross": (descent_cross(runs) if descent_policy != "" else {}), "tuning": tuning_path, "descent_doc": descent_doc_path, "policy": policy_name, "bin_s": bin_s, "seeds": seeds, "primaries": prims, "runs": runs, "cross": cross,
 		"note": "pilot input, no permanent tree, first_boss_kill=true; bot results are stability/balance reference only, fun is unevaluated"}
+	if slice_on:
+		result["slice"] = true
+		result["slice_sha256"] = TrialSlice.document_sha256(("res://" + slice_doc_path) if slice_doc_path != "" else TrialSlice.DOC_PATH)
+		result["slice_doc"] = slice_doc_path
 	var abs_path := ProjectSettings.globalize_path("res://" + out)
 	DirAccess.make_dir_recursive_absolute(abs_path.get_base_dir())
 	var f := FileAccess.open(abs_path, FileAccess.WRITE)
@@ -335,7 +383,12 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	var pilot = Pilot.new()
 	pilot.run = run
 	run.first_boss_kill = true
-	if rhythm_on or extras_on or not tuning_copy.is_empty():
+	if slice_on:
+		var slice_problem := SliceDocs.enable_slice_problem(run, slice_doc)
+		if not slice_problem.is_empty():
+			push_error("measure_rhythm: " + slice_problem)
+			return {}
+	elif rhythm_on or extras_on or not tuning_copy.is_empty():
 		var doc = tuning_copy.duplicate(true) if not tuning_copy.is_empty() else JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if rhythm_on:
 			doc.rhythm.enabled = true
@@ -348,17 +401,17 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if not run.set_tuning(doc):
 			push_error("measure_rhythm: rhythm document rejected %s" % str(run.errors))
 			return {}
-	if spells_on:
+	if spells_on and not slice_on:
 		var spells_problem := TrialDocs.enable_spells_problem(run)
 		if not spells_problem.is_empty():
 			push_error("measure_rhythm: " + spells_problem)
 			return {}
-	if element_kit_on:
+	if element_kit_on and not slice_on:
 		var element_problem := KitDocs.enable_kit_problem(run, kit_tree, [String(prim).get_slice(".", 2)], kit_doc_path)
 		if not element_problem.is_empty():
 			push_error("measure_rhythm: " + element_problem)
 			return {}
-	if descent_policy != "":
+	if descent_policy != "" and not slice_on:
 		if descent_copy.is_empty():
 			var descent_problem := TrialDocs.enable_descent_problem(run)
 			if not descent_problem.is_empty():
@@ -378,6 +431,8 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if kit_problem != "":
 			push_error("measure_rhythm: " + kit_problem)
 			return {}
+	# S1-A: the kit's card policy runs for the runs that really have the kit (under --slice only the arc's); without --slice this is `element_kit_on`, as it was.
+	var kit_run: bool = element_kit_on or (slice_on and bool(run.kit_view().on))
 	if rc_on: rc = rc_new()
 	var dmg_raw_s: Array = []
 	var hurt_log: Array = []
@@ -439,7 +494,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				if not run.choose(offer.token, chosen.id):
 					push_error("measure_rhythm: choice rejected %s" % str(run.errors))
 					return {}
-		if element_kit_on:
+		if kit_run:
 			# ET-A: the kit's cards are picked by the tool's policy, while the core waits in "choice" (the pilot would take its own order).
 			var g3 := 0
 			while run.mode == "choice" and g3 < 64:
@@ -499,7 +554,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			var esec: float = float(ev.tick) / 60.0
 			sweep_event(sw, ev, run, prim)
 			if rc_on: rc_event(ev)
-			if rc_on and element_kit_on: note_kit_floor(ev, kit_floor_list, kit_evolve_open, kit_floor_seen)
+			if rc_on and kit_run: note_kit_floor(ev, kit_floor_list, kit_evolve_open, kit_floor_seen)
 			if stand_from != "" or stand_on:
 				match String(ev.type):
 					"beat_started":
@@ -629,7 +684,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
 		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
 	if rc_on: result["rc"] = rc_finish(pilot, secs)
-	if element_kit_on:
+	if kit_run:
 		result["element_kit"] = {"policy": kit_policy, "tree": kit_tree, "kit_seed": kit_seed, "view": run.kit_view(), "metrics": run.metrics.get("kit", {}).duplicate(true), "hands": kit_hands, "picks": kit_picks, "casts": run.metrics.casts.duplicate(true), "hits": run.metrics.hits.duplicate(true)}
 		if kit_doc_path != "": result.element_kit["doc"] = kit_doc_path
 		if rc_on:

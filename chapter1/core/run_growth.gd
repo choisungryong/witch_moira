@@ -1226,7 +1226,8 @@ func _kit_card_view(card: Dictionary) -> Dictionary:
 	var skill_id := ""
 	if kind == "unlock" or kind == "rank": skill_id = String(card.skill)
 	elif kind == "rune" or kind == "evolve": skill_id = _primary
-	var view := {"id":String(card.id),"kind":kind,"skill_id":skill_id,"weight":int(_kit_offer.weights[kind]),"title_key":"kit.card." + String(card.id),"answers":card.answers.duplicate()}
+	# `open` (A-element-kit-screen 9.2): "base" or the id of the permanent tree node that opened the card; the screen's "opened by the tree" mark reads it.
+	var view := {"id":String(card.id),"kind":kind,"skill_id":skill_id,"weight":int(_kit_offer.weights[kind]),"title_key":"kit.card." + String(card.id),"answers":card.answers.duplicate(),"open":String(card.open)}
 	if card.has("rank"): view.rank = int(card.rank)
 	if card.has("requires"): view.requires = card.requires.duplicate()
 	if card.has("excludes"): view.excludes = card.excludes.duplicate()
@@ -1280,7 +1281,7 @@ func _kit_fill(selected: Array[Dictionary], target: int) -> void:
 	for id_ in _kit_offer.filler:
 		if selected.size() >= target: return
 		var entry: Dictionary = _kit_fillers[id_]
-		selected.append({"id":String(id_),"kind":"filler","skill_id":"","weight":0,"title_key":"kit.card." + String(id_),"answers":entry.answers.duplicate(),"effect":entry.effect.duplicate()})
+		selected.append({"id":String(id_),"kind":"filler","skill_id":"","weight":0,"title_key":"kit.card." + String(id_),"answers":entry.answers.duplicate(),"open":"base","effect":entry.effect.duplicate()})
 
 func _kit_choose(chosen: Dictionary) -> void:
 	var id_ := String(chosen.id)

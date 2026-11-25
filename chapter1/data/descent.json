@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "provenance": "independent_design",
-  "balance_status": "가설 (D24). 균형 뒤 확정",
+  "balance_status": "가설 (D24). 균형 뒤 확정. points.kit_detonate 30은 [가설](detonate와 같은 값, S1-A C5)",
   "enabled": false,
   "cost": [3000, 8000, 10000],
   "points": {
@@ -9,7 +9,7 @@
     "kill_default": 5,
     "elite_kill": 400, "champion_kill": 800,
     "strong_damage_per_pct": 10,
-    "vs_cc_hit": 20, "detonate": 30, "combo_cap_per_tick": 300,
+    "vs_cc_hit": 20, "detonate": 30, "kit_detonate": 30, "combo_cap_per_tick": 300,
     "marks_refund_per_stack": 6, "marks_refund_cap": 1500
   },
   "area": {"shape": "screen", "right_deg": -38.2, "half_w_m": 17.3, "half_h_m": 13.4, "edge_m": 1.0},

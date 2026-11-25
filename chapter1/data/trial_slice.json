@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "status": "S1 시험판. 출하 기본값이 아니다. 값은 [가설]",
+  "tuning": {
+    "rhythm": {"enabled": true, "opening": true, "trial": false},
+    "boss_finale": true,
+    "taste_crest": {"beat": "gi", "at_ticks": 6000, "count": 14, "arc_deg": 70},
+    "off": ["grace", "elites", "extras", "loot_flow"]
+  },
+  "descent": {"enabled": true, "cost": [3000, 8000, 10000]},
+  "element_kit": {"enabled_elements": ["arc"], "tree": "all"},
+  "loot": {"affix_rolls": true, "pity": true, "upgrade_verdict": true, "luck": true},
+  "run_spells": false
+}

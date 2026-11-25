@@ -48,8 +48,8 @@ GOLDEN_GROUP = ('golden', 'golden-textless', 'core-text')
 # --only accepts check names and these groups.
 ALIASES = {
     'profile-all': ['profile', 'profile-legacy', 'profile-v4', 'profile-v4-fixtures', 'profile-v5', 'app-guard', 'app-loadout'],
-    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'element-kit', 'descent-fx', 'skill-lab'],
-    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'element-kit', 'descent-fx', 'skill-lab', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
+    'core-fast': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'element-kit', 'trial-slice', 'descent-fx', 'skill-lab'],
+    'core-all': ['growth', 'tree', 'combat', 'chapter', 'loot', 'rhythm', 'growth-pace', 'meteor', 'run-spells', 'grace', 'descent', 'elites', 'element-kit', 'trial-slice', 'descent-fx', 'skill-lab', 'run-record', 'run-spells-full', 'golden', 'golden-textless', 'core-text', 'loot-sim'],
     'golden-all': ['golden', 'golden-textless', 'core-text'],
     'text': ['loc', 'i18n-scan', 'glyphs'],
     'tools': ['manager', 'i18n-scan', 'glyphs', 'tools-selftest', 'screen-contract'],
@@ -143,6 +143,8 @@ def checks():
         godot_check('boss-finale', 'res://chapter1/tests/test_boss_finale.gd', 'CHAPTER1_BOSS_FINALE_RESULT', timeout=900),
         # D-element-trees ET-A: the element kit (arc only): data format, status and chain, rod, overload, card engine, permanent tree, profile move, boss break, snapshot; switched on in memory.
         godot_check('element-kit', 'res://chapter1/tests/test_element_kit.gd', 'CHAPTER1_ELEMENT_KIT_RESULT', timeout=900),
+        # S1-A (T14): the "one run" trial (data/trial_slice.json, app/trial_slice.gd): one definition for the app, checks and measurement; plus the kit's read-only values, C5 descent points, C6 verdict weights, boss shortcut with the kit.
+        godot_check('trial-slice', 'res://chapter1/tests/test_trial_slice.gd', 'CHAPTER1_TRIAL_SLICE_RESULT', timeout=900),
         godot_check('descent-fx', 'res://chapter1/tests/test_descent_fx.gd', 'CHAPTER1_DESCENT_FX_TEST_RESULT', timeout=300),
         # T12 SL-D: the skill lab body (stage, commands, sound overrides, soak) in a headless run; the line SKILL_LAB_TEST {"pass": ...} decides.
         godot_check('skill-lab', 'res://chapter1/tests/test_skill_lab.gd', 'SKILL_LAB_TEST', ['--chapter1-start', '--chapter1-profile-off', '--chapter1-qa-ignore-focus', '--chapter1-trial=descent', '--chapter1-descent-cost=1000'], timeout=600),

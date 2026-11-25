@@ -978,6 +978,22 @@ func mutate_verdict_enabled_text(doc: Dictionary) -> void:
 func mutate_verdict_absent(doc: Dictionary) -> void:
 	doc.erase("upgrade_verdict")
 
+## S1-A (C6): kit_damage_keys of the verdict block.
+func mutate_verdict_kit_missing(doc: Dictionary) -> void:
+	doc.upgrade_verdict.erase("kit_damage_keys")
+
+func mutate_verdict_kit_unread_key(doc: Dictionary) -> void:
+	doc.upgrade_verdict.kit_damage_keys["chapter1.skill.arc"]["fire_damage_bps"] = 5000
+
+func mutate_verdict_kit_weight(doc: Dictionary) -> void:
+	doc.upgrade_verdict.kit_damage_keys["chapter1.skill.arc"]["damage_bps"] = 20001
+
+func mutate_verdict_kit_unknown_primary(doc: Dictionary) -> void:
+	doc.upgrade_verdict.kit_damage_keys["chapter1.skill.nova"] = {"damage_bps": 1}
+
+func mutate_verdict_kit_empty_row(doc: Dictionary) -> void:
+	doc.upgrade_verdict.kit_damage_keys["chapter1.skill.arc"] = {}
+
 func verdict_item(slot_: String, quality: String, stats: Dictionary) -> Dictionary:
 	return {"name":"v_"+slot_,"slot":slot_,"stats":stats,"quality":quality,"item_level":1,"affixes":[],"description":""}
 
@@ -987,7 +1003,8 @@ func verdict_checks() -> void:
 	check(loot.load_file(),"GM5 loot data loads")
 	check(loot.data.has("upgrade_verdict") and loot.data.upgrade_verdict.enabled == false and not loot.verdict_on(),"GM5 the shipped data has the upgrade_verdict block, off")
 	# The block shape.
-	var bad := {"missing_key":mutate_verdict_missing_key,"extra_key":mutate_verdict_extra_key,"read_outside":mutate_verdict_read_outside,"shape_key_unread":mutate_verdict_shape_key_unread,"unknown_stat":mutate_verdict_unknown_stat,"enabled_text":mutate_verdict_enabled_text}
+	var bad := {"missing_key":mutate_verdict_missing_key,"extra_key":mutate_verdict_extra_key,"read_outside":mutate_verdict_read_outside,"shape_key_unread":mutate_verdict_shape_key_unread,"unknown_stat":mutate_verdict_unknown_stat,"enabled_text":mutate_verdict_enabled_text,
+		"kit_missing":mutate_verdict_kit_missing,"kit_unread_key":mutate_verdict_kit_unread_key,"kit_weight":mutate_verdict_kit_weight,"kit_unknown_primary":mutate_verdict_kit_unknown_primary,"kit_empty_row":mutate_verdict_kit_empty_row}
 	for name_ in bad:
 		check(not bad_block_loads(raw,bad[name_],"verdict_"+name_),"GM5 an upgrade_verdict block with "+name_+" fails load_file")
 	check(bad_block_loads(raw,mutate_verdict_absent,"verdict_absent"),"GM5 data without an upgrade_verdict block loads")
@@ -1078,6 +1095,21 @@ func verdict_checks() -> void:
 	var small: Dictionary = loot.upgrade_verdict(verdict_item("hands","magic",{"damage_bps":500}),worn6,"hands",frost,shots2)
 	var big: Dictionary = loot.upgrade_verdict(verdict_item("hands","magic",{"damage_bps":800}),worn6,"hands",frost,shots2)
 	check(not small.better and big.better and small.delta < 1.5 and big.delta >= 1.5,"GM5 threshold: +2%% damage over the worn one (%.2f) is not better, +5%% (%.2f) is" % [small.delta,big.delta])
+	# S1-A (C6): with the element kit on, the damage of the verdict is weighed by kit_damage_keys (arc_damage_bps 10000, damage_bps 2500): the stat that
+	# grows the rod and the overload counts in full, the one only the primary reads counts a quarter. Off (the default argument), nothing of this is read.
+	var weights: Dictionary = loot.data.upgrade_verdict.kit_damage_keys[arc]
+	check(int(weights.arc_damage_bps) == 10000 and int(weights.damage_bps) == 2500 and not loot.data.upgrade_verdict.kit_damage_keys.has(frost),"C6 the shipped kit weights are arc_damage_bps 10000 and damage_bps 2500, arc only")
+	var worn_arc := {"weapon":verdict_item("weapon","magic",{"arc_damage_bps":3000})}
+	var cand_primary := verdict_item("weapon","magic",{"damage_bps":4000})
+	var cand_kit := verdict_item("weapon","magic",{"arc_damage_bps":4000})
+	var plain_primary: Dictionary = loot.upgrade_verdict(cand_primary,worn_arc,"weapon",arc,{"chain_targets":3})
+	var plain_kit: Dictionary = loot.upgrade_verdict(cand_kit,worn_arc,"weapon",arc,{"chain_targets":3})
+	check(plain_primary.better and plain_kit.better and absf(plain_primary.delta-plain_kit.delta) < 0.000001,"C6 kit off: damage_bps and arc_damage_bps weigh the same (%.3f, %.3f)" % [plain_primary.delta,plain_kit.delta])
+	var kit_primary: Dictionary = loot.upgrade_verdict(cand_primary,worn_arc,"weapon",arc,{"chain_targets":3},true)
+	var kit_kit: Dictionary = loot.upgrade_verdict(cand_kit,worn_arc,"weapon",arc,{"chain_targets":3},true)
+	check(not kit_primary.better and kit_primary.delta < 0.0 and kit_kit.better and kit_kit.delta > 0.0,"C6 kit on: +40%% damage_bps over a +30%% arc_damage_bps weapon is worse (%.3f), +40%% arc_damage_bps is better (%.3f)" % [kit_primary.delta,kit_kit.delta])
+	var worn_frost := {"weapon":verdict_item("weapon","magic",{"damage_bps":3000})}
+	check(JSON.stringify(loot.upgrade_verdict(cand_primary,worn_frost,"weapon",frost,shots2,true)) == JSON.stringify(loot.upgrade_verdict(cand_primary,worn_frost,"weapon",frost,shots2)),"C6 a primary without a kit row (frost) is judged as it was, kit flag or not")
 	# Unread keys count 0: frost reads no fire_damage_bps, arc no pierce.
 	check(absf(loot.upgrade_verdict(verdict_item("charm","magic",{"fire_damage_bps":1500}),{},"charm",frost,shots2).delta) < 0.000001,"GM5 frost: fire_damage_bps is worth nothing")
 	check(loot.upgrade_verdict(verdict_item("charm","magic",{"fire_damage_bps":1500}),{},"charm",ember,{"projectiles":2}).better,"GM5 ember: fire_damage_bps counts")

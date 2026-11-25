@@ -8,7 +8,7 @@ const ROOT_KEYS := ["schema_version","provenance","balance_status","enabled","co
 const ELEMENTS := ["ember","frost","arc"]
 ## Beat ids the kill points may name: the rhythm beats of combat_tuning.json plus its trial and boss.
 const BEAT_IDS := ["gi","seung1","seung2","jeon_a","trial","boss"]
-const POINT_KEYS := ["kill_by_beat","kill_default","elite_kill","champion_kill","strong_damage_per_pct","vs_cc_hit","detonate","combo_cap_per_tick","marks_refund_per_stack","marks_refund_cap"]
+const POINT_KEYS := ["kill_by_beat","kill_default","elite_kill","champion_kill","strong_damage_per_pct","vs_cc_hit","detonate","kit_detonate","combo_cap_per_tick","marks_refund_per_stack","marks_refund_cap"]
 const PHASES := ["trial","boss"]
 var errors: Array[String] = []
 var _document: Dictionary = {}

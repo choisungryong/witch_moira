@@ -288,6 +288,7 @@
       "chapter1.skill.arc": ["projectiles", "chain_targets"]
     },
     "shape_base": {"chapter1.skill.ember": "projectiles", "chapter1.skill.frost": "projectiles", "chapter1.skill.arc": "chain_targets"},
-    "shots_r1": {"chapter1.skill.ember": 2, "chapter1.skill.frost": 2, "chapter1.skill.arc": 3}
+    "shots_r1": {"chapter1.skill.ember": 2, "chapter1.skill.frost": 2, "chapter1.skill.arc": 3},
+    "kit_damage_keys": {"chapter1.skill.arc": {"arc_damage_bps": 10000, "damage_bps": 2500}}
   }
 }
