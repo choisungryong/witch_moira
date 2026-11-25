@@ -329,6 +329,14 @@ func consume(events: Array) -> void:
 			_glow_dip = GLOW_DIP_SECONDS
 			if _look_env != null: _look_env.glow_intensity = GLOW_BASE-GLOW_DIP_DEPTH
 			break
+	# A-element-kit-screen: the shock kit's two own skills (lay, burst: the rod and its death sparks, the overload's bolts) give no number
+	# per bolt; the overload's `detonated` on a big body gives one for the whole cast. Ids come from kit_view(), empty when the kit is off.
+	var kit_quiet := {}
+	if _run != null and _run.has_method("kit_view"):
+		var kit: Dictionary = _run.kit_view()
+		if bool(kit.get("on",false)):
+			for kit_skill in kit.get("skills",{}):
+				if String(kit.skills[kit_skill].get("role","")) in ["lay","burst"]: kit_quiet[kit_skill] = true
 	# Ring-spell hits of normal enemies in one pulse (cast_uid) share one number: {uid: {sum, at (sum of positions), n, color}}.
 	var ring_sums := {}
 	var ring_cast := {}
@@ -347,7 +355,7 @@ func consume(events: Array) -> void:
 				# A descent kills dozens in one second: its ordinary kills are not numbered one by one (descent_fx shows one merged
 				# count at the end); a strong body (champion, boss) still shows its own number.
 				var swept := String(event.get("skill_id","")).begins_with("descent.") and not _is_elite(int(event.get("target_id",-1)))
-				if show_numbers and numbers > 0 and event.has("damage_raw") and not swept:
+				if show_numbers and numbers > 0 and event.has("damage_raw") and not swept and not kit_quiet.has(String(event.get("skill_id",""))):
 					var amount := int(round(float(event.damage_raw)/256.0))
 					if Palette.is_ring_spell(String(event.get("skill_id",""))) and not _is_elite(int(event.get("target_id",-1))):
 						var uid := int(event.get("cast_uid",-1))
@@ -395,6 +403,10 @@ func consume(events: Array) -> void:
 				# A6-RS RS1: remember where a ring pulse was cast and how far it reaches (the merged number sits outside it).
 				if String(event.get("shape","")) == "ring":
 					ring_cast = {"at":at,"radius":float(event.get("radius_cm",0))/100.0}
+			"detonated":
+				# One number per cast on the big body (the sum of its bolts); small bodies get none.
+				if show_numbers and numbers > 0 and event.get("big",false) and event.has("damage_raw"):
+					if _number(at,int(round(float(event.damage_raw)/256.0)),COLORS["chapter1.skill.arc"],true,int(event.get("target_id",-1))): numbers -= 1
 			"stun":
 				if sparks > 0:
 					sparks -= 1

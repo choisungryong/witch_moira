@@ -71,6 +71,9 @@ var _meteor_fx := MeteorFx.new()
 ## A-boss-finale-screen: the final boss's floor marks (dashed landing ring, shadow, dust, linen rings); the slam's wind-up length is read from it.
 const BossFinaleFx := preload("res://chapter1/view/fx/boss_finale_fx.gd")
 var _boss_fx := BossFinaleFx.new()
+## A-element-kit-screen: the shock element kit's battle picture (status, rod, bolts, bursts); draws nothing and adds no node while the kit is off.
+const ElementKitFx := preload("res://chapter1/view/fx/element_kit_fx.gd")
+var _kit_fx := ElementKitFx.new()
 ## Instance-colour styles of the finale's floor shapes (telegraph_look.gdshaderinc): storm, landing, slam. Only a hazard with a `kind`
 ## (the finale's) or a body whose attack_kind is "slam" gets one; the old floor strike stays style 2.
 const TELE_STYLE_BY_HAZARD := {"storm":3.0,"land":4.0}
@@ -381,9 +384,17 @@ func _sync_telegraphs(run: RefCounted) -> void:
 	_mmflush(_tele_mm,buf,n)
 	_mmflush(_cue_mm,cue,c)
 
-func _kick(strength: float, tick: int) -> void:
+## `bigger_wins` (the shock kit's burst): inside the same tick as an earlier impulse only the larger of the two shakes, so the camera gets the difference.
+var _last_camera_strength := 0.0
+func _kick(strength: float, tick: int, bigger_wins: bool=false) -> void:
+	if bigger_wins and tick==_last_camera_tick and strength>_last_camera_strength:
+		var more: Variant=view.get("world")
+		if more!=null and more.has_method("kick_camera"):more.kick_camera(strength-_last_camera_strength)
+		_last_camera_strength=strength
+		return
 	if tick-_last_camera_tick<14:return
 	_last_camera_tick=tick
+	_last_camera_strength=strength
 	var camera_world: Variant=view.get("world")
 	if camera_world!=null and camera_world.has_method("kick_camera"):camera_world.kick_camera(strength)
 
@@ -1255,6 +1266,7 @@ func consume(events: Array) -> void:
 	_ring_fx.consume(events,self)
 	_meteor_fx.consume(events,self)
 	_boss_fx.consume(events,self)
+	_kit_fx.consume(events,self)
 
 func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	if color.is_equal_approx(COLORS["chapter1.skill.frost"]):
@@ -1309,6 +1321,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	_ring_fx.sync(run,delta,ring_hero)
 	_meteor_fx.sync(run,delta,self)
 	_boss_fx.sync(run,delta,self)
+	_kit_fx.sync(run,delta,self)
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
@@ -1321,6 +1334,7 @@ func reset() -> void:
 	_ring_fx.reset()
 	_meteor_fx.reset()
 	_boss_fx.reset()
+	_kit_fx.reset()
 	_flash_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
@@ -1368,3 +1382,4 @@ func setup(owner_view: Node3D) -> void:
 	_ring_fx.setup(view)
 	_meteor_fx.setup(self)
 	_boss_fx.setup(self)
+	_kit_fx.setup(self)
