@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "provenance": "independent_design",
+  "balance_status": "hypothesis",
+  "enabled": false,
+  "enabled_elements": [],
+  "offer": {
+    "cards": 3,
+    "final_cards": 4,
+    "protect_primary": false,
+    "final_protect": [
+      "evolve",
+      "answers:big"
+    ],
+    "weights": {
+      "unlock": 100,
+      "rank": 100,
+      "variant": 100,
+      "rune": 100,
+      "evolve": 150,
+      "survival": 60
+    },
+    "gates": {
+      "S1": {
+        "after_picks": 1
+      },
+      "S2": {
+        "after_picks": 4
+      }
+    },
+    "filler": [
+      "X01",
+      "X02"
+    ]
+  },
+  "fillers": {
+    "X01": {
+      "kind": "filler",
+      "answers": [
+        "survival"
+      ],
+      "effect": {
+        "heal_bps": 4000
+      }
+    },
+    "X02": {
+      "kind": "filler",
+      "answers": [
+        "survival"
+      ],
+      "effect": {
+        "potion": 1,
+        "heal_bps_if_full": 2500
+      }
+    }
+  },
+  "elements": {
+    "arc": {
+      "primary": "chapter1.skill.arc",
+      "status": {
+        "id": "shock",
+        "max": 1,
+        "max_big": 10,
+        "expire_ticks": 180
+      },
+      "rod": {
+        "ticks": 360,
+        "range_cm": 1400,
+        "count": 1,
+        "keep_radius_cm": 600,
+        "death_spark_raw": 1536
+      },
+      "chain": {
+        "big_rehit": 2,
+        "lone_rebounds": 1,
+        "rebound_bps": 6000
+      },
+      "skills": {
+        "chapter1.skill.arc_rod": {
+          "role": "lay",
+          "cooldown_ticks": 300,
+          "damage_raw": 1024,
+          "ranks": [
+            {},
+            {
+              "rod_ticks": 540
+            },
+            {
+              "keep_radius_cm": 800
+            }
+          ]
+        },
+        "chapter1.skill.arc_overload": {
+          "role": "burst",
+          "cooldown_ticks": 180,
+          "reach_cm": 1000,
+          "bolt_raw": 25600,
+          "max_bolts": 12,
+          "self_bolt_bps": 8000,
+          "bolt_bps": 10000,
+          "ranks": [
+            {},
+            {
+              "max_bolts": 16
+            },
+            {
+              "bolt_bps": 14000
+            }
+          ]
+        }
+      },
+      "evolution": {
+        "skill": "chapter1.skill.arc",
+        "passive": "chapter1.passive.conductor",
+        "storm": {
+          "every_ticks": 60,
+          "targets": 3,
+          "damage_bps": 10000
+        }
+      },
+      "params": {
+        "shell": {
+          "hp_bps": 3500,
+          "ticks": 180,
+          "reduce_bps": 6000,
+          "cooldown_ticks": 2400,
+          "radius_cm": 300
+        },
+        "discharge": {
+          "radius_cm": 400,
+          "every_ticks": 60
+        },
+        "pop": {
+          "raw": 2560,
+          "radius_cm": 150
+        },
+        "bolt_heal": {
+          "bolts": 20,
+          "heal": 3
+        },
+        "stride": {
+          "every_ticks": 60,
+          "reach_cm": 800
+        },
+        "death_chain": {
+          "reach_cm": 600
+        }
+      },
+      "cards": [
+        {
+          "id": "A01",
+          "kind": "unlock",
+          "skill": "chapter1.skill.arc_rod",
+          "gate": "S2",
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A02",
+          "kind": "unlock",
+          "skill": "chapter1.skill.arc_overload",
+          "gate": "S1",
+          "answers": [
+            "crowd",
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A03",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc",
+          "rank": 2,
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A04",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc",
+          "rank": 3,
+          "requires": [
+            "A03"
+          ],
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A05",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc",
+          "rank": 4,
+          "requires": [
+            "A04"
+          ],
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A06",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc_rod",
+          "rank": 2,
+          "requires": [
+            "A01"
+          ],
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A07",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc_rod",
+          "rank": 3,
+          "requires": [
+            "A06"
+          ],
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A08",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc_overload",
+          "rank": 2,
+          "requires": [
+            "A02"
+          ],
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A09",
+          "kind": "rank",
+          "skill": "chapter1.skill.arc_overload",
+          "rank": 3,
+          "requires": [
+            "A08"
+          ],
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A10",
+          "kind": "rune",
+          "requires": [
+            "A03"
+          ],
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A11",
+          "kind": "evolve",
+          "requires": [
+            "A05",
+            "A10"
+          ],
+          "answers": [
+            "crowd",
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A12",
+          "kind": "variant",
+          "requires": [
+            "A02"
+          ],
+          "change": {
+            "vals": {
+              "bolts_add": 1
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A13",
+          "kind": "variant",
+          "change": {
+            "flags": [
+              "chain_on_death"
+            ]
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A14",
+          "kind": "variant",
+          "change": {
+            "vals": {
+              "lone_rebounds": 1
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A15",
+          "kind": "variant",
+          "change": {
+            "vals": {
+              "branches": 1
+            }
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A16",
+          "kind": "variant",
+          "requires": [
+            "A01"
+          ],
+          "change": {
+            "flags": [
+              "discharge_ring"
+            ]
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "witch.arc.rod_ring"
+        },
+        {
+          "id": "A17",
+          "kind": "variant",
+          "requires": [
+            "A02"
+          ],
+          "change": {
+            "flags": [
+              "conductor_pop"
+            ]
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "witch.arc.conductor_pop"
+        },
+        {
+          "id": "A18",
+          "kind": "variant",
+          "change": {
+            "vals": {
+              "max_big": 5
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "witch.arc.overcurrent"
+        },
+        {
+          "id": "A19",
+          "kind": "variant",
+          "requires": [
+            "A01"
+          ],
+          "excludes": [
+            "A20"
+          ],
+          "change": {
+            "vals": {
+              "rod_count": 1
+            }
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "witch.arc.rod_choice"
+        },
+        {
+          "id": "A20",
+          "kind": "variant",
+          "requires": [
+            "A01"
+          ],
+          "excludes": [
+            "A19"
+          ],
+          "change": {
+            "vals": {
+              "rod_target_bps": 4000
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "witch.arc.rod_choice"
+        },
+        {
+          "id": "A21",
+          "kind": "variant",
+          "requires": [
+            "A02"
+          ],
+          "excludes": [
+            "A22"
+          ],
+          "change": {
+            "vals": {
+              "overload_cd_bps": -3000,
+              "overload_max_bolts": -4
+            }
+          },
+          "answers": [
+            "crowd"
+          ],
+          "open": "witch.arc.overload_choice"
+        },
+        {
+          "id": "A22",
+          "kind": "variant",
+          "requires": [
+            "A02"
+          ],
+          "excludes": [
+            "A21"
+          ],
+          "change": {
+            "vals": {
+              "overload_cd_bps": 5000,
+              "overload_bolt_bps": 7000
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "witch.arc.overload_choice"
+        },
+        {
+          "id": "A23",
+          "kind": "variant",
+          "requires": [
+            "A02"
+          ],
+          "change": {
+            "vals": {
+              "self_bolt_bps": 4000
+            }
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "witch.arc.reserve"
+        },
+        {
+          "id": "A24",
+          "kind": "variant",
+          "requires": [
+            "A11",
+            "A01"
+          ],
+          "change": {
+            "flags": [
+              "storm_rod"
+            ]
+          },
+          "answers": [
+            "big"
+          ],
+          "open": "witch.arc.storm_rod"
+        },
+        {
+          "id": "A25",
+          "kind": "survival",
+          "change": {
+            "vals": {
+              "hp_max": 25
+            }
+          },
+          "answers": [
+            "survival"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A26",
+          "kind": "survival",
+          "change": {
+            "flags": [
+              "static_shell"
+            ]
+          },
+          "answers": [
+            "survival"
+          ],
+          "open": "base"
+        },
+        {
+          "id": "A27",
+          "kind": "survival",
+          "requires": [
+            "A02"
+          ],
+          "change": {
+            "flags": [
+              "bolt_heal"
+            ]
+          },
+          "answers": [
+            "survival"
+          ],
+          "open": "witch.arc.absorb"
+        },
+        {
+          "id": "A28",
+          "kind": "survival",
+          "change": {
+            "vals": {
+              "move_bps": 800
+            },
+            "flags": [
+              "stride_shock"
+            ]
+          },
+          "answers": [
+            "survival",
+            "crowd"
+          ],
+          "open": "witch.arc.stride"
+        }
+      ]
+    }
+  }
+}
