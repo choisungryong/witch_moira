@@ -5,15 +5,16 @@ const Tuning := preload("res://chapter1/core/combat_tuning.gd")
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 const Kit := preload("res://chapter1/core/element_kit.gd")
 
-static func kit_document(elements: Array = ["arc"]) -> Dictionary:
-	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Kit.DEFAULT_PATH))
+## `path`: "" = the shipped element_kit.json; else a res:// copy of it with other values (a tool's own document, _local/).
+static func kit_document(elements: Array = ["arc"], path: String = "") -> Dictionary:
+	var doc: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Kit.DEFAULT_PATH if path.is_empty() else "res://" + path))
 	doc["enabled"] = true
 	doc["enabled_elements"] = elements
 	return doc
 
 ## The element kit on (arc), the whole permanent tree open (`tree`: "none", "all" or a list of card ids), "" when it worked, else one sentence.
-static func enable_kit_problem(run: RefCounted, tree: Variant = "all", elements: Array = ["arc"]) -> String:
-	if not run.set_element_kit(kit_document(elements)): return "element kit refused: " + str(run.errors)
+static func enable_kit_problem(run: RefCounted, tree: Variant = "all", elements: Array = ["arc"], path: String = "") -> String:
+	if not run.set_element_kit(kit_document(elements, path)): return "element kit refused: " + str(run.errors)
 	if not run.set_kit_open(tree): return "kit tree mode refused: " + str(run.errors)
 	return ""
 

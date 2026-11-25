@@ -10,6 +10,10 @@
   bf     the boss-finale lines BF-T1..T8 of docs/specs/D-boss-finale-20261124.ko.md (runs made with the finale on and --rc: rc.fin), plus the boss-life shares per skill, per-phase work, breaks.
            python tools/dev/rc_read.py bf --bare _local/bf-b/bare_*.json --geared ... --human ... --dnow ... --hp 15000 [--out _local/bf-b/bf.txt]
 
+  kit    the element-kit trial lines J1..J11 of docs/specs/D-element-trees-20261125.ko.md 8.3 (runs made with measure_rhythm.gd --element-kit --rc): boss damage per second against the old-growth ember,
+         fight seconds, phase-3 work, kill-rate rise, evolve time, hand sizes, build spread, link/main/random, overload bolt counts, safety.
+           python tools/dev/rc_read.py kit --set fire="_local/bf-b/bare_s*.json" --set arcold="_local/bf-b/bare_s*.json" --set link="_local/et-b/link_s*.json" --set main=... --set rnd1=... --set newl=... [--out _local/et-b/kit.txt]
+
 Reads only. "Pass" in the judge table means the observed value meets the target as written; a line whose target lies inside the 10/90 % band is "경계". Values from a
 model (descent gauge) or from a stand-in definition are marked in the line. The bot's results are a stability / balance reference, not evidence of fun (unevaluated).
 """
@@ -1080,9 +1084,308 @@ def cmd_bf(args):
     print_out(out, args.out)
 
 
+# ------------------------------------------------------------------ kit: J1..J11 of D-element-trees 8.3 (the element kit's trial), read from runs made with --element-kit --rc
+def kit_nums(r, hp):
+    """One run's kit numbers. dmg_s = damage into the boss (all skills in rc.fin.boss_dealt) / the work seconds (fight - 21 s of entrance and breaks); only for a run that killed the boss."""
+    b = bf_of(r, hp)
+    o = {"seed": r.seed, "mode": r.mode, "secs": r.secs, "bf": b, "dmg_s": None, "prim_s": None, "own_s": None}
+    ek = r.r.get("element_kit") or {}
+    o["taken"] = [p[1] for p in (r.rc or {}).get("picks", [])]
+    o["hands"] = ek.get("hands", [])
+    if b and not b["defeat"] and b["fight"] > 21:
+        work = b["fight"] - 21.0
+        dealt = r.rc["fin"].get("boss_dealt", {})
+        o["dmg_s"] = sum(float(v) for v in dealt.values()) / 256.0 / work
+        o["prim_s"] = float(dealt.get("chapter1.skill." + r.prim, 0)) / 256.0 / work
+        o["by_skill"] = {k.replace("chapter1.skill.", ""): float(v) / 256.0 for k, v in dealt.items()}
+    ev = (r.rc or {}).get("ev", [])
+    tag = lambda t, i: {e[2]: e[0] for e in ev if e[1] == t}.get(i)
+    be = next((e[0] for e in ev if e[1] == "be"), None)
+    bp1, bp2, bp3 = tag("bp", 1), tag("bp", 2), tag("bp", 3)
+    bs0, bx0, bs1, bx1 = tag("bs", 0), tag("bx", 0), tag("bs", 1), tag("bx", 1)
+    ovs = (ek.get("metrics") or {}).get("overloads", [])
+    o["ov"] = []
+    far = 1 << 40
+    for c in ovs:
+        t = c["tick"]
+        if be is None or t < be:
+            ph = "pre"
+        elif bp3 is not None and t >= bp3:
+            ph = "p3"
+        elif bs0 is not None and bs0 <= t < (bx0 or far) or bs1 is not None and bs1 <= t < (bx1 or far):
+            ph = "brk"
+        elif bp2 is not None and t >= bp2:
+            ph = "w2"
+        elif bp1 is not None and t >= bp1:
+            ph = "w1"
+        else:
+            ph = "ent"
+        o["ov"].append((ph, c))
+    o["kitm"] = (ek.get("metrics") or {})
+    return o
+
+
+def kit_verdict(items, stat, meets):
+    """-> (value, q10, q90, verdict) by resampling the items (seeds or runs) 4000 times with the fixed seed; the line is 경계 when the band straddles the target (same rule as the judge)."""
+    if not items:
+        return None, None, None, "재지 않음"
+    rng_ = random.Random(SEED)
+    n = len(items)
+    v = stat(items)
+    bs = [stat([items[rng_.randrange(n)] for _ in range(n)]) for _ in range(DRAWS)]
+    q10, q90 = quant(bs, 0.10), quant(bs, 0.90)
+    ok, lo, hi = safe(meets, v), safe(meets, q10), safe(meets, q90)
+    vd = "통과" if (ok and lo and hi) else ("못 미침" if not (ok or lo or hi) else "경계")
+    return v, q10, q90, vd
+
+
+def cmd_kit(args):
+    hp = args.hp
+    sets, nums = {}, {}
+    for spec in args.set or []:
+        name, _, pat = spec.partition("=")
+        prim = "ember" if name.startswith("fire") else "arc"
+        rs = [Run(x) for x in load_runs([pat])]
+        sets[name] = {x.seed: x for x in rs if x.prim == prim and args.s0 <= x.seed <= args.s1}
+        nums[name] = {s: kit_nums(x, hp) for s, x in sets[name].items()}
+    out = []
+    P = out.append
+    f1 = lambda x: "-" if x is None else "%.1f" % x
+    f2 = lambda x: "-" if x is None else "%.2f" % x
+    fmt = lambda v: "(" + ", ".join(f2(x) for x in v) + ")" if isinstance(v, tuple) else f2(v)
+    medv = lambda d, k: med([x[k] for x in d.values() if x.get(k) is not None])
+    P("J 판정(D-element-trees 8.3). 재표집 %d회, 씨앗 %d, 10/90%% 폭 안에 줄이 있으면 경계. 시드 %d~%d. 우두머리 체력 %d. 봇의 값은 안정성·밸런스 참고, 재미는 미평가." % (DRAWS, SEED, args.s0, args.s1, hp))
+    P("판 수·결과: " + " | ".join("%s n=%d (승 %d / 패 %d)" % (k, len(v), sum(1 for x in v.values() if x.mode == "victory"), sum(1 for x in v.values() if x.mode == "defeat")) for k, v in sets.items()))
+    P("")
+
+    def line(label, items, stat, meets, f=fmt, note=""):
+        v, q10, q90, vd = kit_verdict(items, stat, meets)
+        P("   %-34s 값 %s | 10%% %s | 90%% %s | n=%d | %s%s" % (label, f(v) if v is not None else "-", f(q10) if q10 is not None else "-", f(q90) if q90 is not None else "-", len(items), vd, ("  [" + note + "]") if note else ""))
+        return vd
+
+    def ratio_stat(A, B, key):
+        def st(seeds):
+            a = med([A[s][key] for s in seeds if s in A and A[s].get(key) is not None])
+            b = med([B[s][key] for s in seeds if s in B and B[s].get(key) is not None])
+            return a / b if a is not None and b else None
+        return st
+
+    def work3(d, s):
+        b = d[s]["bf"]
+        return b["work"][2] if b and not d[s]["bf"]["defeat"] else None
+
+    verdicts = {}
+    fire, old, link, mainp, newl = (nums.get(k) for k in ("fire", "arcold", "link", "main", "newl"))
+    rnd = [nums[k] for k in ("rnd1", "rnd2", "rnd3") if k in nums]
+    # J1
+    if link and fire:
+        P("J1 우두머리에 넣는 피해/초 ÷ 화염 옛 | 0.74~1.30 | 번개 키트 link, 트리 다 엶 (싸움 − 21초로 나눔, 우두머리를 잡은 판만)")
+        seeds = sorted(set(link) & set(fire))
+        inr = lambda t: t is not None and 0.74 <= t <= 1.30
+        v1 = line("전 기술 합(화염 옛 전 기술 합)", seeds, ratio_stat(link, fire, "dmg_s"), inr)
+        v1b = line("참고: ÷ 화염 옛 주력만", seeds, ratio_stat(link, fire, "prim_s"), inr, note="분모를 화염 옛의 주력만으로 본 읽기, 판정은 위 줄")
+        if old:
+            line("참고: 번개 옛 ÷ 화염 옛", sorted(set(old) & set(fire)), ratio_stat(old, fire, "dmg_s"), inr)
+        P("   피해/초 가운데(HP/초): 화염 옛 %s | 번개 옛 %s | 번개 link %s | main %s | 새 계정 %s" % tuple(f1(medv(d, "dmg_s")) if d else "-" for d in (fire, old, link, mainp, newl)))
+        verdicts["J1"] = v1
+        P("")
+    # J2
+    if link and fire:
+        P("J2 우두머리 싸움 초(맨몸) | 50~80초, 번개 ÷ 화염 ≤ 1.3 | link, 트리 다 엶 (등장~처치, 진 판은 뺌)")
+        fight = lambda d: {s: {"f": x["bf"]["fight"]} for s, x in d.items() if x["bf"] and not x["bf"]["defeat"]}
+        FL, FF = fight(link), fight(fire)
+        va = line("싸움 초 가운데", sorted(FL), lambda ss: med([FL[s]["f"] for s in ss]), lambda t: t is not None and 50 <= t <= 80, f1)
+        vb = line("번개 ÷ 화염(같은 시드 짝)", sorted(set(FL) & set(FF)), lambda ss: med([FL[s]["f"] for s in ss]) / med([FF[s]["f"] for s in ss]), lambda t: t is not None and t <= 1.3)
+        P("   화염 옛 싸움 가운데 %s" % f1(med([x["f"] for x in FF.values()])))
+        verdicts["J2"] = "통과" if va == "통과" and vb == "통과" else ("못 미침" if "못 미침" in (va, vb) else "경계")
+        P("")
+    # J3
+    if newl and fire:
+        P("J3 우두머리 3국면의 일 | 번개 ÷ 화염 ≤ 1.35, 번개 ≤ 17초 | 새 계정(트리 없음) link")
+        W3 = {s: {"w": work3(newl, s)} for s in newl}
+        W3 = {s: v for s, v in W3.items() if v["w"] is not None}
+        WF = {s: {"w": work3(fire, s)} for s in fire}
+        WF = {s: v for s, v in WF.items() if v["w"] is not None}
+        va = line("3국면 일 가운데(초)", sorted(W3), lambda ss: med([W3[s]["w"] for s in ss]), lambda t: t is not None and t <= 17, f1)
+        vb = line("번개 ÷ 화염(같은 시드 짝)", sorted(set(W3) & set(WF)), lambda ss: med([W3[s]["w"] for s in ss]) / med([WF[s]["w"] for s in ss]), lambda t: t is not None and t <= 1.35)
+        P("   화염 옛 3국면 가운데 %s초 | 번개 옛 %s초 | 번개 link(트리 다 엶) %s초 | 1국면 일: 새 계정 %s, 2국면 일 %s" % (
+            f1(med([x["w"] for x in WF.values()])), f1(med([work3(old, s) for s in old])) if old else "-", f1(med([work3(link, s) for s in link])) if link else "-",
+            f1(med([x["bf"]["work"][0] for x in newl.values() if x["bf"] and not x["bf"]["defeat"]])), f1(med([x["bf"]["work"][1] for x in newl.values() if x["bf"] and not x["bf"]["defeat"]]))))
+        verdicts["J3"] = "통과" if va == "통과" and vb == "통과" else ("못 미침" if "못 미침" in (va, vb) else "경계")
+        P("")
+    # J4..J8 on link
+    if link:
+        runs = [sets["link"][s] for s in sorted(sets["link"])]
+        P("J4 RC-T18 처치 속도의 오름 | 전÷승 분당 처치 ≥ 1.5, 보통 적 수명 비 ≤ 0.75 | 트리 다 엶 link (참고: 못 막는 줄)")
+
+        def t18(x):
+            b = x.bounds()
+            if "승" not in b or "전" not in b:
+                return None
+            ks = (x.kills_in(*b["승"]) / max(1e-9, b["승"][1] - b["승"][0]), x.kills_in(*b["전"]) / max(1e-9, b["전"][1] - b["전"][0]))
+            ls, lj = x.life_med(*b["승"]), x.life_med(*b["전"])
+            return (ks[1] / ks[0] if ks[0] > 0 else None, lj / ls if ls and lj else None)
+        T18 = [t18(x) for x in runs]
+        T18o = [t18(sets["arcold"][s]) for s in sorted(sets["arcold"])] if old else []
+        agg = lambda v: (med([x[0] for x in v if x]), med([x[1] for x in v if x]))
+        verdicts["J4"] = line("처치비 / 수명비", T18, agg, lambda t: t[0] is not None and t[0] >= 1.5 and t[1] is not None and t[1] <= 0.75)
+        if T18o:
+            P("   번개 옛(같은 시드): 처치비 %s / 수명비 %s" % tuple(f2(x) for x in agg(T18o)))
+        P("")
+        P("J5 RC-T20 진화 | 20/20이 늦은 바닥 전에 진화, p10~p90 폭 ≥ 40초 | 트리 다 엶 link. 늦은 바닥 = 승2 첫 머리 뒤 첫 권능 시각(도구 안 셈, 코드에는 없음)")
+
+        def t20(x):
+            evt = x.first_pick_kind("evolve")
+            c = x.crests("seung2")
+            floor = None
+            if c:
+                nxt = [p[0] for p in x.picks if p[0] > c[0]]
+                floor = nxt[0] if nxt else None
+            return (evt, floor)
+
+        def t20agg(v):
+            evs = [x[0] for x in v if x[0] is not None]
+            ok = sum(1 for x in v if x[0] is not None and x[1] is not None and x[0] <= x[1] + 1e-9)
+            return (ok, len(v), (pct(evs, 0.9) - pct(evs, 0.1)) if len(evs) >= 2 else None)
+        T20 = [t20(x) for x in runs]
+        verdicts["J5"] = line("진화 먼저 / 판 / 폭(초)", T20, t20agg, lambda t: t[0] == t[1] and t[2] is not None and t[2] >= 40)
+        evs = sorted(x[0] for x in T20 if x[0] is not None)
+        P("   진화 카드를 고른 시각(초): " + ", ".join("%.0f" % x for x in evs) + " | 진화를 못 한 판 %d" % sum(1 for x in T20 if x[0] is None))
+        P("")
+        P("J6 RC-T21 패의 장수 | 모든 패 ≥ 3, 마지막 4(여기서는 3 이상으로만 셈). 채움이 든 패 ≤ 15%(다 엶) / ≤ 35%(새 계정)")
+
+        def t21(d):
+            small = sum(1 for o in d["offers_sum"] if o[0] >= 15 and o[1] < 3)
+            hands = d["hands"]
+            fill = sum(1 for h in hands if any(str(c).startswith("X") for c in h[1]))
+            return (small, fill, len(hands))
+        for nm, lim in (("link", 0.15), ("newl", 0.35)):
+            if nm in sets:
+                T21 = [t21({"offers_sum": sets[nm][s].offers_sum, "hands": nums[nm][s]["hands"]}) for s in sorted(sets[nm])]
+                v = line("%s 3장 미만 패가 있는 판 / 채움 든 패 몫" % nm, T21, lambda it: (sum(1 for x in it if x[0] > 0), sum(x[1] for x in it) / max(1, sum(x[2] for x in it))), lambda t: t[0] == 0 and t[1] <= lim)
+                verdicts["J6" + nm] = v
+        P("")
+        P("J7 빌드 갈림 | 20판의 고른 카드 집합 짝마다 자카드 가운데 ≤ 0.6 | 트리 다 엶 link")
+        sel = [set(nums["link"][s]["taken"]) for s in sorted(nums["link"])]
+
+        def jac(it):
+            vs = []
+            for i in range(len(it)):
+                for j in range(i + 1, len(it)):
+                    if it[i] is it[j]:
+                        continue
+                    u = len(it[i] | it[j])
+                    vs.append(len(it[i] & it[j]) / u if u else 1.0)
+            return med(vs)
+        verdicts["J7"] = line("자카드 가운데", sel, jac, lambda t: t is not None and t <= 0.6)
+        for nm in ("main", "rnd1", "newl"):
+            if nm in nums:
+                P("   참고 %-5s 자카드 가운데 %s" % (nm, f2(jac([set(nums[nm][s]["taken"]) for s in sorted(nums[nm])]))))
+        P("")
+        P("J8 RC-T26 바닥 | 10~35% | 카드 바닥(RC7)이 코드에 없다. 도구 안 셈(floor_would_replace)은 옛 성장의 카드 꼴만 읽으므로 키트 판에는 쓰지 않는다 -> 재지 않음")
+        verdicts["J8"] = "재지 않음"
+        P("")
+    # J9
+    if link and mainp and rnd:
+        P("J9 맞물림의 몫 | link ÷ main ≥ 1.3, random 가운데 ÷ link ≤ 0.85 | 트리 다 엶 (우두머리 피해/초, 같은 시드 짝, 우두머리를 못 잡은 판은 뺌)")
+        seeds = sorted(set(link) & set(mainp))
+        va = line("link ÷ main", seeds, ratio_stat(link, mainp, "dmg_s"), lambda t: t is not None and t >= 1.3)
+        R = {}
+        for s in link:
+            vals = [d[s]["dmg_s"] for d in rnd if s in d and d[s].get("dmg_s") is not None]
+            R[s] = {"dmg_s": med(vals) if vals else None}
+        vb = line("random(시드마다 3벌 가운데) ÷ link", sorted(link), ratio_stat(R, link, "dmg_s"), lambda t: t is not None and t <= 0.85)
+        for i, d in enumerate(rnd):
+            line("  random%d ÷ link" % (i + 1), sorted(set(d) & set(link)), ratio_stat(d, link, "dmg_s"), lambda t: t is not None and t <= 0.85)
+        P("   피해/초 가운데: link %s | main %s | random %s | 우두머리를 잡은 판 수: link %d / main %d / random %s" % (
+            f1(medv(link, "dmg_s")), f1(medv(mainp, "dmg_s")), " / ".join(f1(medv(d, "dmg_s")) for d in rnd), sum(1 for x in link.values() if x["dmg_s"] is not None), sum(1 for x in mainp.values() if x["dmg_s"] is not None),
+            " / ".join(str(sum(1 for x in d.values() if x["dmg_s"] is not None)) for d in rnd)))
+        P("   판 길이·패: " + " | ".join("%s 가운데 %s초, 패 %d/%d" % (k, f1(med([x.secs for x in v.values()])), sum(1 for x in v.values() if x.mode == "defeat"), len(v)) for k, v in sets.items() if k.startswith(("link", "main", "rnd", "newl"))))
+        verdicts["J9"] = "통과" if va == "통과" and vb == "통과" else ("못 미침" if "못 미침" in (va, vb) else "경계")
+        P("")
+    # J10
+    if link:
+        P("J10 함정 ① | 오버로드 시전 가운데 줄기 0~1개 ≤ 20%, 1·2국면 시전 때 10m 안 감전 졸개(도체) 가운데 ≥ 3 | 트리 다 엶 link")
+        L = [nums["link"][s] for s in sorted(nums["link"])]
+        pool = lambda it, ph: [c for x in it for p, c in x["ov"] if ph is None or p == ph]
+        v1 = line("줄기 0~1개 시전의 몫(전 판 합)", L, lambda it: (lambda cs: sum(1 for c in cs if c["bolts"] <= 1) / max(1, len(cs)))(pool(it, None)), lambda t: t is not None and t <= 0.20)
+        pool12 = lambda it: [c for x in it for p, c in x["ov"] if p in ("w1", "w2", "brk", "ent")]
+        v2 = line("1·2국면 시전의 도체 수 가운데(쉼·등장 포함)", L, lambda it: med([c["conductors"] for c in pool12(it)]), lambda t: t is not None and t >= 3, f1)
+        line("  1·2국면의 일 구간만(쉼 뺌)", L, lambda it: med([c["conductors"] for x in it for p, c in x["ov"] if p in ("w1", "w2")]), lambda t: t is not None and t >= 3, f1, note="참고")
+        line("  쉼 구간만", L, lambda it: med([c["conductors"] for x in it for p, c in x["ov"] if p == "brk"]), lambda t: t is not None and t >= 3, f1, note="참고")
+        cs_all = pool(L, None)
+        P("   오버로드 시전 합 %d (판당 %.1f) | 줄기 수 분포(합): %s" % (len(cs_all), len(cs_all) / max(1, len(L)), ", ".join("%s:%d" % (k, n) for k, n in sorted({k: sum(1 for c in cs_all if c["bolts"] == k) for k in range(0, 17)}.items()) if n)))
+        for ph, nm in (("pre", "우두머리 앞"), ("ent", "등장"), ("w1", "1국면 일"), ("brk", "쉼(둘)"), ("w2", "2국면 일"), ("p3", "3국면")):
+            cs = pool(L, ph)
+            if cs:
+                P("   %s: 시전 %d, 줄기 가운데 %s, 도체 가운데 %s, 큰 적 표적 %d%%, 제 감전 줄기 시전 %d%%, 줄기 ≤1 %d%%" % (nm, len(cs), f1(med([c["bolts"] for c in cs])), f1(med([c["conductors"] for c in cs])),
+                      100 * sum(1 for c in cs if c["big"]) / len(cs), 100 * sum(1 for c in cs if c["self"]) / len(cs), 100 * sum(1 for c in cs if c["bolts"] <= 1) / len(cs)))
+        c3 = pool(L, "p3")
+        if c3:
+            P("   3국면 줄기 가운데 제 감전(self)으로 만든 몫: %.0f%%" % (100.0 * sum(c["bolts"] for c in c3 if c["self"]) / max(1, sum(c["bolts"] for c in c3))))
+        verdicts["J10"] = "통과" if v1 == "통과" and v2 == "통과" else ("못 미침" if "못 미침" in (v1, v2) else "경계")
+        P("")
+    # J11
+    if link:
+        P("J11 안전 | 패 ≤ 2/20, 판 길이 400~470, 전 토막 최저 생명 ≥ 0.45 (14/20), 새 계정도 20/20 우두머리 처치")
+        vs = []
+        for nm in ("link", "newl", "main", "rnd1", "rnd2", "rnd3"):
+            if nm not in sets:
+                continue
+            rs = [sets[nm][s] for s in sorted(sets[nm])]
+            vd1 = line("%s 패 수" % nm, rs, lambda it: sum(1 for x in it if x.mode == "defeat"), lambda t: t <= 2, lambda t: "%d/n" % t) if nm in ("link", "newl") else None
+            vd2 = line("%s 판 길이 가운데(초)" % nm, rs, lambda it: med([x.secs for x in it]), lambda t: t is not None and 400 <= t <= 470, f1)
+            vd3 = line("%s 전 토막 최저 생명 ≥ 0.45인 판" % nm, rs, lambda it: sum(1 for x in it if (lambda m: m is not None and m >= 0.45)(x.hp_min(x.t_g0, x.t_boss))), lambda t: t >= 14, lambda t: "%d/n" % t)
+            if nm == "newl":
+                vd4 = line("newl 우두머리 처치", rs, lambda it: sum(1 for x in it if x.mode == "victory"), lambda t: t >= 20, lambda t: "%d/n" % t)
+            else:
+                vd4 = None
+            if nm in ("link", "newl"):
+                vs += [v for v in (vd1, vd2, vd3, vd4) if v]
+        verdicts["J11"] = "못 미침" if "못 미침" in vs else ("경계" if "경계" in vs else "통과")
+        P("")
+    # records
+    P("[기록, 판정에 쓰지 않음]")
+    for nm in ("link", "main", "newl", "rnd1", "rnd2", "rnd3", "arcold", "fire"):
+        d = nums.get(nm)
+        if not d:
+            continue
+        sk = {}
+        for x in d.values():
+            for k, v in (x.get("by_skill") or {}).items():
+                sk.setdefault(k, []).append(v / hp)
+        P("  %-6s 우두머리 몫(가운데, 우두머리를 잡은 판 %d): %s" % (nm, sum(1 for x in d.values() if x["dmg_s"] is not None), ", ".join("%s %.3f" % (k, med(v)) for k, v in sorted(sk.items()))))
+    for nm in ("link", "main", "newl", "rnd1", "rnd2", "rnd3"):
+        d = nums.get(nm)
+        if not d:
+            continue
+        P("  %-6s 키트 셈(판당 평균): 줄기 %.0f, 제 감전 줄기 %.1f, 터짐 %.0f, 피뢰침 %.1f, 불꽃(죽음 불꽃) %.0f, 되튐 %.0f" % (nm, *[sum(float(x["kitm"].get(k, 0)) for x in d.values()) / max(1, len(d)) for k in ("bolts", "self_bolts", "pops", "rods", "sparks", "rebounds")]))
+    P("")
+    P("[판마다] 시드 | 결과 | 초 | 우두머리 등장 | 싸움 | 1/2/3국면 일 | 피해/초 | 주력 랭크 선택 수(A03~A05) | 오버로드 시전 | 고른 카드 수")
+    for nm in ("link", "newl", "main", "rnd1", "rnd2", "rnd3"):
+        d = nums.get(nm)
+        if not d:
+            continue
+        P("  [%s]" % nm)
+        for s in sorted(d):
+            x = d[s]
+            b = x["bf"]
+            P("   %d %s %.1f | 등장 %s | 싸움 %s | 일 %s | 피해/초 %s | 주력 랭크 %d | 오버로드 %d | 카드 %d" % (s, x["mode"][:3], x["secs"], f1(sets[nm][s].t_boss), f1(b["fight"]) if b else "-", "/".join(f1(w) for w in b["work"]) if b else "-", f1(x["dmg_s"]),
+                  sum(1 for c in x["taken"] if c in ("A03", "A04", "A05")), len(x["ov"]), len(x["taken"])))
+    P("")
+    P("한 줄 요약: " + ", ".join("%s %s" % (k, v) for k, v in verdicts.items()))
+    print_out(out, args.out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    k = sub.add_parser("kit")
+    k.add_argument("--set", action="append", help="NAME=glob (repeatable). Names: fire (old-growth ember), arcold (old-growth arc), link, main, rnd1..rnd3, newl (no tree), any more are listed in the records")
+    k.add_argument("--hp", type=int, default=15000)
+    k.add_argument("--s0", type=int, default=11)
+    k.add_argument("--s1", type=int, default=30)
+    k.add_argument("--out")
     b = sub.add_parser("bf")
     for k in ("bare", "human", "geared", "dnow"):
         b.add_argument("--" + k, nargs="*")
@@ -1097,7 +1400,7 @@ def main():
         j.add_argument("--" + k, nargs="*")
     j.add_argument("--out")
     args = ap.parse_args()
-    {"now": cmd_now, "judge": cmd_judge, "bf": cmd_bf}[args.cmd](args)
+    {"now": cmd_now, "judge": cmd_judge, "bf": cmd_bf, "kit": cmd_kit}[args.cmd](args)
 
 
 if __name__ == "__main__":

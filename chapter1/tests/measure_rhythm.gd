@@ -99,6 +99,8 @@ var element_kit_on := false
 var kit_tree: Variant = "all"
 var kit_policy := "link"
 var kit_seed := 0
+## ET-B: --kit-doc=_local/..json hands the kit a full element_kit document of this tool's own (a copy of the shipped file with other values) instead of the shipped one; absent = the shipped file.
+var kit_doc_path := ""
 ## --extras-on: the strong elites (D13 W4-a) and the guarded shrine / chest (W5-a) on in memory (the files stay off).
 ## --pilot-extras: this tool only (chapter_pilot.gd is untouched): the pilot's step is replaced by a walk to a freed shrine, or to a locked
 ## site within 20 m when the run is in a lull (or has no rhythm), or while its guard is already fighting; it stands still next to the guard.
@@ -198,6 +200,12 @@ func execute() -> void:
 				quit(1)
 				return
 		elif arg.begins_with("--kit-seed="): kit_seed = int(arg.trim_prefix("--kit-seed="))
+		elif arg.begins_with("--kit-doc="):
+			kit_doc_path = arg.trim_prefix("--kit-doc=")
+			if not kit_doc_path.begins_with("_local/") or kit_doc_path.contains("..") or kit_doc_path.contains(":"):
+				push_error("measure_rhythm: --kit-doc must be a relative path under _local/ (got %s)" % kit_doc_path)
+				quit(1)
+				return
 		elif arg == "--extras-on": extras_on = true
 		elif arg == "--pilot-extras": pilot_extras = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
@@ -346,7 +354,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			push_error("measure_rhythm: " + spells_problem)
 			return {}
 	if element_kit_on:
-		var element_problem := KitDocs.enable_kit_problem(run, kit_tree, [String(prim).get_slice(".", 2)])
+		var element_problem := KitDocs.enable_kit_problem(run, kit_tree, [String(prim).get_slice(".", 2)], kit_doc_path)
 		if not element_problem.is_empty():
 			push_error("measure_rhythm: " + element_problem)
 			return {}
@@ -616,6 +624,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	if rc_on: result["rc"] = rc_finish(pilot, secs)
 	if element_kit_on:
 		result["element_kit"] = {"policy": kit_policy, "tree": kit_tree, "kit_seed": kit_seed, "view": run.kit_view(), "metrics": run.metrics.get("kit", {}).duplicate(true), "hands": kit_hands, "picks": kit_picks, "casts": run.metrics.casts.duplicate(true), "hits": run.metrics.hits.duplicate(true)}
+		if kit_doc_path != "": result.element_kit["doc"] = kit_doc_path
 	if hurt_on:
 		result["hurt"] = hurt_summary(hurt_log)
 		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}
