@@ -90,6 +90,11 @@ var scenes: Dictionary = {}
 var frame := 0
 var step := 0
 var choice_dumps := 0
+## --choice-late (opt-in): the choice window is also dumped (choice-1, choice-2) in the long phase of the run, not only before tick 1500. A run whose first level-up comes late
+## (the finale's growth pace) has no choice window in the first 1500 ticks. Without the flag nothing changes.
+var choice_late := false
+## --kit-gate-shots (opt-in, a run with the element kit): when the combat bar lights a kit slot (the opening flash of skill_gate_opened, two or three frames after it began so the lit ring is in the picture) the moment "kit-gate-<slot>" is dumped once.
+var kit_gate_shots := false
 var done_marks: Dictionary = {}
 var unworn_since: Dictionary = {}
 var end_frames := -1
@@ -176,6 +181,8 @@ func _initialize() -> void:
 		# "--burst=<tick>,<frames>" (two integers) is the hero capture of rig_game_probe.gd, not an event-name burst.
 		elif arg.begins_with("--burst=") and not _is_tick_burst(arg.trim_prefix("--burst=")): burst_arg = arg.trim_prefix("--burst=")
 		elif arg.begins_with("--burst-step="): burst_step = maxi(1,int(arg.trim_prefix("--burst-step=")))
+		elif arg == "--choice-late": choice_late = true
+		elif arg == "--kit-gate-shots": kit_gate_shots = true
 		elif arg.begins_with("--burst-frames="): burst_frames = int(arg.trim_prefix("--burst-frames=")); burst_frames_given = true
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
@@ -533,6 +540,10 @@ func _process(_delta: float) -> bool:
 		return _run_flow()
 	if result_mock and step < 90:
 		return _mock_result()
+	if kit_gate_shots and step >= 1 and run.mode == "playing" and is_instance_valid(view.hud.combat_bar) and view.hud.combat_bar.has_method("kit_dump"):
+		var gate_rows: Array = view.hud.combat_bar.kit_dump().get("slots", [])
+		for gate_slot in gate_rows.size():
+			if float(gate_rows[gate_slot].flash) > .1 and float(gate_rows[gate_slot].flash) < .34 and _mark("kit-gate-%d" % gate_slot): _dump("kit-gate-%d" % gate_slot)
 	if notice_shots and step >= 1 and run.mode == "playing" and view.hud._discovery.visible and view.hud._discovery.modulate.a > .95 and _mark("discovery-notice"): _dump("discovery-notice")
 	match step:
 		0:
@@ -564,6 +575,7 @@ func _process(_delta: float) -> bool:
 		5:
 			step = 6
 		6:
+			if choice_late: _choice_moment(run)
 			# Show the better-item prompt once a bag item is not worn (presentation only).
 			if not done_marks.has("offer") and run.mode == "playing":
 				for item in run.inventory:
@@ -656,6 +668,10 @@ func _finish() -> void:
 		var document := {"order":order,"dumps":dumps}
 		var trial := TrialDocs.switches(OS.get_cmdline_user_args())
 		if not trial.is_empty(): document["trial"] = trial
+		# A run with the element kit: its read-only state and what the combat bar drew for it. Absent on every other run (the default dump is the same bytes).
+		var kit_state: Dictionary = view.run.kit_view()
+		if bool(kit_state.get("on", false)):
+			document["kit"] = {"view": kit_state, "bar": view.hud.combat_bar.kit_dump() if is_instance_valid(view.hud.combat_bar) else {}}
 		if dump_extra:
 			document["meta"] = {"canvas":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"window":[root.size.x,root.size.y],"extra":true}
 		if file == null:

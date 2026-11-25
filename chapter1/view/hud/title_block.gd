@@ -234,6 +234,21 @@ static func key_segments(line: String) -> Array:
 
 # ---------------------------------------------------------------- the block of one witch
 
+## The plaque's own fitting stops at 20 code px; a long "name · class" title (the third witch's) then still ran into the clasps at both ends. This shrinks it
+## further, down to 16, keeping the middle of the words where it was.
+static func _fit_plaque_words(plaque: Control, text: String, max_w: float) -> void:
+	var tl := plaque.get_node_or_null("Title") as Label
+	if tl == null:
+		return
+	var cur := tl.get_theme_font_size("font_size")
+	var fitted := UiParts.fit_size(text, cur, max_w, "heading", 16)
+	if fitted == cur:
+		return
+	var centre := tl.position.y + tl.size.y * 0.5
+	tl.add_theme_font_size_override("font_size", fitted)
+	tl.size.y = Kit.line_height(fitted, "heading")
+	tl.position.y = centre - tl.size.y * 0.5
+
 ## c: the contract (witches[], save, stash_count). w: this witch. spec: width (the column, code units), plaque (the brass plate's width), note_h, hint (bool).
 ## Returns {root, start, tree, stash, tree_on, height}. The order, top to bottom: plaque with a candle each side (the witch is the subject), her line,
 ## the parchment of her first skill (it hangs on her), level band, the start button, the round buttons, the key line.
@@ -249,7 +264,8 @@ static func build_block(i: int, w: Dictionary, c: Dictionary, spec: Dictionary) 
 	# 1. plaque + two candles (the flame takes the witch's colour)
 	var pw: float = float(spec.plaque)
 	var candle_h := 86.0
-	var plaque := UiParts.title(root, String(w.title), pw, "")
+	var plaque := UiParts.title(root, String(w.title), pw, "", 36, spec.get("plaque_fit", 0.76))
+	_fit_plaque_words(plaque, String(w.title), pw * float(spec.get("plaque_fit", 0.76)))
 	plaque.position = Vector2((width - pw) * 0.5, 22.0)
 	for side in [0, 1]:
 		var cd := UiParts.candle(root, Vector2.ZERO, candle_h, accent.lerp(Palette.FLAME_WARM, 0.3))

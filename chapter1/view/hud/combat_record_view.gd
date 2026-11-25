@@ -137,8 +137,11 @@ static func skill_name(id_: String,evolved: bool=false) -> String:
 	var text := Loc.t(key)
 	return id_.get_slice(".",id_.get_slice_count(".")-1) if text==key else text
 
+## The element kit's skills carry their element in the id's first word ("arc_rod"); the other ids end in the element itself ("arc").
+const KIT_SKILL_ELEMENT := {"arc_rod":"arc","arc_overload":"arc","arc_storm":"arc"}
 static func element_of(id_: String) -> String:
-	return id_.get_slice(".",id_.get_slice_count(".")-1)
+	var last := id_.get_slice(".",id_.get_slice_count(".")-1)
+	return String(KIT_SKILL_ELEMENT.get(last,last))
 
 static func pick_text(card: String) -> String:
 	var kind := card.get_slice(":",0)
@@ -153,7 +156,10 @@ static func pick_text(card: String) -> String:
 			var key := "grace.passive.%s.name"%card.get_slice(":",1)
 			var text := Loc.t(key)
 			return card if text==key else text
-	return card
+	# An element kit card is picked by its own id ("A12"): its name is `kit.card.<id>`; an id without a text is shown as the id (never hidden).
+	var kit_key := "kit.card."+card
+	var kit_text := Loc.t(kit_key)
+	return card if kit_text==kit_key else kit_text
 
 static func source_name(kind: String) -> String:
 	var key := "record.source."+kind

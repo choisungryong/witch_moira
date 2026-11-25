@@ -237,6 +237,12 @@ func finish(run: Object) -> void:
 	for id_ in growth.evolved:
 		if _skill_meta.has(String(id_)):
 			_skill_meta[String(id_)].evolved = true
+	# The element kit's own skills (lay, burst) are not in the growth ranks: their last rank comes from the kit's read-only view (nothing on a run without the kit).
+	var kit: Dictionary = run.kit_view() if run.has_method("kit_view") else {}
+	for id_ in kit.get("skills", {}):
+		var kit_rank := int(kit.skills[id_].get("rank", 0))
+		if kit_rank > 0 and _skill_meta.has(String(id_)):
+			_skill_meta[String(id_)].rank = kit_rank
 	_finished = true
 	_summary = _build_summary()
 

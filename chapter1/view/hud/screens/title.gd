@@ -7,7 +7,7 @@ extends Control
 ## It reads only the contract (chapter1/view/contracts/title_contract.gd makes it from the app's state) and says what happened through the signals; the host
 ## (chapter_hud.gd) hands them on. Every animation is a pure function of `clock` and a few start stamps, so a captured frame at a time t is the same picture
 ## every time (advance_to). Layout numbers are 1080p pixels (BRIEF), converted with Parts.px.
-## Time: _process adds the frame delta; it is off while the screen is not interactive or not visible (a window lies over it, or it is hidden).
+## Time: _process adds the frame delta; it stands still while the screen is not interactive (a window lies over it) or not visible, except during the intro, which plays on under a window.
 ## Input (Input48 kept): during the intro any key skips (the picture opens in 0.15 s) and picking is locked 0.25 s after it; Space is never a confirm key; a
 ## second key during the confirm jumps to its 1.0 s point. Keys the screen uses end with set_input_as_handled (the app's Q = potion, E = rite never see them).
 ## Not on this screen on purpose: settings and quit (the Esc window has them), the contract demon (director decision, T13), a costume knob (no costume screen).
@@ -37,7 +37,8 @@ const S_DIM := 0.66
 const FOOT_FOCUS := 1060.0
 const FOOT_DIM := 1050.0
 const BOTTOM := 1024.0
-const BLOCK := {"width": TEXT_W, "plaque": 290.0, "note_h": 150.0, "hint": true}
+## The name plaque: 360 wide, its words fitted into 58 % of that (the clasps at both ends take the rest; at 290 / 76 % the words ran into them).
+const BLOCK := {"width": TEXT_W, "plaque": 360.0, "plaque_fit": 0.58, "note_h": 150.0, "hint": true}
 const MENU_BUTTON := Vector2(44.0, 44.0)
 
 var contract := {}
@@ -271,17 +272,22 @@ func pretty_events() -> Array:
 # ============================================================ time
 
 func _process(delta: float) -> void:
-	if manual or not _interactive:
+	if manual or not _runs():
 		return
 	clock += delta
 	_tick()
+
+## The clock runs while the screen takes input, and also while the intro plays under a window (a refused-save notice opens in the very first frame): a frozen
+## intro would leave the screen black behind the notice. A window never has to wait for the doors: the intro is short and only the input is shut out.
+func _runs() -> bool:
+	return _interactive or state == "intro" or state == "idle"
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED or what == NOTIFICATION_ENTER_TREE:
 		_sync_process()
 
 func _sync_process() -> void:
-	set_process(_interactive and is_visible_in_tree())
+	set_process(is_visible_in_tree())   # _process itself stands still when the clock is not to run (_runs)
 
 func _tick() -> void:
 	match state:
@@ -420,7 +426,7 @@ func _build_fixed() -> void:
 	chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chrome)
 	## the dark under the logo and the corner text: wider than the screen on the left, so its feathered ends are the right one only (the proposal's cut off at x = 700)
-	top_shade = Parts.vgrad(self, Rect2(-Parts.px(300.0), 0, Parts.px(1000.0), Parts.px(190.0)), Parts.black(0.62), Parts.black(0.0))
+	top_shade = Parts.vgrad(self, Rect2(-Parts.px(300.0), 0, Parts.px(1000.0), Parts.px(190.0)), Parts.black(0.74), Parts.black(0.0))
 	top_shade.material = Parts.feather_tinted(0.3, 0.0, 0.0)
 	logo_font = FontVariation.new()
 	logo_font.base_font = Loc.font("heading")
@@ -512,6 +518,9 @@ func _build_corner() -> void:
 	save_word = Kit.lbl(chrome, Loc.t(save_key), Vector2(x, y), Parts.px(560.0), word_px, Palette.BRASS if contract.get("save", "off") != "on" else Palette.INK_DIM, "bold", HORIZONTAL_ALIGNMENT_LEFT, false, true)
 	save_word.name = "SaveWord"
 	var note_text := String(contract.get("note", ""))
+	var word_text := Loc.t(save_key)
+	if note_text.begins_with(word_text):   # "검증 실행 · 저장 비활성" under the word "검증 실행" said it twice
+		note_text = note_text.trim_prefix(word_text).lstrip(" ·").strip_edges()
 	save_note = null
 	if note_text != "":
 		save_note = Kit.lbl(chrome, note_text, Vector2(x, y + save_word.size.y + Parts.px(2.0)), Parts.px(560.0), note_px, Palette.INK_DIM, "body", HORIZONTAL_ALIGNMENT_LEFT, true, true)

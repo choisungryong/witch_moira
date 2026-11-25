@@ -133,6 +133,8 @@ func _bar(color: Color, height: float) -> ProgressBar:
 # (a theme override always announces "theme changed"). Every visible piece is composed once per frame in _compose_frame and
 # goes through these, so an unchanged frame writes nothing.
 var _frame_growth: Dictionary={}
+## run.kit_view() taken once per frame (the combat bar and the choice window share it); {"on": false} on a run without the element kit.
+var _frame_kit: Dictionary={"on":false}
 var _toast_y_last := -1.0e9
 var _route_state_last: Array[int]=[-1,-1,-1]
 func _set_text(control: Control,value: String) -> void:
@@ -995,6 +997,8 @@ func _build_result40__q40(run: RefCounted) -> void:
 # ---- chapter1/view/ui45/chapter_hud_quality45.gd ----
 ## Clarify enemy slow and keep pause controls compact; inherited callbacks stay.
 func _card_description(card: Dictionary,run: RefCounted) -> String:
+	# The element kit's cards have their own one line (kit.card.<id>.line); the older description ("base damage 0", ranks) is never built for them.
+	if String(card.get("title_key","")).begins_with("kit.card."):return GraceContract.kit_line(card)
 	var text: String=_card_description__q36(card,run)
 	if card.get("skill_id","")=="chapter1.skill.frost":text=text.replace("이동속도 -","적 이동 속도 -")
 	return text
@@ -1119,7 +1123,7 @@ func _build_grace_screen(run: RefCounted) -> void:
 	overlay.visible=true;overlay.color=Color(0,0,0,0);modal.visible=false
 	for child in modal.get_children():modal.remove_child(child);child.queue_free()
 	var describe:=func(card: Dictionary) -> String:return _card_description(card,run)
-	var contract: Dictionary=GraceContract.build(run,{"growth":_frame_growth,"describe":describe})
+	var contract: Dictionary=GraceContract.build(run,{"growth":_frame_growth,"describe":describe,"kit":_frame_kit})
 	# The adapter may have drawn the offer just now: the window's identity is the one the next frame will read.
 	_last_signature="choice"+_choice_signature(run.growth.snapshot().get("offer",{}))
 	if contract.get("cards",[]).is_empty():return
@@ -1285,6 +1289,7 @@ const Route51=preload("res://chapter1/view/ui51/chapter_route51.gd")
 func sync(run: RefCounted,delta: float) -> void:
 	# One growth snapshot (a deep copy) per frame, shared with the combat bar and the six-tick summary.
 	_frame_growth=run.growth.snapshot() if not run.hero.is_empty() else {}
+	_frame_kit=run.kit_view() if not run.hero.is_empty() and run.has_method("kit_view") else {"on":false}
 	sync__q47(run,delta)
 	_bf_tick(run,delta)
 	if _playlog!=null:_playlog.observe(run,_frame_growth)
@@ -1292,7 +1297,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	_sync_flow(run,delta)
 	if is_instance_valid(skill_panel) and skill_panel.visible and run.mode not in ["menu","victory","defeat"]:skill_panel.visible=false
 	_sync_upgrade(run,delta)
-	if is_instance_valid(combat_bar):combat_bar.sync(run,delta,_frame_growth)
+	if is_instance_valid(combat_bar):combat_bar.sync(run,delta,_frame_growth,_frame_kit)
 	_sync_chrome(run)
 
 ## The visible plates, composed once per frame from the final values and written only when they differ from what is
@@ -1599,6 +1604,9 @@ func _bf_tick(run: RefCounted,delta: float) -> void:
 			_set_text(_bf_secs,str(ceili(float(remaining)/60.0)))
 			_bf_secs.position=Vector2(boss_bar.size.x+8.0,boss_bar.size.y*.5-_bf_secs.size.y*.5+3.0)
 	_bf_over.queue_redraw()
+## A new kit skill opened (core event skill_gate_opened): the bar lights that slot once. chapter_one.gd hands the event over; nothing is written back.
+func kit_event(event: Dictionary) -> void:
+	if is_instance_valid(combat_bar) and String(event.get("type","")) == "skill_gate_opened":combat_bar.kit_gate_opened(String(event.get("id","")))
 ## The core events the bar answers (chapter_one.gd hands them over). boss_break_struck: only its moment is used, so a later field change does not matter.
 func boss_event(event: Dictionary) -> void:
 	match String(event.get("type","")):

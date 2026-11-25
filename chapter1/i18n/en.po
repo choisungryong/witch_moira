@@ -1578,3 +1578,313 @@ msgstr "Fast is good. I hate waiting."
 #. First screen: the arc witch's first skill in one line
 msgid "title.witch.arc.summary"
 msgstr "Fast, and it spreads sideways"
+
+#. ---- Element kit (arc): skill names, status names, card names and lines, band lines (docs/story/NAMES-ELEMENT-KIT-ARC-20261125.ko.md, provisional) ----
+
+#. Skill name (lay): plants a rod in a big foe
+msgid "skill.chapter1.skill.arc_rod.name"
+msgstr "Lightning Rod"
+
+#. Skill name (burst): gathers the shocked foes' lightning into one foe
+msgid "skill.chapter1.skill.arc_overload.name"
+msgstr "Overload"
+
+#. Status name, for card and tree texts (not drawn in battle)
+msgid "status.shock.name"
+msgstr "Shock"
+
+#. Status adjective
+msgid "status.shock.adj"
+msgstr "shocked"
+
+#. Mark name
+msgid "status.rod.name"
+msgstr "Rod"
+
+#. Status name (ember kit, later)
+msgid "status.ignite.name"
+msgstr "Ignite"
+
+#. Status adjective
+msgid "status.ignite.adj"
+msgstr "ignited"
+
+#. Status name (frost kit, later)
+msgid "status.chill.name"
+msgstr "Chill"
+
+#. Status adjective
+msgid "status.chill.adj"
+msgstr "chilled"
+
+#. {n}: stacks
+msgid "status.stacks"
+msgstr "{n} stacks"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.variant"
+msgstr "Variant"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.survival"
+msgstr "Survival"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.filler"
+msgstr "Supply"
+
+#. Big band line when a kit skill opens. {name}: skill name
+msgid "hud.band.skill_gate"
+msgstr "New skill · {name}"
+
+#. Big band line under the boss name: the first break begins
+msgid "hud.band.boss_break1"
+msgstr "Chain broken · It's coming back"
+
+#. Big band line under the boss name: the second phase begins
+msgid "hud.band.boss_phase2"
+msgstr "Charge · Step aside"
+
+#. Big band line under the boss name: the third phase begins
+msgid "hud.band.boss_phase3"
+msgstr "No guards left · Finish it"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A01"
+msgstr "Lightning Rod"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A01.line"
+msgstr "Every {t} s, plants a rod in a big foe. A planted foe keeps its shock."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A02"
+msgstr "Overload"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A02.line"
+msgstr "Every {t} s, gathers the lightning of shocked foes into one foe."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A03"
+msgstr "Chain Lightning"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A03.line"
+msgstr "Chain Lightning jumps {n} more time(s)."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A04"
+msgstr "Chain Lightning"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A04.line"
+msgstr "Chain Lightning splits into {n} branches."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A05"
+msgstr "Chain Lightning"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A05.line"
+msgstr "Damage +{p}% · cast interval -{q}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A06"
+msgstr "Lightning Rod"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A06.line"
+msgstr "Rod duration {a} -> {b} s"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A07"
+msgstr "Lightning Rod"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A07.line"
+msgstr "Rod radius {a} -> {b} m"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A08"
+msgstr "Overload"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A08.line"
+msgstr "Bolts gathered at once {a} -> {b}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A09"
+msgstr "Overload"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A09.line"
+msgstr "Bolt damage +{p}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A10"
+msgstr "Turisaz Rune"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A10.line"
+msgstr "With Chain Lightning at rank 4, it evolves into Thunderstorm."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A11"
+msgstr "Thunderstorm"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A11.line"
+msgstr "Every {t} s, lightning strikes {n} shocked foes."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A12"
+msgstr "Amplify"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A12.line"
+msgstr "Overload gains +{n} bolt(s)."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A13"
+msgstr "Induction"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A13.line"
+msgstr "When a shocked foe dies, the nearest foe within {m} m is shocked."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A14"
+msgstr "Direct Hit"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A14.line"
+msgstr "Against a big foe with no one beside it, Chain Lightning rebounds {n} more time(s)."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A15"
+msgstr "Forked Lightning"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A15.line"
+msgstr "Chain Lightning branches +{n}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A16"
+msgstr "Charged Field"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A16.line"
+msgstr "Foes within {m} m of the rod are shocked every {t} s."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A17"
+msgstr "Short Circuit"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A17.line"
+msgstr "A foe that sent its bolt bursts: damage {d} within {m} m."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A18"
+msgstr "Overcurrent"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A18.line"
+msgstr "Shock stacks on big foes {a} -> {b}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A19"
+msgstr "Twin Rods"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A19.line"
+msgstr "Plants {n} rods."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A20"
+msgstr "Single Rod"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A20.line"
+msgstr "Only one rod. The foe it is in takes +{p}% lightning damage."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A21"
+msgstr "Crackle"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A21.line"
+msgstr "Overload interval -{p}% · bolts -{n}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A22"
+msgstr "Strike"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A22.line"
+msgstr "Overload interval +{p}% · bolt damage +{q}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A23"
+msgstr "Capacitor"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A23.line"
+msgstr "A big foe at 10 shock stacks becomes {a} -> {b} bolts."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A24"
+msgstr "Bullseye"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A24.line"
+msgstr "Half of Thunderstorm's lightning strikes the rod."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A25"
+msgstr "Grit"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A25.line"
+msgstr "Max life +{n}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A26"
+msgstr "Static Armor"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A26.line"
+msgstr "Below {p}% life: for {t} s damage taken -{q}% and foes within {m} m are shocked. Once per {c} s."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A27"
+msgstr "Recharge"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A27.line"
+msgstr "Every {n} bolts, recover {h} life."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A28"
+msgstr "Flash Step"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A28.line"
+msgstr "Move speed +{p}%. Every {t} s, the nearest foe within {m} m is shocked."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.X01"
+msgstr "Second Wind"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.X01.line"
+msgstr "Recover {p}% life."
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.X02"
+msgstr "Stockpile"
+
+#. Element kit card line, literal draft for T3; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.X02.line"
+msgstr "+1 potion. If potions are full, recover {p}% life."

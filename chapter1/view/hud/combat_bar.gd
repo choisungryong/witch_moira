@@ -77,7 +77,8 @@ func _ready() -> void:
 		_seals.append(seal)
 
 ## `snapshot` is the growth snapshot the HUD took this frame (one deep copy shared by its pieces); without it the bar takes its own.
-func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
+## `kit` is run.kit_view() the HUD took this frame ({"on": false} or {} on a run without the element kit; the bar then looks exactly as it always did).
+func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}, kit: Dictionary = {}) -> void:
 	_playing = run.mode == "playing"
 	if _playing: _clock += delta
 	if run.hero.is_empty():
@@ -100,6 +101,7 @@ func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
 		if SKILLS[k][0] == String(growth.get("primary","")): _soul_color = SKILLS[k][2]; _primary_index = k; _soul_key = SKILLS[k][1]
 	var ranks: Dictionary = growth.get("ranks",{})
 	var evolved: Array = growth.get("evolved",[])
+	_kit_on = bool(kit.get("on",false)) and UiStyle.bound()
 	for i in SKILLS.size():
 		var id_: String = SKILLS[i][0]
 		var rank := int(ranks.get(id_,0))
@@ -113,6 +115,8 @@ func sync(run: RefCounted, delta: float, snapshot: Dictionary = {}) -> void:
 			seconds = wait*cooldown/60.0
 		_skill_state[i] = {"rank":rank,"evolved":id_ in evolved,"wait":wait,"seconds":seconds}
 		if not _seals.is_empty(): _seals[i].modulate = Color(1,1,1,1) if rank > 0 else Color(1,1,1,.22)
+	if _kit_on: _sync_kit(run,kit,delta)
+	elif not _kit_states.is_empty(): _kit_states.clear(); _kit_slot_of.clear(); _gate_t = [0.0,0.0,0.0]
 	_dash_left = maxf(0.0,float(int(run.get_next_dash_tick())-int(run.tick))/60.0)
 	_dash_total = maxf(_dash_total if _dash_left > 0 else 1.0,_dash_left)
 	_potions = int(run.get("potions"))
@@ -238,12 +242,109 @@ func _draw_descent(c: Vector2, r: float) -> void:
 	else:
 		_text(c+Vector2(0,54),"R",14,INK if _descent_state == "ready" else INK_DIM,70)
 
+# ======================================================================================
+# The element kit's three skill slots (A-element-kit-screen 2, group A2): the signature skill, the lay skill, the burst skill, in the first three places.
+# Only while run.kit_view().on; every other run keeps the three base skills and not one pixel moves. It reads kit_view() and nothing else of the kit.
+# ======================================================================================
+const KIT_FLASH_SECONDS := .4
+const KIT_PIPS_DEFAULT := 3
+const KIT_ARC := Palette.ARC
+var _kit_on := false
+## One row per slot (0 signature, 1 lay, 2 burst): the same shape as _skill_state plus "pips" (the rank beads under the slot).
+var _kit_states: Array[Dictionary] = []
+var _kit_slot_of: Dictionary = {}
+var _gate_t: Array[float] = [0.0,0.0,0.0]
+
+## The core said a kit skill opened (skill_gate_opened): the slot lights once (a brass ring and a second ring opening outwards, so it is a shape and not only a colour).
+func kit_gate_opened(skill_id: String) -> void:
+	if not _kit_slot_of.has(skill_id): return
+	_gate_t[int(_kit_slot_of[skill_id])] = KIT_FLASH_SECONDS
+	_drawn_key = []
+
+func _sync_kit(run: RefCounted, kit: Dictionary, delta: float) -> void:
+	var states: Array[Dictionary] = [{},{},{}]
+	var base: Dictionary = _skill_state[_primary_index if _primary_index >= 0 else SKILLS.size()-1]
+	states[0] = {"rank":base.rank,"evolved":base.evolved,"wait":base.wait,"seconds":base.seconds,"pips":4}
+	var def: Variant = run.get("_kit")
+	var slot_of := {}
+	slot_of[String(SKILLS[_primary_index if _primary_index >= 0 else SKILLS.size()-1][0])] = 0
+	for id_ in kit.get("skills",{}):
+		var info: Dictionary = kit.skills[id_]
+		var slot := 1 if String(info.get("role","")) == "lay" else (2 if String(info.get("role","")) == "burst" else -1)
+		if slot < 0: continue
+		slot_of[String(id_)] = slot
+		var rank := int(info.get("rank",0))
+		var next_tick := int(kit.get("next_rod" if slot == 1 else "next_overload",0))
+		var left := maxi(0,next_tick-int(run.tick))
+		var length := int(info.get("cooldown_ticks",0))
+		# Without the cooldown's length (the core does not give it yet) there is no sweep: the slot is either dark (cooling, with its seconds) or lit.
+		var wait := 0.0
+		if rank > 0 and left > 0: wait = clampf(float(left)/float(length),0,1) if length > 0 else 1.0
+		var pips := KIT_PIPS_DEFAULT
+		if def is Dictionary and def.get("skills",{}).has(id_): pips = clampi(def.skills[id_].get("ranks",[]).size(),1,6)
+		states[slot] = {"rank":rank,"evolved":false,"wait":wait,"seconds":float(left)/60.0 if rank > 0 else 0.0,"pips":pips}
+	for i in 3:
+		if states[i].is_empty(): states[i] = {"rank":0,"evolved":false,"wait":0.0,"seconds":0.0,"pips":KIT_PIPS_DEFAULT}
+	_kit_states = states
+	_kit_slot_of = slot_of
+	if _playing:
+		for i in 3: _gate_t[i] = maxf(0.0,_gate_t[i]-delta)
+
+func _slot_state(i: int) -> Dictionary:
+	return _kit_states[i] if _kit_on else _skill_state[i]
+
+func _slot_color(i: int) -> Color:
+	return KIT_ARC if _kit_on else SKILLS[i][2]
+
+## The slot's picture. The kit's two new skills have line glyphs for now (a vertical nail with a diamond head; short bent lines gathering on a dot): the real
+## icons come with the asset ledger (ui.skill.arc_rod, ui.skill.arc_overload); an empty place falls to these.
+func _slot_icon(i: int, piece: String, c: Vector2, scale_: float, tint: Color) -> void:
+	if _kit_on and i == 0: UiStyle.blit_centered(self,"icon_arc",c,scale_,tint)
+	elif _kit_on and (i == 1 or i == 2): _kit_glyph(i,c,scale_,tint)
+	else: UiStyle.blit_centered(self,piece,c,scale_,tint)
+
+func _kit_glyph(i: int, c: Vector2, k: float, tint: Color) -> void:
+	var ink := Color(KIT_ARC.r,KIT_ARC.g,KIT_ARC.b,KIT_ARC.a*tint.a)
+	var shade := Color(0,0,0,.55*tint.a)
+	if i == 1:
+		var head := PackedVector2Array([c+Vector2(0,-25)*k,c+Vector2(6,-17)*k,c+Vector2(0,-9)*k,c+Vector2(-6,-17)*k])
+		draw_line(c+Vector2(0,-9)*k,c+Vector2(0,15)*k,shade,5.0*k,true)
+		draw_line(c+Vector2(-10,15)*k,c+Vector2(10,15)*k,shade,5.0*k,true)
+		draw_colored_polygon(head,ink)
+		draw_line(c+Vector2(0,-9)*k,c+Vector2(0,15)*k,ink,2.6*k,true)
+		draw_line(c+Vector2(-9,15)*k,c+Vector2(9,15)*k,ink,2.6*k,true)
+	else:
+		var legs := [
+			[Vector2(-19,-15),Vector2(-10,-12),Vector2(-13,-5),Vector2(-4,-3),Vector2(0,0)],
+			[Vector2(19,-15),Vector2(10,-12),Vector2(13,-5),Vector2(4,-3),Vector2(0,0)],
+			[Vector2(0,21),Vector2(4,13),Vector2(-3,9),Vector2(2,4),Vector2(0,0)]]
+		for leg in legs:
+			var pts := PackedVector2Array()
+			for point in leg: pts.append(c+(point as Vector2)*k)
+			draw_polyline(pts,shade,4.6*k,true)
+			draw_polyline(pts,ink,2.4*k,true)
+		draw_circle(c,3.6*k,shade)
+		draw_circle(c,2.8*k,ink)
+
+## What the dump says about the kit slots (tests/hud_dump.gd, only on a run with the kit).
+func kit_dump() -> Dictionary:
+	var rows: Array = []
+	for i in _kit_states.size():
+		var st: Dictionary = _kit_states[i]
+		rows.append({"rank":int(st.rank),"wait":snappedf(float(st.wait),.001),"seconds":snappedf(float(st.seconds),.01),"pips":int(st.pips),"flash":snappedf(_gate_t[i],.001)})
+	return {"on":_kit_on,"slots":rows}
+
 ## Every value _draw_bound reads. Exact values, not rounded ones: the cooldown sweeps and the seconds follow the tick, so
 ## the bar redraws while anything is cooling down and stands still when nothing moves.
 func _draw_key() -> Array:
 	var parts: Array = [_life_text,_life,_soul,_soul_color,_soul_key,_level,_primary_index,_dash_left,_dash_total,_potions,_potion_left,_in_ward,_invulnerable,_descent_on,_descent_ratio,_descent_state,_descent_left,_descent_crest,_descent_bonus,_cue_left,_descent_element,_end_flash,_band_up]
 	for state in _skill_state:
 		parts.append(state.rank); parts.append(state.evolved); parts.append(state.wait); parts.append(state.seconds)
+	if _kit_on:
+		parts.append(true)
+		for state in _kit_states:
+			parts.append(state.rank); parts.append(state.wait); parts.append(state.seconds)
+		for t in _gate_t: parts.append(t)
 	return parts
 
 func _text(at: Vector2, text: String, size_: int, color: Color, width: float = 120.0, outline: int = 4) -> void:
@@ -368,10 +469,10 @@ func _draw_bound() -> void:
 		var seconds := 0.0
 		var frame := "slot_normal"
 		if i < 3:
-			var state: Dictionary = _skill_state[i]
+			var state: Dictionary = _slot_state(i)
 			learned = int(state.rank) > 0
 			wait = float(state.wait); seconds = float(state.seconds)
-			if i == _primary_index: frame = "slot_selected"
+			if (i == 0) if _kit_on else (i == _primary_index): frame = "slot_selected"
 		elif i == 4:
 			wait = clampf(_dash_left/maxf(.1,_dash_total),0,1); seconds = _dash_left
 		else:
@@ -381,23 +482,29 @@ func _draw_bound() -> void:
 		draw_circle(c,ICON*.5,Color(0.03,.035,.04,1))
 		var icon_tint := Color.WHITE if (learned and (i != 5 or _potions > 0)) else Color(1,1,1,.4)
 		if counting:
-			UiStyle.blit_centered(self,icons[i],c+Vector2(0,-9),.6,Color(icon_tint,.6))
+			_slot_icon(i,icons[i],c+Vector2(0,-9),.6,Color(icon_tint,.6))
 			_sweep(c,wait,ICON*.5)
 			if frame != "slot_selected": frame = "slot_cooldown"
 		else:
-			UiStyle.blit_centered(self,icons[i],c,1.0,icon_tint)
+			_slot_icon(i,icons[i],c,1.0,icon_tint)
 		UiStyle.blit_centered(self,frame,c)
+		if _kit_on and i < 3 and _gate_t[i] > 0.0:
+			# A kit skill just opened: a brass ring, and a second ring opening outwards.
+			var flash := _gate_t[i]/KIT_FLASH_SECONDS
+			draw_arc(c,ICON*.5+3.0,0,TAU,40,Color(BRASS_HI,.95*flash),3.0,true)
+			draw_arc(c,ICON*.5+3.0+12.0*(1.0-flash),0,TAU,40,Color(BRASS_HI,.7*flash),2.0,true)
 		if counting: _text(c+Vector2(0,19),"%.1f" % seconds,17,INK,56,4)
 		if i < 3:
 			# Rank beads under a skill slot: one brass bead per rank, a gold ring once evolved.
-			var state2: Dictionary = _skill_state[i]
+			var state2: Dictionary = _slot_state(i)
 			var base := c+Vector2(0,CY*0.0+39.0)
+			var pips := int(state2.get("pips",4))
 			if bool(state2.evolved):
 				draw_arc(base,4.5,0,TAU,20,BRASS_HI,2.0,true)
 			else:
-				for pip in 4:
-					var bead := base+Vector2((float(pip)-1.5)*9.0,0)
-					if pip < int(state2.rank): draw_circle(bead,3.0,SKILLS[i][2]); draw_arc(bead,3.2,0,TAU,12,BRASS,1.0,true)
+				for pip in pips:
+					var bead := base+Vector2((float(pip)-float(pips-1)*.5)*9.0,0)
+					if pip < int(state2.rank): draw_circle(bead,3.0,_slot_color(i)); draw_arc(bead,3.2,0,TAU,12,BRASS,1.0,true)
 					else: draw_arc(bead,2.6,0,TAU,12,Color(BRASS_DIM,.8),1.0,true)
 	var p := Vector2(BOUND_SLOT_X[5],CY)
 	var count_at := p+Vector2(24,24)

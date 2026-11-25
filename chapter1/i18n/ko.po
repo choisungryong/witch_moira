@@ -1583,3 +1583,313 @@ msgstr "빠른 게 좋아. 기다리는 건 싫고."
 #. First screen: the arc witch's first skill in one line
 msgid "title.witch.arc.summary"
 msgstr "빠르게, 옆으로 번진다"
+
+#. ---- Element kit (arc): skill names, status names, card names and lines, band lines (docs/story/NAMES-ELEMENT-KIT-ARC-20261125.ko.md, provisional) ----
+
+#. Skill name (lay): plants a rod in a big foe
+msgid "skill.chapter1.skill.arc_rod.name"
+msgstr "라이트닝 로드"
+
+#. Skill name (burst): gathers the shocked foes' lightning into one foe
+msgid "skill.chapter1.skill.arc_overload.name"
+msgstr "오버로드"
+
+#. Status name, for card and tree texts (not drawn in battle)
+msgid "status.shock.name"
+msgstr "감전"
+
+#. Status adjective
+msgid "status.shock.adj"
+msgstr "감전된"
+
+#. Mark name
+msgid "status.rod.name"
+msgstr "피뢰침"
+
+#. Status name (ember kit, later)
+msgid "status.ignite.name"
+msgstr "점화"
+
+#. Status adjective
+msgid "status.ignite.adj"
+msgstr "점화된"
+
+#. Status name (frost kit, later)
+msgid "status.chill.name"
+msgstr "한기"
+
+#. Status adjective
+msgid "status.chill.adj"
+msgstr "한기가 쌓인"
+
+#. {n}: stacks
+msgid "status.stacks"
+msgstr "{n}겹"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.variant"
+msgstr "변형"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.survival"
+msgstr "생존"
+
+#. Card kind line of the element kit
+msgid "grace.screen.kind.filler"
+msgstr "보급"
+
+#. Big band line when a kit skill opens. {name}: skill name
+msgid "hud.band.skill_gate"
+msgstr "새 기술 · {name}"
+
+#. Big band line under the boss name: the first break begins
+msgid "hud.band.boss_break1"
+msgstr "사슬 끊김 · 곧 내려온다"
+
+#. Big band line under the boss name: the second phase begins
+msgid "hud.band.boss_phase2"
+msgstr "돌진 · 옆으로 비키세요"
+
+#. Big band line under the boss name: the third phase begins
+msgid "hud.band.boss_phase3"
+msgstr "호위 없음 · 지금 끝내세요"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A01"
+msgstr "라이트닝 로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A01.line"
+msgstr "{t}초마다 큰 적에게 피뢰침을 박는다. 박힌 적은 감전이 풀리지 않는다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A02"
+msgstr "오버로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A02.line"
+msgstr "{t}초마다 감전된 적들의 번개를 한 적에게 모아 꽂는다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A03"
+msgstr "체인 라이트닝"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A03.line"
+msgstr "체인 라이트닝이 {n}번 더 튄다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A04"
+msgstr "체인 라이트닝"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A04.line"
+msgstr "체인 라이트닝이 {n}갈래로 갈라진다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A05"
+msgstr "체인 라이트닝"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A05.line"
+msgstr "피해 +{p}% · 시전 간격 −{q}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A06"
+msgstr "라이트닝 로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A06.line"
+msgstr "피뢰침 지속 {a} → {b}초"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A07"
+msgstr "라이트닝 로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A07.line"
+msgstr "피뢰침 둘레 {a} → {b}m"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A08"
+msgstr "오버로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A08.line"
+msgstr "한 번에 모으는 번개 {a} → {b}줄기"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A09"
+msgstr "오버로드"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A09.line"
+msgstr "번개 줄기 피해 +{p}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A10"
+msgstr "투리사즈 룬"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A10.line"
+msgstr "체인 라이트닝 랭크 4와 함께면 썬더스톰으로 진화한다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A11"
+msgstr "썬더스톰"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A11.line"
+msgstr "{t}초마다 감전된 적 {n}에게 번개가 떨어진다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A12"
+msgstr "증폭"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A12.line"
+msgstr "오버로드 번개 +{n}줄기"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A13"
+msgstr "유도"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A13.line"
+msgstr "감전된 적이 죽으면 {m}m 안의 가장 가까운 적이 감전된다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A14"
+msgstr "직격"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A14.line"
+msgstr "곁에 적이 없는 큰 적에게 체인 라이트닝이 {n}번 더 되튄다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A15"
+msgstr "갈래번개"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A15.line"
+msgstr "체인 라이트닝 갈래 +{n}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A16"
+msgstr "전기장"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A16.line"
+msgstr "피뢰침 둘레 {m}m의 적이 {t}초마다 감전된다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A17"
+msgstr "합선"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A17.line"
+msgstr "번개를 보낸 적이 터져 둘레 {m}m에 피해 {d}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A18"
+msgstr "과전류"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A18.line"
+msgstr "큰 적에게 쌓이는 감전 {a} → {b}겹"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A19"
+msgstr "쌍극"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A19.line"
+msgstr "피뢰침을 {n}개 박는다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A20"
+msgstr "단극"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A20.line"
+msgstr "피뢰침은 하나. 박힌 적이 받는 번개 피해 +{p}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A21"
+msgstr "잔번개"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A21.line"
+msgstr "오버로드 시전 간격 −{p}% · 번개 −{n}줄기"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A22"
+msgstr "낙뢰"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A22.line"
+msgstr "오버로드 시전 간격 +{p}% · 번개 줄기 피해 +{q}%"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A23"
+msgstr "축전"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A23.line"
+msgstr "큰 적의 감전 10겹이 번개 {a} → {b}줄기가 된다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A24"
+msgstr "과녁"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A24.line"
+msgstr "썬더스톰의 번개 절반이 피뢰침에 떨어진다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A25"
+msgstr "맷집"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A25.line"
+msgstr "최대 생명 +{n}"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A26"
+msgstr "번개 갑옷"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A26.line"
+msgstr "생명이 {p}% 밑이면 {t}초 동안 받는 피해 −{q}%, 둘레 {m}m 적 감전. {c}초에 한 번"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A27"
+msgstr "충전"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A27.line"
+msgstr "번개 줄기 {n}개마다 생명 {h} 회복"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.A28"
+msgstr "전광석화"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.A28.line"
+msgstr "이동 속도 +{p}%. {t}초마다 {m}m 안 가장 가까운 적이 감전된다"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.X01"
+msgstr "숨 고르기"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.X01.line"
+msgstr "생명 {p}% 회복"
+
+#. Element kit card name (NAMES-ELEMENT-KIT-ARC 3.2)
+msgid "kit.card.X02"
+msgstr "비축"
+
+#. Element kit card line; {t} s {m} m {n} count {p} {q} percent {d} damage {h} life {a} -> {b} before -> after {c} s
+msgid "kit.card.X02.line"
+msgstr "물약 +1. 물약이 가득하면 생명 {p}% 회복"

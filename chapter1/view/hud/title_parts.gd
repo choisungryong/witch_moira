@@ -325,6 +325,8 @@ class Burst extends Control:
 				for k in 16:
 					var a := float(k) * TAU / 16.0 + 0.2 * float(k % 3)
 					var len_ := (80.0 + 50.0 * float(k % 4)) * u * (1.0 - pow(1.0 - clampf(t / 0.5, 0.0, 1.0), 2.0))
+					if len_ < 3.0:
+						continue  # the first frames of the burst: a ray this short is a flat triangle, and triangulating a flat polygon fails ("Invalid polygon data")
 					var d := Vector2.from_angle(a)
 					var n := Vector2(-d.y, d.x)
 					draw_colored_polygon(PackedVector2Array([center + d * 20.0 * u + n * 9.0 * u, center + d * (20.0 * u + len_), center + d * 20.0 * u - n * 9.0 * u]),

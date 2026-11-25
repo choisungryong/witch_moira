@@ -9,6 +9,7 @@ extends RefCounted
 const CONTRACT_VERSION := 1
 const Palette = preload("res://chapter1/view/hud/palette.gd")
 const Loc = preload("res://chapter1/view/loc.gd")
+const ElementKit = preload("res://chapter1/core/element_kit.gd")
 const BASIC_EMBLEM := {"ember": "orb", "frost": "lance", "arc": "bolt"}
 const ROMAN := ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ"]
 const BASE_SKILLS := ["chapter1.skill.ember", "chapter1.skill.frost", "chapter1.skill.arc"]
@@ -26,6 +27,7 @@ static func build(run: RefCounted, app_state: Dictionary = {}) -> Dictionary:
 	var tools: Dictionary = run.grace_tools()
 	var snap: Dictionary = app_state.get("growth", {})
 	var describe: Callable = app_state.get("describe", Callable())
+	var kit: Dictionary = app_state.get("kit", {})
 	var doc: Dictionary = run.spells if bool(view.get("enabled", false)) else {}
 	var witch := _witch_element(run, snap)
 	var grades_on: bool = bool(tools.get("grades_enabled", false))
@@ -40,7 +42,7 @@ static func build(run: RefCounted, app_state: Dictionary = {}) -> Dictionary:
 	var kind := "last" if bool(tools.get("final", false)) else ("first" if level <= 2 else "normal")
 	var result := {"screen": "growth_choice", "contract_version": CONTRACT_VERSION, "offer_ref": String(offer.get("token", "")), "witch": {"id": witch, "element": witch},
 		"giver": _giver(witch, best, kind), "moment": {"kind": kind, "index": clampi(level, 1, 20), "total": 20, "label": Loc.t("grace.screen.moment", {"n": Loc.num(level)})},
-		"cards": cards, "owned": _owned(run, view, snap)}
+		"cards": cards, "owned": _owned(run, view, snap, kit)}
 	var left := int(tools.get("rerolls_left", run.rerolls_left()))
 	if left > 0 or bool(tools.get("enabled", false)): result.reroll = {"left": left, "left_label": Loc.num(left)}
 	if bool(tools.get("enabled", false)):
@@ -91,22 +93,26 @@ static func _card(run: RefCounted, card: Dictionary, view: Dictionary, tools: Di
 		"rank", "axis":
 			kind = "upgrade"
 			kind_label = Loc.t("hud.spell.kind.%s_%s" % ["ring" if is_ring else "basic", String(card.get("axis", "damage"))]) if (kind_core == "axis" and not spell.is_empty()) else Loc.t("grace.screen.kind.upgrade")
-		"passive":
+		"passive", "rune":
 			kind = "prep"
 			kind_label = Loc.t("grace.screen.kind.prep")
 		"evolve":
 			kind = "evolve"
 			kind_label = Loc.t("grace.screen.kind.evolve")
+		"variant", "survival", "filler":
+			# The element kit's cards (A-element-kit-screen 2, group A): the face is still the "new" one, the tag word tells the kind. The faces of group B come later.
+			kind_label = Loc.t("grace.screen.kind." + kind_core)
+	var is_kit := String(card.get("title_key", "")).begins_with("kit.card.")
 	var out := {"id": id_, "element": element, "kind": kind, "kind_label": kind_label,
 		"header": Loc.t("grace.screen.header.trade", {"demon": Loc.t("grace.screen.demon." + element)}) if kind == "trade" else Loc.t("grace.screen.header.oath"),
-		"name": Loc.t(String(card.get("title_key", ""))), "tier": _tier(card, kind_core), "headline": headline, "delta": null, "meter": null,
+		"name": _card_name(card, kind_label), "tier": _tier(card, kind_core), "headline": headline, "delta": null, "meter": null,
 		"line": headline, "details": [], "combo": [], "path": null, "terms": [], "emblem": "ring" if is_ring else BASIC_EMBLEM.get(element, "orb"),
 		"grade": grade, "grade_name": "" if grade == "common" else Loc.t("grace.screen.grade." + grade)}
 	if kind == "new" and is_ring and spell.has("element"): out.headline = Loc.t("hud.spell.ring.role." + element); out.line = out.headline
 	var details: Array = []
 	for i in range(1, mini(lines.size(), 4)): details.append(String(lines[i]))
 	out.details = details
-	out.delta = _delta(run, card, skill_id, info)
+	if not is_kit: out.delta = _delta(run, card, skill_id, info)
 	if kind_core == "axis" and not doc.is_empty():
 		var cap := int(doc.get("axis", {}).get("cap_per_axis", 4))
 		var levels: Dictionary = view.get("spells", {}).get(skill_id, {}).get("axis", {"damage": 0, "reach": 0}).duplicate()
@@ -117,6 +123,137 @@ static func _card(run: RefCounted, card: Dictionary, view: Dictionary, tools: Di
 	var evo: Dictionary = view.get("spells", {}).get(skill_id, {}).get("evolve_progress", {})
 	if not evo.is_empty() and kind_core in ["axis", "passive"]: out.path = _path(evo)
 	return out
+
+## The card's name from its title key. A key without a text (a card the writers have not named) never reaches the screen as letters: the skill's name for a
+## skill card, else the kind word.
+static func _card_name(card: Dictionary, kind_label: String) -> String:
+	var key := String(card.get("title_key", ""))
+	var text := Loc.t(key)
+	if text != key: return text
+	var skill_key := "skill.%s.name" % String(card.get("skill_id", ""))
+	var skill_name := Loc.t(skill_key)
+	return kind_label if (String(card.get("skill_id", "")).is_empty() or skill_name == skill_key) else skill_name
+
+# ---------------------------------------------------------------- the element kit's card text (A-element-kit-screen 2, group A)
+
+static var _growth_arc_ranks: Array = []
+
+## The one line of a kit card (`kit.card.<id>.line`), its numbers read from the kit document and the growth table. "" when the text does not exist yet:
+## the old description function ("base damage 0") is never asked for these cards.
+static func kit_line(card: Dictionary) -> String:
+	var id_ := String(card.get("id", ""))
+	var key := "kit.card.%s.line" % id_
+	var text := Loc.t(key, _kit_args(card))
+	return "" if text == key else text
+
+static func _fmt(v: float) -> String:
+	return Loc.num(int(roundf(v))) if absf(v - roundf(v)) < 0.001 else Loc.dec(v, 1)
+
+static func _by_role(element: Dictionary, role: String) -> Dictionary:
+	for id_ in element.get("skills", {}):
+		if String(element.skills[id_].get("role", "")) == role: return element.skills[id_]
+	return {}
+
+## Rank rows of the signature skill from the growth table (the kit document has only the lay and burst skills' ranks).
+static func _primary_ranks(primary: String) -> Array:
+	if _growth_arc_ranks.is_empty():
+		var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/growth_quality36.json"))
+		if doc is Dictionary:
+			for s in doc.get("skills", []):
+				if String(s.get("id", "")) == primary: _growth_arc_ranks = s.get("ranks", [])
+	return _growth_arc_ranks
+
+static func _kit_args(card: Dictionary) -> Dictionary:
+	var id_ := String(card.get("id", ""))
+	var doc: Dictionary = ElementKit.current()
+	var element: Dictionary = {}
+	var kit_card: Dictionary = {}
+	for name_ in doc.get("elements", {}):
+		for candidate in doc.elements[name_].get("cards", []):
+			if String(candidate.id) == id_:
+				element = doc.elements[name_]
+				kit_card = candidate
+	var args := {}
+	if element.is_empty():
+		var filler: Dictionary = doc.get("fillers", {}).get(id_, {}).get("effect", {})
+		if filler.has("heal_bps_if_full"): args.p = _fmt(float(filler.heal_bps_if_full) / 100.0)
+		elif filler.has("heal_bps"): args.p = _fmt(float(filler.heal_bps) / 100.0)
+		return args
+	var params: Dictionary = element.get("params", {})
+	var lay := _by_role(element, "lay")
+	var burst := _by_role(element, "burst")
+	var vals: Dictionary = kit_card.get("change", {}).get("vals", {})
+	var lay_ranks: Array = lay.get("ranks", [])
+	var burst_ranks: Array = burst.get("ranks", [])
+	match id_:
+		"A01": args.t = _fmt(float(lay.get("cooldown_ticks", 0)) / 60.0)
+		"A02": args.t = _fmt(float(burst.get("cooldown_ticks", 0)) / 60.0)
+		"A03", "A04", "A05":
+			var ranks := _primary_ranks(String(element.get("primary", "")))
+			var at := int(card.get("rank", 0)) - 1
+			if at >= 1 and at < ranks.size():
+				var now: Dictionary = ranks[at]
+				var before: Dictionary = ranks[at - 1]
+				if id_ == "A03": args.n = _fmt(float(int(now.chain_targets) - int(before.chain_targets)))
+				elif id_ == "A04": args.n = _fmt(float(now.branches))
+				else:
+					args.p = _fmt(roundf(float(int(now.damage_raw)) * 100.0 / maxf(1.0, float(int(before.damage_raw))) - 100.0))
+					args.q = _fmt(roundf((1.0 - float(int(now.cooldown_ticks)) / maxf(1.0, float(int(before.cooldown_ticks)))) * 100.0))
+		"A06":
+			args.a = _fmt(float(element.get("rod", {}).get("ticks", 0)) / 60.0)
+			if lay_ranks.size() > 1: args.b = _fmt(float(lay_ranks[1].get("rod_ticks", 0)) / 60.0)
+		"A07":
+			args.a = _fmt(float(element.get("rod", {}).get("keep_radius_cm", 0)) / 100.0)
+			if lay_ranks.size() > 2: args.b = _fmt(float(lay_ranks[2].get("keep_radius_cm", 0)) / 100.0)
+		"A08":
+			args.a = _fmt(float(burst.get("max_bolts", 0)))
+			if burst_ranks.size() > 1: args.b = _fmt(float(burst_ranks[1].get("max_bolts", 0)))
+		"A09":
+			if burst_ranks.size() > 2: args.p = _fmt(float(int(burst_ranks[2].get("bolt_bps", 0)) - int(burst.get("bolt_bps", 0))) / 100.0)
+		"A11":
+			var storm: Dictionary = element.get("evolution", {}).get("storm", {})
+			args.t = _fmt(float(storm.get("every_ticks", 0)) / 60.0)
+			args.n = _fmt(float(storm.get("targets", 0)))
+		"A12": args.n = _fmt(float(vals.get("bolts_add", 0)))
+		"A13": args.m = _fmt(float(params.get("death_chain", {}).get("reach_cm", 0)) / 100.0)
+		"A14": args.n = _fmt(float(vals.get("lone_rebounds", 0)))
+		"A15": args.n = _fmt(float(vals.get("branches", 0)))
+		"A16":
+			args.m = _fmt(float(params.get("discharge", {}).get("radius_cm", 0)) / 100.0)
+			args.t = _fmt(float(params.get("discharge", {}).get("every_ticks", 0)) / 60.0)
+		"A17":
+			args.m = _fmt(float(params.get("pop", {}).get("radius_cm", 0)) / 100.0)
+			args.d = _fmt(float(params.get("pop", {}).get("raw", 0)) / 256.0)
+		"A18":
+			args.a = _fmt(float(element.get("status", {}).get("max_big", 0)))
+			args.b = _fmt(float(element.get("status", {}).get("max_big", 0)) + float(vals.get("max_big", 0)))
+		"A19": args.n = _fmt(float(element.get("rod", {}).get("count", 1)) + float(vals.get("rod_count", 0)))
+		"A20": args.p = _fmt(float(vals.get("rod_target_bps", 0)) / 100.0)
+		"A21":
+			args.p = _fmt(absf(float(vals.get("overload_cd_bps", 0))) / 100.0)
+			args.n = _fmt(absf(float(vals.get("overload_max_bolts", 0))))
+		"A22":
+			args.p = _fmt(absf(float(vals.get("overload_cd_bps", 0))) / 100.0)
+			args.q = _fmt(float(vals.get("overload_bolt_bps", 0)) / 100.0)
+		"A23":
+			args.a = _fmt(float(burst.get("self_bolt_bps", 0)) / 1000.0)
+			args.b = _fmt((float(burst.get("self_bolt_bps", 0)) + float(vals.get("self_bolt_bps", 0))) / 1000.0)
+		"A25": args.n = _fmt(float(vals.get("hp_max", 0)))
+		"A26":
+			var shell: Dictionary = params.get("shell", {})
+			args.p = _fmt(float(shell.get("hp_bps", 0)) / 100.0)
+			args.t = _fmt(float(shell.get("ticks", 0)) / 60.0)
+			args.q = _fmt(float(shell.get("reduce_bps", 0)) / 100.0)
+			args.m = _fmt(float(shell.get("radius_cm", 0)) / 100.0)
+			args.c = _fmt(float(shell.get("cooldown_ticks", 0)) / 60.0)
+		"A27":
+			args.n = _fmt(float(params.get("bolt_heal", {}).get("bolts", 0)))
+			args.h = _fmt(float(params.get("bolt_heal", {}).get("heal", 0)))
+		"A28":
+			args.p = _fmt(float(vals.get("move_bps", 0)) / 100.0)
+			args.t = _fmt(float(params.get("stride", {}).get("every_ticks", 0)) / 60.0)
+			args.m = _fmt(float(params.get("stride", {}).get("reach_cm", 0)) / 100.0)
+	return args
 
 static func _tier(card: Dictionary, kind_core: String) -> String:
 	var n := int(card.get("level", card.get("rank", 0))) if kind_core in ["axis", "rank"] else 0
@@ -183,7 +320,7 @@ static func _path(evo: Dictionary) -> Dictionary:
 	return {"label": Loc.t("grace.screen.path.label"), "filled": clampi(int(axis.get("have", 0)), 0, need), "total": need, "keys": keys}
 
 ## The band along the bottom: the spells owned now (picture, level) and the grace slots.
-static func _owned(run: RefCounted, view: Dictionary, snap: Dictionary) -> Dictionary:
+static func _owned(run: RefCounted, view: Dictionary, snap: Dictionary, kit: Dictionary = {}) -> Dictionary:
 	var spells: Array = []
 	var ids: Array = BASE_SKILLS.duplicate()
 	for id_ in view.get("spells", {}):
@@ -196,6 +333,11 @@ static func _owned(run: RefCounted, view: Dictionary, snap: Dictionary) -> Dicti
 		var key_name := String(skill.get("name_key", "skill.%s.name" % id_))
 		spells.append({"name": Loc.t(key_name), "emblem": "ring" if String(info.get("role", "")) == "ring" else BASIC_EMBLEM.get(element, "orb"), "element": element if element != "" else "ember",
 			"level": Loc.num(int(skill.get("rank", 1)))})
+	# The element kit's own skills (lay, burst): ranked ones join the band after the signature skill. The HUD hands over the frame's one kit_view().
+	for id_ in kit.get("skills", {}):
+		var rank := int(kit.skills[id_].get("rank", 0))
+		if rank <= 0: continue
+		spells.append({"name": Loc.t("skill.%s.name" % String(id_)), "emblem": "bolt", "element": String(kit.get("element", "arc")), "level": Loc.num(rank)})
 	var passives: Array = snap.get("passives", [])
 	var graces: Array = []
 	for p in passives: graces.append({"name": Loc.t("grace.passive.%s.name" % String(p)), "owned": true})

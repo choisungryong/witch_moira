@@ -383,6 +383,9 @@ var run_record_view: Dictionary={}
 ## Which trial switches this process runs with (F-1: a capture, a recording or a window title can say it; empty = the default game).
 var trial_switches:PackedStringArray=PackedStringArray()
 const TrialPace=preload("res://chapter1/app/trial_pace.gd")
+const KitTrial=preload("res://chapter1/app/kit_trial.gd")
+## The names `--chapter1-trial=` knows. One more name = one more entry here, one `if "<name>" in parts` below, and tests/support/trial_docs.gd TRIAL_NAMES.
+const TRIAL_KNOWN:=["spells","rhythm","descent","pace","grace","elites","boss_finale","element_kit"]
 func _apply_trial() -> void:
 	trial_switches=PackedStringArray()
 	var wanted:=""
@@ -393,8 +396,14 @@ func _apply_trial() -> void:
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
 	for part in parts:
-		if part in ["spells","rhythm","descent","pace","grace","elites","boss_finale"]:trial_switches.append(part)
-		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace, elites, boss_finale), ignored"%part)
+		if part in TRIAL_KNOWN:trial_switches.append(part)
+		else:push_warning("--chapter1-trial: unknown name '%s' (%s), ignored"%[part,", ".join(PackedStringArray(TRIAL_KNOWN))])
+	# The element kit and run_spells (or grace) never run together: the core refuses to start such a run. A run that cannot start is worse than a
+	# kit that is left out, so the kit name is dropped with one warning.
+	if "element_kit" in parts and ("spells" in parts or "grace" in parts):
+		push_warning("--chapter1-trial: element_kit cannot run together with spells or grace; element_kit ignored")
+		parts.remove_at(parts.find("element_kit"))
+		trial_switches.remove_at(trial_switches.find("element_kit"))
 	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
 	# The run opening (D15 B): "first-time visitor" is decided per run in start_run() (opening_first_visit_for), where the profile is known.
 	# rhythm and elites both change the one tuning document, so it is read once and handed over once.
@@ -424,6 +433,15 @@ func _apply_trial() -> void:
 		if spells_doc is Dictionary:
 			spells_doc["enabled"]=true
 			if not run.set_run_spells(spells_doc):push_warning("trial spells refused: "+str(run.errors))
+	# "element_kit" (A-element-kit-screen 4.1): the kit alone, for a lightning witch (a run of another witch leaves it off by itself). The tree is open as
+	# `--chapter1-kit-tree=all|none|<card ids>` says (default all; only reachable here, i.e. with --chapter1-profile-off). The same one-place switch the tools use.
+	if "element_kit" in parts:
+		var tree_text:=""
+		for arg in _user_args():
+			if arg.begins_with("--chapter1-kit-tree="):tree_text=arg.trim_prefix("--chapter1-kit-tree=")
+		var kit_problem:=KitTrial.problem(run,KitTrial.tree_mode(tree_text))
+		if kit_problem.is_empty():print("CHAPTER1_TRIAL_NOTE element_kit: arc only, tree=",tree_text if not tree_text.is_empty() else KitTrial.TREE_DEFAULT)
+		else:push_warning("trial element_kit refused: "+kit_problem)
 	# The descent has no key and no screen yet (D15 U-2): this only lets a measuring tool or a later screen find it on.
 	if "descent" in parts:
 		var descent_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/descent.json"))
@@ -699,6 +717,9 @@ func _pilot_input() -> Vector2:
 	var move: Vector2=full_pilot.decide()
 	# The pilot picks cards and drinks potions inside decide(); step() clears those events before the app reads them.
 	recorder.consume(run.events)
+	# The same for the kit's skill-gate flash (a person's pick goes through choose(), which hands the events over at once).
+	for event in run.events:
+		if String(event.get("type",""))=="skill_gate_opened":hud.kit_event(event)
 	return move
 ## A pickup is announced only when the core says so: pickup_verdict(uid).react is card, open or auto_equip (D21 W1). Anything else goes into the bag quietly and
 ## can be compared from the inventory. The card shows the verdict's own changed rows, gains and losses together. Without a verdict (the pickup flow data is off)
@@ -731,15 +752,20 @@ func _consume_events() -> void:
 			"chapter_champion":hud.announce("boss",Loc.t("enemy.champion.%d.name"%int(event.zone)),Loc.t("hud.band.appears"));world.kick_camera(.45)
 			"boss_phase":
 				# A finale event carries an `id` (p1, p2, p3); the old 50% change of a run without it does not and keeps its band.
-				# No band text for the finale phases yet (narrative-lead): the first phase has no band at all, the others only nudge the camera.
+				# The finale phases' band lines (NAMES-ELEMENT-KIT-ARC 6): the first phase has no band at all, the second and third say what changed and what to do.
 				if not event.has("id"):hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
-				elif int(event.phase)>=2:world.kick_camera(.4)
+				elif int(event.phase)>=2:
+					world.kick_camera(.4)
+					var phase_key:="hud.band.boss_phase%d"%int(event.phase)
+					if Loc.t(phase_key)!=phase_key:hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t(phase_key))
 				hud.boss_event(event)
 			"boss_break_started":
-				# The second break (the storm) takes the existing "enraged" line; the first break has no text yet, the locked bar says it.
+				# The second break (the storm) takes the existing "enraged" line; the first break its own (hud.band.boss_break1), when that text exists.
 				if int(event.index)==1:hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
+				elif int(event.index)==0 and Loc.t("hud.band.boss_break1")!="hud.band.boss_break1":hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.boss_break1"))
 				hud.boss_event(event)
 			"boss_entrance","boss_break_ended","boss_hit_blocked","boss_chip","boss_break_struck":hud.boss_event(event)
+			"skill_gate_opened":hud.kit_event(event)
 			"chapter_burst":_play_routes(audio_routes.late(event))
 			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);_play_routes(audio_routes.late(event))
 			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");_play_routes(audio_routes.late(event))
