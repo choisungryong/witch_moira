@@ -209,8 +209,13 @@ static func _bf_mix_valid(mix: Variant) -> bool:
 	return total >= 1
 
 static func _boss_finale_issues(b: Variant, root: Dictionary) -> Array[String]:
-	if not b is Dictionary or not GrowthCatalog.keys_match(b,BOSS_FINALE_KEYS): return ["boss_finale keys"]
+	if not b is Dictionary: return ["boss_finale keys"]
+	# BF-C: "descent_pierces_break" is optional (absent = false = the descent is turned away in a break, as before).
+	var bf_keys := BOSS_FINALE_KEYS.duplicate()
+	if b.has("descent_pierces_break"): bf_keys.append("descent_pierces_break")
+	if not GrowthCatalog.keys_match(b,bf_keys): return ["boss_finale keys"]
 	var issues: Array[String] = []
+	if b.has("descent_pierces_break") and not b.descent_pierces_break is bool: issues.append("boss_finale descent_pierces_break")
 	var heavy_bps := BF_DEFAULT_HEAVY_BPS
 	if root.get("heavy_hit") is Dictionary and integer(root.heavy_hit.get("heavy_bps"),1,10000): heavy_bps = int(root.heavy_hit.heavy_bps)
 	if not b.enabled is bool: issues.append("boss_finale enabled")

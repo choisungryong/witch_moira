@@ -134,12 +134,14 @@ func validator_checks() -> void:
 		"a break shorter than its landing wind-up": func(d): d.boss_finale.breaks[0].ticks = 60,
 		"an even number of floor circles": func(d): d.boss_finale.phases[0].ward.centers = 2,
 		"enabled that is not a bool": func(d): d.boss_finale.enabled = 1,
+		"descent_pierces_break that is not a bool": func(d): d.boss_finale.descent_pierces_break = "yes",
 	}
 	for label in rejected:
 		var d := doc(true)
 		rejected[label].call(d)
 		var probe := Chapter.new()
 		check(not probe.set_tuning(d), "validator: rejected: " + label)
+	check(Chapter.new().set_tuning(doc(true, func(d): d.boss_finale.erase("descent_pierces_break"))), "validator: the key descent_pierces_break may be absent (BF-C: then the old rule)")
 	# A small hit needs no long wind-up (BF5 is about the big ones).
 	var small := doc(true, func(d): d.boss_finale.breaks[1].storm.damage = 20; d.boss_finale.breaks[1].storm.windup_ticks = 10)
 	check(Chapter.new().set_tuning(small), "validator: a 20 hit may have a 10 tick wind-up")
@@ -377,22 +379,133 @@ func descent_checks() -> void:
 	var seen: Array = []
 	var began := until(r2, "boss_break_started", int(r2.descent.ultimates[r2._d_element].sweep_ticks) + 5, seen)
 	check(not began.is_empty() and int(boss2.hp_raw) == floor_hp(boss2, 6500), "descent: one percent above the 65%% line the sweep stops the boss exactly on it when the break begins (%d of %d)" % [int(boss2.hp_raw), floor_hp(boss2, 6500)])
-	# inside a break the descent does not touch the boss and does not shorten the break
-	var in_break := boss_run(true, Callable(), true)
-	var boss3 := boss_of(in_break)
-	steps(in_break, 121)
-	blow(in_break, in_break._champion_id, 100000000)
-	var events: Array = []
-	var start := until(in_break, "boss_break_started", 5, events)
-	boss3.position = in_break.hero.position + Vector2(3, 0)
-	var hp_in := int(boss3.hp_raw)
-	in_break._descent_add(int(in_break.descent.cost[0]))
-	check(in_break.request_descent() and in_break.release_descent(), "descent: a call inside the break is accepted")
-	var after := steps(in_break, 700)
-	events.append_array(after)
-	var ended := of_type(events, "boss_break_ended")
-	check(int(boss3.hp_raw) <= hp_in and int(boss3.hp_raw) >= hp_in - int(boss3.max_hp_raw) * 500 / 10000, "descent: in a break the boss takes no share (only the chip of the escorts it swept: %d bps)" % ((hp_in - int(boss3.hp_raw)) * 10000 / int(boss3.max_hp_raw)))
-	check(ended.size() == 1 and int(ended[0].tick) - int(start.tick) == 600, "BF2: a descent does not shorten the break (%d ticks)" % (int(ended[0].tick) - int(start.tick) if ended.size() == 1 else -1))
+	# BF-C, the key OFF (descent_pierces_break false, or absent): inside a break the descent does not touch the boss and does not shorten the break (the old rule).
+	for absent in [false, true]:
+		var off_doc := func(d): if absent: d.boss_finale.erase("descent_pierces_break") else: d.boss_finale.descent_pierces_break = false
+		var in_break := boss_run(true, off_doc, true)
+		var boss3 := boss_of(in_break)
+		steps(in_break, 121)
+		blow(in_break, in_break._champion_id, 100000000)
+		var events: Array = []
+		var start := until(in_break, "boss_break_started", 5, events)
+		boss3.position = in_break.hero.position + Vector2(3, 0)
+		var hp_in := int(boss3.hp_raw)
+		in_break._descent_add(int(in_break.descent.cost[0]))
+		check(in_break.request_descent() and in_break.release_descent(), "descent (key %s): a call inside the break is accepted" % ("absent" if absent else "false"))
+		var after := steps(in_break, 700)
+		events.append_array(after)
+		var ended := of_type(events, "boss_break_ended")
+		check(int(boss3.hp_raw) <= hp_in and int(boss3.hp_raw) >= hp_in - int(boss3.max_hp_raw) * 500 / 10000, "descent (key %s): in a break the boss takes no share (only the chip of the escorts it swept: %d bps)" % [("absent" if absent else "false"), (hp_in - int(boss3.hp_raw)) * 10000 / int(boss3.max_hp_raw)])
+		check(of_type(events, "boss_break_struck").is_empty(), "descent (key %s): no boss_break_struck" % ("absent" if absent else "false"))
+		check(ended.size() == 1 and int(ended[0].tick) - int(start.tick) == 600, "BF2: a descent does not shorten the break (%d ticks)" % (int(ended[0].tick) - int(start.tick) if ended.size() == 1 else -1))
+	# BF-C, the key ON (the shipped value): the descent's share goes into the boss in a break; everything else is still turned away.
+	var pierce := boss_run(true, Callable(), true)
+	var boss4 := boss_of(pierce)
+	steps(pierce, 121)
+	blow(pierce, pierce._champion_id, 100000000)
+	var pe: Array = []
+	var pstart := until(pierce, "boss_break_started", 5, pe)
+	boss4.position = pierce.hero.position + Vector2(3, 0)
+	var hp_p := int(boss4.hp_raw)
+	check(of_type(pe, "boss_break_struck").is_empty(), "BF-C: nothing struck the boss before the descent")
+	pierce.events.clear()
+	blow(pierce, pierce._champion_id, 100000000)
+	check(int(boss4.hp_raw) == hp_p and of_type(pierce.events, "boss_hit_blocked").size() == 1, "BF-C: an ordinary blow in the break is still turned away (boss_hit_blocked)")
+	pierce._descent_add(int(pierce.descent.cost[0]))
+	check(pierce.request_descent() and pierce.release_descent(), "BF-C: a call inside the break is accepted")
+	pe.append_array(steps(pierce, int(pierce.descent.ultimates[pierce._d_element].sweep_ticks) + 5))
+	var struck := of_type(pe, "boss_break_struck")
+	var took := hp_p - int(boss4.hp_raw)
+	var struck_sum := 0
+	for s in struck: struck_sum += int(s.damage)
+	check(took > 0 and took <= int(boss4.max_hp_raw) * 1800 / 10000 + int(boss4.max_hp_raw) * 500 / 10000, "BF-C: the descent takes life off the boss in a break (%.1f%%, share 18%% at most + the chip)" % (100.0 * took / int(boss4.max_hp_raw)))
+	check(not struck.is_empty() and int(struck[0].index) == 0 and int(struck[0].target_id) == int(pierce._champion_id) and struck_sum > 0 and struck_sum <= took, "BF-C: boss_break_struck {index 0, damage, target_id} (%d events, %d raw of %d taken)" % [struck.size(), struck_sum, took])
+	check(pierce._shield_id == pierce._champion_id and of_type(pe, "boss_break_ended").is_empty(), "BF-C: the boss is still out of play after the sweep")
+	pe.append_array(steps(pierce, 700))
+	var pended := of_type(pe, "boss_break_ended")
+	check(pended.size() == 1 and int(pended[0].tick) - int(pstart.tick) == 600, "BF-C/BF2: the break is still 600 ticks long (%d)" % (int(pended[0].tick) - int(pstart.tick) if pended.size() == 1 else -1))
+	check(int(boss4.hp_raw) >= floor_hp(boss4, 3000) + 1 and String(pierce.snapshot().boss_finale.state) == "phase" and int(pierce.snapshot().boss_finale.phase_index) == 1, "BF-C: phase 2 begins as a phase (life above the 30%% line)")
+	# BF-C: the next phase's line holds in a break (one percent above it: the descent stops one raw point above, the boss is not killed, no break skipped)
+	var hold := boss_run(true, Callable(), true)
+	var boss5 := boss_of(hold)
+	steps(hold, 121)
+	blow(hold, hold._champion_id, 100000000)
+	var he: Array = []
+	var hstart := until(hold, "boss_break_started", 5, he)
+	boss5.position = hold.hero.position + Vector2(3, 0)
+	boss5.hp_raw = floor_hp(boss5, 3000) + int(boss5.max_hp_raw) / 100
+	hold._descent_add(int(hold.descent.cost[0]))
+	hold.request_descent()
+	hold.release_descent()
+	he.append_array(steps(hold, int(hold.descent.ultimates[hold._d_element].sweep_ticks) + 5))
+	check(int(boss5.hp_raw) == floor_hp(boss5, 3000) + 1 and boss5.hp_raw > 0, "BF-C: in a break the descent stops one raw point above the next phase's 30%% line (%d of %d)" % [int(boss5.hp_raw), floor_hp(boss5, 3000) + 1])
+	he.append_array(steps(hold, 700))
+	var hended := of_type(he, "boss_break_ended")
+	check(hended.size() == 1 and int(hended[0].tick) - int(hstart.tick) == 600 and of_type(he, "boss_phase").size() == 1 and int(of_type(he, "boss_phase")[0].phase) == 2, "BF-C: the break after a held descent is 600 ticks and phase 2 follows")
+	# BF-C: in the entrance the descent still reaches nothing (the key is for breaks)
+	var ent := boss_run(true, Callable(), true)
+	var boss6 := boss_of(ent)
+	ent.hero.position = boss6.position - Vector2(2, 0)
+	var hp_e := int(boss6.hp_raw)
+	ent._descent_add(int(ent.descent.cost[0]))
+	ent.request_descent()
+	ent.release_descent()
+	steps(ent, 60)
+	check(int(boss6.hp_raw) == hp_e and ent._shield_id == ent._champion_id, "BF-C: in the entrance the descent still does not reach the boss")
+
+func view_checks() -> void:
+	var off := boss_run(false)
+	check(off.boss_finale_view() == {"on": false}, "view: a run without the finale reads {on: false} only")
+	var r := boss_run(true, Callable(), true)
+	var v: Dictionary = r.boss_finale_view()
+	check(bool(v.on) and v.state == "entrance" and bool(v.shielded) and v.thresholds_bps == [6500, 3000] and int(v.break_until_tick) == 0, "view: entrance: shielded, lines 6500 and 3000, no break end: " + str(v))
+	var before := JSON.stringify(r.snapshot()).sha256_text()
+	r.boss_finale_view()
+	check(before == JSON.stringify(r.snapshot()).sha256_text(), "view: reading it changes nothing")
+	steps(r, 121)
+	v = r.boss_finale_view()
+	check(v.state == "phase" and int(v.phase_index) == 0 and not bool(v.shielded) and int(v.break_index) == -1, "view: phase 1: in play")
+	blow(r, r._champion_id, 100000000)
+	var seen: Array = []
+	var start := until(r, "boss_break_started", 5, seen)
+	v = r.boss_finale_view()
+	check(v.state == "break" and int(v.break_index) == 0 and int(v.break_until_tick) == int(start.tick) + 600 and v.to == start.to and bool(v.shielded), "view: break 1: index, end tick, landing place, shielded")
+	# the struck event carries the screen's fields
+	var boss := boss_of(r)
+	boss.position = r.hero.position + Vector2(3, 0)
+	r._descent_add(int(r.descent.cost[0]))
+	r.request_descent()
+	r.release_descent()
+	var after := steps(r, int(r.descent.ultimates[r._d_element].sweep_ticks) + 5)
+	var struck := of_type(after, "boss_break_struck")
+	var fields_ok := not struck.is_empty()
+	for e in struck:
+		fields_ok = fields_ok and e.has_all(["index", "target_id", "skill_id", "element", "damage", "position"]) and String(e.element) == "ember" and String(e.skill_id) == "descent.ember" and e.position is Vector2 and int(e.damage) >= 0
+	check(fields_ok and int(struck[0].target_id) == int(r._champion_id), "event: boss_break_struck {index, target_id, skill_id, element, damage, position}")
+
+func shortcut_checks() -> void:
+	# Not called: the same seed gives the same snapshot hash (the function changes nothing by existing).
+	var hashes: Array = []
+	for i in 2:
+		var q := Chapter.new()
+		check(q.set_tuning(doc(true)) and q.start(11, EMBER), "shortcut: stage")
+		for t in 300: q.step(Vector2.ZERO)
+		hashes.append(JSON.stringify(q.snapshot()).sha256_text())
+	check(hashes[0] == hashes[1], "shortcut: not called, two runs of one seed agree")
+	var r := Chapter.new()
+	check(r.set_tuning(doc(true)) and r.start(11, EMBER), "shortcut: stage the called run")
+	for t in 60: r.step(Vector2.ZERO)
+	check(r.debug_skip_to_boss(), "shortcut: accepted in a playing run")
+	check(not r.debug_skip_to_boss() or r.zone == 2, "shortcut: (a second call is harmless)")
+	var seen: Array = []
+	var entrance := until(r, "boss_entrance", 600, seen)
+	check(not entrance.is_empty() and r.zone == 2 and int(r.growth.current_level()) == int(r.growth.xp_thresholds().size()) and r.mode == "playing", "shortcut: the boss's entrance begins at once, at the last level (level %d of %d)" % [int(r.growth.current_level()), r.growth.xp_thresholds().size()])
+	check(String(r.boss_finale_view().state) == "entrance" and bool(r.boss_finale_view().shielded), "shortcut: the finale's view reads the entrance")
+	var closed := Chapter.new()
+	closed.start(11, EMBER)
+	closed.zone = 2
+	closed.seals[2].champion_spawned = true
+	check(not closed.debug_skip_to_boss(), "shortcut: refused once the boss has come")
 
 func whole_fight(seed_: int, primary: String) -> Dictionary:
 	var r := boss_run(true, Callable(), false, seed_, primary)
@@ -446,6 +559,10 @@ func execute() -> void:
 	slam_checks()
 	print("BOSS_FINALE_PART descent_checks")
 	descent_checks()
+	print("BOSS_FINALE_PART view_checks")
+	view_checks()
+	print("BOSS_FINALE_PART shortcut_checks")
+	shortcut_checks()
 	print("BOSS_FINALE_PART fight_checks")
 	fight_checks()
 	print("CHAPTER1_BOSS_FINALE_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))

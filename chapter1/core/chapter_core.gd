@@ -1199,6 +1199,42 @@ func _seal_grace(cause: String="") -> void:
 	if cause=="guardian":details.cause="guardian"
 	_emit("seal_grace",hero.position,details)
 
+## Developer shortcut to the final boss; the caller allows it ONLY in a run with the profile off (the core knows nothing of saves).
+## Nobody calls it in a normal run, so a run that never calls it is byte-for-byte what it was (golden unchanged).
+## What it does: the two earlier seals are marked cleared, the last seal's kills are filled, the field is emptied, the hero stands at the last
+## zone, the trial (if any) is skipped, and the experience is raised to the last level threshold - the same top-up a normal run gets at the
+## boss's appearance (final_level_on_boss_spawn) - with every level's card taken by the QA pilot's order of preference (primary's cards first).
+## The boss then appears on the next step (with boss_finale on: from its entrance). NOT filled: gear (the bag stays as it is), potions' count, the
+## rank of what a normal run would have chosen by hand. Returns false (and changes nothing) when it is too late or the run is not playing.
+func debug_skip_to_boss() -> bool:
+	if mode!="playing" or zone>2 or seals[2].champion_spawned or not _terminal_mode.is_empty():return false
+	for z in 2:
+		seals[z].kills=_seal_total(z);seals[z].champion_spawned=true;seals[z].cleared=true
+	zone=2;zone_kills=_seal_total(2);seals[2].kills=zone_kills;_zone_entered=true;_champion_id=-1;_rest_until=0
+	_trial_phase="done";_trial_until=0;_trial_clear_until=0
+	enemies.clear();_alive=0;chapter_hazards.clear();_d_burn.clear()
+	hero.position=ZONES[2]
+	hero.hp_raw=hero.max_hp_raw
+	_seal_grace()
+	_refresh_mode()
+	var guard := 0
+	while mode=="choice" and guard<64:
+		guard+=1
+		var offer: Dictionary=get_offer()
+		if offer.is_empty() or offer.cards.is_empty():break
+		var picked: Dictionary=offer.cards[0]
+		var best := -1
+		for card in offer.cards:
+			var score := 10
+			if card.skill_id==growth.snapshot().primary:score=100 if card.kind=="evolve" else (90 if card.kind=="rank" else 80)
+			elif card.kind=="unlock":score=65
+			elif card.kind=="evolve":score=60
+			elif card.kind=="rank":score=50
+			if score>best:best=score;picked=card
+		if not choose(offer.token,picked.id):break
+	_record("debug_skip_to_boss")
+	return true
+
 ## The seal breaks and every orb still on the ground flows to the hero as one gain.
 func _vacuum_orbs(by: String="") -> void:
 	var total := 0
@@ -1787,6 +1823,8 @@ func _bf_start_phase(boss: Dictionary,index: int) -> void:
 	var rule: Dictionary=_bf.phases[index]
 	_bf_state="phase";_bf_phase=index;_bf_phase_attacks=0;_shield_id=0;_boss_phase=index+1
 	boss.state="move";boss.state_until=0;boss.telegraph={};boss.definition.recover=int(rule.recover)
+	# BF-C: what the descent left on the boss in the break (freeze, stun, stagger) does not carry into the next phase.
+	if index>0 and bool(_bf.get("descent_pierces_break",false)):boss.frozen_until=0;boss.stunned_until=0;boss.staggered_until=0
 	_next_ward=tick+int(rule.ward.every_ticks)
 	_bf_next_adds=tick+(int(rule.adds.interval_ticks) if rule.adds!=null else 0)
 	if index>0:_record("boss_phase%d"%(index+1))
@@ -1921,8 +1959,32 @@ func _bf_on_kill() -> void:
 	_bf_break_chip+=bps;_bf_chip+=bps
 	_emit("boss_chip",boss.position,{"bps":bps,"total_bps":_bf_chip})
 
+## BF-C: in a break (not the entrance), with tuning.boss_finale.descent_pierces_break, the descent's blows reach the out-of-play boss.
+## Every other skill is still turned away. The break's length is untouched (nothing here moves _bf_until).
+func _bf_descent_pierces(skill_id: String) -> bool:
+	return _bf_on and _bf_state=="break" and bool(_bf.get("descent_pierces_break",false)) and skill_id.begins_with("descent.")
+
+## Read-only state of the finale for the screen (changes nothing, draws no random number). A run without the finale: {"on": false} only.
+## thresholds_bps: the health lines (ten-thousandths of the boss's life) that end phase 1, 2, ...; break_until_tick: the tick the open break ends (0 outside a break);
+## to: where the boss lands (the open break's); shielded: the boss is out of play (entrance or break).
+func boss_finale_view() -> Dictionary:
+	if not _bf_on:return {"on":false}
+	var lines: Array[int]=[]
+	for phase in _bf.phases:
+		if int(phase.to_hp_bps)>0:lines.append(int(phase.to_hp_bps))
+	return {"on":true,"state":_bf_state,"phase_index":_bf_phase,"break_index":_bf_break if _bf_state=="break" else -1,
+		"break_until_tick":_bf_until if _bf_state=="break" else 0,"to":_bf_to,"chip_bps":_bf_chip,"thresholds_bps":lines,"shielded":_shield_id>0}
+
+## The descent's area and circles skip the out-of-play body, except the boss in a break when the descent pierces.
+func _descent_skips(id_: int) -> bool:
+	return id_==_shield_id and not (_bf_on and _bf_state=="break" and bool(_bf.get("descent_pierces_break",false)))
+
 ## BF3: while a phase runs, damage cannot take the boss under that phase's threshold (the rest is thrown away). The last phase has none.
 func _bf_clamp_damage(e: Dictionary,damage: int) -> int:
+	# BF-C: the descent's blow in a break stops one point above the NEXT phase's threshold (the chain's floor), so the next phase starts as a phase.
+	if _bf_state=="break":
+		var floor_hp := int(e.max_hp_raw)*int(_bf.phases[_bf_break+1].to_hp_bps)/10000
+		return mini(damage,maxi(0,int(e.hp_raw)-floor_hp-1))
 	if _bf_state!="phase":return damage
 	var to_bps := int(_bf.phases[_bf_phase].to_hp_bps)
 	if to_bps<=0:return damage
@@ -2691,7 +2753,7 @@ func _descent_in_area(center: Vector2) -> Array[int]:
 	var found: Array[int]=[]
 	for id_ in enemies:
 		var e: Dictionary=enemies[id_]
-		if e.hp_raw>0 and e.generation==_epoch and int(id_)!=_shield_id and _descent_inside(e.position,center):found.append(int(id_))
+		if e.hp_raw>0 and e.generation==_epoch and not _descent_skips(int(id_)) and _descent_inside(e.position,center):found.append(int(id_))
 	return _descent_sort(found,center)
 
 ## Alive enemies within a circle of the world, nearest first.
@@ -2700,7 +2762,7 @@ func _descent_near(center: Vector2,radius: float) -> Array[int]:
 	var found: Array[int]=[]
 	for id_ in enemies:
 		var e: Dictionary=enemies[id_]
-		if e.hp_raw>0 and e.generation==_epoch and int(id_)!=_shield_id and e.position.distance_squared_to(center)<=limit:found.append(int(id_))
+		if e.hp_raw>0 and e.generation==_epoch and not _descent_skips(int(id_)) and e.position.distance_squared_to(center)<=limit:found.append(int(id_))
 	return _descent_sort(found,center)
 
 ## Stacks of heat, chill and shock still running on an enemy (only a run with the spell composition has any).
@@ -2795,6 +2857,8 @@ func _descent_touch(id_: int,frac: int,final: bool=false) -> void:
 		var dealt := before-maxi(0,int(e.hp_raw))
 		sw.strong_damage_raw=int(sw.strong_damage_raw)+dealt;metrics.descent.strong_damage_raw=int(metrics.descent.strong_damage_raw)+dealt
 		if role=="boss":sw.boss_raw=int(sw.boss_raw)+dealt;sw.boss_max_raw=int(e.max_hp_raw)
+		# BF-C: the blow landed on the boss while it was out of play in a break (the screen reads it; `damage` is raw, after the threshold's hold).
+		if role=="boss" and id_==_shield_id and _bf_state=="break":_emit("boss_break_struck",e.position,{"index":_bf_break,"target_id":id_,"skill_id":"descent."+_d_element,"element":_d_element,"damage":dealt,"position":e.position})
 	elif role=="boss":sw.boss_max_raw=int(e.max_hp_raw)
 	if e.hp_raw>0 and (first or final):_descent_strong_control(e,role,final)
 
@@ -3175,7 +3239,7 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	var e: Dictionary=enemies[id_]
 	if e.hp_raw<=0 or e.generation!=_epoch:return
 	# The boss out of play (finale entrance or break) turns every blow away: nothing is spent, nothing is dealt.
-	if id_==_shield_id:_shield_block_event(String(context.skill_id));return
+	if id_==_shield_id and not _bf_descent_pierces(String(context.skill_id)):_shield_block_event(String(context.skill_id));return
 	if context.skill_id=="chapter1.skill.arc":
 		if id_ in context.hit_ids:return
 		context.hit_ids.append(id_)

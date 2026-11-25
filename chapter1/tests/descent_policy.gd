@@ -9,8 +9,10 @@ extends RefCounted
 ##   panic  life under 40 percent, or the living enemies at 85 percent of the cap of the rule in force
 ##   crest  (D24 1st edition) ready and 30 or more ordinary bodies on the screen rectangle; or ready for 20 seconds; or life under 30 percent
 ##   boss   (D24 1st edition) ready and the final boss is inside the screen rectangle; before that only when life is under 30 percent
+##   boss_break  (BF-C) kept ready until a break of the finale (boss_finale on) is running, then used; never otherwise
+##   boss_phase  (BF-C) kept ready until the finale's first phase is running, then used; never otherwise
 ## How close a person comes to either is unknown (unrated, only a playthrough tells).
-const POLICIES := ["off", "now", "hold", "panic", "crest", "boss"]
+const POLICIES := ["off", "now", "hold", "panic", "crest", "boss", "boss_break", "boss_phase"]
 const CREST_NORMALS := 30
 const CREST_WAIT_TICKS := 20 * 60
 
@@ -46,6 +48,8 @@ static func wants(run: RefCounted, policy: String) -> bool:
 			return not ready_ticks.is_empty() and int(run.tick) - int(ready_ticks.back()) >= CREST_WAIT_TICKS
 		"boss":
 			return life < 0.30 or boss_on_screen(run)
+		"boss_break": return bool(run._bf_on) and String(run._bf_state) == "break"
+		"boss_phase": return bool(run._bf_on) and String(run._bf_state) == "phase" and int(run._bf_phase) == 0
 	return false
 
 ## The final boss alive and inside the screen rectangle around the hero.
