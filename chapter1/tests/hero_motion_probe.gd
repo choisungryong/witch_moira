@@ -83,8 +83,8 @@ func _initialize() -> void:
 	if not drive in ["", "square"]:
 		print("HERO_MOTION_PROBE ", JSON.stringify({"error": "bad_drive", "drive": drive}))
 		quit(2); return
-	if not "--chapter1-hero-models" in OS.get_cmdline_user_args():
-		push_error("hero_motion_probe: needs --chapter1-hero-models (without it the old mage body is measured)")
+	if "--chapter1-old-hero" in OS.get_cmdline_user_args():
+		push_error("hero_motion_probe: --chapter1-old-hero measures the old mage body, not the witch bodies")
 		print("HERO_MOTION_PROBE ", JSON.stringify({"error": "needs_hero_models_switch"}))
 		quit(2); return
 	if not motion_json.is_empty():

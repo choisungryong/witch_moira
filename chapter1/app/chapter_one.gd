@@ -71,7 +71,8 @@ func _ready__chapter() -> void:
 	DisplayServer.window_set_title("Catena · Chapter 1")
 	world.setup(self)
 	actors.vat_walker_enabled="--chapter1-vat-walker" in _user_args()
-	actors.hero_models_enabled="--chapter1-hero-models" in _user_args()
+	# Per-witch bodies are on by default (user, 2026-11-25). --chapter1-old-hero brings back the old mage; --chapter1-hero-models is still accepted.
+	actors.hero_models_enabled=not ("--chapter1-old-hero" in _user_args())
 	actors.setup(self)
 	effects.setup(self)
 	if not "--chapter1-no-juice" in _user_args():
