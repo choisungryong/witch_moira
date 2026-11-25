@@ -281,7 +281,7 @@ art-lead가 이번 일에서 영상 연출 감독을 맡아 쓴 문서다. 그�
   Cinematic live-action-quality CG, 24fps, natural motion blur. Keep every character's face, hair, costume and proportions exactly as in the first frame. Faces stay calm and still; no smiling, no talking. No text, no logos. Do not add people, objects or light sources that are not described.
   ```
 - **뽑는 수**: 한 컷에 적어 둔 수까지. 그 수에서 통과가 안 나오면 멈추고 디렉터에게 올린다(시작 그림을 고칠지, 컷을 바꿀지).
-- **생성 소리는 모두 버린다**(연출안 3.7절).
+- ~~생성 소리는 모두 버린다~~ → **생성 소리를 살린다**(사용자 결정 2026-11-25, 디렉터 고침. 규칙은 `docs/specs/AU-intro-sound-20261124.ko.md` AS1).
 
 ### 3.2 컷별
 
