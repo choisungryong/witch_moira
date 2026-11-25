@@ -592,6 +592,7 @@ func _settle_discovery20(row: Control) -> void:
 	if is_instance_valid(row) and row.get_parent()==_discovery:_place_notice(_discovery,NOTICE_HEIGHT_FIRST)
 func reset() -> void:
 	clear_upgrade()
+	_bf_clear()
 	if _playlog!=null and _view46!=null and _view46.get_ref()!=null:_playlog.begin_run(_view46.get_ref().run)
 	reset__q17();_discovery20_seeded=false;_discovery20_magic=false;_discovery20_slots.clear();_discovery20_uids.clear();_discovery20_queue.clear();_discovery20_gap=0;_discovery20_name="";discovery20_history.clear()
 	_reset_flow()
@@ -1347,6 +1348,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	# One growth snapshot (a deep copy) per frame, shared with the combat bar and the six-tick summary.
 	_frame_growth=run.growth.snapshot() if not run.hero.is_empty() else {}
 	sync__q47(run,delta)
+	_bf_tick(run,delta)
 	if _playlog!=null:_playlog.observe(run,_frame_growth)
 	_compose_frame(run)
 	_sync_flow(run,delta)
@@ -1596,6 +1598,121 @@ func _build_combat_bar() -> void:
 		boss_bar.draw.connect(_draw_boss_caps)
 		_route40.draw.connect(_draw_route_marker)
 	root.move_child(overlay,root.get_child_count()-1)
+
+# ---- the final boss's finale on the champion bar (docs/specs/A-boss-finale-screen-20261125.ko.md 2, 8.2) ----
+## Read only. Drawn only while the core says the finale is on (a run without it draws nothing and changes no pixel): phase ticks from the data's
+## thresholds, the current segment lit, the bar locked (a chain mark, a hatch, the time strip and the seconds) while the boss is out of play
+## (entrance and breaks). Shape carries the state, the colour only helps. No new palette token.
+var _bf_over: Control
+var _bf_secs: Label
+var _bfv: Dictionary={"on":false}
+var _bf_tick_now := 0
+var _bf_total := 0
+var _bf_lock := 0.0
+var _bf_chip_t := 0.0
+var _bf_chip_bps := 0
+var _bf_block_t := 0.0
+var _bf_struck_t := 0.0
+const BF_CHIP_TIME := 0.3
+const BF_BLOCK_TIME := 0.15
+const BF_STRUCK_TIME := 0.4
+const BF_LOCK_TIME := 0.2
+## Built the first time a run with the finale shows the bar, so a run without it has no extra node on the screen.
+func _build_bf_over() -> void:
+	if is_instance_valid(_bf_over):return
+	_bf_over=Control.new();_bf_over.name="FinaleOverlay";_bf_over.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	_bf_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);_bf_over.visible=false
+	_bf_over.draw.connect(_draw_bf);boss_bar.add_child(_bf_over)
+	_bf_secs=_label("",14,Palette.INK_DIM);_bf_secs.mouse_filter=Control.MOUSE_FILTER_IGNORE;_bf_secs.autowrap_mode=TextServer.AUTOWRAP_OFF
+	_bf_secs.visible=false;_bf_over.add_child(_bf_secs)
+func _bf_clear() -> void:
+	_bfv={"on":false};_bf_total=0;_bf_lock=0.0;_bf_chip_t=0.0;_bf_block_t=0.0;_bf_struck_t=0.0
+	if is_instance_valid(_bf_over):_bf_over.visible=false
+## The finale's read-only state: the core's own view function when it has one, else the finale's fields (the same names the core keeps).
+func _bf_read(run: RefCounted) -> Dictionary:
+	if run.has_method("boss_finale_view"):
+		var view: Variant=run.boss_finale_view()
+		return view if view is Dictionary else {"on":false}
+	if not bool(run.get("_bf_on")):return {"on":false}
+	var th: Array=[]
+	var doc: Variant=run.get("_bf")
+	if doc is Dictionary:
+		for rule in doc.get("phases",[]):th.append(int(rule.to_hp_bps))
+	return {"on":true,"state":String(run.get("_bf_state")),"phase_index":int(run.get("_bf_phase")),"break_index":int(run.get("_bf_break")),
+		"break_until_tick":int(run.get("_bf_until")),"to":run.get("_bf_to"),"chip_bps":int(run.get("_bf_chip")),"thresholds_bps":th,"shielded":int(run.get("_shield_id"))>0}
+func _bf_tick(run: RefCounted,delta: float) -> void:
+	if run.hero.is_empty():return
+	_bfv=_bf_read(run)
+	_bf_tick_now=run.tick
+	var on: bool=bool(_bfv.get("on",false)) and boss_bar.visible
+	if on:_build_bf_over()
+	if not is_instance_valid(_bf_over):return
+	if _bf_over.visible!=on:_bf_over.visible=on
+	if not on:
+		_bf_lock=0.0;return
+	var locked: bool=String(_bfv.get("state","")) in ["entrance","break"]
+	_bf_lock=move_toward(_bf_lock,1.0 if locked else 0.0,delta/BF_LOCK_TIME)
+	_bf_chip_t=maxf(0.0,_bf_chip_t-delta);_bf_block_t=maxf(0.0,_bf_block_t-delta);_bf_struck_t=maxf(0.0,_bf_struck_t-delta)
+	var remaining: int=maxi(0,int(_bfv.get("break_until_tick",0))-_bf_tick_now) if locked else 0
+	if locked and remaining>_bf_total:_bf_total=remaining
+	if is_instance_valid(_bf_secs):
+		_bf_secs.visible=locked
+		if locked:
+			_set_text(_bf_secs,str(ceili(float(remaining)/60.0)))
+			_bf_secs.position=Vector2(boss_bar.size.x+8.0,boss_bar.size.y*.5-_bf_secs.size.y*.5+3.0)
+	_bf_over.queue_redraw()
+## The core events the bar answers (chapter_one.gd hands them over). boss_break_struck: only its moment is used, so a later field change does not matter.
+func boss_event(event: Dictionary) -> void:
+	match String(event.get("type","")):
+		"boss_entrance","boss_break_started":_bf_total=int(event.get("ticks",0))
+		"boss_hit_blocked":_bf_block_t=BF_BLOCK_TIME
+		"boss_chip":_bf_chip_t=BF_CHIP_TIME;_bf_chip_bps=int(event.get("bps",0))
+		"boss_break_struck":_bf_struck_t=BF_STRUCK_TIME;_bf_block_t=0.0
+func _draw_bf() -> void:
+	if not bool(_bfv.get("on",false)):return
+	var w:=boss_bar.size.x;var h:=boss_bar.size.y
+	if w<=0.0 or boss_bar.max_value<=0.0:return
+	var ratio:=clampf(float(boss_bar.value)/float(boss_bar.max_value),0.0,1.0)
+	var hp_bps:=ratio*10000.0
+	var ticks: Array=[]
+	for t in _bfv.get("thresholds_bps",[]):
+		if int(t)>0 and int(t)<10000:ticks.append(int(t))
+	# The current segment is one step lighter.
+	var idx: int=int(_bfv.get("phase_index",0))
+	var upper: int=10000 if idx<=0 or idx-1>=ticks.size() else int(ticks[idx-1])
+	var lower: int=int(ticks[idx]) if idx<ticks.size() else 0
+	_bf_over.draw_rect(Rect2(w*float(lower)/10000.0,0.0,w*float(upper-lower)/10000.0,h),Color(Palette.INK.r,Palette.INK.g,Palette.INK.b,.1))
+	# Locked: the filled part goes grey and is hatched (a mark that does not depend on colour).
+	if _bf_lock>0.01 and ratio>0.0:
+		var grey:=Palette.THREAT_DEEP.lerp(Palette.SURFACE_RAISED,.5)
+		var fill_w:=w*ratio
+		_bf_over.draw_rect(Rect2(0,0,fill_w,h),Color(grey.r,grey.g,grey.b,.85*_bf_lock))
+		var x:=0.0
+		while x+h<=fill_w:
+			_bf_over.draw_line(Vector2(x,h),Vector2(x+h,0.0),Color(Palette.LINEN.r,Palette.LINEN.g,Palette.LINEN.b,.28*_bf_lock),1.0)
+			x+=7.0
+	# The last hit that cut the bar (boss_chip): a linen spark at the fill's end.
+	if _bf_chip_t>0.0:
+		var cw:=maxf(2.0,w*float(_bf_chip_bps)/10000.0)
+		_bf_over.draw_rect(Rect2(w*ratio,0.0,cw,h),Color(Palette.LINEN.r,Palette.LINEN.g,Palette.LINEN.b,_bf_chip_t/BF_CHIP_TIME))
+	# Phase ticks: the ones not yet passed are brass, the passed ones dim; they stand 3px out of the bar.
+	for t in ticks:
+		var tx:=w*float(t)/10000.0
+		_bf_over.draw_rect(Rect2(tx-1.0,-3.0,2.0,h+6.0),Palette.BRASS_DIM if hp_bps<=float(t) else Palette.BRASS)
+	# The chain mark at the left end while locked: two linked rings; a blocked hit lights it, a hit that got through (struck) pulls the rings apart.
+	if _bf_lock>0.01:
+		var spread:=3.0+(4.0*sin(PI*(1.0-_bf_struck_t/BF_STRUCK_TIME)) if _bf_struck_t>0.0 else 0.0)
+		var tone:=Palette.INK if _bf_block_t>0.0 else Palette.LINEN
+		var col:=Color(tone.r,tone.g,tone.b,_bf_lock)
+		var c:=Vector2(-13.0,h*.5)
+		_bf_over.draw_arc(c+Vector2(-spread,0),4.5,0.0,TAU,16,col,2.0,true)
+		_bf_over.draw_arc(c+Vector2(spread,0),4.5,0.0,TAU,16,col,2.0,true)
+		# The time strip under the bar.
+		var remaining: int=maxi(0,int(_bfv.get("break_until_tick",0))-_bf_tick_now)
+		var share:=clampf(float(remaining)/float(maxi(1,_bf_total)),0.0,1.0)
+		_bf_over.draw_rect(Rect2(0,h+4.0,w,4.0),Color(Palette.PLATE.r,Palette.PLATE.g,Palette.PLATE.b,.9*_bf_lock))
+		_bf_over.draw_rect(Rect2(0,h+4.0,w*share,4.0),Color(Palette.LINEN.r,Palette.LINEN.g,Palette.LINEN.b,_bf_lock))
+		_bf_over.draw_rect(Rect2(0,h+4.0,w,4.0),Color(Palette.BRASS_DIM.r,Palette.BRASS_DIM.g,Palette.BRASS_DIM.b,_bf_lock),false,1.0)
 
 ## The kit's champion frame around the bar and the name plate under it.
 func _draw_boss_caps() -> void:

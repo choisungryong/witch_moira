@@ -13,7 +13,7 @@ const LootTables := preload("res://chapter1/core/loot.gd")
 const GearKits := preload("res://chapter1/tests/support/gear_kits.gd")
 
 ## The names `--chapter1-trial=` knows (chapter_one.gd `_apply_trial`). Anything else is a typo that the app drops without a word.
-const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace", "grace", "elites"]
+const TRIAL_NAMES := ["spells", "rhythm", "descent", "pace", "grace", "elites", "boss_finale"]
 ## Other arguments that change what a capture shows, listed in the switch list so a capture says it (name -> what it does).
 const SWITCH_ARGS := {"--run-spells=on": "spells (tool)", "--chapter1-opening=returning": "opening=returning", "--chapter1-no-juice": "no-juice"}
 

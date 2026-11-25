@@ -160,6 +160,8 @@ func start_run__chapter(id_: String) -> void:
 	_audio_previous=run.hero.position;_audio_step_distance=0
 	audio.set_paused(false)
 	hud.notify("경험치와 장비를 회수하며 "+Loc.t("enemy.champion.2.name")+"을 준비하세요")
+	# QA shortcut to the boss (A-boss-finale-screen 12.3): only without a save, only when the core has the function; no argument, no change.
+	if _profile_off and "--chapter1-boss-now" in _user_args() and run.has_method("debug_skip_to_boss"):run.debug_skip_to_boss()
 
 func retry() -> void:
 	seed_+=1
@@ -388,12 +390,16 @@ func _apply_trial() -> void:
 		push_warning("--chapter1-trial needs --chapter1-profile-off; ignored");return
 	var parts:=wanted.split(",",false)
 	for part in parts:
-		if part in ["spells","rhythm","descent","pace","grace","elites"]:trial_switches.append(part)
-		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace, elites), ignored"%part)
+		if part in ["spells","rhythm","descent","pace","grace","elites","boss_finale"]:trial_switches.append(part)
+		else:push_warning("--chapter1-trial: unknown name '%s' (spells, rhythm, descent, pace, grace, elites, boss_finale), ignored"%part)
 	if not trial_switches.is_empty():print("CHAPTER1_TRIAL ",JSON.stringify(Array(trial_switches)))
 	# The run opening (D15 B): "first-time visitor" is decided per run in start_run() (opening_first_visit_for), where the profile is known.
 	# rhythm and elites both change the one tuning document, so it is read once and handed over once.
 	# "pace" (D19 C1) is the rhythm with the first growth-pace values in the in-memory copy (level table, seal kills, guardian level, sweep bonus).
+	# "boss_finale" (A-boss-finale-screen 4.1) is the same path the measuring tool takes (tests/support/trial_docs.gd enable_boss_finale_problem):
+	# rhythm + its opening + the growth pace (this "pace" branch, not written a second time) + boss_finale.enabled.
+	var boss_finale:="boss_finale" in parts
+	if boss_finale and not "pace" in parts:parts.append("pace")
 	if "rhythm" in parts or "elites" in parts or "pace" in parts or "grace" in parts:
 		var tuning_doc: Variant=JSON.parse_string(FileAccess.get_file_as_string("res://chapter1/data/combat_tuning.json"))
 		if tuning_doc is Dictionary:
@@ -401,6 +407,7 @@ func _apply_trial() -> void:
 				tuning_doc["rhythm"]["enabled"]=true
 				if tuning_doc["rhythm"].get("opening") is Dictionary:tuning_doc["rhythm"]["opening"]["enabled"]=true
 				if "pace" in parts:TrialPace.apply(tuning_doc)
+			if boss_finale and tuning_doc.get("boss_finale") is Dictionary:tuning_doc["boss_finale"]["enabled"]=true
 			# The strong elites (D13 W4-a) and the shrine / chest they guard (W5-a) go on together: a site is guarded by an elite.
 			if "elites" in parts and tuning_doc.get("elites") is Dictionary and tuning_doc.get("extras") is Dictionary:
 				tuning_doc["elites"]["enabled"]=true;tuning_doc["extras"]["enabled"]=true
@@ -725,7 +732,17 @@ func _consume_events() -> void:
 			"gate_opened":hud.announce("gate",Loc.t("hud.band.gate_title"),Loc.t("hud.band.gate_line",{"zone":Loc.t("zone.%d.name"%int(event.zone))}));_play_routes(audio_routes.late(event))
 			"zone_entered":hud.notify(Loc.t("zone.%d.name"%run.zone)+" · 새로운 봉인을 돌파하세요")
 			"chapter_champion":hud.announce("boss",Loc.t("enemy.champion.%d.name"%int(event.zone)),Loc.t("hud.band.appears"));world.kick_camera(.45)
-			"boss_phase":hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
+			"boss_phase":
+				# A finale event carries an `id` (p1, p2, p3); the old 50% change of a run without it does not and keeps its band.
+				# No band text for the finale phases yet (narrative-lead): the first phase has no band at all, the others only nudge the camera.
+				if not event.has("id"):hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
+				elif int(event.phase)>=2:world.kick_camera(.4)
+				hud.boss_event(event)
+			"boss_break_started":
+				# The second break (the storm) takes the existing "enraged" line; the first break has no text yet, the locked bar says it.
+				if int(event.index)==1:hud.announce("boss",Loc.t("enemy.champion.2.name"),Loc.t("hud.band.enraged"));world.kick_camera(.6)
+				hud.boss_event(event)
+			"boss_entrance","boss_break_ended","boss_hit_blocked","boss_chip","boss_break_struck":hud.boss_event(event)
 			"chapter_burst":_play_routes(audio_routes.late(event))
 			"potion_used":hud.notify("회복약 사용 · %d개 남음"%run.potions);_play_routes(audio_routes.late(event))
 			"ritual_completed":hud.notify(Loc.t("ritual.%s.name"%String(event.id))+" 완료 · 보상 획득");_play_routes(audio_routes.late(event))
