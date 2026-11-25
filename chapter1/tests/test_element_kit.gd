@@ -36,6 +36,23 @@ func on_kit(mutate: Callable = Callable()) -> Dictionary:
 	if mutate.is_valid(): mutate.call(d)
 	return d
 
+## The document as it was before the 1st fix (D-element-trees 16): no floor, no late floor, no spine share, no prefer_unshocked, no bolt_rule or zone,
+## and the values the old rules ran with. A run with it must be what it was (the part "compat" holds its hash).
+func legacy_mutation(d: Dictionary) -> void:
+	d.offer.erase("floor")
+	d.offer.erase("evolve_floor")
+	d.offer.erase("spine_share")
+	var arc: Dictionary = d.elements.arc
+	arc.chain.erase("prefer_unshocked")
+	arc.skills[OVERLOAD].erase("bolt_rule")
+	arc.skills[OVERLOAD].erase("zone")
+	arc.skills[OVERLOAD].bolt_raw = 25600
+	arc.skills[OVERLOAD].self_bolt_bps = 8000
+	card_of(d, "A23").change.vals.self_bolt_bps = 4000
+
+func legacy_kit() -> Dictionary:
+	return on_kit(legacy_mutation)
+
 func card_of(kit: Dictionary, id_: String) -> Dictionary:
 	for c in kit.elements.arc.cards:
 		if c.id == id_: return c
@@ -307,7 +324,7 @@ func part_rod() -> void:
 	check(r.kit_view().rods.is_empty(), "rod: a dead bearer holds no rod")
 
 func part_overload() -> void:
-	var r := stage()
+	var r := stage(legacy_kit())
 	take(r, ["A02"])
 	check(r.growth.kit_rank(OVERLOAD) == 1, "overload: the unlock card gives rank 1")
 	var big := make_big(r, Vector2(8, 0))
@@ -333,7 +350,7 @@ func part_overload() -> void:
 	check(clear, "overload: the conductors lost their shock and took no damage")
 	check(r._kit_next_overload == r.tick - 1 + 180 or r._kit_next_overload > 0, "overload: the cooldown runs after a cast")
 	# A lone big body with its own stacks: floor(10 x 0.8) = 8 bolts, the stacks are spent. One stack: floor(0.8) = 0, no cast.
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02"])
 	big = make_big(r, Vector2(8, 0))
 	r._rebuild_grid()
@@ -342,14 +359,14 @@ func part_overload() -> void:
 	bolts = seen.filter(func(e): return e.type == "bolt_returned")
 	check(bolts.size() == 8 and bolts.all(func(e): return e.self), "overload: a lone big body of 10 stacks makes 8 self bolts (%d)" % bolts.size())
 	check(shock_n(r, big) == 0, "overload: its stacks are spent")
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02"])
 	big = make_big(r, Vector2(8, 0))
 	r._rebuild_grid()
 	r._kit_shock(r.enemies[big], 1)
 	seen = steps(r, 30)
 	check(count_type(seen, "bolt_returned") == 0, "overload: one stack makes no bolt (floor 0.8)")
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02", "A23"])
 	big = make_big(r, Vector2(8, 0))
 	r._rebuild_grid()
@@ -357,7 +374,7 @@ func part_overload() -> void:
 	seen = steps(r, 2)
 	check(count_type(seen, "bolt_returned") == 12, "overload: card A23 raises the self share to 1.2, capped by max bolts 12 (%d)" % count_type(seen, "bolt_returned"))
 	# An ordinary body alone: it is the target, not a conductor of itself: no cast.
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02"])
 	var lone := make_walker(r, Vector2(6, 0))
 	r._rebuild_grid()
@@ -365,7 +382,7 @@ func part_overload() -> void:
 	seen = steps(r, 30)
 	check(count_type(seen, "bolt_returned") == 0, "overload: an ordinary body alone makes no bolt")
 	# The cap: 20 conductors, 12 bolts; with rank 2 and A12 more.
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02"])
 	big = make_big(r, Vector2(8, 0))
 	for i in 20: make_walker(r, Vector2(3 + i % 5, -4 + i % 9))
@@ -374,7 +391,7 @@ func part_overload() -> void:
 	for id_ in r.enemies: r._kit_shock(r.enemies[id_], 1)
 	seen = steps(r, 2)
 	check(count_type(seen, "bolt_returned") == 12, "overload: 20 conductors send at most 12 bolts (%d)" % count_type(seen, "bolt_returned"))
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02", "A08", "A12"])
 	big = make_big(r, Vector2(8, 0))
 	for i in 20: make_walker(r, Vector2(3 + i % 5, -4 + i % 9))
@@ -383,7 +400,7 @@ func part_overload() -> void:
 	seen = steps(r, 2)
 	check(count_type(seen, "bolt_returned") == 17, "overload: rank 2 (16) + card A12 (+1) = 17 bolts (%d)" % count_type(seen, "bolt_returned"))
 	# A21: the cooldown is 30% shorter.
-	r = stage()
+	r = stage(legacy_kit())
 	take(r, ["A02", "A21"])
 	big = make_big(r, Vector2(8, 0))
 	var one := make_walker(r, Vector2(5, 0))
@@ -679,13 +696,529 @@ func part_snapshot() -> void:
 	check(kit_keys and taken > 0, "snapshot: kit keys present and the pilot took %d kit cards" % taken)
 	check(finals[0] == finals[1], "snapshot: the same seed and input give the same snapshot hash with the kit on")
 
+
+# ---------------------------------------------------------------- D-element-trees 16 (the 1st fix): the floor of the card luck, the late floor, the spine share
+
+func floor_off_kit() -> Dictionary:
+	return on_kit(func(d): d.offer.floor.enabled = false)
+
+func hand_ids(r: RefCounted) -> Array:
+	var offer := offer_of(r)
+	return ids_of(offer)
+
+func clear_hand(r: RefCounted) -> void:
+	r.growth._offer = {}
+	r.growth._pending.clear()
+
+func part_floor() -> void:
+	# The format: the shipped file carries the floor; the new keys are allowed, a wrong one is refused, a document without them is as valid as before.
+	var shipped := shipped_kit()
+	check(shipped.offer.has("floor") and shipped.offer.has("evolve_floor") and shipped.offer.spine_share == true, "floor: the shipped file carries the first values of 16.5")
+	var loader = Kit.new()
+	check(loader.replace_document(legacy_kit()), "floor: a document without the new keys is accepted " + str(loader.errors))
+	check(refused(on_kit(func(d): d.offer.floor.order = ["survival", "nothing"])), "floor: an unknown crisis in the order is refused")
+	check(refused(on_kit(func(d): d.offer.floor.order = ["survival", "survival"])), "floor: a crisis twice in the order is refused")
+	check(refused(on_kit(func(d): d.offer.floor.lag.path_by_picks = [[3, 2], [6, 2]])), "floor: a table whose card counts do not rise is refused")
+	check(refused(on_kit(func(d): d.offer.floor.lag.path_by_picks = [[6, 1], [3, 2]])), "floor: a table whose picks do not rise is refused")
+	check(refused(on_kit(func(d): d.offer.floor.lag.path_by_picks = [[3, 1], [6, 2], [9, 5]])), "floor: a table that asks for more path cards than the element has (4) is refused")
+	check(refused(on_kit(func(d): d.offer.floor.surprise = 1)), "floor: an unknown floor key is refused")
+	check(refused(on_kit(func(d): d.offer.floor.max_replace = 0)), "floor: max_replace 0 is refused")
+	check(refused(on_kit(func(d): d.offer.evolve_floor.after.event = "death")), "floor: a late floor waiting for an event the core does not name is refused")
+	check(refused(on_kit(func(d): d.offer.evolve_floor.fallback_after_picks = 0)), "floor: fallback_after_picks 0 is refused")
+	check(refused(on_kit(func(d): d.offer.spine_share = 1)), "floor: spine_share must be a bool")
+	check(refused(on_kit(func(d): d.elements.arc.chain.prefer_unshocked = 1)), "floor: prefer_unshocked must be a bool")
+	check(refused(on_kit(func(d): d.elements.arc.skills[OVERLOAD].bolt_rule = "sum")), "floor: an unknown bolt_rule is refused")
+	check(refused(on_kit(func(d): d.elements.arc.skills[OVERLOAD].zone = "world")), "floor: an unknown zone is refused")
+	check(refused(on_kit(func(d): d.elements.arc.skills[ROD].bolt_rule = "max")), "floor: bolt_rule belongs to the burst skill only")
+	# The floor looks at a hand once and acts only when the hand has no answer. 60 seeds, the survival crisis stands.
+	var same := 0
+	var changed := 0
+	var bad := 0
+	var state_kept := 0
+	var state_moved := 0
+	for seed_ in range(1, 61):
+		var on := stage(on_kit(), seed_, "all")
+		var off := stage(floor_off_kit(), seed_, "all")
+		on.growth.set_kit_crisis({"rhythm": true, "survival": true, "big": false, "crowd": false})
+		var hand_on := ids_of(offer_of(on))
+		var hand_off := ids_of(offer_of(off))
+		var answers := false
+		for c in off.growth.snapshot().offer.cards:
+			if "survival" in c.answers: answers = true
+		var state_on: String = on.growth.snapshot().rng_state
+		var state_off: String = off.growth.snapshot().rng_state
+		if answers:
+			if hand_on == hand_off: same += 1
+			else: bad += 1
+			if state_on == state_off: state_kept += 1
+		else:
+			var diff := 0
+			for i in hand_on.size():
+				if hand_on[i] != hand_off[i]: diff += 1
+			if diff == 1 and on.growth.kit_floor_stats().replaced == 1: changed += 1
+			else: bad += 1
+			var gave := false
+			for c in on.growth.snapshot().offer.cards:
+				if c.id in hand_on and c.id not in hand_off and "survival" in c.answers and String(c.kind) != "filler": gave = true
+			if not gave: bad += 1
+			if state_on != state_off: state_moved += 1
+	check(same > 0 and changed > 0 and bad == 0, "floor: a hand with an answer is left alone, one without gets exactly one answer card (same %d, changed %d, wrong %d)" % [same, changed, bad])
+	check(state_kept == same and state_moved == changed, "floor: the card stream is untouched by a hand that is left alone and moves by one draw when a card is replaced (%d/%d, %d/%d)" % [state_kept, same, state_moved, changed])
+	# Never a protected card: the door's A02 (after the first pick) stays in the hand whatever the crisis.
+	var kept := 0
+	for seed_ in range(1, 41):
+		var r := stage(on_kit(), seed_, "all")
+		var first := offer_of(r)
+		pick(r, first, String(first.cards[0].id))
+		r.growth.set_kit_crisis({"rhythm": true, "survival": true, "big": true, "crowd": true})
+		var second := ids_of(offer_of(r))
+		if "A02" in second or not ("A02" in r.growth._kit_taken): kept += 1
+	check(kept == 40, "floor: the door's card is never the one replaced (%d of 40)" % kept)
+	# The last offer's protection (the evolution) is not replaced either.
+	var final_ok := 0
+	for seed_ in range(1, 21):
+		var r := stage(on_kit(), seed_, "all")
+		take(r, ["A03", "A04", "A05", "A10"])
+		r.growth.set_kit_crisis({"rhythm": true, "survival": true})
+		var last := offer_of(r, r.growth.xp_thresholds().size())
+		if "A11" in ids_of(last): final_ok += 1
+	check(final_ok == 20, "floor: the last hand keeps its evolution under a crisis (%d of 20)" % final_ok)
+	# Several crises: the first standing one decides (survival), a hand that already answers it is left alone even if another crisis stands.
+	var order_ok := 0
+	for seed_ in range(1, 31):
+		var r := stage(on_kit(), seed_, "all")
+		r.growth.set_kit_crisis({"rhythm": true, "survival": true, "big": true, "crowd": true})
+		var hand: Array = offer_of(r).cards
+		var survival_in := false
+		for c in hand:
+			if "survival" in c.answers: survival_in = true
+		if survival_in: order_ok += 1
+	check(order_ok == 30, "floor: with every crisis standing the survival answer is in the hand (%d of 30)" % order_ok)
+	# The lag (16.1): the table [[3,1],[6,2],[9,4]] at its edges.
+	var g = stage(on_kit(), 11, "none").growth
+	var rule: Dictionary = g._kit_offer.floor
+	var edges := [[2, [], false], [3, [], true], [3, ["A03"], false], [6, ["A03"], true], [6, ["A03", "A10"], false], [9, ["A03", "A10", "A04"], true], [9, ["A03", "A10", "A04", "A05"], false], [9, ["A03", "A10", "A04", "A25"], true]]
+	var edge_bad := 0
+	for e in edges:
+		g._kit_taken.assign(e[1])
+		g._kit_picks = int(e[0])
+		if g._kit_crisis_standing("lag", rule) != bool(e[2]): edge_bad += 1
+	check(edge_bad == 0, "floor: the lag stands at 3 picks with 0 path cards, not with 1; 6 with 1, not with 2; 9 with 3, not with 4 (wrong %d)" % edge_bad)
+	# When the lag stands every hand carries a path card the player can take now; when it does not it is only luck.
+	var with_path := 0
+	var without_path := 0
+	for seed_ in range(1, 31):
+		var r := stage(on_kit(), seed_, "none")
+		r.growth._kit_picks = 3
+		r.growth.set_kit_crisis({"rhythm": true})
+		var has := false
+		for c in offer_of(r).cards:
+			if c.kind == "rank" and c.skill_id == ARC: has = true
+		if has: with_path += 1
+		var q := stage(on_kit(), seed_, "none")
+		q.growth._kit_picks = 2
+		q.growth.set_kit_crisis({"rhythm": true})
+		var q_has := false
+		for c in offer_of(q).cards:
+			if c.kind == "rank" and c.skill_id == ARC: q_has = true
+		if not q_has: without_path += 1
+	check(with_path == 30 and without_path > 0, "floor: a lagging build always sees its next rank (%d of 30); one that does not lag only by luck (%d hands without)" % [with_path, without_path])
+	# Not a crisis, not a draw: with nothing standing the card stream moves exactly as with the floor off.
+	var quiet := 0
+	for seed_ in range(1, 21):
+		var on := stage(on_kit(), seed_, "all")
+		var off := stage(floor_off_kit(), seed_, "all")
+		on.growth.set_kit_crisis({"rhythm": true, "survival": false, "big": false, "crowd": false})
+		if hand_ids(on) == hand_ids(off) and on.growth.snapshot().rng_state == off.growth.snapshot().rng_state: quiet += 1
+	check(quiet == 20, "floor: no crisis, no change and no extra draw (%d of 20)" % quiet)
+	# The events and the counts.
+	var r2 := stage(on_kit(), 5, "all")
+	r2.growth.set_kit_crisis({"rhythm": true, "survival": true})
+	var events_seen: Array = []
+	for i in 12:
+		clear_hand(r2)
+		var o := offer_of(r2)
+		events_seen.append_array(r2.growth.take_events().filter(func(e): return e.type == "offer_floor"))
+	var stats: Dictionary = r2.growth.kit_floor_stats()
+	check(int(stats.hands) == 12 and int(stats.replaced) == events_seen.size() and int(stats.get("by_crisis", {}).get("survival", 0)) == events_seen.size(), "floor: the counts match the offer_floor events (%s, %d events)" % [str(stats), events_seen.size()])
+	check(events_seen.size() > 0 and events_seen.all(func(e): return e.data.crisis == "survival" and e.data.has("replaced_id") and e.data.has("card_id") and e.data.has("level")), "floor: offer_floor carries level, crisis, replaced_id, card_id")
+	# The spine share (16.3): the weight of a spine card is multiplied by (B + T) / B, and T = 0 gives 1.
+	var r3 := stage(on_kit(), 11, "none")
+	var pool: Array[Dictionary] = r3.growth._kit_cards()
+	r3.growth._kit_spine_weights(pool)
+	var a03: Dictionary = pool.filter(func(c): return c.id == "A03")[0]
+	check(int(a03.weight) == 100, "spine: nothing opened by the tree, the weight stays 100 (%d)" % int(a03.weight))
+	r3 = stage(on_kit(), 11, "all")
+	pool = r3.growth._kit_cards()
+	var base_n := 0
+	var tree_n := 0
+	for c in pool:
+		if c.kind == "evolve" or c.id in ["A03", "A04", "A05", "A10"]: continue
+		if r3.growth._kit_card_def(String(c.id)).open == "base": base_n += 1
+		else: tree_n += 1
+	r3.growth._kit_spine_weights(pool)
+	a03 = pool.filter(func(c): return c.id == "A03")[0]
+	check(tree_n > 0 and int(a03.weight) == 100 * (base_n + tree_n) / base_n, "spine: with %d base cards and %d tree cards the weight is 100 x %d / %d = %d (%d)" % [base_n, tree_n, base_n + tree_n, base_n, 100 * (base_n + tree_n) / base_n, int(a03.weight)])
+	var unlock_card: Dictionary = pool.filter(func(c): return c.id == "A25")[0]
+	check(int(unlock_card.weight) == 60, "spine: a card that is not on the spine keeps its weight")
+	var r4 := stage(on_kit(func(d): d.offer.spine_share = false), 11, "all")
+	pool = r4.growth._kit_cards()
+	r4.growth._kit_spine_weights(pool)
+	check(int(pool.filter(func(c): return c.id == "A03")[0].weight) == 100, "spine: switched off, no multiplication")
+
+## What the late floor would put into the next hand (the index in the pool of cards that could be offered now), -1 for nothing.
+func evo_pick(g: RefCounted) -> int:
+	var pool: Array[Dictionary] = g._kit_cards()
+	var none: Array[Dictionary] = []
+	return g._kit_evolve_floor_pick(pool, none)
+
+func part_evolve_floor() -> void:
+	var rule_ok := 0
+	# Not armed and the rhythm on: nothing is added, however late.
+	var r := stage(on_kit(), 11, "none")
+	var g = r.growth
+	g.set_kit_crisis({"rhythm": true})
+	g._kit_picks = 12
+	check(evo_pick(g) == -1, "late floor: not armed, with the rhythm, nothing is added at 12 picks")
+	# With no rhythm the 10th pick opens it.
+	g.set_kit_crisis({"rhythm": false})
+	g._kit_picks = 9
+	check(evo_pick(g) == -1, "late floor: no rhythm, 9 picks: not yet")
+	g._kit_picks = 10
+	var index: int = evo_pick(g)
+	check(index >= 0 and g._kit_cards()[index].id == "A03", "late floor: no rhythm, 10 picks: the next rank")
+	# The core arms it with the right crest only.
+	var q := stage(on_kit(), 11, "none")
+	q._emit("wave_crest", Vector2.ZERO, {"beat": "gi", "count": 3})
+	check(not q.growth._kit_evo_armed, "late floor: a crest of another beat does not arm it")
+	q._emit("wave_crest", Vector2.ZERO, {"beat": "seung2", "count": 3})
+	check(q.growth._kit_evo_armed, "late floor: the crest of seung2 arms it")
+	# Armed: every hand carries the next path card until the evolution is taken: the rune, the ranks, then the evolution.
+	var good := 0
+	var runs := 0
+	var opened_events := 0
+	for seed_ in range(1, 9):
+		var s := stage(on_kit(), seed_, "none")
+		s.growth.set_kit_crisis({"rhythm": true})
+		s.growth.kit_arm_evolve_floor()
+		var expected := ["A03", "A10", "A04", "A05", "A11"]
+		var seen_ok := true
+		for want in expected:
+			clear_hand(s)
+			var offer := offer_of(s)
+			if not (want in ids_of(offer)): seen_ok = false
+			if not pick(s, offer, want):
+				seen_ok = false
+				break
+		opened_events += s.growth.take_events().filter(func(e): return e.type == "evolve_floor_opened").size()
+		clear_hand(s)
+		var after := offer_of(s)
+		if not bool(s.effective_skill(ARC).evolved): seen_ok = false
+		if evo_pick(s.growth) != -1: seen_ok = false
+		runs += 1
+		if seen_ok: good += 1
+	check(good == runs, "late floor: every hand holds the next path card until the evolution is taken, none after (%d of %d seeds)" % [good, runs])
+	check(opened_events == runs, "late floor: evolve_floor_opened once a run (%d for %d runs)" % [opened_events, runs])
+	# With the door's card as well: both are in the hand (three cards).
+	var both := 0
+	for seed_ in range(1, 21):
+		var s := stage(on_kit(), seed_, "none")
+		s.growth.set_kit_crisis({"rhythm": true})
+		s.growth.kit_arm_evolve_floor()
+		s.growth._kit_picks = 1
+		var hand := ids_of(offer_of(s))
+		if "A02" in hand and "A03" in hand and hand.size() == 3: both += 1
+	check(both == 20, "late floor: with the door's card both are in the hand of three (%d of 20)" % both)
+	# The event carries the card and the level.
+	var s2 := stage(on_kit(), 3, "none")
+	s2.growth.set_kit_crisis({"rhythm": true})
+	s2.growth.kit_arm_evolve_floor()
+	offer_of(s2, 4)
+	var opened: Array = s2.growth.take_events().filter(func(e): return e.type == "evolve_floor_opened")
+	check(opened.size() == 1 and opened[0].data.card_id == "A03" and int(opened[0].data.level) == 4, "late floor: evolve_floor_opened {level, card_id}")
+	# Off in the document: nothing is added.
+	var t := stage(on_kit(func(d): d.offer.evolve_floor.enabled = false), 11, "none")
+	t.growth.kit_arm_evolve_floor()
+	t.growth.set_kit_crisis({"rhythm": false})
+	t.growth._kit_picks = 20
+	check(evo_pick(t.growth) == -1, "late floor: switched off in the document, nothing is added")
+
+func part_crisis() -> void:
+	var r := stage()
+	r.hero.hp_raw = r.hero.max_hp_raw * 30 / 100
+	r._kit_offer_prepare()
+	check(bool(r.growth._kit_crisis.survival) and not bool(r.growth._kit_crisis.big) and not bool(r.growth._kit_crisis.crowd) and not bool(r.growth._kit_crisis.rhythm), "crisis: 30% life stands survival and nothing else")
+	r.hero.hp_raw = r.hero.max_hp_raw * 35 / 100
+	r._kit_offer_prepare()
+	check(not bool(r.growth._kit_crisis.survival), "crisis: 35% life (the bound) is not below it")
+	r.hero.hp_raw = r.hero.max_hp_raw
+	var big := make_big(r, Vector2(9, 0))
+	r._kit_offer_prepare()
+	check(bool(r.growth._kit_crisis.big), "crisis: a big body alive stands big")
+	r._damage_enemy(big, r._kit_context(ARC, 999999999), 0)
+	r._kit_offer_prepare()
+	check(not bool(r.growth._kit_crisis.big), "crisis: no big body and the seal far: not big")
+	# The seal near: the kills still to come fit in the window at this zone's pace so far.
+	var total := int(r._seal_total(r.zone))
+	r.tick = 3000
+	r.zone_kills = total * 9 / 10
+	r._kit_offer_prepare()
+	check(bool(r.growth._kit_crisis.big), "crisis: the seal at 90%% at tick 3000 (%d of %d kills): the guardian is within 600 ticks" % [r.zone_kills, total])
+	r.zone_kills = total / 2
+	r._kit_offer_prepare()
+	check(not bool(r.growth._kit_crisis.big), "crisis: the seal at half: not yet")
+	r.zone_kills = 0
+	# Crowd: alive bodies at 60% of the ceiling, or a crest in the last 900 ticks.
+	var cap := int(r._kit_alive_cap())
+	r._alive = cap * 6000 / 10000 - 1
+	r._kit_offer_prepare()
+	check(not bool(r.growth._kit_crisis.crowd), "crisis: one under 60%% of the ceiling is not a crowd (%d of %d)" % [r._alive, cap])
+	r._alive = cap * 6000 / 10000
+	r._kit_offer_prepare()
+	check(bool(r.growth._kit_crisis.crowd), "crisis: 60%% of the ceiling is a crowd (%d of %d)" % [r._alive, cap])
+	r._alive = 0
+	r._emit("wave_crest", Vector2.ZERO, {"beat": "seung2", "count": 5})
+	r._kit_offer_prepare()
+	check(bool(r.growth._kit_crisis.crowd), "crisis: a crest just now is a crowd")
+	r.tick += 901
+	r._kit_offer_prepare()
+	check(not bool(r.growth._kit_crisis.crowd), "crisis: a crest 901 ticks ago is not")
+	# The real path: get_offer() hands the crisis to the growth and books the counts.
+	var q := stage(on_kit(), 11, "none")
+	q.hero.hp_raw = q.hero.max_hp_raw * 20 / 100
+	q.growth._pending.append(3)
+	q._refresh_mode()
+	var shown: Dictionary = q.get_offer()
+	check(q.mode == "choice" and not shown.is_empty() and bool(q.growth._kit_crisis.survival), "crisis: get_offer() reads the crisis before the hand is made")
+	check(q.metrics.kit.has("floor") and int(q.metrics.kit.floor.hands) == 1, "crisis: the measurement books the floor's hand")
+	var cards_seen := 0
+	for c in shown.cards:
+		if "survival" in c.answers: cards_seen += 1
+	check(cards_seen >= 1, "crisis: the hand at 20% life holds a survival answer")
+	# A document with no floor and no late floor never asks the core.
+	var legacy := stage(legacy_kit(), 11, "none")
+	legacy.hero.hp_raw = legacy.hero.max_hp_raw * 20 / 100
+	legacy.growth._pending.append(3)
+	legacy._refresh_mode()
+	legacy.get_offer()
+	check(legacy.growth._kit_crisis.is_empty() and not legacy.metrics.kit.has("floor"), "crisis: a document without the floor gets no crisis and no floor count")
+
+func bolts_of(events: Array) -> Array:
+	return events.filter(func(e): return e.type == "bolt_returned" and not e.get("spark", false))
+
+func shock_many(r: RefCounted, ids: Array, n: int = 1) -> void:
+	for id_ in ids: r._kit_shock(r.enemies[id_], n)
+
+func part_overload16() -> void:
+	# One big body alone with its own stacks: floor(10 x 0.7) = 7 bolts, 10 stacks spent (7 x 10000 / 7000), all of them its own.
+	var r := stage()
+	take(r, ["A02"])
+	var big := make_big(r, Vector2(8, 0))
+	r._rebuild_grid()
+	r._kit_shock(r.enemies[big], 10)
+	var seen := steps(r, 2)
+	var bolts := bolts_of(seen)
+	check(bolts.size() == 7 and bolts.all(func(e): return e.self), "overload16: a lone big body of 10 stacks makes 7 own bolts (%d)" % bolts.size())
+	check(shock_n(r, big) == 0, "overload16: seven bolts use 10 stacks (ceil of 7 x 10000 / 7000) and the body is bare")
+	# 8 stacks: 5 bolts, ceil(5 x 10000 / 7000) = 8 stacks spent; 6 stacks: 4 bolts, 6 spent. The spent stacks are what the bolts used, not the rest.
+	r = stage()
+	take(r, ["A02"])
+	big = make_big(r, Vector2(8, 0))
+	r._rebuild_grid()
+	r._kit_shock(r.enemies[big], 10)
+	r.enemies[big].kst.n = 9
+	seen = steps(r, 2)
+	check(bolts_of(seen).size() == 6 and shock_n(r, big) == 0, "overload16: 9 stacks: 6 bolts, 9 spent (6 x 10000 / 7000 rounded up), none left (%d)" % shock_n(r, big))
+	# Three conductors and a big body of 10 stacks: 3 bolts from the conductors and 4 more from the body (7 in all), and only 4 bolts' worth of stacks is spent.
+	r = stage()
+	take(r, ["A02"])
+	big = make_big(r, Vector2(8, 0))
+	var walkers: Array = [make_walker(r, Vector2(5, -2)), make_walker(r, Vector2(5, 0)), make_walker(r, Vector2(5, 2))]
+	r._rebuild_grid()
+	shock_many(r, walkers)
+	r._kit_shock(r.enemies[big], 10)
+	seen = steps(r, 2)
+	bolts = bolts_of(seen)
+	var own := bolts.filter(func(e): return e.self).size()
+	check(bolts.size() == 7 and own == 4, "overload16: 3 conductors + a body of 10: 7 bolts, 4 of them its own (%d, %d)" % [bolts.size(), own])
+	check(shock_n(r, big) == 10 - 6, "overload16: only the stacks of the 4 own bolts are spent: ceil(4 x 10000 / 7000) = 6 (left %d)" % shock_n(r, big))
+	var entry: Dictionary = r.metrics.kit.overloads[0]
+	check(int(entry.topup) == 4 and int(entry.spent) == 6 and int(entry.conductors) == 3 and bool(entry.big) and int(entry.hero_dist_cm) > 700 and int(entry.hero_dist_cm) < 900, "overload16: the record has topup 4, spent 6, 3 conductors, the distance about 800 cm (%s)" % str(entry))
+	# More conductors than the body's own share: no stack is spent, every bolt is a conductor's.
+	r = stage()
+	take(r, ["A02"])
+	big = make_big(r, Vector2(8, 0))
+	walkers = []
+	for i in 9: walkers.append(make_walker(r, Vector2(4 + i % 3, -4 + i)))
+	r._rebuild_grid()
+	shock_many(r, walkers)
+	r._kit_shock(r.enemies[big], 10)
+	seen = steps(r, 2)
+	bolts = bolts_of(seen)
+	check(bolts.size() == 9 and bolts.all(func(e): return not e.self) and shock_n(r, big) == 10, "overload16: 9 conductors beat the body's 7: 9 bolts, none its own, the 10 stacks stay (%d bolts, %d stacks)" % [bolts.size(), shock_n(r, big)])
+	# Monotone: one more conductor never means fewer bolts.
+	var counts: Array[int] = []
+	for k in range(0, 13):
+		var m := stage()
+		take(m, ["A02"])
+		var mb := make_big(m, Vector2(8, 0))
+		var mw: Array = []
+		for i in k: mw.append(make_walker(m, Vector2(3 + i % 5, -4 + i % 9)))
+		m._rebuild_grid()
+		shock_many(m, mw)
+		m._kit_shock(m.enemies[mb], 10)
+		counts.append(bolts_of(steps(m, 2)).size())
+	var monotone := true
+	for i in range(1, counts.size()):
+		if counts[i] < counts[i - 1]: monotone = false
+	check(monotone and counts[0] == 7 and counts[7] == 7 and counts[8] == 8 and counts[12] == 12, "overload16: the bolts never fall as conductors are added: %s" % str(counts))
+	# The cap still holds: 20 conductors, max 12.
+	r = stage()
+	take(r, ["A02"])
+	big = make_big(r, Vector2(8, 0))
+	walkers = []
+	for i in 20: walkers.append(make_walker(r, Vector2(3 + i % 5, -4 + i % 9)))
+	r._rebuild_grid()
+	shock_many(r, walkers)
+	r._kit_shock(r.enemies[big], 1)
+	check(bolts_of(steps(r, 2)).size() == 12, "overload16: 20 conductors send at most 12 bolts")
+	# A23: the own share is 0.8 now (1000 more): 10 stacks, 8 bolts, 10 spent.
+	r = stage()
+	take(r, ["A02", "A23"])
+	big = make_big(r, Vector2(8, 0))
+	r._rebuild_grid()
+	r._kit_shock(r.enemies[big], 10)
+	check(bolts_of(steps(r, 2)).size() == 8 and shock_n(r, big) == 0, "overload16: card A23 gives 0.8: 8 bolts from 10 stacks")
+	# A12 adds a bolt over the conductors: 4 conductors + 1.
+	r = stage()
+	take(r, ["A02", "A12"])
+	big = make_big(r, Vector2(8, 0))
+	walkers = []
+	for i in 4: walkers.append(make_walker(r, Vector2(5, -2 + i)))
+	r._rebuild_grid()
+	shock_many(r, walkers)
+	r._kit_shock(r.enemies[big], 1)
+	check(bolts_of(steps(r, 2)).size() == 5, "overload16: card A12 adds one to the conductors' bolts")
+	# The zone: conductors on the hero's far side (13 m from the body, 5 m from the hero) conduct with target_or_hero, not with target.
+	var results := {}
+	for label in ["now", "old"]:
+		r = stage(on_kit() if label == "now" else on_kit(func(d): d.elements.arc.skills[OVERLOAD].zone = "target"))
+		take(r, ["A02"])
+		big = make_big(r, Vector2(8, 0))
+		walkers = []
+		for i in 4: walkers.append(make_walker(r, Vector2(-5, -2 + i)))
+		r._rebuild_grid()
+		shock_many(r, walkers)
+		r._kit_shock(r.enemies[big], 1)
+		results[label] = bolts_of(steps(r, 2)).size()
+	check(int(results.now) == 4 and int(results.old) == 0, "overload16: the hero's circle adds conductors (now %d, zone target %d)" % [int(results.now), int(results.old)])
+	# A body in both circles counts once; the record counts each circle.
+	r = stage()
+	take(r, ["A02"])
+	big = make_big(r, Vector2(6, 0))
+	var both_circles := make_walker(r, Vector2(0, 3))
+	var hero_only := make_walker(r, Vector2(-7, 0))
+	r._rebuild_grid()
+	shock_many(r, [both_circles, hero_only])
+	r._kit_shock(r.enemies[big], 1)
+	seen = steps(r, 2)
+	entry = r.metrics.kit.overloads[0]
+	check(bolts_of(seen).size() == 2 and int(entry.conductors) == 2 and int(entry.near_hero) == 2 and int(entry.near_target) == 1, "overload16: a body in both circles counts once (bolts %d, record %s)" % [bolts_of(seen).size(), str(entry)])
+	# The old rule is still what it was when the key is not there: on the legacy document nothing of the record is added.
+	var old := stage(legacy_kit())
+	take(old, ["A02"])
+	var old_big := make_big(old, Vector2(8, 0))
+	old._rebuild_grid()
+	old._kit_shock(old.enemies[old_big], 10)
+	steps(old, 2)
+	var old_entry: Dictionary = old.metrics.kit.overloads[0]
+	check(not old_entry.has("topup") and not old_entry.has("hero_dist_cm") and int(old_entry.bolts) == 8 and shock_n(old, old_big) == 0, "overload16: the legacy rule: 8 bolts, the body bare, no new record keys (%s)" % str(old_entry))
+
+func part_chain16() -> void:
+	# metrics.kit.rebounds counts the rebounds (only for a document with the new keys: the old one keeps its metrics).
+	var r := stage()
+	var big := make_big(r, Vector2(6, 0))
+	fire_chain(r, big)
+	check(int(r.metrics.kit.rebounds) == 1, "chain16: a lone big body's rebound is counted (%d)" % int(r.metrics.kit.rebounds))
+	var old := stage(legacy_kit())
+	var old_big := make_big(old, Vector2(6, 0))
+	fire_chain(old, old_big)
+	check(int(old.metrics.kit.rebounds) == 0 and shock_n(old, old_big) == 2, "chain16: the legacy document counts none (it never did) and still rebounds")
+	# prefer_unshocked: the next body is the one whose shock grows. From A (5,0): B (6,0) is shocked already, C (7,0) is not.
+	var order := {}
+	for label in ["now", "old"]:
+		r = stage(on_kit() if label == "now" else on_kit(func(d): d.elements.arc.chain.prefer_unshocked = false))
+		var a := make_walker(r, Vector2(5, 0))
+		var b := make_walker(r, Vector2(6, 0))
+		var c := make_walker(r, Vector2(7, 0))
+		r._rebuild_grid()
+		r._kit_shock(r.enemies[b], 1)
+		var seen := fire_chain(r, a)
+		var hit_ids: Array = seen.filter(func(e): return e.type == "hit").map(func(e): return int(e.target_id))
+		order[label] = [hit_ids, a, b, c]
+	check(order.now[0].size() >= 2 and order.now[0][0] == order.now[1] and order.now[0][1] == order.now[3], "chain16: prefer_unshocked goes to the unshocked body after the first (%s)" % str(order.now[0]))
+	check(order.old[0].size() >= 2 and order.old[0][0] == order.old[1] and order.old[0][1] == order.old[2], "chain16: without it the nearest comes first as before (%s)" % str(order.old[0]))
+	# Nothing unshocked to go to: it falls back to the nearest eligible body.
+	r = stage()
+	var a2 := make_walker(r, Vector2(5, 0))
+	var b2 := make_walker(r, Vector2(6, 0))
+	r._rebuild_grid()
+	r._kit_shock(r.enemies[b2], 1)
+	var seen2 := fire_chain(r, a2)
+	var ids2: Array = seen2.filter(func(e): return e.type == "hit").map(func(e): return int(e.target_id))
+	check(ids2.size() >= 2 and ids2[1] == b2, "chain16: with only a shocked body to go to it goes there (%s)" % str(ids2))
+
+func run_ticks(doc: Dictionary, n: int, with_pilot_rhythm: bool = true) -> RefCounted:
+	var r = Chapter.new()
+	var problem: String = load("res://chapter1/tests/support/trial_docs.gd").enable_rhythm_problem(r, false, true)
+	check(problem.is_empty(), "compat: rhythm " + problem)
+	check(r.set_element_kit(doc) and r.set_kit_open("all"), "compat: the kit document is accepted " + str(r.errors))
+	var pilot: RefCounted = load("res://chapter1/core/chapter_pilot.gd").new()
+	pilot.run = r
+	check(r.start(11, ARC), "compat: the run starts " + str(r.errors))
+	# The golden loop: a step is counted by the tick, not by the call (a card screen takes calls that do not advance it).
+	var guard := 0
+	while r.tick < n and r.mode not in ["victory", "defeat"] and guard < n * 2:
+		r.step(pilot.decide())
+		guard += 1
+	return r
+
+## Every key of the 1st fix present and switched off, the old values.
+func switched_off_mutation(d: Dictionary) -> void:
+	legacy_mutation(d)
+	d.offer.floor = shipped_kit().offer.floor
+	d.offer.floor.enabled = false
+	d.offer.evolve_floor = shipped_kit().offer.evolve_floor
+	d.offer.evolve_floor.enabled = false
+	d.offer.spine_share = false
+	d.elements.arc.chain.prefer_unshocked = false
+	d.elements.arc.skills[OVERLOAD].bolt_rule = "conductors"
+	d.elements.arc.skills[OVERLOAD].zone = "target"
+
+func part_compat() -> void:
+	# The document as it was (no key of the 1st fix, the old values) is the old run: its snapshot at tick 12000 is the hash the golden case
+	# "element-arc" recorded for it before the fix (golden core_runtime.json, checkpoint 12000, 2026-11-25).
+	var r := run_ticks(legacy_kit(), 12000)
+	var digest: String = JSON.stringify(r.snapshot()).sha256_text()
+	check(r.tick == 12000 and digest == "cbfad53204ea3ef323b3c81a6b32e5d0680758864000bd3f49f091437f2e56f6", "compat: the document without the new keys is the old run (tick %d, %s)" % [r.tick, digest])
+	check(not r.snapshot().growth.kit.has("floor") and not r.snapshot().kit_core.has("zone_start"), "compat: and it carries none of the new snapshot keys")
+	# The new keys all switched off in place change nothing a player can see: the same kills and life after 3000 ticks.
+	var off_doc := on_kit(switched_off_mutation)
+	var a := run_ticks(legacy_kit(), 3000)
+	var b := run_ticks(off_doc, 3000)
+	check(a.kills == b.kills and a.hero.hp_raw == b.hero.hp_raw and a.growth.snapshot().xp == b.growth.snapshot().xp and a.growth.snapshot().rng_state == b.growth.snapshot().rng_state, "compat: the new keys switched off play the same run (kills %d / %d)" % [a.kills, b.kills])
+	# The shipped (first) values run, end, and are repeatable.
+	var c := run_ticks(on_kit(), 6000)
+	var d2 := run_ticks(on_kit(), 6000)
+	check(JSON.stringify(c.snapshot()).sha256_text() == JSON.stringify(d2.snapshot()).sha256_text() and c.snapshot().growth.kit.has("floor"), "compat: the first values give one hash twice, with the floor keys in the snapshot")
+
 # ---------------------------------------------------------------- run
 
 func execute() -> void:
 	var only := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--part="): only = arg.trim_prefix("--part=")
-	for name in ["data", "off", "chain", "rod", "overload", "cards", "tree", "profile", "rest", "snapshot"]:
+	for name in ["data", "off", "chain", "rod", "overload", "cards", "tree", "profile", "rest", "snapshot", "floor", "evolve_floor", "crisis", "overload16", "chain16", "compat"]:
 		if only.is_empty() or only == name: call("part_" + name)
 	print("CHAPTER1_ELEMENT_KIT_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)
