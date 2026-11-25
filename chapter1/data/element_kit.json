@@ -147,6 +147,7 @@
           "bolt_bps": 10000,
           "bolt_rule": "max",
           "zone": "target_or_hero",
+          "prefer_big": true,
           "ranks": [
             {},
             {
