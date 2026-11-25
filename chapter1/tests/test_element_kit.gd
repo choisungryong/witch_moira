@@ -46,6 +46,7 @@ func legacy_mutation(d: Dictionary) -> void:
 	arc.chain.erase("prefer_unshocked")
 	arc.skills[OVERLOAD].erase("bolt_rule")
 	arc.skills[OVERLOAD].erase("zone")
+	arc.skills[OVERLOAD].erase("prefer_big")
 	arc.skills[OVERLOAD].bolt_raw = 25600
 	arc.skills[OVERLOAD].self_bolt_bps = 8000
 	card_of(d, "A23").change.vals.self_bolt_bps = 4000
@@ -1134,6 +1135,118 @@ func part_overload16() -> void:
 	var old_entry: Dictionary = old.metrics.kit.overloads[0]
 	check(not old_entry.has("topup") and not old_entry.has("hero_dist_cm") and int(old_entry.bolts) == 8 and shock_n(old, old_big) == 0, "overload16: the legacy rule: 8 bolts, the body bare, no new record keys (%s)" % str(old_entry))
 
+## ET-D8 (D-element-trees 18): the overload's target is a shocked big body within the hero's reach, a rod elsewhere or not; the record says why.
+func plant_rod(r: RefCounted, id_: int) -> void:
+	r._kit_rods.assign([id_])
+	r.enemies[id_].rod_until = r.tick + 600
+
+func target_of(seen: Array) -> int:
+	var d := seen.filter(func(e): return e.type == "detonated")
+	return int(d[0].target_id) if not d.is_empty() else -1
+
+func part_overload22() -> void:
+	# A rod stands on an ordinary body, a shocked big body (10 stacks) stands 8 m off: the big body is the target and its own 7 bolts fly.
+	var results := {}
+	for label in ["now", "off"]:
+		var r := stage(on_kit() if label == "now" else on_kit(func(d): d.elements.arc.skills[OVERLOAD].prefer_big = false))
+		take(r, ["A02"])
+		var big := make_big(r, Vector2(8, 0))
+		var walker := make_walker(r, Vector2(3, 3))
+		r._rebuild_grid()
+		plant_rod(r, walker)
+		r._kit_shock(r.enemies[big], 10)
+		r._kit_shock(r.enemies[walker], 1)
+		var seen := steps(r, 2)
+		results[label] = {"target": target_of(seen), "bolts": bolts_of(seen).size(), "entry": r.metrics.kit.overloads[0] if not r.metrics.kit.overloads.is_empty() else {}, "big": big, "walker": walker}
+	var now: Dictionary = results.now
+	var off: Dictionary = results.off
+	check(int(now.target) == int(now.big) and int(now.bolts) == 7, "overload22: a rod on an ordinary body and a shocked big body in reach: the big body is the target, 7 own bolts (%s)" % str(now))
+	check(bool(now.entry.target_big) and not bool(now.entry.target_rod) and int(now.entry.target_stacks) == 10 and String(now.entry.via) == "big" and int(now.entry.big_in_reach) == 1 and int(now.entry.big_shocked) == 1, "overload22: the record: target_big, no rod, 10 stacks, via big, 1 big in reach, 1 shocked (%s)" % str(now.entry))
+	check(int(off.target) == int(off.walker) and not bool(off.entry.target_big) and bool(off.entry.target_rod) and String(off.entry.via) == "rod" and int(off.bolts) == 1, "overload22: with prefer_big false the rod body stays the target (%s)" % str(off))
+	check(int(off.entry.big_in_reach) == 1 and int(off.entry.big_shocked) == 1 and int(off.entry.conductors) == 1, "overload22: and the record still tells that a shocked big body was in reach (%s)" % str(off.entry))
+	# No rod at all: the shocked big body is the target.
+	var r2 := stage()
+	take(r2, ["A02"])
+	var big2 := make_big(r2, Vector2(8, 0))
+	var w2 := make_walker(r2, Vector2(3, 3))
+	r2._rebuild_grid()
+	r2._kit_shock(r2.enemies[big2], 4)
+	r2._kit_shock(r2.enemies[w2], 1)
+	var seen2 := steps(r2, 2)
+	check(target_of(seen2) == big2 and not bool(r2.metrics.kit.overloads[0].target_rod), "overload22: no rod: the shocked big body is the target")
+	# No shocked big body in reach (the big body is bare): the old rule, the most healthy shocked body; the record says a big body stood there bare.
+	var r3 := stage()
+	take(r3, ["A02"])
+	make_big(r3, Vector2(8, 0))
+	var w3a := make_walker(r3, Vector2(3, 3))
+	var w3b := make_walker(r3, Vector2(3, -3))
+	r3.enemies[w3a].hp_raw = 4000 * UNIT
+	r3._rebuild_grid()
+	r3._kit_shock(r3.enemies[w3a], 1)
+	r3._kit_shock(r3.enemies[w3b], 1)
+	var seen3 := steps(r3, 2)
+	var e3: Dictionary = r3.metrics.kit.overloads[0]
+	check(target_of(seen3) == w3b and not bool(e3.target_big) and String(e3.via) == "shocked_hp" and int(e3.big_in_reach) == 1 and int(e3.big_shocked) == 0, "overload22: a bare big body: the old rule (target %d, the healthier walker %d; %s)" % [target_of(seen3), w3b, str(e3)])
+	# A shocked big body beyond the hero's reach (15 m) is not the target by this rule: the rod body stays.
+	var r4 := stage()
+	take(r4, ["A02"])
+	var far := make_big(r4, Vector2(15, 0))
+	var w4 := make_walker(r4, Vector2(3, 3))
+	var w4b := make_walker(r4, Vector2(3, -3))
+	r4._rebuild_grid()
+	plant_rod(r4, w4)
+	r4._kit_shock(r4.enemies[far], 10)
+	r4._kit_shock(r4.enemies[w4], 1)
+	r4._kit_shock(r4.enemies[w4b], 1)
+	var seen4 := steps(r4, 2)
+	var e4: Dictionary = r4.metrics.kit.overloads[0]
+	check(target_of(seen4) == w4 and int(e4.big_in_reach) == 0 and String(e4.via) == "rod", "overload22: a shocked big body out of reach (15 m) does not take the target (target %d, %s)" % [target_of(seen4), str(e4)])
+	# The boss at rest (out of play) is not a target: the walker is.
+	var r5 := stage()
+	take(r5, ["A02"])
+	var boss := make_big(r5, Vector2(8, 0))
+	var w5 := make_walker(r5, Vector2(3, 3))
+	var w5b := make_walker(r5, Vector2(3, -3))
+	r5._rebuild_grid()
+	r5._shield_id = boss
+	r5._kit_shock(r5.enemies[boss], 10)
+	r5._kit_shock(r5.enemies[w5], 1)
+	r5._kit_shock(r5.enemies[w5b], 1)
+	var seen5 := steps(r5, 2)
+	var e5: Dictionary = r5.metrics.kit.overloads[0]
+	check(target_of(seen5) != boss and not bool(e5.target_big) and int(e5.big_in_reach) == 0, "overload22: the boss at rest is not a target (%s)" % str(e5))
+	# Several shocked big bodies: rod bearer, then more stacks, then more health, then the smaller id.
+	var orders := [
+		["rod beats stacks", {"rod": 0, "stacks": [2, 9, 3]}, 0],
+		["stacks beat health", {"stacks": [3, 9, 5], "hp": [100000, 1000, 100000]}, 1],
+		["health beats the id", {"stacks": [5, 5, 5], "hp": [90000, 100000, 80000]}, 1],
+		["the smaller id at a tie", {"stacks": [5, 5, 5]}, 0]]
+	for row in orders:
+		var r6 := stage()
+		take(r6, ["A02"])
+		var ids: Array = []
+		for i in 3: ids.append(make_big(r6, Vector2(5 + i * 2, -3 + i * 3)))
+		r6._rebuild_grid()
+		var setup: Dictionary = row[1]
+		for i in 3:
+			r6._kit_shock(r6.enemies[ids[i]], int(setup.stacks[i]))
+			if setup.has("hp"): r6.enemies[ids[i]].hp_raw = int(setup.hp[i]) * UNIT
+		if setup.has("rod"): plant_rod(r6, ids[int(setup.rod)])
+		var seen6 := steps(r6, 2)
+		check(target_of(seen6) == ids[int(row[2])], "overload22: several big bodies, %s: target %d, expected %d" % [row[0], target_of(seen6), ids[int(row[2])]])
+	# The key off by absence: the legacy document has no prefer_big and none of its record fields.
+	var old := stage(legacy_kit())
+	take(old, ["A02"])
+	var old_big := make_big(old, Vector2(8, 0))
+	old._rebuild_grid()
+	old._kit_shock(old.enemies[old_big], 10)
+	steps(old, 2)
+	var old_entry: Dictionary = old.metrics.kit.overloads[0]
+	check(not old_entry.has("target_big") and not old_entry.has("via") and not old_entry.has("big_in_reach"), "overload22: a document without the key has no new record fields (%s)" % str(old_entry))
+	# The validator: the key is a yes/no.
+	check(refused(on_kit(func(d): d.elements.arc.skills[OVERLOAD].prefer_big = 1)), "overload22: prefer_big must be true or false")
+	check(not refused(on_kit(func(d): d.elements.arc.skills[OVERLOAD].prefer_big = false)), "overload22: prefer_big false is accepted")
+
 func part_chain16() -> void:
 	# metrics.kit.rebounds counts the rebounds (only for a document with the new keys: the old one keeps its metrics).
 	var r := stage()
@@ -1194,6 +1307,7 @@ func switched_off_mutation(d: Dictionary) -> void:
 	d.elements.arc.chain.prefer_unshocked = false
 	d.elements.arc.skills[OVERLOAD].bolt_rule = "conductors"
 	d.elements.arc.skills[OVERLOAD].zone = "target"
+	d.elements.arc.skills[OVERLOAD].prefer_big = false
 
 func part_compat() -> void:
 	# The document as it was (no key of the 1st fix, the old values) is the old run: its snapshot at tick 12000 is the hash the golden case
@@ -1218,7 +1332,7 @@ func execute() -> void:
 	var only := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--part="): only = arg.trim_prefix("--part=")
-	for name in ["data", "off", "chain", "rod", "overload", "cards", "tree", "profile", "rest", "snapshot", "floor", "evolve_floor", "crisis", "overload16", "chain16", "compat"]:
+	for name in ["data", "off", "chain", "rod", "overload", "cards", "tree", "profile", "rest", "snapshot", "floor", "evolve_floor", "crisis", "overload16", "overload22", "chain16", "compat"]:
 		if only.is_empty() or only == name: call("part_" + name)
 	print("CHAPTER1_ELEMENT_KIT_RESULT ", JSON.stringify({"checks": checks, "failures": failures}))
 	quit(0 if failures.is_empty() else 1)

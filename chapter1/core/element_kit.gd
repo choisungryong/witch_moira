@@ -26,6 +26,8 @@ const CHAIN_KEYS := ["big_rehit","lone_rebounds","rebound_bps"]
 const CHAIN_OPTIONAL_KEYS := ["prefer_unshocked"]
 ## D-element-trees 16.5: text keys a burst skill may carry (its base, not its rank entries) and the words they take.
 const SKILL_WORD_KEYS := {"bolt_rule":["conductors","max"],"zone":["target","target_or_hero"]}
+## ET-D8: a burst skill's yes/no key (its base only).
+const SKILL_BOOL_KEYS := ["prefer_big"]
 const FLOOR_CRISES := ["survival","lag","big","crowd"]
 const PARAM_NAMES := ["shell","discharge","pop","bolt_heal","stride","death_chain"]
 const WEIGHT_KINDS := ["unlock","rank","variant","rune","evolve","survival"]
@@ -227,6 +229,9 @@ static func _element_issues(el: String, e: Variant, filler_ids: Array, gates: Di
 			if key == "role" or key == "ranks": continue
 			if s.role == "burst" and SKILL_WORD_KEYS.has(key):
 				if not s[key] is String or not s[key] in SKILL_WORD_KEYS[key]: issues.append(tag + "skill word " + str(id_) + "." + str(key))
+				continue
+			if s.role == "burst" and key in SKILL_BOOL_KEYS:
+				if not s[key] is bool: issues.append(tag + "skill flag " + str(id_) + "." + str(key))
 				continue
 			if not key in allowed or not _int(s[key],0,10000000): issues.append(tag + "skill key " + str(id_) + "." + str(key))
 		for entry in s.ranks:

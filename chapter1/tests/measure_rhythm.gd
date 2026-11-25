@@ -395,6 +395,9 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	kit_rng.seed = (seed_ * 2654435761) ^ (kit_seed * 7919 + 4421)
 	var kit_hands: Array = []
 	var kit_picks: Array = []
+	var kit_floor_list: Array = []
+	var kit_evolve_open: Array = []
+	var kit_floor_seen := {}
 	var sw := new_sweep(run)
 	var bins: Dictionary = {}
 	var beats: Dictionary = {}
@@ -442,6 +445,9 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			while run.mode == "choice" and g3 < 64:
 				g3 += 1
 				var kit_offer: Dictionary = run.get_offer()
+				# The hand is drawn here, outside a step: the floor's events sit in run.events only until the next step clears them.
+				if rc_on:
+					for fev in run.events: note_kit_floor(fev, kit_floor_list, kit_evolve_open, kit_floor_seen)
 				var hand: Array = kit_offer.cards
 				note_offer(run, offers, kit_offer)
 				var at := KitPolicies.pick(kit_policy, hand, String(prim).get_slice(".", 2), kit_rng, int(float(run.hero.hp_raw) * 10000.0 / maxf(1.0, float(run.hero.max_hp_raw))))
@@ -493,6 +499,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			var esec: float = float(ev.tick) / 60.0
 			sweep_event(sw, ev, run, prim)
 			if rc_on: rc_event(ev)
+			if rc_on and element_kit_on: note_kit_floor(ev, kit_floor_list, kit_evolve_open, kit_floor_seen)
 			if stand_from != "" or stand_on:
 				match String(ev.type):
 					"beat_started":
@@ -625,6 +632,9 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 	if element_kit_on:
 		result["element_kit"] = {"policy": kit_policy, "tree": kit_tree, "kit_seed": kit_seed, "view": run.kit_view(), "metrics": run.metrics.get("kit", {}).duplicate(true), "hands": kit_hands, "picks": kit_picks, "casts": run.metrics.casts.duplicate(true), "hits": run.metrics.hits.duplicate(true)}
 		if kit_doc_path != "": result.element_kit["doc"] = kit_doc_path
+		if rc_on:
+			result.element_kit["offer_floor"] = kit_floor_list
+			result.element_kit["evolve_floor_opened"] = kit_evolve_open
 	if hurt_on:
 		result["hurt"] = hurt_summary(hurt_log)
 		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}
@@ -820,6 +830,15 @@ func beat_cap(sw: Dictionary, id: String) -> Dictionary:
 	for st in sw.opening_steps:
 		if String(st.get("id", "")) == id: return {"name": OPENING_NAME, "cap": mini(int(st.get("alive_cap", sw.alive_cap)), int(sw.alive_cap)), "lull_ticks": 0}
 	return {}
+
+## ET-E: the floor's events (offer_floor, evolve_floor_opened) with their ticks; a seq already seen is skipped.
+func note_kit_floor(ev: Dictionary, floor_list: Array, opened: Array, seen: Dictionary) -> void:
+	var type := String(ev.type)
+	if type != "offer_floor" and type != "evolve_floor_opened": return
+	if seen.has(int(ev.seq)): return
+	seen[int(ev.seq)] = true
+	if type == "offer_floor": floor_list.append([int(ev.tick), int(ev.get("level", 0)), String(ev.get("crisis", "")), String(ev.get("replaced_id", "")), String(ev.get("card_id", ""))])
+	else: opened.append(int(ev.tick))
 
 ## One offer into the log (once per token). level = the growth level the offer is made at.
 func note_offer(run, offers: Array, offer: Dictionary) -> void:

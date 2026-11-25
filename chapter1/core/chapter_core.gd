@@ -3699,6 +3699,7 @@ func _kit_cast_overload() -> void:
 	var targets: Array[int]=[]
 	for id_ in _kit_rods:
 		if enemies.has(id_) and int(enemies[id_].hp_raw)>0:targets.append(id_)
+	var via := "rod" if not targets.is_empty() else "shocked_hp"
 	if targets.is_empty():
 		var best := -1;var best_hp := -1
 		for id_ in _near(hero.position,reach):
@@ -3706,6 +3707,36 @@ func _kit_cast_overload() -> void:
 			var hp := int(enemies[id_].hp_raw)
 			if hp>best_hp or (hp==best_hp and id_<best):best=id_;best_hp=hp
 		if best>=0:targets.append(best)
+	# D-element-trees 18 ET-D8: with a shocked big body (guardian, boss, elite; the boss at rest is not in _near) within reach of the hero,
+	# the target is that body, whichever body the rod stands on. Several: rod bearer, then more stacks, then more health, then the smaller id.
+	# The other rods stay targets only where they stand on a big body too. Without the key, or with no such body, the rule above stands.
+	var diag := s.has("prefer_big")
+	var big_in_reach := 0
+	var big_shocked := 0
+	if diag:
+		var pick := -1;var pick_rod := false;var pick_n := 0;var pick_hp := 0
+		for id_ in _near(hero.position,reach):
+			var b: Dictionary=enemies[id_]
+			if not b.elite:continue
+			big_in_reach+=1
+			var n_b := _kit_shock_n(b)
+			if n_b<=0:continue
+			big_shocked+=1
+			var rod_b := int(b.get("rod_until",0))>tick
+			var hp_b := int(b.hp_raw)
+			var better := pick<0
+			if not better:
+				if rod_b!=pick_rod:better=rod_b
+				elif n_b!=pick_n:better=n_b>pick_n
+				elif hp_b!=pick_hp:better=hp_b>pick_hp
+				else:better=int(id_)<pick
+			if better:pick=int(id_);pick_rod=rod_b;pick_n=n_b;pick_hp=hp_b
+		if pick>=0 and bool(s.prefer_big):
+			if not (not targets.is_empty() and targets[0]==pick):via="big"
+			var chosen: Array[int]=[pick]
+			for id_ in targets:
+				if id_!=pick and bool(enemies[id_].elite):chosen.append(id_)
+			targets=chosen
 	if targets.is_empty():return
 	var center: Vector2=enemies[targets[0]].position
 	var conductors: Array[int]=[]
@@ -3726,6 +3757,8 @@ func _kit_cast_overload() -> void:
 	var self_n := 0
 	var spent := 0
 	var first: Dictionary=enemies[targets[0]]
+	var target_stacks := _kit_shock_n(first)
+	var target_rod := int(first.get("rod_until",0))>tick
 	if String(s.get("bolt_rule","conductors"))=="max":
 		# 16.2: the bolts are the larger of the conductors' and the big body's own; only the stacks the own bolts used are spent.
 		var per := int(s.self_bolt_bps)+growth.kit_val("self_bolt_bps")
@@ -3775,6 +3808,7 @@ func _kit_cast_overload() -> void:
 	if logged.size()<600:
 		var entry := {"tick":tick,"bolts":count,"conductors":conductors.size(),"self":self_n>0,"big":bool(first.elite),"targets":targets.size()}
 		if _kit_v16:entry.merge({"topup":self_n,"spent":spent,"hero_dist_cm":int(hero.position.distance_to(first.position)*100.0),"near_hero":near_hero,"near_target":near_target})
+		if diag:entry.merge({"target_big":bool(first.elite),"target_rod":target_rod,"target_stacks":target_stacks,"via":via,"big_in_reach":big_in_reach,"big_shocked":big_shocked})
 		logged.append(entry)
 	for id_ in per:
 		var alive := enemies.has(id_) and int(enemies[id_].hp_raw)>0
