@@ -25,6 +25,8 @@ const Pilot = preload("res://chapter1/core/chapter_pilot.gd")
 const DescentPolicy = preload("res://chapter1/tests/descent_policy.gd")
 const TrialDocs = preload("res://chapter1/tests/support/trial_docs.gd")
 const GracePolicies = preload("res://chapter1/tests/support/grace_policies.gd")
+const KitDocs = preload("res://chapter1/tests/support/kit_docs.gd")
+const KitPolicies = preload("res://chapter1/tests/support/kit_policies.gd")
 
 ## D11 A2 targets [hypothesis]. from/to are the time boundaries used when the core has no beat_started event.
 ## The guardian windows in the A2 table overlap the neighbouring beats; they are folded into those beats here.
@@ -90,6 +92,13 @@ var stop_s := 0.0
 ## "off" counts the gauge but never calls. --spells-on: the in-run spell composition on in memory (the pilot picks its own cards).
 var descent_policy := ""
 var spells_on := false
+## ET-A (D-element-trees 8.2): --element-kit turns the element kit of the run's element on in memory (the files stay off); --kit-tree=none|all|A18,A16 which cards the
+## permanent tree opens (default all); --kit-policy=link|main|random how the pilot's card pick is replaced (default link); --kit-seed=N changes only the random policy's stream.
+## With none of them nothing here runs and the output is as before.
+var element_kit_on := false
+var kit_tree: Variant = "all"
+var kit_policy := "link"
+var kit_seed := 0
 ## --extras-on: the strong elites (D13 W4-a) and the guarded shrine / chest (W5-a) on in memory (the files stay off).
 ## --pilot-extras: this tool only (chapter_pilot.gd is untouched): the pilot's step is replaced by a walk to a freed shrine, or to a locked
 ## site within 20 m when the run is in a lull (or has no rhythm), or while its guard is already fighting; it stands still next to the guard.
@@ -178,6 +187,17 @@ func execute() -> void:
 				return
 			targets = BEATS_D22
 		elif arg == "--spells-on": spells_on = true
+		elif arg == "--element-kit": element_kit_on = true
+		elif arg.begins_with("--kit-tree="):
+			var tree_arg := arg.trim_prefix("--kit-tree=")
+			kit_tree = tree_arg if tree_arg in ["none", "all"] else Array(tree_arg.split(",", false))
+		elif arg.begins_with("--kit-policy="):
+			kit_policy = arg.trim_prefix("--kit-policy=")
+			if not KitPolicies.valid(kit_policy):
+				push_error("measure_rhythm: --kit-policy must be one of %s" % str(KitPolicies.ALL))
+				quit(1)
+				return
+		elif arg.begins_with("--kit-seed="): kit_seed = int(arg.trim_prefix("--kit-seed="))
 		elif arg == "--extras-on": extras_on = true
 		elif arg == "--pilot-extras": pilot_extras = true
 		elif arg.begins_with("--bin="): bin_s = maxf(5.0, float(arg.trim_prefix("--bin=")))
@@ -325,6 +345,11 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		if not spells_problem.is_empty():
 			push_error("measure_rhythm: " + spells_problem)
 			return {}
+	if element_kit_on:
+		var element_problem := KitDocs.enable_kit_problem(run, kit_tree, [String(prim).get_slice(".", 2)])
+		if not element_problem.is_empty():
+			push_error("measure_rhythm: " + element_problem)
+			return {}
 	if descent_policy != "":
 		if descent_copy.is_empty():
 			var descent_problem := TrialDocs.enable_descent_problem(run)
@@ -358,6 +383,10 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 			if JSON.stringify(b).contains("\"volley\""): volley_beats[String(b.get("id", ""))] = true
 	var policy_rng := RandomNumberGenerator.new()
 	policy_rng.seed = (seed_ * 2654435761) ^ (GracePolicies.ALL_POLICIES.find(policy_name) * 40503 + 977)
+	var kit_rng := RandomNumberGenerator.new()
+	kit_rng.seed = (seed_ * 2654435761) ^ (kit_seed * 7919 + 4421)
+	var kit_hands: Array = []
+	var kit_picks: Array = []
 	var sw := new_sweep(run)
 	var bins: Dictionary = {}
 	var beats: Dictionary = {}
@@ -398,6 +427,23 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				pilot.selections.append({"tick": run.tick, "id": chosen.id, "kind": chosen.kind})
 				if not run.choose(offer.token, chosen.id):
 					push_error("measure_rhythm: choice rejected %s" % str(run.errors))
+					return {}
+		if element_kit_on:
+			# ET-A: the kit's cards are picked by the tool's policy, while the core waits in "choice" (the pilot would take its own order).
+			var g3 := 0
+			while run.mode == "choice" and g3 < 64:
+				g3 += 1
+				var kit_offer: Dictionary = run.get_offer()
+				var hand: Array = kit_offer.cards
+				note_offer(run, offers, kit_offer)
+				var at := KitPolicies.pick(kit_policy, hand, String(prim).get_slice(".", 2), kit_rng)
+				var hand_ids: Array = []
+				for c in hand: hand_ids.append(String(c.id))
+				kit_hands.append([int(run.tick), hand_ids])
+				kit_picks.append([int(run.tick), String(hand[at].id)])
+				pilot.selections.append({"tick": run.tick, "id": hand[at].id, "kind": hand[at].kind})
+				if not run.choose(kit_offer.token, hand[at].id):
+					push_error("measure_rhythm: kit choice rejected %s" % str(run.errors))
 					return {}
 		if run.mode == "choice": note_offer(run, offers, run.get_offer())
 		var mv: Vector2 = pilot.decide()
@@ -568,6 +614,8 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 		"bins": bin_list, "beats": beat_list, "zones": zone_list, "sweep": finish_sweep(sw, secs, int(run.tick), prim),
 		"kit": cur_kit, "gear": gear_summary(run, dmg_raw_s), "end": defeat, "offers": offers.map(func(o): return [int(o.level), int(o.cards), int(o.kinds)])}
 	if rc_on: result["rc"] = rc_finish(pilot, secs)
+	if element_kit_on:
+		result["element_kit"] = {"policy": kit_policy, "tree": kit_tree, "kit_seed": kit_seed, "view": run.kit_view(), "metrics": run.metrics.get("kit", {}).duplicate(true), "hands": kit_hands, "picks": kit_picks, "casts": run.metrics.casts.duplicate(true), "hits": run.metrics.hits.duplicate(true)}
 	if hurt_on:
 		result["hurt"] = hurt_summary(hurt_log)
 		result["volley"] = {"placed": volley_placed, "fired": volley_shooters.size()}

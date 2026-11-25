@@ -35,9 +35,10 @@ var dump_out := ""
 ## [seed, primary] or [seed, primary, label, build fixture] or [seed, primary, label, build fixture, setup]. The fourth case is a fixed Lv 20
 ## lance build. The fifth is the D19 C1 path: rhythm + opening + spell composition + the first growth-pace values (setup "rhythm-c1"), the
 ## parked-off systems turned on in memory by TrialDocs (the data files stay off, so the four cases above keep their hashes). The sixth is the
-## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start(); the ninth (luck-on) turns the D23 T8 luck on in this run's loot tables and wears kit.golden.t8 (luck lines over the cap, grace_luck_4 on the head). The tenth (boss-finale) is the rhythm-c1 path with tuning.boss_finale switched on (D-boss-finale: the final boss's entrance, three phases and two breaks); the data file stays off, so the nine cases above keep their hashes.
+## D23 T1 path: the affix_rolls equipment roll on (setup "affix-on", this run's own loot tables; the data file stays off). The seventh (pity-armed) is the D23 T9 pity at its line; the eighth (gear-t17) wears tests/fixtures/golden_gear.json kit.golden.t17 (thorns body, streak boots) right after start(); the ninth (luck-on) turns the D23 T8 luck on in this run's loot tables and wears kit.golden.t8 (luck lines over the cap, grace_luck_4 on the head). The tenth (boss-finale) is the rhythm-c1 path with tuning.boss_finale switched on (D-boss-finale: the final boss's entrance, three phases and two breaks); the data file stays off, so the nine cases above keep their hashes. The eleventh (element-arc) is the rhythm path (no run_spells) with the arc's element kit and the whole permanent tree on (ET-A); its files stay off too.
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
-const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"],[11,"chapter1.skill.frost","luck-on","","luck-on"],[11,"chapter1.skill.ember","boss-finale","","boss-finale"]]
+const KitDocs := preload("res://chapter1/tests/support/kit_docs.gd")
+const CASES := [[11,"chapter1.skill.frost"],[11,"chapter1.skill.ember"],[11,"chapter1.skill.arc"],[11,"chapter1.skill.frost","L20-lance","res://chapter1/tests/fixtures/build_l20_lance.json"],[11,"chapter1.skill.ember","rhythm-c1","","rhythm-c1"],[11,"chapter1.skill.frost","affix-on","","affix-on"],[11,"chapter1.skill.frost","pity-armed","","pity-armed"],[11,"chapter1.skill.frost","gear-t17","","gear-t17"],[11,"chapter1.skill.frost","luck-on","","luck-on"],[11,"chapter1.skill.ember","boss-finale","","boss-finale"],[11,"chapter1.skill.arc","element-arc","","element-arc"]]
 const CHECKPOINT_TICKS := 600
 const MAX_TICKS := 12*60*60
 var probe: RefCounted = null
@@ -76,6 +77,11 @@ func play(core_path: String,seed_: int,primary: String,build_path: String="",obs
 		var finale_problem := TrialDocs.enable_boss_finale_problem(run)
 		if finale_problem.is_empty():finale_problem=TrialDocs.enable_spells_problem(run)
 		if not finale_problem.is_empty():return {"error":"setup rejected: "+finale_problem}
+	elif setup=="element-arc":
+		# The eleventh case: the rhythm-c1 path without run_spells (the kit and the composition never run together) with the arc's element kit
+		# on and the whole permanent tree open (ET-A, D-element-trees); the data files stay off, so the ten cases above keep their hashes.
+		var kit_problem := KitDocs.enable_kit_rhythm_problem(run)
+		if not kit_problem.is_empty():return {"error":"setup rejected: "+kit_problem}
 	elif setup=="affix-on":
 		var affix_problem := TrialDocs.enable_affix_rolls_problem(run)
 		if not affix_problem.is_empty():return {"error":"setup rejected: "+affix_problem}
