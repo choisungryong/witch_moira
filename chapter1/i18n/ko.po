@@ -1515,3 +1515,71 @@ msgstr "하나만 골라. 욕심은 오래 못 가."
 #. The frost demon's line when a jackpot card is offered
 msgid "grace.screen.giver.frost.jackpot"
 msgstr "맞춰 둔 자리에 들어갔어. 그거면 돼."
+
+#. First screen: the word-mark in the middle, then small at the top left
+msgid "title.logo"
+msgstr "Witch Moira"
+
+#. First screen: the main button under the witch's text
+msgid "title.start"
+msgstr "시작"
+
+#. First screen: level word before the number (Lv 8)
+msgid "title.level"
+msgstr "Lv"
+
+#. First screen: round knob that opens the skill tree (the badge is the free points)
+msgid "title.tree"
+msgstr "스킬 트리"
+
+#. First screen: round knob that opens the gear stash. {n}: items in the stash
+msgid "title.stash"
+msgstr "장비 {n}"
+
+#. First screen: top-left word, the save is on
+msgid "title.save.on"
+msgstr "저장됨"
+
+#. First screen: top-left word, the save is off (this session)
+msgid "title.save.off"
+msgstr "저장 꺼짐"
+
+#. First screen: top-left word, a verification run
+msgid "title.save.verify"
+msgstr "검증 실행"
+
+#. First screen: the one key line at the bottom of the text block (parts are split by ' · ', the first word of a part is the key)
+msgid "title.keys"
+msgstr "Q/E 소서리스 · Enter 시작 · Esc 메뉴"
+
+#. First screen: the small menu button at the top right (same as Esc)
+msgid "title.menu_button"
+msgstr "메뉴"
+
+#. First screen: the brass pill on the parchment that names the witch's first skill
+msgid "title.first_skill"
+msgstr "첫 기술"
+
+#. First screen: the ember witch's first-person line
+msgid "title.witch.ember.line"
+msgstr "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게."
+
+#. First screen: the ember witch's first skill in one line
+msgid "title.witch.ember.summary"
+msgstr "몰려든 것을 한꺼번에 태운다"
+
+#. First screen: the frost witch's first-person line
+msgid "title.witch.frost.line"
+msgstr "먼저 발을 묶어. 깨는 건 그다음이야."
+
+#. First screen: the frost witch's first skill in one line
+msgid "title.witch.frost.summary"
+msgstr "묶어 두고 깬다"
+
+#. First screen: the arc witch's first-person line
+msgid "title.witch.arc.line"
+msgstr "빠른 게 좋아. 기다리는 건 싫고."
+
+#. First screen: the arc witch's first skill in one line
+msgid "title.witch.arc.summary"
+msgstr "빠르게, 옆으로 번진다"

@@ -1,0 +1,77 @@
+{
+ "screen": "title",
+ "contract_version": 1,
+ "focus_index": 1,
+ "save": "on",
+ "note": "저장 완료 · 장비 12개 · 오리칼쿰 31",
+ "stash_count": 256,
+ "motion_on": true,
+ "witches": [
+  {
+   "id": "ember",
+   "element": "ember",
+   "start_ref": "chapter1.skill.ember",
+   "character_ref": "chapter1.character.ember",
+   "title": "테사 · 화염 소서리스",
+   "skill_name": "파이어볼",
+   "skill_summary": "몰려든 것을 한꺼번에 태운다",
+   "line": "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게.",
+   "traits": [
+    "범위",
+    "폭발",
+    "중거리"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.4,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  },
+  {
+   "id": "frost",
+   "element": "frost",
+   "start_ref": "chapter1.skill.frost",
+   "character_ref": "chapter1.character.frost",
+   "title": "아일린 · 냉기 소서리스",
+   "skill_name": "아이스 스피어",
+   "skill_summary": "묶어 두고 깬다",
+   "line": "먼저 발을 묶어. 깨는 건 그다음이야.",
+   "traits": [
+    "관통",
+    "둔화",
+    "거리"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.4,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  },
+  {
+   "id": "storm",
+   "element": "arc",
+   "start_ref": "chapter1.skill.arc",
+   "character_ref": "chapter1.character.arc",
+   "title": "베로니카 · 번개 소서리스",
+   "skill_name": "체인 라이트닝",
+   "skill_summary": "빠르게, 옆으로 번진다",
+   "line": "빠른 게 좋아. 기다리는 건 싫고.",
+   "traits": [
+    "연쇄",
+    "속사",
+    "번짐"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.4,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  }
+ ]
+}

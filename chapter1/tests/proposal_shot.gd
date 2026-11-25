@@ -11,7 +11,9 @@ extends SceneTree
 ##   --strip           also (instead of the still) shoot the intro -> focus move -> confirm as a contact sheet, one frame per 0.1 s
 ##   --input-test      press keys on the screen (synthetic key events) and print what was accepted
 ##   --reduce-motion   play the intro the reduced way (one 0.12 s fade)
-##   --fixture-prefix=<p>  fixture files are <p>.<name>.json (default: the screen name; the title proposals use title_v0)
+##   --fixture-prefix=<p>  fixture files are <p>.<name>.json (default: the screen name)
+##   --screen=<id>     instead of --proposal: shoot the PRODUCT screen chapter1/view/hud/screens/<id>.gd (its static make(contract)) on the contract fixtures
+##                     chapter1/tests/fixtures/contracts/<id>.<variant>.json (T8 6; the title screen is the first user)
 ##   --stage=select|title  (screens with a title state: which state the still shows; default select)
 ##   --strip-kind=intro|focus|confirm|title|reduced  one contact sheet of that move at --strip-step engine frames (3 = 0.05 s, 6 = 0.1 s)
 ## Output: <shots>/<fixture>.<W>x<H>.png and .json (scene_shot's dump format, for tools/dev/hud_layout_check.py), strip sheets
@@ -19,11 +21,15 @@ extends SceneTree
 const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
 const LayoutDump = preload("res://chapter1/tests/layout_dump.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
+const CONTRACT_FIXTURE_DIR := "res://chapter1/tests/fixtures/contracts/"
+const SCREEN_DIR := "res://chapter1/view/hud/screens/"
 const STRIP_COLS := 8
 const STRIP_W := 400
 const STRIP_H := 225
 
 var proposal := ""
+var screen_id := ""
+var fixture_dir := FIXTURE_DIR
 var screen := ""
 var shots := ""
 var fixtures: Array[String] = []
@@ -42,6 +48,7 @@ func _initialize() -> void:
 	var wanted := "all"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--proposal="): proposal = arg.trim_prefix("--proposal=")
+		elif arg.begins_with("--screen="): screen_id = arg.trim_prefix("--screen=")
 		elif arg.begins_with("--fixtures="): wanted = arg.trim_prefix("--fixtures=")
 		elif arg.begins_with("--shots="): shots = arg.trim_prefix("--shots=")
 		elif arg == "--strip": strip = true
@@ -63,16 +70,22 @@ func _initialize() -> void:
 func _check(wanted: String) -> String:
 	if not "--chapter1-profile-off" in OS.get_cmdline_user_args(): return "--chapter1-profile-off is required"
 	if DisplayServer.get_name() == "headless": return "needs a real renderer: run without --headless"
-	if proposal.is_empty() or not "/" in proposal: return "--proposal=<screen>/<name> is required"
-	screen = proposal.get_slice("/", 0)
+	if not screen_id.is_empty():
+		proposal = "screen/" + screen_id
+		screen = screen_id
+		fixture_dir = CONTRACT_FIXTURE_DIR
+		if not FileAccess.file_exists(SCREEN_DIR + screen_id + ".gd"): return "no such screen: " + screen_id
+	else:
+		if proposal.is_empty() or not "/" in proposal: return "--proposal=<screen>/<name> or --screen=<id> is required"
+		screen = proposal.get_slice("/", 0)
+		if not FileAccess.file_exists("res://chapter1/tests/proposals/%s.gd" % proposal): return "no such proposal: " + proposal
 	if prefix.is_empty(): prefix = screen
-	if not FileAccess.file_exists("res://chapter1/tests/proposals/%s.gd" % proposal): return "no such proposal: " + proposal
 	if shots.is_empty(): return "--shots=<dir under _local/shots> is required"
 	var folder := shots if shots.begins_with("res://") or shots.is_absolute_path() else "res://" + shots
 	if not ("/_local/shots/" in ProjectSettings.globalize_path(folder).replace("\\", "/") + "/"): return "--shots must be under _local/shots/"
 	shots = folder
 	if wanted == "all":
-		for f in DirAccess.get_files_at(FIXTURE_DIR):
+		for f in DirAccess.get_files_at(fixture_dir):
 			if f.begins_with(prefix + ".") and f.ends_with(".json"): fixtures.append(f.trim_prefix(prefix + ".").trim_suffix(".json"))
 		fixtures.sort()
 	else:
@@ -85,18 +98,19 @@ func _frames(n: int) -> void:
 
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(shots)
-	var script: GDScript = load("res://chapter1/tests/proposals/%s.gd" % proposal)
+	var script: GDScript = load(SCREEN_DIR + screen_id + ".gd") if not screen_id.is_empty() else load("res://chapter1/tests/proposals/%s.gd" % proposal)
 	for name_ in fixtures:
-		var contract := Kit.read_json("%s%s.%s.json" % [FIXTURE_DIR, prefix, name_])
+		var contract := Kit.read_json("%s%s.%s.json" % [fixture_dir, prefix, name_])
 		if contract.is_empty():
 			failures.append("fixture %s unreadable" % name_)
 			continue
 		var node: Control = script.make(contract)
-		node.reduce_motion = reduce
+		if reduce: node.reduce_motion = true
 		if "capture_mode" in node: node.capture_mode = true
 		root.add_child(node)
 		await _frames(3)
-		if input_test: await _input_test(node, name_)
+		if input_test and not screen_id.is_empty(): await _input_test_screen(node, name_)
+		elif input_test: await _input_test(node, name_)
 		elif strip_kind != "": await _strip_kind(node, name_)
 		elif strip: await _strip(node, name_)
 		else: await _still(node, name_, contract)
@@ -261,4 +275,66 @@ func _input_test(node: Control, name_: String) -> void:
 	node._unhandled_key_input(_key(KEY_ENTER))
 	log_.append({"at": "Enter", "state": node.state, "events": node.events.map(func(e): return e.e)})
 	await _frames(60)
+	print("PROPOSAL_SHOT_INPUT ", JSON.stringify({"proposal": proposal, "fixture": name_, "steps": log_}))
+
+## The product screen's input rules by synthetic events (keys straight into the node, signals recorded): intro skip, the lock, Space, the focus keys, the Tab chain,
+## Esc -> menu, Enter on the tree and stash, the start (and a second key during the beat), and the way back after a refused start (show_settled).
+func _input_test_screen(node: Control, name_: String) -> void:
+	var log_: Array = []
+	var seen := {"start": [], "witch_focused": [], "stash": 0, "skill_tree": [], "menu": 0}
+	node.start.connect(func(r): seen.start.append(r))
+	node.witch_focused.connect(func(i): seen.witch_focused.append(i))
+	node.stash.connect(func(): seen.stash += 1)
+	node.skill_tree.connect(func(r): seen.skill_tree.append(r))
+	node.menu.connect(func(): seen.menu += 1)
+	var rejected := func() -> bool: return node.events.any(func(e): return e.e == "pick_rejected")
+	node.play_intro()
+	await _frames(4)
+	node._unhandled_key_input(_key(KEY_2))
+	log_.append({"at": "during the intro, key 2", "skipped": node.events.any(func(e): return e.e == "intro_skipped"), "focus": node.focus_index})
+	await _frames(12)
+	node._unhandled_key_input(_key(KEY_ENTER))
+	log_.append({"at": "0.2 s after the skip, Enter (lock 0.25 s)", "state": node.state, "rejected": rejected.call()})
+	await _frames(24)
+	node._unhandled_key_input(_key(KEY_SPACE))
+	log_.append({"at": "Space after the lock", "state": node.state})
+	var f0: int = node.focus_index
+	node._unhandled_key_input(_key(KEY_RIGHT))
+	var f1: int = node.focus_index
+	node._unhandled_key_input(_key(KEY_Q))
+	log_.append({"at": "Right, then Q", "from": f0, "after_right": f1, "after_q": node.focus_index, "signals": seen.witch_focused.duplicate()})
+	await _frames(30)
+	node._unhandled_key_input(_key(KEY_TAB))
+	var u1: int = node.ui_focus
+	node._unhandled_key_input(_key(KEY_TAB))
+	var u2: int = node.ui_focus
+	node._unhandled_key_input(_key(KEY_TAB))
+	log_.append({"at": "Tab x3 (start -> tree -> stash -> start)", "after_1": u1, "after_2": u2, "after_3": node.ui_focus})
+	node._unhandled_key_input(_key(KEY_DOWN))
+	node._unhandled_key_input(_key(KEY_ENTER))
+	log_.append({"at": "Down, Enter (the tree)", "skill_tree": seen.skill_tree.duplicate()})
+	node._unhandled_key_input(_key(KEY_DOWN))
+	node._unhandled_key_input(_key(KEY_ENTER))
+	log_.append({"at": "Down, Enter (the stash)", "stash": seen.stash})
+	node._unhandled_key_input(_key(KEY_ESCAPE))
+	log_.append({"at": "Esc", "menu": seen.menu, "state": node.state})
+	node.set_interactive(false)
+	node._unhandled_key_input(_key(KEY_RIGHT))
+	log_.append({"at": "not interactive, Right", "focus": node.focus_index})
+	node.set_interactive(true)
+	node.ui_focus = 0
+	node._unhandled_key_input(_key(KEY_ENTER))
+	log_.append({"at": "Enter on start", "state": node.state})
+	await _frames(20)
+	node._unhandled_key_input(_key(KEY_ENTER))
+	log_.append({"at": "a second key in the beat", "skipped": node.events.any(func(e): return e.e == "confirm_skipped")})
+	var guard := 0
+	while node.state == "confirm" and guard < 120:
+		await _frames(1)
+		guard += 1
+	await _frames(3)
+	log_.append({"at": "after the beat", "state": node.state, "start": seen.start.duplicate()})
+	node.show_settled()
+	await _frames(20)
+	log_.append({"at": "show_settled (the app refused)", "state": node.state, "settled": node.is_settled()})
 	print("PROPOSAL_SHOT_INPUT ", JSON.stringify({"proposal": proposal, "fixture": name_, "steps": log_}))

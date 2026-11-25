@@ -1,16 +1,14 @@
 extends RefCounted
-## The shared dress of the two first-screen proposals (A10 W3): the parts of the grace screen's hand (leather band, brass plaque, candles,
-## parchment note) put around ONE witch. Both proposals call build_block(); only the stage around it differs (a: three doors, c: one stage).
-## Sizes are code units (1600 x 900); text uses the seven roles of UiStyle.text(); colours are Palette tokens only. Tests only, no core access.
-## NEW ART NEEDED (falls back to the leather strip pieces of the HUD atlas, which the grace screen already uses): the button faces ui.kit.button.primary
-## / secondary (K2); the three knob pictures for tree / stash / costume (the grace knob art draws reroll / exclude / keep, so these knobs are code).
-
-const Parts = preload("res://chapter1/tests/proposals/title/parts.gd")
+## The text block of one witch on the first screen (screens/title.gd): the parts of the grace screen's hand (leather band, brass plaque, candles,
+## parchment note) put around ONE witch. Moved from the proposal dress (git HEAD~ tests/proposals/title/dress.gd) into the product.
+## Sizes are code units (1600 x 900); text uses the seven roles of UiStyle.text(); colours are Palette tokens only; every fixed word is a Loc key (title.*).
+## Reads the contract dictionary the screen holds and nothing else; it decides nothing.
+## Not here on purpose: the costume knob (there is no costume screen; the contract has no field for it).
+const Parts = preload("res://chapter1/view/hud/title_parts.gd")
 const UiParts = preload("res://chapter1/view/hud/ui_parts.gd")
 const UiStyle = preload("res://chapter1/view/hud/ui_style.gd")
 const Palette = preload("res://chapter1/view/hud/palette.gd")
-const Motion = preload("res://chapter1/view/hud/ui_motion.gd")
-const Kit = preload("res://chapter1/tests/proposals/growth_choice/kit.gd")
+const Kit = preload("res://chapter1/view/hud/grace_draw.gd")
 const Loc = preload("res://chapter1/view/loc.gd")
 
 const KNOB_W := 118.0
@@ -74,19 +72,19 @@ class LeatherButton extends Control:
 
 ## Leather strip with the level, the bar to the next level and the free skill points (diamond + number).
 class LevelBand extends Control:
-	func setup(w: float, h: float, ui: Dictionary, growth: Dictionary, accent: Color) -> void:
+	func setup(w: float, h: float, level_word: String, lvl: Dictionary, accent: Color) -> void:
 		size = Vector2(w, h)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		UiParts.layer(self, func(c: Control): UiParts.Band.paint(c, w, h))
 		var t := UiStyle.text("t4", "number")
 		var inset := h * 1.55
-		var ltxt := "%s %d" % [String(ui.get("level", "Lv")), int(growth.level)]
+		var ltxt := "%s %d" % [level_word, int(lvl.value)]
 		var lw: float = Loc.font("number").get_string_size(ltxt, HORIZONTAL_ALIGNMENT_LEFT, -1, int(t.size)).x
 		var lh := Kit.line_height(int(t.size), "number")
 		Kit.lbl(self, ltxt, Vector2(inset, (h - lh) * 0.5 - 1.0), ceilf(lw) + 2.0, int(t.size), Palette.INK, "number", HORIZONTAL_ALIGNMENT_LEFT, false)
 		var right := w - inset
-		var pts := int(growth.points_free)
+		var pts := int(lvl.points)
 		if pts > 0:
 			var tag := Parts.PointsTag.new()
 			tag.setup(pts, Palette.GROWTH, int(t.size))
@@ -95,20 +93,22 @@ class LevelBand extends Control:
 			right -= tag.size.x + 10.0
 		var bx := inset + lw + 14.0
 		var bw := maxf(right - bx, 30.0)
-		var span := maxf(float(growth.xp_for_next) - float(growth.xp_level_start), 1.0)
-		var frac := clampf((float(growth.xp) - float(growth.xp_level_start)) / span, 0.0, 1.0)
+		var frac := 1.0 if bool(lvl.capped) else clampf(float(lvl.bar), 0.0, 1.0)
 		var by := h * 0.5 - 3.0 - 1.0
 		Parts.rect_node(self, Rect2(bx, by, bw, 6.0), Color(1, 1, 1, 0.16))
 		Parts.rect_node(self, Rect2(bx, by, bw * frac, 6.0), accent)
 
-# ---------------------------------------------------------------- the round side buttons (tree, stash, costume)
+# ---------------------------------------------------------------- the round side buttons (tree, stash)
 
-## Same make as the grace screen's Knob (brass ring slot_normal, dark disc, count on a level_badge, word under it), with its own three glyphs.
-## The glyph is the shape that tells the three apart (a branching tree, a chest, a hanger), the count is the number on the badge.
+## Same make as the grace screen's Knob (brass ring slot_normal, dark disc, count on a level_badge, word under it), with its own glyphs.
+## The glyph is the shape that tells the two apart (a branching tree, a chest); the number on the badge is the count (the tree's free points).
+## `enabled` false = the dim form (no tree to open yet): no pointer, no press.
 class TitleKnob extends Control:
 	signal pressed(id: String)
 	var id := ""
 	var glyph := "tree"
+	var enabled := true
+	var badge := ""
 	var disc := Vector2(KNOB_W * 0.5, 46.0)
 	var hot := 0.0:
 		set(v):
@@ -119,14 +119,20 @@ class TitleKnob extends Control:
 	func build(spec: Dictionary) -> void:
 		id = String(spec.id)
 		glyph = String(spec.glyph)
+		enabled = bool(spec.get("enabled", true))
+		badge = String(spec.get("count", ""))
 		size = Vector2(KNOB_W, KNOB_H)
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if enabled else Control.CURSOR_ARROW
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		var cnt := Kit.lbl(self, String(spec.get("count", "")), disc + Vector2(32.0, -30.0) - Vector2(16.0, 12.0), 32.0, 18, Palette.INK, "number", HORIZONTAL_ALIGNMENT_CENTER, false, true)
-		cnt.name = "Count"
-		var wl := Kit.lbl(self, String(spec.get("label", "")), Vector2(0.0, 94.0), size.x, 15, Palette.INK, "bold", HORIZONTAL_ALIGNMENT_CENTER, false, true)
+		if badge != "":
+			var cnt := Kit.lbl(self, badge, disc + Vector2(32.0, -30.0) - Vector2(16.0, 12.0), 32.0, 18, Palette.INK, "number", HORIZONTAL_ALIGNMENT_CENTER, false, true)
+			cnt.name = "Count"
+		var wl := Kit.lbl(self, String(spec.get("label", "")), Vector2(0.0, 94.0), size.x, 15, Palette.INK if enabled else Palette.INK_DIM, "bold", HORIZONTAL_ALIGNMENT_CENTER, false, true)
 		wl.name = "Label"
+		if not enabled:
+			modulate = Color(1, 1, 1, 0.5)
+			return
 		gui_input.connect(func(e):
 			if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
 				down = e.pressed
@@ -145,7 +151,8 @@ class TitleKnob extends Control:
 		_glyph(dc, 21.0)
 		if hot > 0.0:
 			draw_arc(dc, 44.0, 0, TAU, 40, Color(Palette.BRASS_HI.r, Palette.BRASS_HI.g, Palette.BRASS_HI.b, 0.9 * hot), 3.0, true)
-		UiStyle.blit_centered(self, "level_badge", disc + Vector2(32.0, -30.0), 1.2)
+		if badge != "":
+			UiStyle.blit_centered(self, "level_badge", disc + Vector2(32.0, -30.0), 1.2)
 
 	func _glyph(ctr: Vector2, r: float) -> void:
 		var col := Palette.BRASS_HI
@@ -157,17 +164,11 @@ class TitleKnob extends Control:
 				for p in [Vector2(0, -r * 0.4), Vector2(-r * 0.8, -r * 0.6), Vector2(r * 0.8, -r * 0.6)]:
 					draw_circle(ctr + (p as Vector2), 4.2, col)
 					draw_circle(ctr + (p as Vector2), 2.0, Palette.SURFACE)
-			"chest":
+			_:
 				draw_rect(Rect2(ctr + Vector2(-r * 0.85, -r * 0.05), Vector2(r * 1.7, r * 0.85)), col)
 				draw_arc(ctr + Vector2(0, -r * 0.05), r * 0.85, PI, TAU, 18, col, 3.0, true)
 				draw_line(ctr + Vector2(-r * 0.85, -r * 0.05), ctr + Vector2(r * 0.85, -r * 0.05), Palette.SURFACE, 1.6)
 				draw_rect(Rect2(ctr + Vector2(-r * 0.16, -r * 0.18), Vector2(r * 0.32, r * 0.42)), Palette.SURFACE)
-			_:
-				draw_arc(ctr + Vector2(0, -r * 0.55), r * 0.26, PI * 0.1, PI * 1.65, 12, col, 3.0, true)
-				draw_line(ctr + Vector2(0, -r * 0.28), ctr + Vector2(0, -r * 0.02), col, 3.0, true)
-				draw_line(ctr + Vector2(0, -r * 0.02), ctr + Vector2(-r * 0.95, r * 0.75), col, 3.0, true)
-				draw_line(ctr + Vector2(0, -r * 0.02), ctr + Vector2(r * 0.95, r * 0.75), col, 3.0, true)
-				draw_line(ctr + Vector2(-r * 0.95, r * 0.75), ctr + Vector2(r * 0.95, r * 0.75), col, 3.0, true)
 
 # ---------------------------------------------------------------- the key line (the only place the controls are written)
 
@@ -220,18 +221,30 @@ class Tab extends Control:
 		var f: Font = Loc.font("bold")
 		draw_string(f, Vector2(0, size.y * 0.5 + 5.0), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 14, Palette.INK)
 
+## "Q/E 소서리스 · Enter 시작 · Esc 메뉴" -> [["Q/E", "소서리스"], ["Enter", "시작"], ["Esc", "메뉴"]]: the first word of each part is the key, the rest its word.
+static func key_segments(line: String) -> Array:
+	var out: Array = []
+	for part in line.split(" · ", false):
+		var cut := part.find(" ")
+		if cut < 0:
+			out.append([part, ""])
+		else:
+			out.append([part.substr(0, cut), part.substr(cut + 1)])
+	return out
+
 # ---------------------------------------------------------------- the block of one witch
 
-## spec: width (the column, code units), plaque (the brass plate's width), note_h, hint (bool). Returns the same dictionary the harness
-## expects: {root, start, tree, stash, costume, height}. The order, top to bottom: plaque with a candle each side (the witch is the subject),
-## her line, the parchment of her first skill (it hangs on her), level band, the start button, the round buttons, the key line.
-static func build_block(i: int, w: Dictionary, ui: Dictionary, profile: Dictionary, spec: Dictionary) -> Dictionary:
+## c: the contract (witches[], save, stash_count). w: this witch. spec: width (the column, code units), plaque (the brass plate's width), note_h, hint (bool).
+## Returns {root, start, tree, stash, tree_on, height}. The order, top to bottom: plaque with a candle each side (the witch is the subject), her line,
+## the parchment of her first skill (it hangs on her), level band, the start button, the round buttons, the key line.
+## No level (a verification run, or no save): no level band, no tree knob. No stash count: no stash knob. No traits: the parchment is shorter, no empty line.
+static func build_block(i: int, w: Dictionary, c: Dictionary, spec: Dictionary) -> Dictionary:
 	var width: float = float(spec.width)
 	var root := Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var el := String(w.element)
 	var accent: Color = Parts.el_color(i)
-	var out := {"root": root, "start": null, "tree": null, "stash": null, "costume": null}
+	var out := {"root": root, "start": null, "tree": null, "stash": null, "tree_on": false}
 	var y := 0.0
 	# 1. plaque + two candles (the flame takes the witch's colour)
 	var pw: float = float(spec.plaque)
@@ -244,20 +257,21 @@ static func build_block(i: int, w: Dictionary, ui: Dictionary, profile: Dictiona
 		cd.position = Vector2(cx, 22.0 + plaque.size.y - cd.size.y + 6.0)
 	y = 22.0 + plaque.size.y + 12.0
 	# 2. her line
-	var line := String(w.get("line", ""))
-	if line.strip_edges() == "":
-		line = String(ui.get("line_pending", ""))
 	var t4 := UiStyle.text("t4")
-	var ll := Kit.lbl(root, line, Vector2(0, y), width, int(t4.size), Palette.INK, "body", HORIZONTAL_ALIGNMENT_CENTER, true, true)
+	var ll := Kit.lbl(root, String(w.get("line", "")), Vector2(0, y), width, int(t4.size), Palette.INK, "body", HORIZONTAL_ALIGNMENT_CENTER, true, true)
 	ll.name = "Line"
 	y += ll.size.y + 14.0
 	# 3. the parchment of her first skill
-	var nh: float = float(spec.note_h)
+	var traits: Array = w.get("traits", [])
+	var nh: float = float(spec.note_h) if traits.size() > 0 else float(spec.note_h) - 32.0
 	var note := UiParts.note(root, Rect2(0, y, width, nh), {"strings": {}})
 	note.name = "SkillNote"
-	note.show_card({"element": el, "name": String(w.skill_name), "headline": String(w.skill_summary), "details": [" · ".join(PackedStringArray(w.traits))]})
+	var details: Array = []
+	if traits.size() > 0:
+		details.append(" · ".join(PackedStringArray(traits)))
+	note.show_card({"element": el, "name": String(w.skill_name), "headline": String(w.skill_summary), "details": details})
 	var tab := Tab.new()
-	tab.setup(String(ui.get("first_skill", "첫 기술")))
+	tab.setup(Loc.t("title.first_skill"))
 	tab.position = Vector2(width * 0.098 + 4.0, -11.0)
 	note.add_child(tab)
 	var icon := Parts.SkillIcon.new()
@@ -265,31 +279,30 @@ static func build_block(i: int, w: Dictionary, ui: Dictionary, profile: Dictiona
 	icon.position = Vector2(width - width * 0.098 - 52.0, nh * 0.11 + 2.0)
 	note.add_child(icon)
 	y += nh + 10.0
-	# 4. level band, 5. start, 6. round buttons (only with a profile)
-	var growth: Variant = w.get("growth", null)
-	var profile_on := bool(profile.get("enabled", true))
-	if growth is Dictionary and profile_on:
+	# 4. level band, 5. start, 6. round buttons
+	var lvl: Variant = w.get("level", null)
+	if lvl is Dictionary:
 		var lb := LevelBand.new()
 		lb.name = "LevelBand"
-		lb.setup(width, 38.0, ui, growth, accent)
+		lb.setup(width, 38.0, Loc.t("title.level"), lvl, accent)
 		lb.position = Vector2(0, y)
 		root.add_child(lb)
 		y += 38.0 + 10.0
 	var button := LeatherButton.new()
 	button.name = "Start"
-	button.setup(String(ui.get("start", "")), Vector2(width, 54.0), accent)
+	button.setup(Loc.t("title.start"), Vector2(width, 54.0), accent)
 	button.position = Vector2(0, y)
 	root.add_child(button)
 	out["start"] = button
 	y += 54.0 + 10.0
-	if profile_on:
-		var specs: Array = []
-		if growth is Dictionary:
-			specs.append({"id": "tree", "glyph": "tree", "label": String(ui.get("tree", "")), "count": str(int(growth.points_free)), "slot": "tree"})
-		specs.append({"id": "stash", "glyph": "chest", "label": String(ui.get("stash", "장비")), "count": str(int(profile.get("stash_count", 0))), "slot": "stash"})
-		var costume: Variant = w.get("costume", null)
-		if costume is Dictionary:
-			specs.append({"id": "costume", "glyph": "hanger", "label": String(ui.get("costume", "의상")), "count": str(int(costume.owned)), "slot": "costume"})
+	var specs: Array = []
+	if lvl is Dictionary:
+		var pts := int(lvl.points)
+		specs.append({"id": "tree", "glyph": "tree", "label": Loc.t("title.tree"), "count": str(pts) if pts > 0 else "", "slot": "tree", "enabled": bool(lvl.has_tree)})
+	var stash_n: Variant = c.get("stash_count", null)
+	if stash_n != null:
+		specs.append({"id": "stash", "glyph": "chest", "label": Loc.t("title.stash", {"n": int(stash_n)}), "count": "", "slot": "stash", "enabled": true})
+	if not specs.is_empty():
 		var gap := minf(28.0, (width - KNOB_W * float(specs.size())) / maxf(float(specs.size() - 1), 1.0))
 		var row_w := KNOB_W * float(specs.size()) + gap * float(specs.size() - 1)
 		var x := (width - row_w) * 0.5
@@ -299,13 +312,15 @@ static func build_block(i: int, w: Dictionary, ui: Dictionary, profile: Dictiona
 			k.position = Vector2(x, y)
 			root.add_child(k)
 			out[String(sp.slot)] = k
+			if String(sp.slot) == "tree":
+				out["tree_on"] = bool(sp.enabled)
 			x += KNOB_W + gap
 		y += KNOB_H + 6.0
 	# 7. the key line (the only one on the screen)
 	if bool(spec.get("hint", true)):
 		var hr := HintRow.new()
 		hr.name = "Keys"
-		hr.setup([["Q/E", String(ui.get("hint_witch", "소서리스"))], ["Enter", String(ui.get("hint_start", "시작"))], ["Esc", String(ui.get("hint_menu", "메뉴"))]], width)
+		hr.setup(key_segments(Loc.t("title.keys")), width)
 		hr.position = Vector2(0, y)
 		root.add_child(hr)
 		y += hr.size.y
