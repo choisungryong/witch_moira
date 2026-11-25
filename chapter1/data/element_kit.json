@@ -31,7 +31,53 @@
     "filler": [
       "X01",
       "X02"
-    ]
+    ],
+    "floor": {
+      "enabled": true,
+      "max_replace": 1,
+      "order": [
+        "survival",
+        "lag",
+        "big",
+        "crowd"
+      ],
+      "survival": {
+        "hp_bps": 3500
+      },
+      "lag": {
+        "path_by_picks": [
+          [
+            3,
+            1
+          ],
+          [
+            6,
+            2
+          ],
+          [
+            9,
+            4
+          ]
+        ]
+      },
+      "big": {
+        "within_ticks": 600
+      },
+      "crowd": {
+        "alive_bps": 6000,
+        "crest_ticks": 900
+      }
+    },
+    "evolve_floor": {
+      "enabled": true,
+      "after": {
+        "event": "wave_crest",
+        "beat": "seung2",
+        "n": 1
+      },
+      "fallback_after_picks": 10
+    },
+    "spine_share": true
   },
   "fillers": {
     "X01": {
@@ -73,7 +119,8 @@
       "chain": {
         "big_rehit": 2,
         "lone_rebounds": 1,
-        "rebound_bps": 6000
+        "rebound_bps": 6000,
+        "prefer_unshocked": true
       },
       "skills": {
         "chapter1.skill.arc_rod": {
@@ -94,10 +141,12 @@
           "role": "burst",
           "cooldown_ticks": 180,
           "reach_cm": 1000,
-          "bolt_raw": 25600,
+          "bolt_raw": 21800,
           "max_bolts": 12,
-          "self_bolt_bps": 8000,
+          "self_bolt_bps": 7000,
           "bolt_bps": 10000,
+          "bolt_rule": "max",
+          "zone": "target_or_hero",
           "ranks": [
             {},
             {
@@ -466,7 +515,7 @@
           ],
           "change": {
             "vals": {
-              "self_bolt_bps": 4000
+              "self_bolt_bps": 1000
             }
           },
           "answers": [

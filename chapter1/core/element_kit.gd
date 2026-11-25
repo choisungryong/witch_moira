@@ -23,6 +23,10 @@ const SKILL_KEYS := {"lay":["cooldown_ticks","damage_raw","rod_ticks","keep_radi
 const STATUS_KEYS := ["id","max","max_big","expire_ticks"]
 const ROD_KEYS := ["ticks","range_cm","count","keep_radius_cm","death_spark_raw"]
 const CHAIN_KEYS := ["big_rehit","lone_rebounds","rebound_bps"]
+const CHAIN_OPTIONAL_KEYS := ["prefer_unshocked"]
+## D-element-trees 16.5: text keys a burst skill may carry (its base, not its rank entries) and the words they take.
+const SKILL_WORD_KEYS := {"bolt_rule":["conductors","max"],"zone":["target","target_or_hero"]}
+const FLOOR_CRISES := ["survival","lag","big","crowd"]
 const PARAM_NAMES := ["shell","discharge","pop","bolt_heal","stride","death_chain"]
 const WEIGHT_KINDS := ["unlock","rank","variant","rune","evolve","survival"]
 const FILLER_EFFECT_KEYS := ["heal_bps","potion","heal_bps_if_full"]
@@ -102,6 +106,7 @@ static func validate(v: Variant) -> Array[String]:
 	if bool(v.enabled) and v.enabled_elements.is_empty(): issues.append("enabled without an element")
 	var filler_ids := _fillers_issues(v.fillers,issues)
 	_offer_issues(v.offer,filler_ids,issues)
+	_floor_path_issues(v.offer,elements,issues)
 	for el in elements:
 		if not el in ELEMENTS: issues.append("element " + str(el));continue
 		_element_issues(String(el),elements[el],filler_ids,v.offer.get("gates",{}) if v.offer is Dictionary and v.offer.get("gates") is Dictionary else {},issues)
@@ -127,7 +132,10 @@ static func _answers_ok(a: Variant) -> bool:
 	return true
 
 static func _offer_issues(o: Variant, filler_ids: Array, issues: Array[String]) -> void:
-	if not _keys_ok(o,["cards","final_cards","protect_primary","final_protect","weights","gates","filler"]): issues.append("offer keys");return
+	if not _keys_ok(o,["cards","final_cards","protect_primary","final_protect","weights","gates","filler"],["floor","evolve_floor","spine_share"]): issues.append("offer keys");return
+	if o.has("spine_share") and not o.spine_share is bool: issues.append("offer spine_share")
+	if o.has("floor"): _floor_issues(o.floor,issues)
+	if o.has("evolve_floor"): _evolve_floor_issues(o.evolve_floor,issues)
 	if not _int(o.cards,2,5) or not _int(o.final_cards,2,6) or not o.protect_primary is bool: issues.append("offer numbers")
 	if not o.final_protect is Array or o.final_protect.size() > 4: issues.append("offer final_protect")
 	else:
@@ -146,6 +154,50 @@ static func _offer_issues(o: Variant, filler_ids: Array, issues: Array[String]) 
 		for id_ in o.filler:
 			if not id_ is String or not id_ in filler_ids: issues.append("offer filler id " + str(id_))
 
+## 16.1: the floor of the card luck. `order` names the crises that count (a subset of the four, no repeat); `lag.path_by_picks` is the table of
+## [picks made, path cards owed] with both numbers rising.
+static func _floor_issues(f: Variant, issues: Array[String]) -> void:
+	if not _keys_ok(f,["enabled","max_replace","order","survival","lag","big","crowd"]): issues.append("offer floor keys");return
+	if not f.enabled is bool or not _int(f.max_replace,1,2): issues.append("offer floor enabled/max_replace")
+	if not f.order is Array or f.order.is_empty() or f.order.size() > FLOOR_CRISES.size(): issues.append("offer floor order")
+	else:
+		for name in f.order:
+			if not name is String or not name in FLOOR_CRISES or f.order.count(name) > 1: issues.append("offer floor order entry " + str(name))
+	if not _keys_ok(f.survival,["hp_bps"]) or not _int(f.survival.hp_bps,1,9999): issues.append("offer floor survival")
+	if not _keys_ok(f.big,["within_ticks"]) or not _int(f.big.within_ticks,0,36000): issues.append("offer floor big")
+	if not _keys_ok(f.crowd,["alive_bps","crest_ticks"]) or not _int(f.crowd.alive_bps,1,10000) or not _int(f.crowd.crest_ticks,0,36000): issues.append("offer floor crowd")
+	if not _keys_ok(f.lag,["path_by_picks"]) or not f.lag.path_by_picks is Array or f.lag.path_by_picks.is_empty() or f.lag.path_by_picks.size() > 6:
+		issues.append("offer floor lag");return
+	var last_picks := 0
+	var last_cards := 0
+	for pair in f.lag.path_by_picks:
+		if not pair is Array or pair.size() != 2 or not _int(pair[0],1,40) or not _int(pair[1],1,8) or int(pair[0]) <= last_picks or int(pair[1]) <= last_cards:
+			issues.append("offer floor lag pair " + str(pair));return
+		last_picks = int(pair[0])
+		last_cards = int(pair[1])
+
+static func _evolve_floor_issues(f: Variant, issues: Array[String]) -> void:
+	if not _keys_ok(f,["enabled","after","fallback_after_picks"]) or not f.enabled is bool or not _int(f.fallback_after_picks,1,40): issues.append("offer evolve_floor");return
+	var a: Variant = f.after
+	if not _keys_ok(a,["event","n"],["beat","zone"]) or not a.event is String or not a.event in ["wave_crest","gate_opened"] or not _int(a.n,1,20):
+		issues.append("offer evolve_floor after");return
+	if a.has("beat") and (not a.beat is String or String(a.beat).is_empty()): issues.append("offer evolve_floor after beat")
+	if a.has("zone") and not _int(a.zone,0,2): issues.append("offer evolve_floor after zone")
+
+## The table's card counts may not ask for more path cards than an element has (its signature skill's ranks and the rune).
+static func _floor_path_issues(o: Variant, elements: Variant, issues: Array[String]) -> void:
+	if not o is Dictionary or not o.get("floor") is Dictionary or not o.floor.get("lag") is Dictionary or not elements is Dictionary: return
+	var table: Variant = o.floor.lag.get("path_by_picks")
+	if not table is Array: return
+	for el in elements:
+		var e: Variant = elements[el]
+		if not e is Dictionary or not e.get("cards") is Array or not e.get("primary") is String: continue
+		var path := 0
+		for card in e.cards:
+			if card is Dictionary and (card.get("kind") == "rune" or (card.get("kind") == "rank" and card.get("skill") == e.primary)): path += 1
+		for pair in table:
+			if pair is Array and pair.size() == 2 and (pair[1] is int or pair[1] is float) and int(pair[1]) > path: issues.append("offer floor lag asks %d path cards, element %s has %d" % [int(pair[1]),str(el),path])
+
 static func _element_issues(el: String, e: Variant, filler_ids: Array, gates: Dictionary, issues: Array[String]) -> void:
 	var tag := "element " + el + " "
 	if not _keys_ok(e,["primary","status","rod","chain","skills","evolution","params","cards"]): issues.append(tag + "keys");return
@@ -157,7 +209,7 @@ static func _element_issues(el: String, e: Variant, filler_ids: Array, gates: Di
 		var limits := {"ticks":[30,3600],"range_cm":[200,3000],"count":[1,2],"keep_radius_cm":[100,2000],"death_spark_raw":[0,100000]}
 		for key in ROD_KEYS:
 			if not _int(e.rod[key],limits[key][0],limits[key][1]): issues.append(tag + "rod " + key)
-	if not _keys_ok(e.chain,CHAIN_KEYS) or not _int(e.chain.big_rehit,1,4) or not _int(e.chain.lone_rebounds,0,3) or not _int(e.chain.rebound_bps,1000,20000): issues.append(tag + "chain")
+	if not _keys_ok(e.chain,CHAIN_KEYS,CHAIN_OPTIONAL_KEYS) or not _int(e.chain.big_rehit,1,4) or not _int(e.chain.lone_rebounds,0,3) or not _int(e.chain.rebound_bps,1000,20000) 			or (e.chain.has("prefer_unshocked") and not e.chain.prefer_unshocked is bool): issues.append(tag + "chain")
 	if not e.params is Dictionary: issues.append(tag + "params")
 	else:
 		for name in e.params:
@@ -173,6 +225,9 @@ static func _element_issues(el: String, e: Variant, filler_ids: Array, gates: Di
 		var allowed: Array = SKILL_KEYS[s.role]
 		for key in s:
 			if key == "role" or key == "ranks": continue
+			if s.role == "burst" and SKILL_WORD_KEYS.has(key):
+				if not s[key] is String or not s[key] in SKILL_WORD_KEYS[key]: issues.append(tag + "skill word " + str(id_) + "." + str(key))
+				continue
 			if not key in allowed or not _int(s[key],0,10000000): issues.append(tag + "skill key " + str(id_) + "." + str(key))
 		for entry in s.ranks:
 			if not entry is Dictionary: issues.append(tag + "skill rank entry " + str(id_));continue

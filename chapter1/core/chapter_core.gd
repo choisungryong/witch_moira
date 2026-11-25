@@ -1145,6 +1145,7 @@ func _emit(type: String,position: Vector2,details: Dictionary={}) -> void:
 		elif type=="death" and not _d_sweep.is_empty() and String(details.get("role","normal"))=="normal":_d_sweep.kills_total=int(_d_sweep.kills_total)+1
 	# The gauge counts events, and only while no descent is called or sweeping (it never fills itself).
 	if not descent.is_empty() and not _descent_hold and _d_sweep.is_empty() and metrics.has("descent"):_descent_score(type,details)
+	if _kit_on:_kit_note_event(type,details)
 	if type=="death" and _kb_on:_kill_burst_note(details,position)
 	if type=="death" and _bf_state=="break" and String(details.get("role","normal"))=="normal":_bf_on_kill()
 	if type=="death" and _zone_entered and position.distance_squared_to(ZONES[zone])<26.0*26.0:
@@ -3434,6 +3435,10 @@ var _kit_ev_stacked := 0
 var _kit_ev_bolts := 0
 var _kit_merged_n := 0
 var _kit_merged_raw := 0
+var _kit_crest_tick := -1000000
+var _kit_zone_seen := 0
+var _kit_zone_start := 0
+var _kit_evo_events := 0
 
 ## Park a kit document for the next start() (before start(); validated like the file). `{}` removes the parked one (the shipped file decides again).
 ## A rejected document changes nothing. The element kit and run_spells (or grace) never run together: start() refuses that pair.
@@ -3470,12 +3475,16 @@ func _prepare_kit(primary: String) -> bool:
 	_kit_on=false;_kit={};_kit_doc={};_kit_hp=0;_kit_move_bps=0;_kit_shell_until=0;_kit_shell_reduce=0
 	_kit_rods=[];_kit_next_rod=0;_kit_next_overload=0;_kit_next_storm=0;_kit_next_discharge=0;_kit_next_stride=0;_kit_shell_next=0;_kit_bolt_count=0
 	_kit_ev_tick=-1;_kit_ev_stacked=0;_kit_ev_bolts=0;_kit_merged_n=0;_kit_merged_raw=0
+	_kit_v16=false;_kit_crest_tick=-1000000;_kit_zone_seen=0;_kit_zone_start=0;_kit_evo_events=0
 	var doc: Dictionary=_pending_kit if _pending_kit_set else ElementKit.current()
 	if doc.is_empty() or not ElementKit.is_on_for(primary,doc):return true
 	if not spells.is_empty():errors.assign(["The element kit cannot run together with run_spells"]);return false
 	if tuning.has("grace") and bool(tuning.grace.enabled):errors.assign(["The element kit cannot run together with grace"]);return false
 	_kit_on=true;_kit_doc=doc
 	_kit=doc.elements[ElementKit.element_of_skill(primary)].duplicate(true)
+	_kit_v16=doc.offer.has("floor") or doc.offer.has("evolve_floor") or doc.offer.has("spine_share") or _kit.chain.has("prefer_unshocked")
+	for id_ in _kit.skills:
+		if _kit.skills[id_].has("bolt_rule") or _kit.skills[id_].has("zone"):_kit_v16=true
 	return true
 
 ## After the run's growth is configured: hand the kit to growth (cards, offer rules, the cards the tree opened) and open the counters.
@@ -3483,6 +3492,49 @@ func _kit_install() -> bool:
 	if not growth.set_kit(_kit_doc.offer,_kit,_kit_doc.fillers,_kit_open_list()):errors.assign(growth.errors);return false
 	metrics.kit={"overloads":[],"bolts":0,"self_bolts":0,"sparks":0,"storms":0,"rods":0,"rebounds":0,"heals":0,"shells":0,"strides":0,"discharges":0,"pops":0,"merged_bolts":0}
 	return true
+
+## D-element-trees 16.1: the crises of this tick (the lag is the growth's own to read). Only a document with a floor or a late floor asks.
+func _kit_offer_prepare() -> void:
+	var offer: Dictionary=_kit_doc.offer
+	var rule: Variant=offer.get("floor")
+	var crisis := {"rhythm":_rhythm_on,"survival":false,"big":false,"crowd":false}
+	if rule is Dictionary and bool(rule.enabled):
+		crisis.survival=int(hero.hp_raw)*10000<int(rule.survival.hp_bps)*int(hero.max_hp_raw)
+		var guard_near := false
+		for id_ in enemies:
+			if enemies[id_].elite and int(enemies[id_].hp_raw)>0:guard_near=true;break
+		if not guard_near and not seals[zone].champion_spawned and zone_kills>0:
+			# The guardian is near when the seal's kills still to come fit in `within_ticks` at the pace of this zone so far.
+			var left := _seal_total(zone)-zone_kills
+			guard_near=left*maxi(1,tick-_kit_zone_start)<=zone_kills*int(rule.big.within_ticks)
+		crisis.big=guard_near
+		crisis.crowd=alive_count()*10000>=_kit_alive_cap()*int(rule.crowd.alive_bps) or tick-_kit_crest_tick<=int(rule.crowd.crest_ticks)
+	if rule is Dictionary or offer.get("evolve_floor") is Dictionary:growth.set_kit_crisis(crisis)
+
+## The ceiling of ordinary bodies of the beat that is running (the rhythm's, the opening step's or the trial's), else the tuning's.
+func _kit_alive_cap() -> int:
+	var cap := int(tuning.alive_cap)
+	if not _rhythm_on:return cap
+	if _op_active and _op_step>=0 and _op_step<_op_list.size():return mini(cap,int(_op_list[_op_step].alive_cap))
+	if _trial_phase=="hold" and tuning.rhythm.has("trial"):return mini(cap,int(tuning.rhythm.trial.alive_cap))
+	if _beat_index>=0 and _beat_index<tuning.rhythm.beats.size():return mini(cap,int(tuning.rhythm.beats[_beat_index].alive_cap))
+	return cap
+
+## After a hand is made: the floor's counts into the measurement.
+func _kit_offer_done() -> void:
+	var stats := growth.kit_floor_stats()
+	if not stats.is_empty() and metrics.has("kit"):metrics.kit.floor=stats
+
+## An event the kit reads: the crest of a wave (the crowd crisis), the one the late floor of the evolution waits for, and the late floor's own.
+func _kit_note_event(type: String,details: Dictionary) -> void:
+	if type=="wave_crest":_kit_crest_tick=tick
+	if type=="evolve_floor_opened" and metrics.has("kit"):metrics.kit.evolve_floor_tick=tick
+	var rule: Variant=_kit_doc.offer.get("evolve_floor")
+	if not rule is Dictionary or not bool(rule.enabled) or type!=String(rule.after.event):return
+	if rule.after.has("beat") and String(details.get("beat",""))!=String(rule.after.beat):return
+	if rule.after.has("zone") and int(details.get("zone",-1))!=int(rule.after.zone):return
+	_kit_evo_events+=1
+	if _kit_evo_events>=int(rule.after.n):growth.kit_arm_evolve_floor()
 
 func _kit_open_list() -> Array:
 	var out: Array=[]
@@ -3501,7 +3553,7 @@ func _kit_skill(id_: String) -> Dictionary:
 	var definition: Dictionary=_kit.skills[id_]
 	var out := {}
 	for key in definition:
-		if key!="role" and key!="ranks":out[key]=int(definition[key])
+		if key!="role" and key!="ranks":out[key]=definition[key] if definition[key] is String else int(definition[key])
 	for r in mini(rank,definition.ranks.size()):
 		for key in definition.ranks[r]:out[key]=int(definition.ranks[r][key])
 	return out
@@ -3553,6 +3605,7 @@ func _kit_shock(e: Dictionary,add: int) -> void:
 
 func _kit_step() -> void:
 	if _kit_ev_tick!=tick:_kit_ev_tick=tick;_kit_ev_stacked=0;_kit_ev_bolts=0
+	if zone!=_kit_zone_seen:_kit_zone_seen=zone;_kit_zone_start=tick
 	# ET16: a body out of play (the boss in its entrance or break) keeps its stacks: its status clock stands still.
 	if _shield_id>0 and enemies.has(_shield_id):
 		var held: Variant=enemies[_shield_id].get("kst")
@@ -3659,18 +3712,40 @@ func _kit_cast_overload() -> void:
 	for id_ in _near(center,reach):
 		if id_ in targets or _kit_shock_n(enemies[id_])<=0:continue
 		conductors.append(id_)
+	# 16.2 zone "target_or_hero": a shocked body within reach of the hero conducts too (one that is in both circles counts once).
+	var near_target := conductors.size()
+	var near_hero := 0
+	var wide := String(s.get("zone","target"))=="target_or_hero"
+	if wide or _kit_v16:
+		for id_ in _near(hero.position,reach):
+			if id_ in targets or _kit_shock_n(enemies[id_])<=0:continue
+			near_hero+=1
+			if wide and not id_ in conductors:conductors.append(id_)
 	var max_bolts := maxi(1,int(s.max_bolts)+growth.kit_val("overload_max_bolts"))
 	var count := mini(conductors.size(),max_bolts)
-	var self_mode := false
+	var self_n := 0
+	var spent := 0
 	var first: Dictionary=enemies[targets[0]]
-	if conductors.is_empty():
+	if String(s.get("bolt_rule","conductors"))=="max":
+		# 16.2: the bolts are the larger of the conductors' and the big body's own; only the stacks the own bolts used are spent.
+		var per := int(s.self_bolt_bps)+growth.kit_val("self_bolt_bps")
+		var from_conductors := (conductors.size()+growth.kit_val("bolts_add")) if not conductors.is_empty() else 0
+		var own := (_kit_shock_n(first)*per/10000) if first.elite else 0
+		count=mini(max_bolts,maxi(from_conductors,own))
+		if count<=0:return
+		self_n=maxi(0,count-from_conductors)
+		if self_n>0:
+			spent=mini(_kit_shock_n(first),(self_n*10000+per-1)/per)
+			first.kst.n=_kit_shock_n(first)-spent
+	elif conductors.is_empty():
 		# No conductor: a big body's own stacks make the bolts (and are spent).
 		if not first.elite:return
 		count=mini(max_bolts,_kit_shock_n(first)*(int(s.self_bolt_bps)+growth.kit_val("self_bolt_bps"))/10000)
 		if count<=0:return
-		self_mode=true
+		self_n=count
 		first.kst.n=0
 	else:count+=growth.kit_val("bolts_add")
+	var conductor_bolts := count-self_n
 	_kit_next_overload=tick+maxi(12,int(s.cooldown_ticks)*(10000+growth.kit_val("overload_cd_bps"))/10000)
 	metrics.casts[skill_id]=int(metrics.casts.get(skill_id,0))+1
 	var base := int(s.bolt_raw)*(int(s.bolt_bps)+growth.kit_val("overload_bolt_bps"))/10000*(10000+_kit_arc_bps())/10000
@@ -3685,19 +3760,22 @@ func _kit_cast_overload() -> void:
 			for id_ in _near(center,reach):
 				if not id_ in conductors:to=id_;break
 			if to<0:break
-		var from: int=to if self_mode else conductors[mini(i,conductors.size()-1)]
+		var from: int=to if i>=conductor_bolts else conductors[mini(i,conductors.size()-1)]
 		var raw := base
 		if int(enemies[to].get("rod_until",0))>tick:raw=raw*(10000+growth.kit_val("rod_target_bps"))/10000
-		if not self_mode and i<conductors.size():
+		if i<conductor_bolts and i<conductors.size():
 			sent.append(from)
 			if enemies.has(from):
 				points.append(enemies[from].position)
 				if enemies[from].get("kst") is Dictionary:enemies[from].kst.n=0
 		var row: Dictionary=per.get(to,{"n":0,"raw":0})
 		row.n=int(row.n)+1;row.raw=int(row.raw)+raw;per[to]=row
-		_kit_bolt(from,to,ctx,raw,self_mode)
+		_kit_bolt(from,to,ctx,raw,i>=conductor_bolts)
 	var logged: Array=metrics.kit.overloads
-	if logged.size()<600:logged.append({"tick":tick,"bolts":count,"conductors":conductors.size(),"self":self_mode,"big":bool(first.elite),"targets":targets.size()})
+	if logged.size()<600:
+		var entry := {"tick":tick,"bolts":count,"conductors":conductors.size(),"self":self_n>0,"big":bool(first.elite),"targets":targets.size()}
+		if _kit_v16:entry.merge({"topup":self_n,"spent":spent,"hero_dist_cm":int(hero.position.distance_to(first.position)*100.0),"near_hero":near_hero,"near_target":near_target})
+		logged.append(entry)
 	for id_ in per:
 		var alive := enemies.has(id_) and int(enemies[id_].hp_raw)>0
 		_emit("detonated",enemies[id_].position if enemies.has(id_) else hero.position,{"skill_id":skill_id,"target_id":id_,"element":ElementKit.element_of_skill(_primary_id),"stacks":int(per[id_].n),"damage_raw":int(per[id_].raw),"big":bool(enemies[id_].elite) if enemies.has(id_) else false,"kill":not alive})
@@ -3802,8 +3880,10 @@ func _kit_took(card_id: String) -> void:
 	if String(taken.kind)=="unlock":_emit("skill_gate_opened",hero.position,{"id":String(taken.skill),"card_id":card_id,"gate":String(taken.get("gate",""))})
 
 func _kit_state() -> Dictionary:
-	return {"rods":_kit_rods.duplicate(),"next_rod":_kit_next_rod,"next_overload":_kit_next_overload,"next_storm":_kit_next_storm,"next_discharge":_kit_next_discharge,
+	var state := {"rods":_kit_rods.duplicate(),"next_rod":_kit_next_rod,"next_overload":_kit_next_overload,"next_storm":_kit_next_storm,"next_discharge":_kit_next_discharge,
 		"next_stride":_kit_next_stride,"shell_next":_kit_shell_next,"shell_until":_kit_shell_until,"bolts":_kit_bolt_count,"hp":_kit_hp,"move_bps":_kit_move_bps}
+	if _kit_v16:state.merge({"crest_tick":_kit_crest_tick,"zone_start":_kit_zone_start,"evo_events":_kit_evo_events})
+	return state
 
 ## Read only, for the screen and the tools: the kit's state in one dictionary. {"on": false} while off. Changes nothing, draws nothing.
 func kit_view() -> Dictionary:

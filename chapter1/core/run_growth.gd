@@ -63,6 +63,15 @@ var _kit_vals: Dictionary = {}
 var _kit_flags: Array[String] = []
 var _kit_picks := 0
 var _kit_last: Dictionary = {}
+## D-element-trees 16: the floor of the card luck (a crisis the core read at the tick the hand is made), the late floor of the evolution, the counts.
+var _kit_crisis: Dictionary = {}
+var _kit_evo_armed := false
+var _kit_evo_open := false
+var _kit_floor_hands := 0
+var _kit_floor_replaced := 0
+var _kit_floor_gate_hands := 0
+var _kit_floor_by: Dictionary = {}
+var _kit_floor_stood: Dictionary = {}
 
 func configure(candidate: Variant, primary_skill: String, run_seed: int) -> bool:
 	var issues := Catalog.validate(candidate)
@@ -122,6 +131,7 @@ func configure(candidate: Variant, primary_skill: String, run_seed: int) -> bool
 	_kit_flags.clear()
 	_kit_picks = 0
 	_kit_last = {}
+	_kit_reset_floor()
 	errors.clear()
 	return true
 
@@ -283,14 +293,31 @@ func next_offer() -> Dictionary:
 		return {}
 	var final := _is_final_offer()
 	var target := (int(_kit_offer.final_cards) if final else int(_kit_offer.cards)) if _kit_on else (int(_grace.final_offer.cards) if final else 3)
+	if _kit_on: _kit_spine_weights(pool)
 	var protected := _final_protected_card(pool) if final else -1
-	if protected < 0: protected = _protected_card(pool)
+	var gate_protected := false
+	if protected < 0:
+		protected = _protected_card(pool)
+		gate_protected = protected >= 0
+	# The cards the floor of the card luck may never replace (the door, the last offer's protection, the late floor's path card).
+	var locked: Array[String] = []
 	if protected >= 0:
+		if _kit_on:
+			locked.append(String(pool[protected].id))
+			if gate_protected: _kit_floor_gate_hands += 1
 		selected.append(pool[protected])
 		pool.remove_at(protected)
+	if _kit_on and selected.size() < target:
+		var path_card := _kit_evolve_floor_pick(pool,selected)
+		if path_card >= 0:
+			locked.append(String(pool[path_card].id))
+			selected.append(pool[path_card])
+			pool.remove_at(path_card)
 	while selected.size() < target and not pool.is_empty():
 		selected.append(_draw_weighted(pool))
-	if _kit_on: _kit_fill(selected,target)
+	if _kit_on:
+		_kit_fill(selected,target)
+		_kit_floor(selected,pool,locked)
 	_offer_sequence += 1
 	_offer = {"token":"%d:%d" % [_epoch,_offer_sequence],"level":_pending[0],"cards":selected}
 	_offer_meta = {}
@@ -368,6 +395,10 @@ func snapshot() -> Dictionary:
 	# Only a run with the element kit carries this key.
 	if _kit_on:
 		result.kit = {"taken":_kit_taken.duplicate(),"ranks":_kit_ranks.duplicate(),"vals":_kit_vals.duplicate(),"flags":_kit_flags.duplicate(),"picks":_kit_picks,"open":_kit_open.duplicate()}
+		# Only a document with the floor of the card luck or the late floor carries these (a document without them has the keys it always had).
+		if _kit_offer.has("floor") or _kit_offer.has("evolve_floor"):
+			result.kit.evolve_floor_open = _kit_evo_open
+			result.kit.floor = {"replaced":_kit_floor_replaced,"hands":_kit_floor_hands}
 	# Only a run with permanent-build options carries this key.
 	if not _options.is_empty(): result.options = {"start_rank":int(_options.start_rank),"grace_rerolls":int(_options.grace_rerolls),"rerolls_left":_rerolls_left,"evolve_without_passive":_evolve_free}
 	# Only a run with the grace block on carries these (D13 K3a/K3b-1); the standing offer's cards stay as they were.
@@ -700,7 +731,7 @@ func take_events() -> Array[Dictionary]:
 	return out
 
 func _push_event(type: String, data: Dictionary) -> void:
-	if not grace_on(): return
+	if not grace_on() and not _kit_on: return
 	if _events.size() >= MAX_EVENTS: _events.pop_front()
 	_events.append({"type":type,"data":data})
 
@@ -1164,6 +1195,7 @@ func set_kit(offer: Dictionary, element: Dictionary, fillers: Dictionary, open_c
 	_kit_flags.clear()
 	_kit_picks = 0
 	_kit_last = {}
+	_kit_reset_floor()
 	errors.clear()
 	return true
 
@@ -1273,3 +1305,154 @@ func _kit_choose(chosen: Dictionary) -> void:
 			for flag in change.get("flags",[]):
 				if not String(flag) in _kit_flags: _kit_flags.append(String(flag))
 	_kit_last = {"id":id_,"kind":String(card.kind),"skill":String(card.get("skill","")),"gate":String(card.get("gate","")),"effect":{}}
+
+# ---------------------------------------------------------------- the floor of the card luck (D-element-trees 16.1, 16.3)
+
+func _kit_reset_floor() -> void:
+	_kit_crisis = {}
+	_kit_evo_armed = false
+	_kit_evo_open = false
+	_kit_floor_hands = 0
+	_kit_floor_replaced = 0
+	_kit_floor_gate_hands = 0
+	_kit_floor_by = {}
+	_kit_floor_stood = {}
+
+## What the core read at the tick the hand is made: {rhythm, survival, big, crowd} (the crises that need the world; the lag is read here from the picks).
+## Taken as it stands the next time a hand is drawn. Changes nothing else.
+func set_kit_crisis(crisis: Dictionary) -> void:
+	if _kit_on: _kit_crisis = crisis.duplicate()
+
+## The core saw the event the late floor of the evolution waits for.
+func kit_arm_evolve_floor() -> void:
+	if _kit_on: _kit_evo_armed = true
+
+## The counts of the floor for the measurement ({} when the document has no floor): hands, replaced, by_crisis, stood, gate_hands.
+func kit_floor_stats() -> Dictionary:
+	if not _kit_on or not (_kit_offer.has("floor") or _kit_offer.has("evolve_floor")): return {}
+	return {"hands":_kit_floor_hands,"replaced":_kit_floor_replaced,"by_crisis":_kit_floor_by.duplicate(),"stood":_kit_floor_stood.duplicate(),"gate_hands":_kit_floor_gate_hands,"evolve_floor_open":_kit_evo_open}
+
+func _kit_card_def(id_: String) -> Dictionary:
+	for card in _kit_el.cards:
+		if String(card.id) == id_: return card
+	return {}
+
+## A card of the evolution path of the signature skill: its ranks and the rune (not the evolution card itself).
+func _kit_is_path(view: Dictionary) -> bool:
+	var kind := String(view.kind)
+	return kind == "rune" or (kind == "rank" and String(view.skill_id) == _primary)
+
+func _kit_path_count() -> int:
+	var n := 0
+	for id_ in _kit_taken:
+		var card := _kit_card_def(String(id_))
+		if card.is_empty(): continue
+		if String(card.kind) == "rune" or (String(card.kind) == "rank" and String(card.skill) == _primary): n += 1
+	return n
+
+## 16.3 (offer.spine_share): the spine cards (the signature skill's ranks, the rune, the evolution) keep the share of the draw they would have
+## had in a run whose tree opened nothing: their weight times (B + T) / B, B = the other base cards of the pool, T = the other cards a tree node opened.
+## Weights only; no random number.
+func _kit_spine_weights(pool: Array[Dictionary]) -> void:
+	if not bool(_kit_offer.get("spine_share",false)): return
+	var base := 0
+	var tree := 0
+	for view in pool:
+		if _kit_is_path(view) or String(view.kind) == "evolve": continue
+		if String(_kit_card_def(String(view.id)).get("open","base")) == "base": base += 1
+		else: tree += 1
+	if tree == 0: return
+	for view in pool:
+		if _kit_is_path(view) or String(view.kind) == "evolve": view.weight = int(view.weight) * (base + tree) / maxi(1,base)
+
+## 16.1 the late floor: after its event (or, with no rhythm, the n-th pick) every hand carries the next card of the path until the evolution is taken:
+## the evolution when it can be taken, else the rune, else the next rank. The index in `pool`, -1 when none (the card is not added twice).
+func _kit_evolve_floor_pick(pool: Array[Dictionary], selected: Array[Dictionary]) -> int:
+	var rule: Variant = _kit_offer.get("evolve_floor")
+	if not rule is Dictionary or not bool(rule.enabled) or _primary in _evolved: return -1
+	if not (_kit_evo_armed or (not bool(_kit_crisis.get("rhythm",false)) and _kit_picks >= int(rule.fallback_after_picks))): return -1
+	var found := -1
+	for kind in ["evolve","rune","rank"]:
+		for i in pool.size():
+			if String(pool[i].kind) == kind and (kind != "rank" or String(pool[i].skill_id) == _primary):
+				found = i
+				break
+		if found >= 0: break
+	if found < 0: return -1
+	for card in selected:
+		if String(card.id) == String(pool[found].id): return -1
+	if not _kit_evo_open:
+		_kit_evo_open = true
+		_push_event("evolve_floor_opened",{"level":_offer_level(),"card_id":String(pool[found].id)})
+	return found
+
+func _kit_crisis_standing(name: String, rule: Dictionary) -> bool:
+	if name == "lag":
+		var need := 0
+		for pair in rule.lag.path_by_picks:
+			if _kit_picks >= int(pair[0]): need = int(pair[1])
+		return _kit_path_count() < need
+	return bool(_kit_crisis.get(name,false))
+
+func _kit_answers(view: Dictionary, name: String) -> bool:
+	if name == "lag": return _kit_is_path(view)
+	return name in view.answers
+
+## Which card of the hand the floor gives up: a filler first, else the lightest, a tie goes to the later one; never a locked card. -1 when none.
+func _kit_floor_slot(selected: Array[Dictionary], locked: Array[String]) -> int:
+	var slot := -1
+	for i in selected.size():
+		if String(selected[i].id) in locked: continue
+		if slot < 0:
+			slot = i
+			continue
+		var filler_i := String(selected[i].kind) == "filler"
+		var filler_slot := String(selected[slot].kind) == "filler"
+		var better := false
+		if filler_i != filler_slot: better = filler_i
+		elif filler_i: better = true
+		else: better = int(selected[i].weight) <= int(selected[slot].weight)
+		if better: slot = i
+	return slot
+
+## 16.1 the floor: the hand is looked at once it is drawn. The first standing crisis (in the rule's order) decides: a hand that already answers it stays as
+## it is; else one card that is not locked is replaced by one drawn by weight from the pool's cards that answer it (the only draw). A crisis nothing in
+## the pool answers lets the next standing one decide.
+func _kit_floor(selected: Array[Dictionary], pool: Array[Dictionary], locked: Array[String]) -> void:
+	var rule: Variant = _kit_offer.get("floor")
+	if not rule is Dictionary or not bool(rule.enabled): return
+	_kit_floor_hands += 1
+	var standing: Array[String] = []
+	for name in rule.order:
+		if _kit_crisis_standing(String(name),rule):
+			standing.append(String(name))
+			_kit_floor_stood[String(name)] = int(_kit_floor_stood.get(String(name),0)) + 1
+	for round in int(rule.max_replace):
+		var changed := false
+		var settled := false
+		for name in standing:
+			var answered := false
+			for view in selected:
+				if _kit_answers(view,name): answered = true
+			if answered:
+				settled = true
+				break
+			var candidates: Array[Dictionary] = []
+			for view in pool:
+				if String(view.kind) != "filler" and _kit_answers(view,name): candidates.append(view)
+			if candidates.is_empty(): continue
+			var slot := _kit_floor_slot(selected,locked)
+			if slot < 0: return
+			var out_id := String(selected[slot].id)
+			var drawn := _draw_weighted(candidates)
+			for i in pool.size():
+				if String(pool[i].id) == String(drawn.id):
+					pool.remove_at(i)
+					break
+			selected[slot] = drawn
+			_kit_floor_replaced += 1
+			_kit_floor_by[name] = int(_kit_floor_by.get(name,0)) + 1
+			_push_event("offer_floor",{"level":_offer_level(),"crisis":name,"replaced_id":out_id,"card_id":String(drawn.id)})
+			changed = true
+			break
+		if settled or not changed: return

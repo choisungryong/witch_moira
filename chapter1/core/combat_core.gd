@@ -141,6 +141,8 @@ const SHIELD_EVENT_GAP := 30
 ## ET-A element kit (D-element-trees). Everything below is 0 / false / empty unless the run's element is on in element_kit.json; the
 ## chapter core fills it. `_kit` is the element's block of the document; the card state lives in growth (kit_val, kit_flag, kit_rank).
 var _kit_on := false
+## D-element-trees 16: the document carries a key of the 1st fix (floor, late floor, spine share, prefer_unshocked, bolt_rule, zone). Without one the run is what it was.
+var _kit_v16 := false
 var _kit: Dictionary = {}
 var _kit_hp := 0
 var _kit_move_bps := 0
@@ -277,8 +279,10 @@ func _drain_growth_events() -> void:
 
 func get_offer() -> Dictionary:
 	if mode != "choice": return {}
+	if _kit_on: _kit_offer_prepare()
 	var offer: Dictionary = growth.next_offer()
 	_drain_growth_events()
+	if _kit_on: _kit_offer_done()
 	return offer
 
 func choose(token: String, card_id: String) -> bool:
@@ -1231,6 +1235,21 @@ func _step_ring_pulses() -> void:
 		var targets := _ring_targets(String(entry.skill_id),entry.effects)
 		if not targets.is_empty(): _ring_strike(String(entry.skill_id),entry.effects,targets,bool(entry.evolved),int(entry.pulse))
 
+## D-element-trees 16.1: right before a hand is made the core reads the crises of this tick and gives them to the growth; right after it books the counts.
+## The chapter core fills both.
+func _kit_offer_prepare() -> void:
+	pass
+
+func _kit_offer_done() -> void:
+	pass
+
+## The shock stacks on a body and the most it can hold (the chapter core fills them; the chain reads them for prefer_unshocked).
+func _kit_shock_n(_e: Dictionary) -> int:
+	return 0
+
+func _kit_cap(_e: Dictionary) -> int:
+	return 0
+
 ## ET-A: what the core does when a kit card was taken (hero body, immediate effects, events). The chapter core fills it.
 func _kit_took(_card_id: String) -> void:
 	pass
@@ -1245,6 +1264,7 @@ func _kit_chain(first: Dictionary, context: Dictionary) -> Array[Vector2]:
 	var rule: Dictionary = _kit.chain
 	var rehit_max := int(rule.big_rehit)
 	var rebounds_left := int(rule.lone_rebounds)+growth.kit_val("lone_rebounds")
+	var prefer_new := bool(rule.get("prefer_unshocked",false))
 	var base_damage := int(effects.damage_raw)
 	var hits := {}
 	var preferred := int(first.id)
@@ -1257,15 +1277,25 @@ func _kit_chain(first: Dictionary, context: Dictionary) -> Array[Vector2]:
 			var target_id := -1
 			if branch == 0 and bounce == 0: target_id = preferred
 			else:
+				var fallback := -1
 				for id_ in _near(at,float(effects.radius_cm)/100.0):
 					if id_ == last: continue
 					var count := int(hits.get(id_,0))
 					if count == 0 or (count < rehit_max and enemies[id_].elite):
-						target_id = id_
-						break
+						if not prefer_new:
+							target_id = id_
+							break
+						# 16.2 chain.prefer_unshocked: the body whose shock would grow first (an ordinary one with none, a big one under its cap).
+						if fallback < 0: fallback = id_
+						var shocked := _kit_shock_n(enemies[id_])
+						if (shocked == 0) if not enemies[id_].elite else (shocked < _kit_cap(enemies[id_])):
+							target_id = id_
+							break
+				if target_id < 0: target_id = fallback
 			if target_id < 0:
 				if rebounds_left > 0 and last >= 0 and enemies.has(last) and enemies[last].elite and enemies[last].hp_raw > 0:
 					rebounds_left -= 1
+					if _kit_v16 and metrics.has("kit"): metrics.kit.rebounds = int(metrics.kit.rebounds)+1
 					effects.damage_raw = base_damage*int(rule.rebound_bps)/10000
 					context.rehit = last
 					positions.append(enemies[last].position)
