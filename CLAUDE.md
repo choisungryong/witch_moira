@@ -97,7 +97,7 @@ Blender: `D:/Blender Foundation/Blender 5.3/blender.exe`(5.3.0, 명령줄 실행
 
 ## 저장
 
-- 스키마 3, `user://chapter-one-profile-v3.json`. 사용자 폴더는 `%APPDATA%\WitchMoira`다.
+- 스키마 5, `user://chapter-one-profile-v5.json`(2026-11-25 코드에서 확인: `chapter_profile.gd` 2·21행). 사용자 폴더는 `%APPDATA%\WitchMoira`다.
 - 스키마 2·1 파일은 같은 폴더에 있으면 읽기만 한다. 옛 저장소 시절의 저장(`%APPDATA%\AshenCloisterChapterOne*`)은 자동으로 넘어오지 않는다.
 - 검사는 `_local/` 아래의 격리 경로만 쓴다. 검사가 사용자 폴더를 읽거나 쓰게 만들지 않는다.
 - 검사·도구의 Godot 실행은 `APPDATA`를 `_local/appdata/<용도>/`로 바꿔 사용자 폴더에 로그·캐시도 쓰지 않는다(`tools/dev/isolated_env.py`). Godot를 직접 부르면 헤드리스 실행도 `%APPDATA%\WitchMoira\logs`에 로그를 쓴다.
