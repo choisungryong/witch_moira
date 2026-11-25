@@ -104,7 +104,7 @@ static func validate(v: Variant) -> Array[String]:
 	_offer_issues(v.offer,filler_ids,issues)
 	for el in elements:
 		if not el in ELEMENTS: issues.append("element " + str(el));continue
-		_element_issues(String(el),elements[el],filler_ids,issues)
+		_element_issues(String(el),elements[el],filler_ids,v.offer.get("gates",{}) if v.offer is Dictionary and v.offer.get("gates") is Dictionary else {},issues)
 		if issues.size() > 12: return issues
 	return issues
 
@@ -146,7 +146,7 @@ static func _offer_issues(o: Variant, filler_ids: Array, issues: Array[String]) 
 		for id_ in o.filler:
 			if not id_ is String or not id_ in filler_ids: issues.append("offer filler id " + str(id_))
 
-static func _element_issues(el: String, e: Variant, filler_ids: Array, issues: Array[String]) -> void:
+static func _element_issues(el: String, e: Variant, filler_ids: Array, gates: Dictionary, issues: Array[String]) -> void:
 	var tag := "element " + el + " "
 	if not _keys_ok(e,["primary","status","rod","chain","skills","evolution","params","cards"]): issues.append(tag + "keys");return
 	if not e.primary is String or element_of_skill(e.primary) != el: issues.append(tag + "primary");return
@@ -183,9 +183,9 @@ static func _element_issues(el: String, e: Variant, filler_ids: Array, issues: A
 	if not _keys_ok(evo,["skill","passive","storm"]) or evo.skill != e.primary or not evo.passive is String or not _keys_ok(evo.storm,["every_ticks","targets","damage_bps"]) \
 			or not _int(evo.storm.every_ticks,6,600) or not _int(evo.storm.targets,1,6) or not _int(evo.storm.damage_bps,100,40000):
 		issues.append(tag + "evolution");return
-	_cards_issues(el,e,skill_ids,filler_ids,issues)
+	_cards_issues(el,e,skill_ids,gates,issues)
 
-static func _cards_issues(el: String, e: Dictionary, skill_ids: Array, _filler_ids: Array, issues: Array[String]) -> void:
+static func _cards_issues(el: String, e: Dictionary, skill_ids: Array, gates: Dictionary, issues: Array[String]) -> void:
 	var tag := "element " + el + " "
 	if not e.cards is Array or e.cards.is_empty() or e.cards.size() > 64: issues.append(tag + "cards");return
 	var seen := {}
@@ -209,7 +209,7 @@ static func _cards_issues(el: String, e: Dictionary, skill_ids: Array, _filler_i
 			"unlock","rank":
 				if not card.get("skill") is String or not (card.skill in skill_ids or (card.kind == "rank" and card.skill == e.primary)): issues.append(t + "skill")
 				if card.kind == "rank" and not _int(card.get("rank"),2,4): issues.append(t + "rank")
-				if card.kind == "unlock" and (not card.get("gate") is String or not card.has("gate")): issues.append(t + "gate")
+				if card.kind == "unlock" and (not card.get("gate") is String or not gates.has(card.gate)): issues.append(t + "gate")
 				if card.kind == "rank" and card.has("skill") and card.skill in skill_ids and int(card.get("rank",0)) > e.skills[card.skill].ranks.size(): issues.append(t + "rank beyond the skill's ranks")
 			"rune": rune_cards += 1
 			"evolve": evolve_cards += 1
