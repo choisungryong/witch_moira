@@ -1,0 +1,77 @@
+{
+ "screen": "title",
+ "contract_version": 1,
+ "focus_index": 1,
+ "save": "on",
+ "note": "회수 장비를 해체해 256개 이하로 정리하면 출발할 수 있습니다",
+ "stash_count": 256,
+ "motion_on": true,
+ "witches": [
+  {
+   "id": "ember",
+   "element": "ember",
+   "start_ref": "chapter1.skill.ember",
+   "character_ref": "chapter1.character.ember",
+   "title": "베로니카 · 번개 소서리스",
+   "skill_name": "체인 라이트닝",
+   "skill_summary": "몰려든 것을 한꺼번에 태운다",
+   "line": "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게.",
+   "traits": [
+    "범위",
+    "폭발",
+    "중거리"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.6667,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  },
+  {
+   "id": "frost",
+   "element": "frost",
+   "start_ref": "chapter1.skill.frost",
+   "character_ref": "chapter1.character.frost",
+   "title": "베로니카 · 번개 소서리스",
+   "skill_name": "체인 라이트닝",
+   "skill_summary": "몰려든 것을 한꺼번에 태운다",
+   "line": "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게.",
+   "traits": [
+    "관통",
+    "둔화",
+    "거리"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.6667,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  },
+  {
+   "id": "storm",
+   "element": "arc",
+   "start_ref": "chapter1.skill.arc",
+   "character_ref": "chapter1.character.arc",
+   "title": "베로니카 · 번개 소서리스",
+   "skill_name": "체인 라이트닝",
+   "skill_summary": "몰려든 것을 한꺼번에 태운다",
+   "line": "몰려오면 더 좋아.\n고을 불은 내가 켜 둘게.",
+   "traits": [
+    "연쇄",
+    "속사",
+    "번짐"
+   ],
+   "level": {
+    "value": 30,
+    "bar": 0.6667,
+    "capped": false,
+    "points": 27,
+    "has_tree": true
+   }
+  }
+ ]
+}

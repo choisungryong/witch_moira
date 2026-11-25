@@ -3,7 +3,7 @@
 
     python tools/dev/proposal_batch.py --dry-run                  # list the jobs, run nothing
     python tools/dev/proposal_batch.py                            # everything, both resolutions
-    python tools/dev/proposal_batch.py --only title/a --res 1920x1080 --kinds still,strip-intro
+    python tools/dev/proposal_batch.py --only growth_choice/e_hand --res 1920x1080 --kinds still,strip-intro
     python tools/dev/proposal_batch.py --list-kinds
 
 Needs a REAL WINDOW (a desktop that is awake): every job starts one Godot window process through tools/dev/godot.py
@@ -41,17 +41,12 @@ GODOT_PY = HERE / 'godot.py'
 SLOT = ['slot_frost_normal', 'slot_frost_scarce', 'slot_frost_fated', 'slot_frost_first', 'slot_ember_normal', 'slot_ember_scarce',
         'slot_ember_fated', 'slot_ember_pity', 'slot_arc_normal', 'slot_arc_scarce', 'slot_arc_fated', 'slot_long']
 SLOT_STRIP = ['slot_frost_fated', 'slot_ember_fated', 'slot_arc_fated', 'slot_ember_pity', 'slot_frost_normal', 'slot_ember_normal', 'slot_arc_normal', 'slot_frost_scarce']
-TITLE_FIX = ['normal', 'long', 'fresh', 'profile_off', 'points_many', 'focus_ember', 'focus_storm', 'no_devil', 'devil_shade']
 RES = ['1920x1080', '1280x720']
 
 # proposal -> {prefix, fixtures for stills, fixtures for strips and input, kinds it supports}
 PROPOSALS = {
     'growth_choice/e_hand': {'prefix': None, 'still': SLOT, 'strip': ['slot_ember_fated', 'slot_frost_fated', 'slot_arc_fated', 'slot_frost_normal', 'slot_long'], 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_ember_fated'],
                              'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'input', 'reduce'], 'strip_res': ['1920x1080']},
-    'title/a': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
-                'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'input'], 'strip_res': ['1920x1080']},
-    'title/c': {'prefix': 'title_v0', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
-                'kinds': ['still', 'still-title', 'strip-title', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'input'], 'strip_res': ['1920x1080']},
 }
 OLD = {}
 ALL_KINDS = ['still', 'still-title', 'strip', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'strip-title', 'input', 'reduce']
