@@ -42,14 +42,43 @@ void fragment() {
 		float live = step(0.02, p) * step(p, 0.97);
 		if (kind < 0.5) {
 			float rf = abs(length(mm) - front);
-			hot = max(hot, (1.0 - smoothstep(0.012, 0.035, rf)) * 0.45 * live * step(d, 0.0));
+			float land_style = step(TELE_STYLE_LAND - 0.5, style) * step(style, TELE_STYLE_LAND + 0.5);
+			hot = max(hot, (1.0 - smoothstep(0.012, 0.035, rf)) * 0.45 * live * step(d, 0.0) * (1.0 - land_style));
 			if (style > 0.5 && style < 1.5) {
 				float rc = abs(length(mm) - r * (1.5 - 0.5 * p));
 				hot = max(hot, (1.0 - smoothstep(0.015, 0.045, rc)) * 0.5 * (1.0 - p));
 			}
+			if (style > TELE_STYLE_STORM - 0.5 && style < TELE_STYLE_STORM + 0.5) {
+				// the storm: a second, thinner ring just outside the first
+				float l2 = 1.0 - smoothstep(bw * TELE_STORM_WEIGHT - aa, bw * TELE_STORM_WEIGHT + aa, abs(d - TELE_STORM_GAP));
+				hot = max(hot, l2 * ae * 0.85);
+			}
+			if (style > TELE_STYLE_LAND - 0.5 && style < TELE_STYLE_LAND + 0.5) {
+				// the landing: the sweep's hand instead of the growing ring, and eight ticks (the chain's links) inside the edge
+				float rl = length(mm);
+				float ang = fract(atan(mm.x, -mm.y) / 6.2831853);
+				float da = abs(fract(ang - p + 0.5) - 0.5) * 6.2831853 * rl;
+				float hand = (1.0 - smoothstep(0.012, 0.035, da)) * live * step(d, 0.0);
+				float cell = abs(fract(ang * 8.0 + 0.5) - 0.5) / 8.0 * 6.2831853 * rl;
+				float tk = (1.0 - smoothstep(0.018, 0.042, cell)) * step(r - TELE_LAND_TICK_LEN, rl) * step(d, 0.0);
+				hot = max(hot, max(hand * 0.55, tk * 0.85 * ae));
+			}
 		} else {
 			float xf = abs(mm.x - front);
 			hot = max(hot, (1.0 - smoothstep(0.012, 0.035, xf)) * 0.45 * live * step(d, -0.03));
+			if (style > TELE_STYLE_SLAM - 0.5 && style < TELE_STYLE_SLAM + 0.5 && kind < 1.5) {
+				// the slam: three chevrons pointing along the bar, so the direction reads in a still frame; they brighten as the fill passes
+				float cs = 0.0;
+				for (int i = 0; i < 3; i++) {
+					float xc = -h + (float(i) + 1.0) * (2.0 * h) / 4.0 + 0.8;
+					float back = xc - mm.x;
+					float within = step(0.0, back) * step(back, TELE_CHEVRON_LEN) * step(abs(mm.y), r - 0.14);
+					float dd = abs(abs(mm.y) - back * 1.05);
+					cs = max(cs, (1.0 - smoothstep(bw * 1.4 - aa, bw * 1.4 + aa, dd)) * within);
+				}
+				float lit = 1.0 - smoothstep(front - 0.05, front, mm.x);
+				hot = max(hot, cs * mix(TELE_CHEVRON_DARK, 0.95, lit));
+			}
 		}
 	}
 	float a = hot + dark * (1.0 - hot);

@@ -17,3 +17,15 @@ const float TELE_RAY_FILL = 0.085;    // faint corridor of a ranged volley (was 
 // U-62 body cue of a normal enemy (no floor telegraph for them): small pulse at the body, fills with the windup, bursts at the shot.
 const float TELE_CUE_RADIUS = 0.24;   // m (diameter ~.5), the whole cue stays inside this
 const float TELE_CUE_ALPHA = 0.85;
+// D-boss-finale (A-boss-finale-screen): styles of the finale's floor shapes, written in the instance colour .r. Same crimson, only the form differs
+// so that the four read apart without colour: floor strike (ring, radial fill, style 2), storm (a second thin ring outside, 3), landing
+// (clockwise sweep and eight ticks inside the edge, 4), slam (three chevrons along the bar, 5).
+const float TELE_STYLE_STORM = 3.0;
+const float TELE_STYLE_LAND = 4.0;
+const float TELE_STYLE_SLAM = 5.0;
+const float TELE_STORM_GAP = 0.14;     // m, the storm's second ring outside the first
+const float TELE_STORM_WEIGHT = 0.70;  // its line weight against the first
+const float TELE_LAND_BASE = 0.30;     // fill of the part the sweep has not reached yet, as a share of the swept part
+const float TELE_LAND_TICK_LEN = 0.28; // m, the eight ticks inside the edge (the chain's links)
+const float TELE_CHEVRON_LEN = 0.80;   // m, how far the arms of a chevron run back from its tip
+const float TELE_CHEVRON_DARK = 0.45;  // chevron strength before the fill front reaches it (it is 0.95 after)

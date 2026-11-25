@@ -23,6 +23,11 @@ void fragment() {
 		float d = tele_sd(mm, kind, h, r);
 		float mask = 1.0 - smoothstep(-0.03, 0.0, d);
 		float along = kind < 0.5 ? 1.0 - smoothstep(front - 0.06, front, length(mm)) : 1.0 - smoothstep(front - 0.06, front, mm.x);
+		if (kind < 0.5 && style > TELE_STYLE_LAND - 0.5 && style < TELE_STYLE_LAND + 0.5) {
+			// the landing: a clockwise sweep from 12 o'clock, one lap in the windup; what it has not reached is only faintly washed
+			float ang = fract(atan(mm.x, -mm.y) / 6.2831853);
+			along = mix(TELE_LAND_BASE, 1.0, 1.0 - smoothstep(p - 0.012, p + 0.012, ang));
+		}
 		a = fa * mask * along * step(0.01, p);
 	}
 	if (a < 0.004) {
