@@ -68,6 +68,13 @@ var _ring_fx := RingSpellFx.new()
 ## D20: the evolved ember's falling fire ball (events meteor_cast / explosion{meteor}).
 const MeteorFx := preload("res://chapter1/view/fx/meteor_fx.gd")
 var _meteor_fx := MeteorFx.new()
+## A-boss-finale-screen: the final boss's floor marks (dashed landing ring, shadow, dust, linen rings); the slam's wind-up length is read from it.
+const BossFinaleFx := preload("res://chapter1/view/fx/boss_finale_fx.gd")
+var _boss_fx := BossFinaleFx.new()
+## Instance-colour styles of the finale's floor shapes (telegraph_look.gdshaderinc): storm, landing, slam. Only a hazard with a `kind`
+## (the finale's) or a body whose attack_kind is "slam" gets one; the old floor strike stays style 2.
+const TELE_STYLE_BY_HAZARD := {"storm":3.0,"land":4.0}
+const TELE_STYLE_SLAM := 5.0
 var _spells_doc: Dictionary={}
 var _flash_blank := false
 var _flash_blank_color: Variant=null
@@ -320,6 +327,9 @@ func _sync_telegraphs(run: RefCounted) -> void:
 		if e.telegraph.is_empty() or e.hp_raw<=0: continue
 		var t: Dictionary=e.telegraph
 		var win := float(maxi(1,int(e.get("definition",run.ENEMY_DEFS[e.kind]).get("windup",48))))
+		# The slam (finale) winds up longer than the body's usual windup: the boss_telegraph event carries its length.
+		var slam: bool=String(e.get("attack_kind",""))=="slam" and _boss_fx.slam_windup>0
+		if slam:win=float(_boss_fx.slam_windup)
 		var rem := float(t.get("remaining_ticks",win))
 		var p := clampf(1.0-rem/win,0,1)
 		if _tele_rank(e)<TELE_FLOOR_MIN_RANK:
@@ -334,7 +344,7 @@ func _sync_telegraphs(run: RefCounted) -> void:
 			continue
 		if n>=TELE_MAX: break
 		var heavy: bool=e.elite
-		var tint := Color(1.0 if heavy else 0.0,1.6 if heavy else 1.0,1.0 if rem<=3.0 else 0.0,1)
+		var tint := Color(TELE_STYLE_SLAM if slam else (1.0 if heavy else 0.0),1.6 if heavy else 1.0,1.0 if rem<=3.0 else 0.0,1)
 		var at: Vector2=e.position
 		var shape: String=t.shape
 		if shape=="fan":
@@ -366,7 +376,8 @@ func _sync_telegraphs(run: RefCounted) -> void:
 			var span := float(maxi(1,int(h.expires)-int(h.started)))
 			var left := float(int(h.expires)-int(run.tick))
 			var radius := float(h.radius)
-			_tele_put(buf,n,h.position,Vector2.RIGHT,radius+.25,radius+.25,Color(0,clampf(1.0-left/span,0,1),0,radius),Color(2,1.5,1.0 if left<=3.0 else 0.0,1));n+=1
+			var style: float=TELE_STYLE_BY_HAZARD.get(String(h.get("kind","")),2.0)
+			_tele_put(buf,n,h.position,Vector2.RIGHT,radius+.25,radius+.25,Color(0,clampf(1.0-left/span,0,1),0,radius),Color(style,1.5,1.0 if left<=3.0 else 0.0,1));n+=1
 	_mmflush(_tele_mm,buf,n)
 	_mmflush(_cue_mm,cue,c)
 
@@ -1243,6 +1254,7 @@ func consume(events: Array) -> void:
 	consume__q36(events)
 	_ring_fx.consume(events,self)
 	_meteor_fx.consume(events,self)
+	_boss_fx.consume(events,self)
 
 func burst(at: Vector2,color: Color,count: int,force: float=1) -> void:
 	if color.is_equal_approx(COLORS["chapter1.skill.frost"]):
@@ -1296,6 +1308,7 @@ func sync(run: RefCounted,delta: float) -> void:
 	if ring_actors!=null:ring_hero=ring_actors.hero.position
 	_ring_fx.sync(run,delta,ring_hero)
 	_meteor_fx.sync(run,delta,self)
+	_boss_fx.sync(run,delta,self)
 
 func _sync_ice(run: RefCounted,delta: float) -> void:
 	_sync_ice__q14(run,delta)
@@ -1307,6 +1320,7 @@ func reset() -> void:
 	reset__q36()
 	_ring_fx.reset()
 	_meteor_fx.reset()
+	_boss_fx.reset()
 	_flash_blank=false;_arc_blank=false;_loot26_blank=false
 	_key_cache.clear()
 	_frost39_seq=-1
@@ -1353,3 +1367,4 @@ func setup(owner_view: Node3D) -> void:
 	_read_fx_switches()
 	_ring_fx.setup(view)
 	_meteor_fx.setup(self)
+	_boss_fx.setup(self)

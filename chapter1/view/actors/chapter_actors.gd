@@ -823,6 +823,57 @@ var _paid_attacks: Dictionary={}
 var _warden_event := -1
 var _warden_phase := 1
 
+# ---- A-boss-finale-screen: the final boss's body in the finale (read-only core state `_bf_on`, `_bf_state`; events boss_telegraph, boss_break_struck) ----
+const Palette := preload("res://chapter1/view/hud/palette.gd")
+const BF_GHOST_ENTRANCE := .55   # body alpha while it is out of play at its entrance
+const BF_GHOST_BREAK := .25      # body alpha while it is away (the break), drawn at the spot it will come down on
+const BF_GHOST_RATE := 14.0      # per second, ~.15 s to cross
+const BF_STRUCK_SECONDS := .5    # a finisher that reached the body: it comes back to full for this long
+const BF_PHASE3_GLOW := Color(.08,.010,.010)   # threat red rim of the last phase ("finishing")
+var _bf_seq := -1
+var _bf_slam_windup := 0
+var _bf_struck_age := -1.0
+var _bf_struck_color := Color.WHITE
+
+func _bf_consume(events: Array) -> void:
+	for event in events:
+		var seq := int(event.get("seq",0))
+		if seq<=_bf_seq:continue
+		_bf_seq=seq
+		if event.type=="boss_telegraph" and String(event.get("attack_id",""))=="slam":_bf_slam_windup=int(event.get("windup_ticks",0))
+		elif event.type=="boss_break_struck":
+			_bf_struck_age=0.0
+			var element := String(event.get("element",""))
+			if element.is_empty():element=Palette.spell_element(String(event.get("skill_id","")),view.run.spells)
+			_bf_struck_color=Palette.element_color(element,Color(.80,.74,.62))
+
+## Wind-up length of a body in ticks: the slam of the finale winds up longer than the body's own definition.
+func _bf_windup_of(entity: Dictionary) -> int:
+	if String(entity.get("attack_kind",""))=="slam" and _bf_slam_windup>0:return _bf_slam_windup
+	return int(entity.definition.windup)
+
+## Alpha factor of the boss body (1 = as before) and the glow added to it; both neutral unless the finale is on.
+func _bf_look(state: Dictionary,entity: Dictionary) -> Dictionary:
+	var run: RefCounted=view.run
+	var ghost := 1.0
+	var glow := Color(0,0,0,0)
+	if bool(run.get("_bf_on")) and bool(entity.get("chapter_boss",false)):
+		var bf_state := String(run.get("_bf_state"))
+		var target := BF_GHOST_ENTRANCE if bf_state=="entrance" else (BF_GHOST_BREAK if bf_state=="break" else 1.0)
+		var shown: float=lerpf(float(state.get("bf_ghost",target)),target,1.0-exp(-_render_delta*BF_GHOST_RATE))
+		if absf(shown-target)<.004:shown=target
+		state.bf_ghost=shown
+		ghost=shown
+		if _bf_struck_age>=0.0 and _bf_struck_age<BF_STRUCK_SECONDS:
+			# up fast, held, then back: the body shows itself to the finisher and goes away again
+			var env := 1.0-smoothstep(.3,BF_STRUCK_SECONDS,_bf_struck_age)
+			ghost=lerpf(ghost,.9,env)
+			glow=Color(_bf_struck_color.r*.22*env,_bf_struck_color.g*.22*env,_bf_struck_color.b*.22*env,env)
+		elif _warden_phase>=3 and bf_state=="phase":
+			glow=BF_PHASE3_GLOW
+			glow.a=1.0
+	return {"alpha":ghost,"glow":glow}
+
 func _create__q12(kind: String) -> Node3D:
 	if kind!="elite" or _create_zone()!=2:return _create__rigged(kind)
 	var actor := Node3D.new();actor.set_meta("kind",kind)
@@ -910,7 +961,7 @@ func _update_pose__q12(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 		var left := maxf(0,float(int(entity.state_until)-tick)-fraction)
 		if left>RELEASE_TICKS:
 			clip="windup_"+kind
-			var progress := clampf(1.0-(left-RELEASE_TICKS)/float(maxi(1,int(entity.definition.windup)-RELEASE_TICKS)),0,1)
+			var progress := clampf(1.0-(left-RELEASE_TICKS)/float(maxi(1,_bf_windup_of(entity)-RELEASE_TICKS)),0,1)
 			time_=progress*player.get_animation(clip).length
 		else:clip=kind;time_=RELEASE_TIME*(1-left/RELEASE_TICKS)
 	elif entity.state=="recover" and _paid_attacks.has(entity.id):
@@ -938,6 +989,11 @@ func _update_pose__q12(actor: Node3D,direction: Vector2,moving: bool,casting: bo
 			for name_ in ["Spine2","Head"]:
 				var bone := rig.find_bone(name_)
 				if bone>=0:rig.set_bone_pose_rotation(bone,rig.get_bone_pose_rotation(bone)*Quaternion(Vector3.RIGHT,-.06*sin(PI*hit_age/6)))
+	if _bf_struck_age>=0.0 and _bf_struck_age<BF_STRUCK_SECONDS and bool(view.run.get("_bf_on")):
+		var struck_rig: Skeleton3D=state.skeleton
+		for name_ in ["Spine2","Head"]:
+			var bone := struck_rig.find_bone(name_)
+			if bone>=0:struck_rig.set_bone_pose_rotation(bone,struck_rig.get_bone_pose_rotation(bone)*Quaternion(Vector3.RIGHT,-.12*sin(PI*_bf_struck_age/BF_STRUCK_SECONDS)))
 	actor.set_meta("warden_pose",{"clip":clip,"time":time_,"tick":tick,"state":entity.state})
 	actor.set_meta("warden_pose_ready",true)
 
@@ -972,6 +1028,7 @@ func _screen_radius(camera: Camera3D,at: Vector3,radius: float) -> float:
 
 func reset__q12() -> void:
 	reset__rigged();_entities.clear();_paid_attacks.clear();_warden_event=-1;_warden_phase=1
+	_bf_seq=-1;_bf_slam_windup=0;_bf_struck_age=-1.0
 
 # ---- chapter1/view/chapter_actors_quality16.gd ----
 ## Presentation only: cold-killed ordinary bodies yield to the .48s ice shards.
@@ -1056,6 +1113,7 @@ func _create__chapterx(kind: String) -> Node3D:
 	player.play("idle",0);player.seek(0,true);player.advance(0)
 	return actor
 func consume(events: Array) -> void:
+	_bf_consume(events)
 	for event in events:
 		if int(event.seq)<=_demon19_event:continue
 		_demon19_event=int(event.seq)
@@ -1166,10 +1224,20 @@ func _sync_hero_rim(camera: Camera3D,overlapping: bool) -> void:
 			var warden_frozen: bool=not entity.is_empty() and entity.hp_raw>0 and view.run.tick<int(entity.frozen_until)
 			var warden_ice := _fx_ice(actor,warden_frozen,_render_delta)
 			var warden_fire := 0.0 if entity.is_empty() or warden_frozen else _fx_fire(entity.id,view.run.tick)
+			# The finale's body: faded while out of play (entrance, break), finisher and last-phase glow. Neutral (alpha 1, no glow) with the finale off.
+			var bf_alpha := 1.0
+			var bf_glow := Color(0,0,0,0)
+			if not entity.is_empty():
+				if _bf_struck_age>=0.0 and _bf_struck_age<BF_STRUCK_SECONDS:_bf_struck_age+=_render_delta
+				var look := _bf_look(state,entity)
+				bf_alpha=look.alpha;bf_glow=look.glow
 			for material in state.materials:
 				var color: Color=material.get_meta("warden_tint",Color(.52,.55,.51))
 				if not warden_frozen and _warden_phase>=2:color*=Color(1.03,.89,.88)
-				_fx_material(material,color,warden_ice,warden_fire,state.owner_fade*corpse_alpha)
+				if bf_alpha<1.0:color=color.lerp(Palette.LINEN*Color(.62,.62,.62,1),(1.0-bf_alpha)*.45)
+				_fx_material(material,color,warden_ice,warden_fire,state.owner_fade*corpse_alpha*bf_alpha)
+				if bf_glow.a>0.0:
+					material.emission=material.emission+Color(bf_glow.r,bf_glow.g,bf_glow.b,0)
 		if actor.has_meta("minion19"):
 			var state: Dictionary=actor.get_meta("minion19")
 			state.fade=lerpf(float(state.fade),.4 if overlapping and _overlaps_hero(actor,camera) else 1.0,blend)
