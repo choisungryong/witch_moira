@@ -138,6 +138,15 @@ var _shield_id := 0
 var _shield_blocked_tick := -100000
 const SHIELD_EVENT_GAP := 30
 
+## ET-A element kit (D-element-trees). Everything below is 0 / false / empty unless the run's element is on in element_kit.json; the
+## chapter core fills it. `_kit` is the element's block of the document; the card state lives in growth (kit_val, kit_flag, kit_rank).
+var _kit_on := false
+var _kit: Dictionary = {}
+var _kit_hp := 0
+var _kit_move_bps := 0
+var _kit_shell_until := 0
+var _kit_shell_reduce := 0
+
 func start(seed_: int = 1, primary: String = "chapter1.skill.ember") -> bool:
 	if not _catalog.load_file("res://chapter1/data/growth_quality36.json"):
 		errors.assign(_catalog.errors)
@@ -281,6 +290,7 @@ func choose(token: String, card_id: String) -> bool:
 	if not growth.choose(token,card_id): return false
 	_emit("growth",hero.position,{"card_id":card_id,"card":picked,"growth":growth.snapshot()})
 	_drain_growth_events()
+	if _kit_on: _kit_took(card_id)
 	_choice_tick = tick
 	_refresh_mode()
 	return true
@@ -374,11 +384,11 @@ func _gear_totals(equip_map: Dictionary) -> Dictionary:
 
 ## Pure: the hero's gear-and-build body values for the given gear totals.
 func _hero_body(gear: Dictionary) -> Dictionary:
-	var max_hp := 120*UNIT+int(gear.get("max_hp_raw",0))+_build_max_hp*UNIT
+	var max_hp := 120*UNIT+int(gear.get("max_hp_raw",0))+_build_max_hp*UNIT+_kit_hp*UNIT
 	# D23 T1-B: max_hp_bps multiplies the whole sum (base + gear numbers + tree).
 	if int(gear.get("max_hp_bps",0)) != 0: max_hp = max_hp*(10000+int(gear.get("max_hp_bps",0)))/10000
 	return {"max_hp_raw":max_hp,
-		"speed":BASE_SPEED*float(10000+int(gear.get("move_speed_bps",0)))/10000.0}
+		"speed":BASE_SPEED*float(10000+int(gear.get("move_speed_bps",0))+_kit_move_bps)/10000.0}
 
 func effective_skill(id_: String) -> Dictionary:
 	return _skill_with(id_,_gear_with_conditions())
@@ -409,6 +419,7 @@ func _moving_active() -> bool:
 func _reduction_bps(gear: Dictionary, live: bool = false) -> int:
 	var total := int(gear.get("damage_reduction_bps",0))+_build_reduction_bps
 	if live and int(gear.get("after_dash_guard_bps",0)) > 0 and _after_dash_active(): total += int(gear.after_dash_guard_bps)
+	if live and tick < _kit_shell_until: total += _kit_shell_reduce
 	var cap := int(tuning.get("stat_caps",{}).get("damage_reduction_bps",0))
 	return mini(total,cap) if cap > 0 else total
 
@@ -1220,7 +1231,66 @@ func _step_ring_pulses() -> void:
 		var targets := _ring_targets(String(entry.skill_id),entry.effects)
 		if not targets.is_empty(): _ring_strike(String(entry.skill_id),entry.effects,targets,bool(entry.evolved),int(entry.pulse))
 
+## ET-A: what the core does when a kit card was taken (hero body, immediate effects, events). The chapter core fills it.
+func _kit_took(_card_id: String) -> void:
+	pass
+
+## ET-A (kit on): the chain of the signature arc. A big body may be struck again in one cast when the chain went through another body
+## in between (kit.chain.big_rehit hits at most); a chain with nothing left to jump to and a big body as its last target rebounds off it
+## (kit.chain.lone_rebounds + the cards' lone_rebounds, at rebound_bps of the damage). Targets are picked by distance and id only.
+func _kit_chain(first: Dictionary, context: Dictionary) -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	context.arc_segments=[]
+	var effects: Dictionary = context.effects
+	var rule: Dictionary = _kit.chain
+	var rehit_max := int(rule.big_rehit)
+	var rebounds_left := int(rule.lone_rebounds)+growth.kit_val("lone_rebounds")
+	var base_damage := int(effects.damage_raw)
+	var hits := {}
+	var preferred := int(first.id)
+	for branch in int(effects.branches):
+		var at: Vector2 = hero.position
+		var last := -1
+		var bounce := 0
+		while bounce < int(effects.chain_targets):
+			if int(context.remaining_hits) <= 0: break
+			var target_id := -1
+			if branch == 0 and bounce == 0: target_id = preferred
+			else:
+				for id_ in _near(at,float(effects.radius_cm)/100.0):
+					if id_ == last: continue
+					var count := int(hits.get(id_,0))
+					if count == 0 or (count < rehit_max and enemies[id_].elite):
+						target_id = id_
+						break
+			if target_id < 0:
+				if rebounds_left > 0 and last >= 0 and enemies.has(last) and enemies[last].elite and enemies[last].hp_raw > 0:
+					rebounds_left -= 1
+					effects.damage_raw = base_damage*int(rule.rebound_bps)/10000
+					context.rehit = last
+					positions.append(enemies[last].position)
+					context.arc_segments.append({"from":at,"to":enemies[last].position,"branch":branch,"rebound":true})
+					_emit("chain_rebound",enemies[last].position,{"target_id":last,"skill_id":context.skill_id,"cast_uid":context.uid})
+					_damage_enemy(last,context,0)
+					context.erase("rehit")
+					effects.damage_raw = base_damage
+					bounce += 1
+					continue
+				break
+			var target: Dictionary = enemies[target_id]
+			hits[target_id] = int(hits.get(target_id,0))+1
+			positions.append(target.position)
+			context.arc_segments.append({"from":at,"to":target.position,"branch":branch})
+			at = target.position
+			last = target_id
+			context.rehit = target_id
+			_damage_enemy(target_id,context,0)
+			context.erase("rehit")
+			bounce += 1
+	return positions
+
 func _chain(first: Dictionary, context: Dictionary) -> Array[Vector2]:
+	if _kit_on: return _kit_chain(first,context)
 	var positions: Array[Vector2] = []
 	context.arc_segments=[]
 	var effects: Dictionary = context.effects

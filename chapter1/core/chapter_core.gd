@@ -11,6 +11,7 @@ const Tuning = preload("res://chapter1/core/combat_tuning.gd")
 const SkillTree = preload("res://chapter1/core/skill_tree.gd")
 const Progression = preload("res://chapter1/core/character_progression.gd")
 const RunSpells = preload("res://chapter1/core/run_spells.gd")
+const ElementKit = preload("res://chapter1/core/element_kit.gd")
 ## Exact keys of a build dictionary (profile.build_for).
 const BUILD_KEYS := ["character_id","tree_id","tree_revision","ranks","character_level","character_xp"]
 ## Frost field limits (spec 3.4 R2). The summed radius is cut to the upper bound (director decision).
@@ -251,6 +252,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 			_shared_tuning=loader.snapshot()
 		_install_tuning(_shared_tuning)
 	if not _prepare_spells():return false
+	if not _prepare_kit(primary):return false
 	if not _prepare_descent():return false
 	if not _prepare_elites():return false
 	if not _prepare_loot_flow():return false
@@ -295,6 +297,7 @@ func start(seed_: int=1, primary: String="chapter1.skill.ember") -> bool:
 		# ring's freezes and stuns, basic hits that found a controlled enemy (vs_cc) and what that added, detonations that
 		# strengthened a ring (i2), and basic casts aimed first at a far shooter (i0) with the kills of that kind they made.
 		metrics.ward={"casts":0,"hits":0,"kills":0,"staggers":0,"cuts":0,"freezes":0,"stuns":0,"vs_cc_hits":0,"vs_cc_extra_raw":0,"i2_hits":0,"i2_extra_raw":0,"i0_casts":0,"i0_kills":0}
+	if _kit_on and not _kit_install():return false
 	if _build_active:
 		if _build_max_hp>0:hero.max_hp_raw=120*UNIT+_build_max_hp*UNIT;hero.hp_raw=hero.max_hp_raw
 		if not growth.set_options(_build_growth):errors.assign(growth.errors);return false
@@ -324,7 +327,7 @@ static func _growth_data() -> bool:
 ## The skill id of the witch a build belongs to ("" when the build or the witch is unknown).
 func _build_signature(build: Dictionary) -> String:
 	if not _growth_data():return ""
-	return String(Progression.character_entry(_shared_progression,String(build.get("character_id",""))).get("signature_skill_id",""))
+	return String(Progression.character_entry(_kit_tables().doc,String(build.get("character_id",""))).get("signature_skill_id",""))
 
 ## A cleaned copy of the build (integers only), or {"error": reason}. The same skill_tree.gd rules the profile
 ## uses decide whether the ranks are legal. The core does not see the witch's first-kill receipts, so it grants
@@ -335,7 +338,8 @@ func _normalize_build(build: Dictionary) -> Dictionary:
 	if build.size()!=BUILD_KEYS.size():return {"error":"Build keys do not match"}
 	for key in BUILD_KEYS:
 		if not build.has(key):return {"error":"Build key missing: "+key}
-	var doc: Dictionary=_shared_progression
+	var tables := _kit_tables()
+	var doc: Dictionary=tables.doc
 	var known: Dictionary=Progression.character_entry(doc,build.character_id) if build.character_id is String else {}
 	if known.is_empty():return {"error":"Unknown character"}
 	if not GrowthCatalog.integer(build.character_xp,0,1000000000) or not GrowthCatalog.integer(build.character_level,1,int(doc.level_cap)):return {"error":"Character level or xp out of range"}
@@ -350,8 +354,8 @@ func _normalize_build(build: Dictionary) -> Dictionary:
 	if String(build.tree_id).is_empty():
 		if has_tree or int(build.tree_revision)!=0 or not ranks.is_empty():return {"error":"Not a build of a witch without a tree"}
 		return clean
-	if not has_tree or known.tree_id!=build.tree_id or not _shared_trees.has(build.tree_id):return {"error":"Not this witch's tree"}
-	var tree: Dictionary=_shared_trees[build.tree_id]
+	if not has_tree or known.tree_id!=build.tree_id or not tables.trees.has(build.tree_id):return {"error":"Not this witch's tree"}
+	var tree: Dictionary=tables.trees[build.tree_id]
 	if int(build.tree_revision)!=int(tree.revision):return {"error":"Tree revision differs"}
 	var bound := (int(build.character_level)-1)*int(doc.points_per_level)
 	for reward in doc.first_rewards:bound+=int(doc.first_rewards[reward])
@@ -373,11 +377,16 @@ func clear_build() -> void:
 ## Compile the parked build for this run (tree once, in the data's node order) and derive every rule value.
 func _activate_build() -> void:
 	_build={};_build_active=false;_build_skill={};_build_potions=0;_build_growth={};_elite_bps=0;_shatter_extra_cm=0
-	_field_rule={};_fields.clear();_field_uid=0;_next_field=0;_progress={};_build_max_hp=0;_build_reduction_bps=0
+	_field_rule={};_fields.clear();_field_uid=0;_next_field=0;_progress={};_build_max_hp=0;_build_reduction_bps=0;_kit_build_cards=[]
 	if _pending_build.is_empty():return
 	_build=_pending_build.duplicate(true);_build_active=true
 	var compiled := {"skill":{},"hero":{},"rules":{}}
-	if not String(_build.tree_id).is_empty():compiled=SkillTree.compile(_shared_trees[_build.tree_id],_build.ranks)
+	if not String(_build.tree_id).is_empty():
+		var tree: Dictionary=_kit_tables().trees[_build.tree_id]
+		if ElementKit.is_element_tree(tree):
+			var element_build := ElementKit.compile_tree(tree,_build.ranks)
+			compiled.rules=element_build.rules;_kit_build_cards=element_build.cards
+		else:compiled=SkillTree.compile(tree,_build.ranks)
 	var hero_block: Dictionary=compiled.hero;var rules: Dictionary=compiled.rules
 	_build_skill=compiled.skill
 	_build_max_hp=clampi(int(hero_block.get("max_hp",0)),0,60)
@@ -1453,6 +1462,10 @@ func _skill_with(id_: String,gear: Dictionary) -> Dictionary:
 		effect.branches=mini(3,int(effect.branches)+int(gear.get("arc_branches",0)))
 		if gear.get("arc_branches",0)>0:effect.hit_budget=mini(128,maxi(int(effect.hit_budget),int(effect.branches)*int(effect.chain_targets)))
 		effect.damage_raw=int(effect.damage_raw)*(10000+int(gear.get("arc_damage_bps",0)))/10000
+	# ET-A: the kit's cards on the signature arc (one more branch; a big body struck again or rebounded needs room in the hit budget).
+	if _kit_on and id_==_primary_id:
+		effect.branches=mini(4,int(effect.branches)+growth.kit_val("branches"))
+		effect.hit_budget=mini(128,maxi(int(effect.hit_budget),int(effect.branches)*(int(effect.chain_targets)+int(_kit.chain.lone_rebounds)+growth.kit_val("lone_rebounds"))))
 	# The permanent tree acts on the witch's signature skill only, after gear and before the role bonus.
 	if _build_active and id_==_primary_id and not _build_skill.is_empty():_apply_build_skill(effect)
 	_apply_role_tuning(id_,value)
@@ -2025,6 +2038,8 @@ func step(move: Vector2=Vector2.ZERO) -> void:
 	if luck_now:_take_luck()
 	super.step(move)
 	if luck_now and _run_luck_bps>0:_emit("luck_locked",hero.position,{"luck_bps":_run_luck_bps,"worn_bps":_run_luck_worn,"capped":_run_luck_worn>_run_luck_bps})
+	if mode!="playing":return
+	if _kit_on:_kit_step()
 	if mode!="playing":return
 	_step_chapter_hazards()
 	if mode!="playing":return
@@ -3207,6 +3222,8 @@ func snapshot() -> Dictionary:
 			"wasted":_d_wasted,"hold_bonus":_d_hold_bonus,"strong_carry":_d_strong_carry,"pause_until":_d_pause_until,"burn":_d_burn.duplicate(true)}
 	# The composition's own state (ring pulses still to come) exists only while it is on; axes and evolution partners are in growth.
 	if not spells.is_empty():result.spells={"pulses":_ring_pending.duplicate(true)}
+	# ET-A: the kit's core state exists only in a run whose element is on (the cards are in growth.kit); otherwise there is no key.
+	if _kit_on:result.kit_core=_kit_state()
 	# D19 C1-f: the pace clock exists only while grace.pace is configured.
 	if _pace_on:result.pace={"level":_pace_level,"since":_pace_since,"carry":_pace_carry}
 	# The grace gap's own clock exists only while the grace block is on.
@@ -3241,8 +3258,8 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	# The boss out of play (finale entrance or break) turns every blow away: nothing is spent, nothing is dealt.
 	if id_==_shield_id and not _bf_descent_pierces(String(context.skill_id)):_shield_block_event(String(context.skill_id));return
 	if context.skill_id=="chapter1.skill.arc":
-		if id_ in context.hit_ids:return
-		context.hit_ids.append(id_)
+		if id_ in context.hit_ids and int(context.get("rehit",-1))!=id_:return
+		if not id_ in context.hit_ids:context.hit_ids.append(id_)
 	context.remaining_hits-=1
 	var effect: Dictionary=context.effects
 	var was_frozen: bool=tick<int(e.frozen_until)
@@ -3357,6 +3374,8 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if mark_bps>0 and context.skill_id!=_primary_id and e.hp_raw>0:
 		var owner_slot: int=_mark_owners.find(context.skill_id)
 		if owner_slot>=0:e[MARK_KEYS[owner_slot]]=tick+int(tuning.marks.mark_ticks)
+	# ET-A: with the kit on, a hit of the signature arc leaves the shock status (a stack on a big body) on a body that is still alive.
+	if _kit_on and e.hp_raw>0 and depth==0 and context.skill_id==_primary_id:_kit_shock(e,1)
 	# Shock is separate from cold: no freeze stacks, cold tint or shatter credit.
 	# Primary chain contacts only; secondary death explosions cannot restun.
 	if e.hp_raw>0 and context.skill_id=="chapter1.skill.arc" and depth==0 and tick>=int(e.get("shock_ready_tick",0)):
@@ -3368,6 +3387,7 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 	if e.hp_raw>0:return
 	e.state="dead";_alive-=1;e.dead_tick=tick;e.telegraph={};kills+=1
 	_emit("death",e.position,{"target_id":id_,"kind":e.kind,"elite":e.elite,"skill_id":context.skill_id,"role":_enemy_role(e)})
+	if _kit_on:_kit_on_death(e)
 	if is_ring:_ward_add("kills")
 	if context.get("aim","")=="kind" and e.kind in spell.get("prefer_kinds",[]):_ward_add("i0_kills")
 	_drop_orb(e.position,int(_enemy_definition(e).xp));_maybe_drop_item(e)
@@ -3387,3 +3407,408 @@ func _damage_enemy(id_: int,context: Dictionary,depth: int) -> void:
 			if other==id_ or remaining<=0:continue
 			_damage_enemy(other,context,1);remaining-=1
 	if e.elite:_on_elite_defeated(e)
+
+# ---------------------------------------------------------------- element kit (ET-A, D-element-trees: stack, lay, burst)
+# Switch: element_kit.json "enabled" + "enabled_elements" (or set_element_kit() for a tool). With it off (the shipped value) nothing below runs, draws
+# a random number or reaches the snapshot. The kit replaces the old growth of its element (growth.set_kit) and uses no other element's skills.
+# Every number is in the document (element_kit.json); the code only knows the roles: the signature skill stacks `shock` (a stack count on a big
+# body), the lay skill plants rods on a big body, the burst skill sends one bolt from every shocked body to the rod (or, with none, the big body's own
+# stacks). Targets are chosen by distance, health and id only.
+
+const KIT_STORM_ID := "chapter1.skill.arc_storm"
+var _pending_kit: Dictionary = {}
+var _pending_kit_set := false
+var _kit_open_mode: Variant = ""
+var _kit_doc: Dictionary = {}
+var _kit_build_cards: Array = []
+var _kit_rods: Array[int] = []
+var _kit_next_rod := 0
+var _kit_next_overload := 0
+var _kit_next_storm := 0
+var _kit_next_discharge := 0
+var _kit_next_stride := 0
+var _kit_shell_next := 0
+var _kit_bolt_count := 0
+var _kit_ev_tick := -1
+var _kit_ev_stacked := 0
+var _kit_ev_bolts := 0
+var _kit_merged_n := 0
+var _kit_merged_raw := 0
+
+## Park a kit document for the next start() (before start(); validated like the file). `{}` removes the parked one (the shipped file decides again).
+## A rejected document changes nothing. The element kit and run_spells (or grace) never run together: start() refuses that pair.
+func set_element_kit(candidate: Variant) -> bool:
+	if candidate is Dictionary and candidate.is_empty():
+		_pending_kit={};_pending_kit_set=false;return true
+	var loader = ElementKit.new()
+	if not loader.replace_document(candidate):errors.assign(loader.errors);return false
+	_pending_kit=loader.snapshot();_pending_kit_set=true
+	return true
+
+## Which kit-opened cards this run may draw, when no permanent build decides: "none", "all" (every card a tree node opens) or a list of card ids.
+## "" (the default) lets the build's tree decide. For tools that do not play a profile (measurement, tests).
+func set_kit_open(mode: Variant) -> bool:
+	if mode is String and mode in ["","none","all"]:_kit_open_mode=mode;return true
+	if mode is Array:
+		for id_ in mode:
+			if not id_ is String:errors.assign(["Kit open list needs card ids"]);return false
+		_kit_open_mode=mode.duplicate();return true
+	errors.assign(["Unknown kit tree mode"]);return false
+
+## The progression document and the skill trees with the element trees of the kit's enabled elements added (a copy). Without an element on, the shared ones.
+func _kit_tables() -> Dictionary:
+	var doc: Dictionary=_pending_kit if _pending_kit_set else ElementKit.current()
+	var extra := ElementKit.trees_for(doc,_shared_progression)
+	if extra.has("error"):
+		push_error(String(extra.error));extra={}
+	if extra.is_empty():return {"doc":_shared_progression,"trees":_shared_trees}
+	var trees: Dictionary=_shared_trees.duplicate()
+	trees.merge(extra)
+	return {"doc":ElementKit.patch_progression(_shared_progression,extra),"trees":trees}
+
+func _prepare_kit(primary: String) -> bool:
+	_kit_on=false;_kit={};_kit_doc={};_kit_hp=0;_kit_move_bps=0;_kit_shell_until=0;_kit_shell_reduce=0
+	_kit_rods=[];_kit_next_rod=0;_kit_next_overload=0;_kit_next_storm=0;_kit_next_discharge=0;_kit_next_stride=0;_kit_shell_next=0;_kit_bolt_count=0
+	_kit_ev_tick=-1;_kit_ev_stacked=0;_kit_ev_bolts=0;_kit_merged_n=0;_kit_merged_raw=0
+	var doc: Dictionary=_pending_kit if _pending_kit_set else ElementKit.current()
+	if doc.is_empty() or not ElementKit.is_on_for(primary,doc):return true
+	if not spells.is_empty():errors.assign(["The element kit cannot run together with run_spells"]);return false
+	if tuning.has("grace") and bool(tuning.grace.enabled):errors.assign(["The element kit cannot run together with grace"]);return false
+	_kit_on=true;_kit_doc=doc
+	_kit=doc.elements[ElementKit.element_of_skill(primary)].duplicate(true)
+	return true
+
+## After the run's growth is configured: hand the kit to growth (cards, offer rules, the cards the tree opened) and open the counters.
+func _kit_install() -> bool:
+	if not growth.set_kit(_kit_doc.offer,_kit,_kit_doc.fillers,_kit_open_list()):errors.assign(growth.errors);return false
+	metrics.kit={"overloads":[],"bolts":0,"self_bolts":0,"sparks":0,"storms":0,"rods":0,"rebounds":0,"heals":0,"shells":0,"strides":0,"discharges":0,"pops":0,"merged_bolts":0}
+	return true
+
+func _kit_open_list() -> Array:
+	var out: Array=[]
+	if _kit_open_mode is Array:return _kit_open_mode.duplicate()
+	if String(_kit_open_mode)=="all":
+		for card in _kit.cards:
+			if String(card.open)!="base":out.append(String(card.id))
+		return out
+	if String(_kit_open_mode)=="none":return out
+	return _kit_build_cards.duplicate()
+
+## What the kit's skill `id_` is now: its base values, then the rank entries up to the rank growth gave it. {} while it is not unlocked.
+func _kit_skill(id_: String) -> Dictionary:
+	var rank := growth.kit_rank(id_)
+	if rank<=0 or not _kit.skills.has(id_):return {}
+	var definition: Dictionary=_kit.skills[id_]
+	var out := {}
+	for key in definition:
+		if key!="role" and key!="ranks":out[key]=int(definition[key])
+	for r in mini(rank,definition.ranks.size()):
+		for key in definition.ranks[r]:out[key]=int(definition.ranks[r][key])
+	return out
+
+func _kit_skill_id(role: String) -> String:
+	for id_ in _kit.skills:
+		if String(_kit.skills[id_].role)==role:return String(id_)
+	return ""
+
+func _kit_arc_bps() -> int:
+	return int(_gear_stats.get("arc_damage_bps",0))
+
+func _kit_context(skill_id: String,damage: int) -> Dictionary:
+	_cast_sequence+=1
+	return {"uid":_cast_sequence,"skill_id":skill_id,"evolved":false,"remaining_hits":100000,"hit_ids":[],
+		"effects":{"damage_raw":damage,"cooldown_ticks":0,"projectiles":0,"chain_targets":0,"branches":1,"pierce":0,"radius_cm":0,"slow_bps":0,"freeze_stacks":0,
+			"shatter_count":0,"death_burst":0,"proc_depth":0,"hit_budget":1}}
+
+# ---- the status
+
+func _kit_shock_n(e: Dictionary) -> int:
+	var st: Variant=e.get("kst")
+	if st is Dictionary and tick<int(st.until):return int(st.n)
+	return 0
+
+func _kit_cap(e: Dictionary) -> int:
+	var rule: Dictionary=_kit.status
+	return (int(rule.max_big)+growth.kit_val("max_big")) if e.elite else int(rule.max)
+
+## Put `add` stacks of the shock status on a body (bounded by its cap; renews the expiry). One status_stacked event per body per 15 ticks
+## (a big body every time), at most 32 a tick; status_full when a big body reaches its cap.
+func _kit_shock(e: Dictionary,add: int) -> void:
+	var before := _kit_shock_n(e)
+	var cap := _kit_cap(e)
+	var n := mini(cap,before+add)
+	var previous: Variant=e.get("kst")
+	var last_emit := int(previous.emit) if previous is Dictionary else -1000
+	e.kst={"n":n,"until":tick+int(_kit.status.expire_ticks),"emit":last_emit}
+	if n==before and not e.elite:return
+	if e.elite or tick-last_emit>=15:
+		if _kit_ev_tick!=tick:_kit_ev_tick=tick;_kit_ev_stacked=0;_kit_ev_bolts=0
+		if _kit_ev_stacked<32:
+			_kit_ev_stacked+=1;e.kst.emit=tick
+			_emit("status_stacked",e.position,{"target_id":int(e.id),"element":ElementKit.element_of_skill(_primary_id),"stacks":n,"max":cap,"big":bool(e.elite)})
+	if e.elite and n>=cap and before<cap:
+		_emit("status_full",e.position,{"target_id":int(e.id),"element":ElementKit.element_of_skill(_primary_id),"kind":"big_full"})
+
+# ---- the tick
+
+func _kit_step() -> void:
+	if _kit_ev_tick!=tick:_kit_ev_tick=tick;_kit_ev_stacked=0;_kit_ev_bolts=0
+	# ET16: a body out of play (the boss in its entrance or break) keeps its stacks: its status clock stands still.
+	if _shield_id>0 and enemies.has(_shield_id):
+		var held: Variant=enemies[_shield_id].get("kst")
+		if held is Dictionary:held.until=int(held.until)+1
+	_kit_rod_upkeep()
+	if growth.kit_rank(_kit_skill_id("lay"))>0:_kit_cast_rod()
+	if growth.kit_rank(_kit_skill_id("burst"))>0:_kit_cast_overload()
+	_kit_storm()
+	_kit_passives()
+	if _kit_merged_n>0:
+		_emit("bolt_returned",hero.position,{"from_id":0,"to_id":0,"damage_raw":_kit_merged_raw,"self":false,"merged":_kit_merged_n})
+		metrics.kit.merged_bolts=int(metrics.kit.merged_bolts)+_kit_merged_n
+		_kit_merged_n=0;_kit_merged_raw=0
+
+func _kit_rod_upkeep() -> void:
+	if _kit_rods.is_empty():return
+	var keep: Array[int]=[]
+	for id_ in _kit_rods:
+		var e: Variant=enemies.get(id_)
+		var reason := ""
+		if not e is Dictionary or int(e.hp_raw)<=0:reason="dead"
+		elif id_==_shield_id:reason="break"
+		elif tick>=int(e.get("rod_until",0)):reason="time"
+		if not reason.is_empty():
+			if e is Dictionary:e.rod_until=0
+			_emit("rod_dropped",e.position if e is Dictionary else hero.position,{"target_id":id_,"reason":reason})
+			continue
+		keep.append(id_)
+		# A body with a rod keeps its shock alive while the rod stands.
+		var st: Variant=e.get("kst")
+		if st is Dictionary and int(st.n)>0 and tick<int(st.until):st.until=tick+int(_kit.status.expire_ticks)
+	_kit_rods=keep
+
+func _kit_rod_target(range_m: float,include_bearers: bool) -> int:
+	var best := -1;var best_big := false;var best_hp := -1
+	for id_ in _near(hero.position,range_m):
+		if id_ in _kit_rods and not include_bearers:continue
+		var e: Dictionary=enemies[id_]
+		var big: bool=e.elite
+		var hp := int(e.hp_raw)
+		if best<0 or (big and not best_big) or (big==best_big and (hp>best_hp or (hp==best_hp and id_<best))):
+			best=id_;best_big=big;best_hp=hp
+	return best
+
+func _kit_cast_rod() -> void:
+	var s := _kit_skill(_kit_skill_id("lay"))
+	if s.is_empty() or tick<_kit_next_rod:return
+	var count: int=int(_kit.rod.count)+growth.kit_val("rod_count")
+	# With every rod standing, the best body is picked among all (a standing rod is renewed); with a free slot, among those without one.
+	var full := _kit_rods.size()>=count
+	var target := _kit_rod_target(float(int(_kit.rod.range_cm))/100.0,full)
+	if target<0:return
+	var e: Dictionary=enemies[target]
+	_kit_next_rod=tick+maxi(12,int(s.cooldown_ticks))
+	if full and not target in _kit_rods:
+		var old: int=_kit_rods.pop_front()
+		if enemies.has(old):enemies[old].rod_until=0;_emit("rod_dropped",enemies[old].position,{"target_id":old,"reason":"replaced"})
+	var until := tick+int(s.get("rod_ticks",int(_kit.rod.ticks)))
+	var ctx := _kit_context(_kit_skill_id("lay"),int(s.damage_raw)*(10000+_kit_arc_bps())/10000)
+	metrics.casts[_kit_skill_id("lay")]=int(metrics.casts.get(_kit_skill_id("lay"),0))+1
+	_damage_enemy(target,ctx,0)
+	if int(e.hp_raw)<=0:return
+	e.rod_until=until
+	if not target in _kit_rods:_kit_rods.append(target)
+	metrics.kit.rods=int(metrics.kit.rods)+1
+	_emit("rod_planted",e.position,{"target_id":target,"until":until})
+
+## One bolt from `from_id` to `to_id`: the event (at most 16 a tick, the rest folded into one) and the blow through the normal damage path.
+func _kit_bolt(from_id: int,to_id: int,ctx: Dictionary,raw: int,self_: bool,spark: bool=false) -> bool:
+	if not enemies.has(to_id) or int(enemies[to_id].hp_raw)<=0:return false
+	ctx.effects.damage_raw=raw
+	var at: Vector2=enemies[to_id].position
+	if _kit_ev_bolts<16:
+		_kit_ev_bolts+=1
+		var details := {"from_id":from_id,"to_id":to_id,"damage_raw":raw,"self":self_}
+		if spark:details.spark=true
+		_emit("bolt_returned",at,details)
+	else:
+		_kit_merged_n+=1;_kit_merged_raw+=raw
+	if spark:metrics.kit.sparks=int(metrics.kit.sparks)+1
+	elif self_:metrics.kit.self_bolts=int(metrics.kit.self_bolts)+1
+	metrics.kit.bolts=int(metrics.kit.bolts)+1
+	_damage_enemy(to_id,ctx,0)
+	return enemies.has(to_id) and int(enemies[to_id].hp_raw)>0
+
+func _kit_cast_overload() -> void:
+	var skill_id := _kit_skill_id("burst")
+	var s := _kit_skill(skill_id)
+	if s.is_empty() or tick<_kit_next_overload:return
+	var reach := float(int(s.reach_cm))/100.0
+	var targets: Array[int]=[]
+	for id_ in _kit_rods:
+		if enemies.has(id_) and int(enemies[id_].hp_raw)>0:targets.append(id_)
+	if targets.is_empty():
+		var best := -1;var best_hp := -1
+		for id_ in _near(hero.position,reach):
+			if _kit_shock_n(enemies[id_])<=0:continue
+			var hp := int(enemies[id_].hp_raw)
+			if hp>best_hp or (hp==best_hp and id_<best):best=id_;best_hp=hp
+		if best>=0:targets.append(best)
+	if targets.is_empty():return
+	var center: Vector2=enemies[targets[0]].position
+	var conductors: Array[int]=[]
+	for id_ in _near(center,reach):
+		if id_ in targets or _kit_shock_n(enemies[id_])<=0:continue
+		conductors.append(id_)
+	var max_bolts := maxi(1,int(s.max_bolts)+growth.kit_val("overload_max_bolts"))
+	var count := mini(conductors.size(),max_bolts)
+	var self_mode := false
+	var first: Dictionary=enemies[targets[0]]
+	if conductors.is_empty():
+		# No conductor: a big body's own stacks make the bolts (and are spent).
+		if not first.elite:return
+		count=mini(max_bolts,_kit_shock_n(first)*(int(s.self_bolt_bps)+growth.kit_val("self_bolt_bps"))/10000)
+		if count<=0:return
+		self_mode=true
+		first.kst.n=0
+	else:count+=growth.kit_val("bolts_add")
+	_kit_next_overload=tick+maxi(12,int(s.cooldown_ticks)*(10000+growth.kit_val("overload_cd_bps"))/10000)
+	metrics.casts[skill_id]=int(metrics.casts.get(skill_id,0))+1
+	var base := int(s.bolt_raw)*(int(s.bolt_bps)+growth.kit_val("overload_bolt_bps"))/10000*(10000+_kit_arc_bps())/10000
+	var ctx := _kit_context(skill_id,base)
+	var per: Dictionary={}
+	var sent: Array[int]=[]
+	var points: Array[Vector2]=[]
+	for i in count:
+		var to: int=targets[i%targets.size()]
+		if not enemies.has(to) or int(enemies[to].hp_raw)<=0:
+			to=-1
+			for id_ in _near(center,reach):
+				if not id_ in conductors:to=id_;break
+			if to<0:break
+		var from: int=to if self_mode else conductors[mini(i,conductors.size()-1)]
+		var raw := base
+		if int(enemies[to].get("rod_until",0))>tick:raw=raw*(10000+growth.kit_val("rod_target_bps"))/10000
+		if not self_mode and i<conductors.size():
+			sent.append(from)
+			if enemies.has(from):
+				points.append(enemies[from].position)
+				if enemies[from].get("kst") is Dictionary:enemies[from].kst.n=0
+		var row: Dictionary=per.get(to,{"n":0,"raw":0})
+		row.n=int(row.n)+1;row.raw=int(row.raw)+raw;per[to]=row
+		_kit_bolt(from,to,ctx,raw,self_mode)
+	var logged: Array=metrics.kit.overloads
+	if logged.size()<600:logged.append({"tick":tick,"bolts":count,"conductors":conductors.size(),"self":self_mode,"big":bool(first.elite),"targets":targets.size()})
+	for id_ in per:
+		var alive := enemies.has(id_) and int(enemies[id_].hp_raw)>0
+		_emit("detonated",enemies[id_].position if enemies.has(id_) else hero.position,{"skill_id":skill_id,"target_id":id_,"element":ElementKit.element_of_skill(_primary_id),"stacks":int(per[id_].n),"damage_raw":int(per[id_].raw),"big":bool(enemies[id_].elite) if enemies.has(id_) else false,"kill":not alive})
+	if growth.kit_flag("conductor_pop") and not points.is_empty():
+		var pop: Dictionary=_kit.params.pop
+		var pop_ctx := _kit_context(skill_id,int(pop.raw)*(10000+_kit_arc_bps())/10000)
+		for p in points:
+			for id_ in _near(p,float(int(pop.radius_cm))/100.0):
+				if not id_ in targets:_damage_enemy(id_,pop_ctx,0)
+		metrics.kit.pops=int(metrics.kit.pops)+points.size()
+	if growth.kit_flag("bolt_heal"):
+		var heal: Dictionary=_kit.params.bolt_heal
+		_kit_bolt_count+=count
+		while _kit_bolt_count>=int(heal.bolts):
+			_kit_bolt_count-=int(heal.bolts)
+			hero.hp_raw=mini(int(hero.max_hp_raw),int(hero.hp_raw)+int(heal.heal)*UNIT)
+			metrics.kit.heals=int(metrics.kit.heals)+1
+
+func _kit_storm() -> void:
+	if tick<_kit_next_storm:return
+	var arc: Dictionary=growth.effective_skill(_primary_id)
+	if arc.is_empty() or not bool(arc.evolved):return
+	var storm: Dictionary=_kit.evolution.storm
+	var want_rods := 0
+	if not _kit_rods.is_empty():want_rods=ceili(float(int(storm.targets))/2.0) if growth.kit_flag("storm_rod") else 1
+	var picks: Array[int]=[]
+	for id_ in _kit_rods:
+		if picks.size()<want_rods and enemies.has(id_) and int(enemies[id_].hp_raw)>0:picks.append(id_)
+	for id_ in _near(hero.position,_acquire_m()):
+		if picks.size()>=int(storm.targets):break
+		if not id_ in picks and _kit_shock_n(enemies[id_])>0:picks.append(id_)
+	if picks.is_empty():return
+	_kit_next_storm=tick+int(storm.every_ticks)
+	metrics.kit.storms=int(metrics.kit.storms)+1
+	var ctx := _kit_context(KIT_STORM_ID,int(arc.effects.damage_raw)*int(storm.damage_bps)/10000)
+	metrics.casts[KIT_STORM_ID]=int(metrics.casts.get(KIT_STORM_ID,0))+1
+	_emit("kit_storm",hero.position,{"targets":picks.duplicate(),"skill_id":KIT_STORM_ID})
+	for id_ in picks:_damage_enemy(id_,ctx,0)
+
+## The survival cards that act over time: the discharge ring round a rod, the stride, the shell.
+func _kit_passives() -> void:
+	if growth.kit_flag("discharge_ring") and tick>=_kit_next_discharge and not _kit_rods.is_empty():
+		var rule: Dictionary=_kit.params.discharge
+		_kit_next_discharge=tick+int(rule.every_ticks)
+		var seen := 0
+		for rod in _kit_rods:
+			if not enemies.has(rod):continue
+			for id_ in _near(enemies[rod].position,float(int(rule.radius_cm))/100.0):
+				if id_==rod or seen>=12:continue
+				_kit_shock(enemies[id_],1);seen+=1
+		metrics.kit.discharges=int(metrics.kit.discharges)+1
+	if growth.kit_flag("stride_shock") and tick>=_kit_next_stride:
+		var rule: Dictionary=_kit.params.stride
+		var near := _near(hero.position,float(int(rule.reach_cm))/100.0)
+		if not near.is_empty():
+			_kit_next_stride=tick+int(rule.every_ticks)
+			_kit_shock(enemies[near[0]],1)
+			metrics.kit.strides=int(metrics.kit.strides)+1
+	if growth.kit_flag("static_shell") and tick>=_kit_shell_next:
+		var rule: Dictionary=_kit.params.shell
+		if int(hero.hp_raw)*10000<int(hero.max_hp_raw)*int(rule.hp_bps):
+			_kit_shell_next=tick+int(rule.cooldown_ticks)
+			_kit_shell_until=tick+int(rule.ticks);_kit_shell_reduce=int(rule.reduce_bps)
+			for id_ in _near(hero.position,float(int(rule.radius_cm))/100.0):
+				var e: Dictionary=enemies[id_]
+				_kit_shock(e,1)
+				if not e.elite:e.position=_clamp_point(e.position+(e.position-hero.position).normalized()*1.0)
+			metrics.kit.shells=int(metrics.kit.shells)+1
+			_emit("kit_shell",hero.position,{"until":_kit_shell_until,"reduce_bps":_kit_shell_reduce})
+
+## A shocked body died (called from the damage path; `e` is dead): a rod within its keep radius draws a small bolt from it, and the card
+## "chain on death" shocks the nearest body.
+func _kit_on_death(e: Dictionary) -> void:
+	if _kit_shock_n(e)<=0:return
+	if not _kit_rods.is_empty():
+		var s := _kit_skill(_kit_skill_id("lay"))
+		var radius := float(int(s.get("keep_radius_cm",int(_kit.rod.keep_radius_cm))))/100.0
+		var spark_raw: int=int(_kit.rod.death_spark_raw)*(10000+_kit_arc_bps())/10000
+		var ctx := _kit_context(_kit_skill_id("lay"),spark_raw)
+		for rod in _kit_rods.duplicate():
+			if rod==int(e.id) or not enemies.has(rod) or int(enemies[rod].hp_raw)<=0:continue
+			if enemies[rod].position.distance_to(e.position)<=radius:_kit_bolt(int(e.id),rod,ctx,spark_raw,false,true)
+	if growth.kit_flag("chain_on_death"):
+		for id_ in _near(e.position,float(int(_kit.params.death_chain.reach_cm))/100.0):
+			if id_!=int(e.id):_kit_shock(enemies[id_],1);break
+
+## What a kit card does the moment it is taken (called by choose() after growth took it): the hero body, a filler's one-off effect, the events.
+func _kit_took(card_id: String) -> void:
+	var taken: Dictionary=growth.kit_last()
+	if taken.is_empty():return
+	var before_max := int(hero.max_hp_raw)
+	_kit_hp=growth.kit_val("hp_max");_kit_move_bps=growth.kit_val("move_bps")
+	_recompute_gear()
+	if int(hero.max_hp_raw)>before_max:hero.hp_raw=mini(int(hero.max_hp_raw),int(hero.hp_raw)+int(hero.max_hp_raw)-before_max)
+	if String(taken.kind)=="filler":
+		var effect: Dictionary=taken.effect
+		if effect.has("heal_bps"):hero.hp_raw=mini(int(hero.max_hp_raw),int(hero.hp_raw)+int(hero.max_hp_raw)*int(effect.heal_bps)/10000)
+		if effect.has("potion"):
+			if potions<int(tuning.potion.carry_max):potions+=int(effect.potion)
+			else:hero.hp_raw=mini(int(hero.max_hp_raw),int(hero.hp_raw)+int(hero.max_hp_raw)*int(effect.get("heal_bps_if_full",0))/10000)
+	_emit("kit_card_taken",hero.position,{"card_id":card_id,"kind":String(taken.kind),"element":ElementKit.element_of_skill(_primary_id)})
+	if String(taken.kind)=="unlock":_emit("skill_gate_opened",hero.position,{"id":String(taken.skill),"card_id":card_id,"gate":String(taken.get("gate",""))})
+
+func _kit_state() -> Dictionary:
+	return {"rods":_kit_rods.duplicate(),"next_rod":_kit_next_rod,"next_overload":_kit_next_overload,"next_storm":_kit_next_storm,"next_discharge":_kit_next_discharge,
+		"next_stride":_kit_next_stride,"shell_next":_kit_shell_next,"shell_until":_kit_shell_until,"bolts":_kit_bolt_count,"hp":_kit_hp,"move_bps":_kit_move_bps}
+
+## Read only, for the screen and the tools: the kit's state in one dictionary. {"on": false} while off. Changes nothing, draws nothing.
+func kit_view() -> Dictionary:
+	if not _kit_on:return {"on":false}
+	var skills := {}
+	for id_ in _kit.skills:skills[id_]={"rank":growth.kit_rank(id_),"role":String(_kit.skills[id_].role)}
+	return {"on":true,"element":ElementKit.element_of_skill(_primary_id),"skills":skills,"rods":_kit_rods.duplicate(),"taken":growth.kit_taken(),
+		"shell_until":_kit_shell_until,"next_overload":_kit_next_overload,"next_rod":_kit_next_rod}

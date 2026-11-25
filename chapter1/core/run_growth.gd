@@ -51,6 +51,18 @@ var _luck := {"shrine_mul_bps":10000,"reward_grade":0,"gear_bps":0}
 var _events: Array[Dictionary] = []
 var _redraw := false
 var _relax_lock := false
+## ET-A element kit (D-element-trees): the kit's cards replace the catalog cards of this element. All empty unless set_kit() was called.
+var _kit_on := false
+var _kit_offer: Dictionary = {}
+var _kit_el: Dictionary = {}
+var _kit_fillers: Dictionary = {}
+var _kit_open: Array = []
+var _kit_taken: Array[String] = []
+var _kit_ranks: Dictionary = {}
+var _kit_vals: Dictionary = {}
+var _kit_flags: Array[String] = []
+var _kit_picks := 0
+var _kit_last: Dictionary = {}
 
 func configure(candidate: Variant, primary_skill: String, run_seed: int) -> bool:
 	var issues := Catalog.validate(candidate)
@@ -99,6 +111,17 @@ func configure(candidate: Variant, primary_skill: String, run_seed: int) -> bool
 	_events.clear()
 	_redraw = false
 	_relax_lock = false
+	_kit_on = false
+	_kit_offer = {}
+	_kit_el = {}
+	_kit_fillers = {}
+	_kit_open = []
+	_kit_taken.clear()
+	_kit_ranks = {}
+	_kit_vals = {}
+	_kit_flags.clear()
+	_kit_picks = 0
+	_kit_last = {}
 	errors.clear()
 	return true
 
@@ -208,6 +231,7 @@ func set_thresholds(table: Array) -> bool:
 	return true
 
 func _eligible_cards() -> Array[Dictionary]:
+	if _kit_on: return _kit_cards()
 	if not _spells.is_empty(): return _spell_cards()
 	var result: Array[Dictionary] = []
 	# Catalog order is authoritative; no hash-table iteration is used for the draw.
@@ -226,6 +250,7 @@ func _eligible_cards() -> Array[Dictionary]:
 	return result
 
 func _protected_card(cards: Array[Dictionary]) -> int:
+	if _kit_on: return _kit_gate_card(cards)
 	if not _spells.is_empty(): return _protected_spell_card(cards)
 	# Keep a reachable primary evolution path; the player still chooses it or another card.
 	for preferred in ["evolve","rank","passive"]:
@@ -251,12 +276,13 @@ func next_offer() -> Dictionary:
 				pool.remove_at(i)
 				carried[String(held.id)] = held.info
 				break
-	if pool.is_empty() and selected.is_empty():
+	# With the kit an empty pool is not a dead end: the filler cards fill the hand (below).
+	if pool.is_empty() and selected.is_empty() and not _kit_on:
 		_held = held
 		errors.assign(["No legal growth candidates"])
 		return {}
 	var final := _is_final_offer()
-	var target := int(_grace.final_offer.cards) if final else 3
+	var target := (int(_kit_offer.final_cards) if final else int(_kit_offer.cards)) if _kit_on else (int(_grace.final_offer.cards) if final else 3)
 	var protected := _final_protected_card(pool) if final else -1
 	if protected < 0: protected = _protected_card(pool)
 	if protected >= 0:
@@ -264,6 +290,7 @@ func next_offer() -> Dictionary:
 		pool.remove_at(protected)
 	while selected.size() < target and not pool.is_empty():
 		selected.append(_draw_weighted(pool))
+	if _kit_on: _kit_fill(selected,target)
 	_offer_sequence += 1
 	_offer = {"token":"%d:%d" % [_epoch,_offer_sequence],"level":_pending[0],"cards":selected}
 	_offer_meta = {}
@@ -303,12 +330,14 @@ func choose(token: String, card_id: String) -> bool:
 	var info: Dictionary = _offer_meta.get("grades",{}).get(card_id,{})
 	var plan := {}
 	if grades_on() and String(info.get("grade","common")) != "common": plan = _grade_plan(chosen,String(info.grade))
-	match chosen.kind:
-		"unlock","rank","axis": _apply_card_effect(chosen)
-		"passive": _owned_passives.append(chosen.passive_id)
-		"evolve":
-			_evolved.append(chosen.skill_id)
-			if not _spells.is_empty(): _evolve_partner[chosen.skill_id] = String(chosen.partner_pair)
+	if _kit_on: _kit_choose(chosen)
+	else:
+		match chosen.kind:
+			"unlock","rank","axis": _apply_card_effect(chosen)
+			"passive": _owned_passives.append(chosen.passive_id)
+			"evolve":
+				_evolved.append(chosen.skill_id)
+				if not _spells.is_empty(): _evolve_partner[chosen.skill_id] = String(chosen.partner_pair)
 	if not plan.is_empty():
 		_apply_plan_extras(chosen,plan)
 		if String(info.grade) == "jackpot":
@@ -336,6 +365,9 @@ func snapshot() -> Dictionary:
 	if not _spells.is_empty():
 		result.axes = _axes.duplicate(true)
 		result.evolve_partner = _evolve_partner.duplicate(true)
+	# Only a run with the element kit carries this key.
+	if _kit_on:
+		result.kit = {"taken":_kit_taken.duplicate(),"ranks":_kit_ranks.duplicate(),"vals":_kit_vals.duplicate(),"flags":_kit_flags.duplicate(),"picks":_kit_picks,"open":_kit_open.duplicate()}
 	# Only a run with permanent-build options carries this key.
 	if not _options.is_empty(): result.options = {"start_rank":int(_options.start_rank),"grace_rerolls":int(_options.grace_rerolls),"rerolls_left":_rerolls_left,"evolve_without_passive":_evolve_free}
 	# Only a run with the grace block on carries these (D13 K3a/K3b-1); the standing offer's cards stay as they were.
@@ -686,6 +718,7 @@ func _evolve_locked() -> bool:
 	return grace_on() and not _relax_lock and _offer_level() < int(_grace.evolve_min_level)
 
 func _is_final_offer() -> bool:
+	if _kit_on: return not _pending.is_empty() and is_final_level(int(_pending[0]))
 	return grace_on() and String(_grace.final_offer.mode) == "big" and not _pending.is_empty() and is_final_level(int(_pending[0]))
 
 func _filtered_pool() -> Array[Dictionary]:
@@ -712,6 +745,7 @@ func _pool() -> Array[Dictionary]:
 ## Protected card of the last offer: the first card of the first word of protect_order that the pool has (D13 4.4 (2)).
 ## "evolve_keystone" has no candidate before the tree work (K5) and is skipped. -1 when nothing fits.
 func _final_protected_card(pool: Array[Dictionary]) -> int:
+	if _kit_on: return _kit_final_protect(pool)
 	for word in _grace.final_offer.protect_order:
 		var kinds: Array = []
 		if word == "evolve": kinds = ["evolve"]
@@ -1102,3 +1136,140 @@ func grace_view() -> Dictionary:
 		"odds":odds.duplicate(true),"pity":{"spins":_pity,"hard_after":int(_grace.grades.pity.hard_after_spins),"soft_step_bps":int(_grace.grades.pity.soft_step_bps)},
 		"near_bps":int(_grace.grades.near_bps),"luck":luck,"offer_cards":cards})
 	return view
+
+# ---------------------------------------------------------------- element kit (ET-A, D-element-trees)
+
+## Take the validated kit of this run's element (right after configure(), before any experience): the offer rules, the element block (its cards,
+## in the document's order), the filler cards and the ids of the cards the permanent tree opened (the cards with "open": "base" are always in).
+## The kit's cards replace the catalog cards: the signature skill's ranks, rune and evolution are cards of the kit too, and no other skill of the
+## catalog is ever offered. A rejected call changes nothing.
+func set_kit(offer: Dictionary, element: Dictionary, fillers: Dictionary, open_cards: Array) -> bool:
+	if _doc.is_empty() or _xp != 0 or not _pending.is_empty() or not _offer.is_empty():
+		errors.assign(["The element kit needs a freshly configured run"])
+		return false
+	if not _spells.is_empty() or grace_on():
+		errors.assign(["The element kit cannot run together with run_spells or grace"])
+		return false
+	if String(element.get("primary","")) != _primary:
+		errors.assign(["The element kit is not this skill's"])
+		return false
+	_kit_on = true
+	_kit_offer = offer.duplicate(true)
+	_kit_el = element.duplicate(true)
+	_kit_fillers = fillers.duplicate(true)
+	_kit_open = open_cards.duplicate()
+	_kit_taken.clear()
+	_kit_ranks = {}
+	_kit_vals = {}
+	_kit_flags.clear()
+	_kit_picks = 0
+	_kit_last = {}
+	errors.clear()
+	return true
+
+func kit_active() -> bool:
+	return _kit_on
+
+## The rank of a skill of the kit (the signature skill's is the catalog rank); 0 while it is not unlocked.
+func kit_rank(skill_id: String) -> int:
+	if skill_id.is_empty(): return 0
+	if skill_id == _primary: return int(_ranks.get(_primary,0))
+	return int(_kit_ranks.get(skill_id,0))
+
+func kit_val(key: String) -> int:
+	return int(_kit_vals.get(key,0))
+
+func kit_flag(name: String) -> bool:
+	return name in _kit_flags
+
+func kit_taken() -> Array[String]:
+	return _kit_taken.duplicate()
+
+## What the last chosen card was ({} before the first, {id, kind, skill, gate, effect (a filler's)}); the core reads it to apply the one-off effects.
+func kit_last() -> Dictionary:
+	return _kit_last.duplicate(true)
+
+func _kit_card_view(card: Dictionary) -> Dictionary:
+	var kind := String(card.kind)
+	var skill_id := ""
+	if kind == "unlock" or kind == "rank": skill_id = String(card.skill)
+	elif kind == "rune" or kind == "evolve": skill_id = _primary
+	var view := {"id":String(card.id),"kind":kind,"skill_id":skill_id,"weight":int(_kit_offer.weights[kind]),"title_key":"kit.card." + String(card.id),"answers":card.answers.duplicate()}
+	if card.has("rank"): view.rank = int(card.rank)
+	if card.has("requires"): view.requires = card.requires.duplicate()
+	if card.has("excludes"): view.excludes = card.excludes.duplicate()
+	return view
+
+func _kit_ready(card: Dictionary) -> bool:
+	for need in card.get("requires",[]):
+		if not String(need) in _kit_taken: return false
+	for bad in card.get("excludes",[]):
+		if String(bad) in _kit_taken: return false
+	if card.has("gate") and _kit_picks < int(_kit_offer.gates[card.gate].after_picks): return false
+	return true
+
+## The cards that may be offered now, in the document's order: not taken, open (base, or opened by the tree), their requirements taken,
+## none of their exclusions taken, and (an unlock card) their gate's number of picks reached.
+func _kit_cards() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for card in _kit_el.cards:
+		var id_ := String(card.id)
+		if id_ in _kit_taken: continue
+		if String(card.open) != "base" and not id_ in _kit_open: continue
+		if not _kit_ready(card): continue
+		result.append(_kit_card_view(card))
+	return result
+
+## The door: an unlock card whose gate is reached is forced into the hand (the one with the earliest gate first) until it is taken.
+## There is no other standing protection (no primary evolution path card in every hand).
+func _kit_gate_card(cards: Array[Dictionary]) -> int:
+	var best := -1
+	var best_after := 1 << 30
+	for i in cards.size():
+		if String(cards[i].kind) != "unlock": continue
+		var after := 0
+		for card in _kit_el.cards:
+			if String(card.id) == String(cards[i].id): after = int(_kit_offer.gates[card.gate].after_picks)
+		if after < best_after:
+			best = i
+			best_after = after
+	return best
+
+## The last offer (the boss appears): the protection words of the offer rules in order: "evolve" = the evolution card, "answers:x" = a card that answers x.
+func _kit_final_protect(pool: Array[Dictionary]) -> int:
+	for word in _kit_offer.final_protect:
+		for i in pool.size():
+			if word == "evolve" and String(pool[i].kind) == "evolve": return i
+			if String(word).begins_with("answers:") and String(word).trim_prefix("answers:") in pool[i].answers: return i
+	return -1
+
+## A hand that is short of candidates is filled with filler cards in the rule's order (no random number; they repeat across hands, never inside one).
+func _kit_fill(selected: Array[Dictionary], target: int) -> void:
+	for id_ in _kit_offer.filler:
+		if selected.size() >= target: return
+		var entry: Dictionary = _kit_fillers[id_]
+		selected.append({"id":String(id_),"kind":"filler","skill_id":"","weight":0,"title_key":"kit.card." + String(id_),"answers":entry.answers.duplicate(),"effect":entry.effect.duplicate()})
+
+func _kit_choose(chosen: Dictionary) -> void:
+	var id_ := String(chosen.id)
+	_kit_picks += 1
+	if _kit_fillers.has(id_):
+		_kit_last = {"id":id_,"kind":"filler","skill":"","gate":"","effect":_kit_fillers[id_].effect.duplicate()}
+		return
+	var card := {}
+	for candidate in _kit_el.cards:
+		if String(candidate.id) == id_: card = candidate
+	_kit_taken.append(id_)
+	match String(card.kind):
+		"unlock": _kit_ranks[String(card.skill)] = 1
+		"rank":
+			if String(card.skill) == _primary: _ranks[_primary] = int(card.rank)
+			else: _kit_ranks[String(card.skill)] = int(card.rank)
+		"rune": _owned_passives.append(String(_kit_el.evolution.passive))
+		"evolve": _evolved.append(_primary)
+		"variant","survival":
+			var change: Dictionary = card.change
+			for key in change.get("vals",{}): _kit_vals[key] = int(_kit_vals.get(key,0)) + int(change.vals[key])
+			for flag in change.get("flags",[]):
+				if not String(flag) in _kit_flags: _kit_flags.append(String(flag))
+	_kit_last = {"id":id_,"kind":String(card.kind),"skill":String(card.get("skill","")),"gate":String(card.get("gate","")),"effect":{}}

@@ -16,6 +16,7 @@ const Loot=preload("res://chapter1/core/loot.gd")
 const Catalog=preload("res://chapter1/core/growth_catalog.gd")
 const Progression=preload("res://chapter1/core/character_progression.gd")
 const SkillTree=preload("res://chapter1/core/skill_tree.gd")
+const ElementKit=preload("res://chapter1/core/element_kit.gd")
 const CAPACITY := 256
 const MAX_ITEMS := 325 # One final69-item recovery batch; start blocked above256.
 const PATH_V5 := "user://chapter-one-profile-v5.json"
@@ -83,6 +84,7 @@ const DEPTH_KEY_PATTERN := "^d[0-9]{1,2}\\z"
 static var _loot: RefCounted
 static var _loot_path := ""
 static var _progression: Dictionary={}
+static var _progression_base: Dictionary={}
 static var _trees: Dictionary={}
 static var _outfits: Dictionary={}
 static var _test_ids: Dictionary={}
@@ -142,16 +144,35 @@ var _v4_pointer := ""
 static func progression_doc() -> Dictionary:
 	if _progression.is_empty():
 		var doc := Progression.load_document()
-		if not doc.has("error") and Progression.validate_document(doc).is_empty():_progression=doc
+		if not doc.has("error") and Progression.validate_document(doc).is_empty():
+			_progression_base=doc
+			# ET-A: a witch whose element the element kit turns on owns that element's tree (a copy of the document; off = the file as it is).
+			_progression=ElementKit.patch_progression(doc,_element_trees(doc))
 		else:push_error("Character progression failed to load: "+str(doc.get("error",Progression.validate_document(doc))))
 	return _progression
 
 static func trees() -> Dictionary:
 	if _trees.is_empty():
 		var loaded := SkillTree.load_trees(SkillTree.DEFAULT_PATH,progression_doc())
-		if not loaded.has("error"):_trees=loaded
+		if not loaded.has("error"):
+			loaded.merge(_element_trees(_progression_base))
+			_trees=loaded
 		else:push_error("Skill trees failed to load: "+str(loaded.error))
 	return _trees
+
+## {tree_id: tree} of the element trees the element kit turns on ({} while the kit is off, which is the shipped value).
+static func _element_trees(base: Dictionary) -> Dictionary:
+	var extra := ElementKit.trees_for(ElementKit.current(),base)
+	if extra.has("error"):
+		push_error(String(extra.error))
+		return {}
+	return extra
+
+## For tools and tests: forget the cached progression and trees (after ElementKit.use_override changed which elements are on).
+static func refresh_element_kit() -> void:
+	_progression={}
+	_progression_base={}
+	_trees={}
 
 static func loot() -> RefCounted:
 	if _loot==null:

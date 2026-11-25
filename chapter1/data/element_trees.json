@@ -1,0 +1,223 @@
+{
+  "schema_version": 2,
+  "provenance": "independent_design",
+  "balance_status": "hypothesis",
+  "characters": [
+    {
+      "id": "chapter1.character.arc",
+      "element": "arc",
+      "tree_id": "witch.arc"
+    }
+  ],
+  "trees": [
+    {
+      "tree_id": "witch.arc",
+      "revision": 1,
+      "element": "arc",
+      "character_id": "chapter1.character.arc",
+      "signature_skill_id": "chapter1.skill.arc",
+      "node_prefixes": [
+        "witch.arc."
+      ],
+      "tiers": [
+        {
+          "level": 1,
+          "name": "1단"
+        },
+        {
+          "level": 5,
+          "name": "2단"
+        },
+        {
+          "level": 10,
+          "name": "3단"
+        },
+        {
+          "level": 15,
+          "name": "4단"
+        }
+      ],
+      "branches": [
+        {
+          "id": "stack",
+          "name": "쌓기",
+          "color": "arc"
+        },
+        {
+          "id": "lay",
+          "name": "깔기",
+          "color": "arc"
+        },
+        {
+          "id": "burst",
+          "name": "터뜨리기",
+          "color": "arc"
+        },
+        {
+          "id": "big",
+          "name": "큰 적",
+          "color": "arc"
+        },
+        {
+          "id": "common",
+          "name": "공통",
+          "color": "brass"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "witch.arc.overcurrent",
+          "kind": "card",
+          "branch": "stack",
+          "tier": 1,
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 0,
+          "opens": [
+            "A18"
+          ],
+          "name": "과전류",
+          "lore": "큰 적 위에 감전이 더 깊게 쌓인다"
+        },
+        {
+          "id": "witch.arc.rod_ring",
+          "kind": "card",
+          "branch": "lay",
+          "tier": 1,
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 0,
+          "opens": [
+            "A16"
+          ],
+          "name": "방전 고리",
+          "lore": "피뢰침 둘레의 적이 감전된다"
+        },
+        {
+          "id": "witch.arc.rod_choice",
+          "kind": "card",
+          "branch": "lay",
+          "tier": 2,
+          "max_rank": 1,
+          "requires": {
+            "witch.arc.rod_ring": 1
+          },
+          "min_spent": 0,
+          "opens": [
+            "A19",
+            "A20"
+          ],
+          "name": "피뢰침의 갈림길",
+          "lore": "피뢰침을 둘로 나누거나 하나에 모은다"
+        },
+        {
+          "id": "witch.arc.conductor_pop",
+          "kind": "card",
+          "branch": "burst",
+          "tier": 1,
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 0,
+          "opens": [
+            "A17"
+          ],
+          "name": "도체 폭발",
+          "lore": "줄기를 보낸 졸개가 터진다"
+        },
+        {
+          "id": "witch.arc.overload_choice",
+          "kind": "card",
+          "branch": "burst",
+          "tier": 2,
+          "max_rank": 1,
+          "requires": {
+            "witch.arc.conductor_pop": 1
+          },
+          "min_spent": 0,
+          "opens": [
+            "A21",
+            "A22"
+          ],
+          "name": "오버로드의 갈림길",
+          "lore": "자주 터뜨리거나 크게 터뜨린다"
+        },
+        {
+          "id": "witch.arc.reserve",
+          "kind": "card",
+          "branch": "big",
+          "tier": 3,
+          "max_rank": 1,
+          "requires": {
+            "witch.arc.overcurrent": 1
+          },
+          "min_spent": 0,
+          "opens": [
+            "A23"
+          ],
+          "name": "축전",
+          "lore": "도체가 없어도 큰 적 제 몸의 감전이 줄기가 된다"
+        },
+        {
+          "id": "witch.arc.storm_rod",
+          "kind": "card",
+          "branch": "big",
+          "tier": 4,
+          "max_rank": 1,
+          "requires": {
+            "witch.arc.reserve": 1
+          },
+          "min_spent": 8,
+          "opens": [
+            "A24"
+          ],
+          "name": "폭풍 피뢰",
+          "lore": "폭풍의 번개가 피뢰침으로 모인다"
+        },
+        {
+          "id": "witch.arc.absorb",
+          "kind": "card",
+          "branch": "common",
+          "tier": 2,
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 0,
+          "opens": [
+            "A27"
+          ],
+          "name": "방전 흡수",
+          "lore": "줄기가 생명을 돌려준다"
+        },
+        {
+          "id": "witch.arc.stride",
+          "kind": "card",
+          "branch": "common",
+          "tier": 3,
+          "max_rank": 1,
+          "requires": {},
+          "min_spent": 0,
+          "opens": [
+            "A28"
+          ],
+          "name": "번개 걸음",
+          "lore": "걸을수록 가까운 적이 감전된다"
+        },
+        {
+          "id": "witch.arc.reroll",
+          "kind": "rule",
+          "branch": "common",
+          "tier": 3,
+          "max_rank": 1,
+          "requires": {
+            "witch.arc.absorb": 1
+          },
+          "min_spent": 0,
+          "rule": {
+            "grace_rerolls": 1
+          },
+          "name": "다시 뽑기",
+          "lore": "카드를 한 번 다시 뽑는다"
+        }
+      ]
+    }
+  ]
+}
