@@ -17,7 +17,7 @@ extends SceneTree
 ##       moved (tick, mode and the growth snapshot are the same before and after build). growth_choice: the first offer of a run
 ##       (seed 11, three starting skills) with the spell composition off ("off_<skill>") and on ("on_<skill>"; the shipped
 ##       run_spells.json copied with enabled = true, chapter1/tests/support/trial_docs.gd). title: the menu with no profile
-##       ("no_profile"; app_state is {}, the empty value of the shape T8 S2 will fix). A screen without an adapter is skipped and listed.
+##       ("no_profile"; app_state is {}), a saved one ("saved") and the verify run ("verify") in the app_state shape of title_contract.gd. A screen without an adapter is skipped and listed.
 ## Last line: CHAPTER1_SCREEN_CONTRACTS_RESULT {"checks":N,"failures":[...],"unchecked":N,"skipped":[...],"dumps":[...]}. Exit 1 on a failure.
 ## `--adapter-dir=res://...` and `--screen-dir=res://...` read stand-ins from another folder (the self test of this tool uses them).
 const Schema := preload("res://chapter1/tests/support/contract_schema.gd")
@@ -193,7 +193,11 @@ func _adapter_part(id_: String, schema: Dictionary) -> void:
 						continue
 					_build_case(id_, case_name, adapter, schema, run, {})
 		"title":
+			# T13 R1: the app_state shape the host passes (head of title_contract.gd). Three cases: no profile ({}), a saved profile, the verify run.
+			var saved_view := {"character_id": "chapter1.character.frost", "has_tree": true, "level": 8, "xp": 1400, "xp_level_start": 1000, "xp_for_next": 1450, "xp_to_next": 50, "points_free": 2}
 			_build_case(id_, "no_profile", adapter, schema, Core.new(), {})
+			_build_case(id_, "saved", adapter, schema, Core.new(), {"focus_index": 1, "save": "on", "note": "저장 완료", "items": 12, "motion_on": true, "character_views": {"chapter1.character.frost": saved_view}})
+			_build_case(id_, "verify", adapter, schema, Core.new(), {"focus_index": 2, "save": "verify", "note": "검증 실행 · 저장 비활성", "items": 7, "motion_on": false})
 		_:
 			skipped.append("%s: the adapter exists but this test has no case for it" % id_)
 
@@ -215,8 +219,11 @@ func _run_at_first_offer(skill_id: String, spells: bool) -> RefCounted:
 func _build_case(id_: String, case_name: String, adapter: GDScript, schema: Dictionary, run: RefCounted, app_state: Dictionary) -> void:
 	var label := "%s.%s" % [id_, case_name]
 	var before := _core_state(run)
+	var state_before := JSON.stringify(app_state)
 	var contract: Variant = adapter.call("build", run, app_state)
 	var after := _core_state(run)
+	checks += 1
+	if JSON.stringify(app_state) != state_before: _fail("%s: build() changed app_state" % label)
 	checks += 1
 	if before != after: _fail("%s: build() changed the core (tick, mode or growth state differ before and after)" % label)
 	checks += 1
