@@ -35,9 +35,6 @@ var _selected_item := -1
 var temporary_art := true
 var motion_enabled := true
 var skill_labels: Dictionary={}
-var menu_title := "카테나"
-var menu_description := "무리를 휩쓸고, 장비와 기술을 성장시켜 티폰을 처치하세요."
-var menu_scope := "카테나 진입전 · 한 장을 완성하기 위한 첫 전투 구간"
 var victory_title := "티폰을 처치했습니다"
 const SKILL_NAMES={"chapter1.skill.ember":"파이어볼","chapter1.skill.frost":"아이스 스피어","chapter1.skill.arc":"체인 라이트닝"}
 const SLOT_NAMES={"weapon":"무기","head":"머리","body":"몸통","hands":"장갑","feet":"신발","charm":"목걸이","ring":"반지","ring2":"반지 2"}
@@ -218,21 +215,6 @@ func _build_modal__cloister(run: RefCounted) -> void:
 	box.add_theme_constant_override("separation",16)
 	modal.add_child(box)
 	match run.mode:
-		"menu":
-			box.add_child(_label(menu_title,40,Color("ddc995")))
-			box.add_child(_label(menu_description,21))
-			box.add_child(_label("WASD / 좌클릭 이동 · Space 회피 · 기술 자동 시전 · I 장비 · Esc 정지",17,Color("aabbaf")))
-			var classes := HBoxContainer.new()
-			classes.add_theme_constant_override("separation",16)
-			box.add_child(classes)
-			for pair in [["파이어볼","chapter1.skill.ember"],["아이스 스피어","chapter1.skill.frost"],["체인 라이트닝","chapter1.skill.arc"]]:
-				var id_: String=pair[1]
-				var b := _button(Loc.t("hud.menu.start_with",{"name":pair[0]}),func():start.emit(id_))
-				b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;classes.add_child(b)
-			var spacer := Control.new();spacer.size_flags_vertical=Control.SIZE_EXPAND_FILL;box.add_child(spacer)
-			box.add_child(_motion_control())
-			box.add_child(_label(menu_scope,15,Color("a69a86")))
-			if temporary_art:box.add_child(_label("캐릭터와 음향 일부는 제작 중입니다.",14,Color("a6a692")))
 		"inventory": _inventory(box,run)
 		"victory","defeat":
 			box.add_child(_label(victory_title if run.mode=="victory" else "카테나에 쓰러졌습니다",32,Color("e5ca94")))
@@ -240,11 +222,6 @@ func _build_modal__cloister(run: RefCounted) -> void:
 			box.add_child(_label("다른 기술과 장비 조합으로 다시 도전할 수 있습니다.",18))
 			box.add_child(_button("다시 도전",func():retry.emit()))
 			if run.mode=="victory":box.add_child(_button("획득 장비 확인",func():equipment.emit()))
-
-func _motion_control() -> CheckButton:
-	var toggle := CheckButton.new();toggle.text="화면 흔들림";toggle.button_pressed=motion_enabled
-	toggle.toggled.connect(func(value: bool):motion_enabled=value;motion_toggle.emit(value))
-	return toggle
 
 func _card_description__cloister(card: Dictionary, run: RefCounted) -> String:
 	if card.kind=="passive":return "주력 기술의 진화를 준비합니다.\n최대 랭크와 이 패시브를 갖추면 진화가 선택지에 나타납니다."
@@ -335,9 +312,6 @@ var profile_note := ""
 var stash_open := false
 var _storage_selection := -1
 func _init() -> void:
-	menu_title=Loc.t("app.window.title")
-	menu_description="세 봉인을 돌파하고 "+Loc.t("zone.2.name")+"에 도달하세요. 장비와 기술을 성장시켜 "+Loc.t("enemy.champion.2.name")+"을 처치하세요."
-	menu_scope="WASD / 좌클릭 이동 · Q 회복약 · E 의식 · 선택 의식은 위험과 추가 보상"
 	victory_title="제1장 · "+Loc.t("enemy.champion.2.name")+"을 처치했습니다"
 func setup__chapter(view: Node3D) -> void:
 	setup__cloister(view)
@@ -371,7 +345,7 @@ func _build_modal__chapter(run: RefCounted) -> void:
 	if stash_open:
 		_build_stash();return
 	_build_modal__cloister(run)
-	if run.mode in ["menu","victory","defeat"]:
+	if run.mode in ["victory","defeat"]:
 		var box: VBoxContainer=modal.get_child(0)
 		box.add_child(_button("장비 보관함 · %d개"%profile_state.get("items",[]).size(),func():stash_show.emit()))
 		if not profile_note.is_empty():box.add_child(_label(profile_note,14,Color("b4b49d")))
@@ -818,18 +792,11 @@ func _focus_modal38() -> void:
 	var buttons: Array[Control]=[]
 	_collect_focus38(modal,buttons)
 	if buttons.is_empty():return
-	# The menu's tree button sits left of the start buttons in the tree but should come after them in the focus chain.
-	if is_instance_valid(_menu_tree_button) and buttons[0]==_menu_tree_button and buttons.size()>3:
-		buttons.remove_at(0);buttons.insert(3,_menu_tree_button)
 	for i in buttons.size():
 		var b := buttons[i]
 		b.focus_next=b.get_path_to(buttons[(i+1)%buttons.size()])
 		b.focus_previous=b.get_path_to(buttons[(i+buttons.size()-1)%buttons.size()])
 	var first: Control=buttons[0]
-	# A rebuilt menu keeps looking at the witch that was selected, not at the first one.
-	if _menu_witch>0 and _menu_witch<_menu_starts.size() and is_instance_valid(_menu_tree_button) and _menu_tree_button.is_inside_tree():
-		var wanted: Button=_menu_starts[_menu_witch]
-		if is_instance_valid(wanted) and not wanted.disabled:first=wanted
 	first.grab_focus()
 
 func _collect_focus38(node: Node,items: Array[Control]) -> void:
@@ -1025,153 +992,12 @@ func _build_result40__q40(run: RefCounted) -> void:
 		var inspect_button := _button("이번 도전 장비 확인",func():equipment.emit());inspect_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(inspect_button)
 	var retry_button := _button("다시 도전",func():retry.emit());retry_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(retry_button)
 
-# ---- chapter1/view/ui41/chapter_hud_quality41.gd ----
-## Menu-only portrait successor. The inherited start/stash callbacks stay on
-## their existing controls. This 2D concept does not replace the 3D actor.
-## The big picture is a living portrait (view/hud/living_portrait/, A4 12). It reads nothing from the game state.
-const LivingPortrait=preload("res://chapter1/view/hud/living_portrait/living_portrait.gd")
-## One witch per starting school, in the order of the three start buttons (START_SKILLS).
-const WITCH_IDS: Array[String]=["ember","frost","storm"]
-
-## The one place that gives the portrait its motion amount. 1.0 is the chosen amount, 0.0 the still picture.
-## A "reduce motion" setting (A4 12.7) gets wired here and nowhere else.
-func _portrait_motion_scale() -> float:
-	return 1.0
-
-## Fit the portrait to its host (the host's size changes with the window and the layout).
-func _fit_menu_portrait() -> void:
-	if is_instance_valid(_living_portrait) and is_instance_valid(_menu_portrait):
-		_living_portrait.set_rect(Rect2(Vector2.ZERO,_menu_portrait.size))
-
-## Only the title menu, in view, runs the portrait. Anything else (play, stash, the tree panel over the menu) stops it,
-## and a portrait whose menu was rebuilt or freed is let go so no node keeps processing.
-func _sync_portrait(run: RefCounted) -> void:
-	if _living_portrait==null:return
-	if not is_instance_valid(_living_portrait) or _living_portrait.is_queued_for_deletion():
-		_living_portrait=null;return
-	var want: bool=run.mode=="menu" and not stash_open and overlay.visible and not (is_instance_valid(skill_panel) and skill_panel.visible)
-	if _living_portrait.active!=want:_living_portrait.set_active(want)
-
-func _build_modal__q41(run: RefCounted) -> void:
-	_build_modal__q40(run)
-	if run.mode!="menu" or stash_open or not overlay.visible:return
-	var original := modal.get_child(0) as VBoxContainer
-	if original==null or original.get_child_count()<7:return
-	var inherited_starts := original.get_child(3) as HBoxContainer
-	if inherited_starts==null or inherited_starts.get_child_count()!=3:return
-	_build_menu41(original,inherited_starts)
-	_focus_modal38.call_deferred()
-
-## One start button, two inks: the skill name in its element's text colour, the summary line in the dim ink.
-## The button's own text is emptied (it would take one colour); the start callback stays on the button.
-func _two_line_choice(button: Button,name_text: String,summary: String,tint: Color) -> void:
-	button.text="";button.tooltip_text=name_text+" · "+summary
-	var holder := VBoxContainer.new();holder.name="ChoiceText";holder.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	holder.offset_left=12;holder.offset_right=-12;holder.offset_top=6;holder.offset_bottom=-6
-	holder.alignment=BoxContainer.ALIGNMENT_CENTER;holder.add_theme_constant_override("separation",4)
-	for line in [[name_text,20,tint],[summary,17,Palette.INK_DIM]]:
-		var label := _label(line[0],line[1],line[2]);label.autowrap_mode=TextServer.AUTOWRAP_OFF
-		label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;label.mouse_filter=Control.MOUSE_FILTER_IGNORE
-		holder.add_child(label)
-	button.add_child(holder)
-
-func _build_menu41(original: VBoxContainer,inherited_starts: HBoxContainer) -> void:
-	# Keep the exact three inherited skill-id closures and the real profile
-	# footer. Reparenting changes presentation, not the start/save contract.
-	var title := original.get_child(0) as Label
-	var description := original.get_child(1) as Label
-	var controls := original.get_child(2) as Label
-	var old_spacer := original.get_child(4)
-	var motion := original.get_child(5) as CheckButton
-	var scope := original.get_child(6) as Label
-	if title==null or description==null or controls==null or motion==null or scope==null:return
-	var starts: Array[Node]=inherited_starts.get_children()
-	for child in starts:
-		if not child is Button:return
-	var original_children: Array[Node]=original.get_children()
-	modal.remove_child(original)
-	var row := HBoxContainer.new();row.name="OathMenu41"
-	row.add_theme_constant_override("separation",34);modal.add_child(row)
-	# Left column: the witch's portrait, then her permanent-growth summary and the skill-tree button (G1 P4).
-	var left := VBoxContainer.new();left.name="WitchColumn";left.add_theme_constant_override("separation",8)
-	left.size_flags_vertical=Control.SIZE_SHRINK_CENTER;row.add_child(left)
-	var portrait_frame := PanelContainer.new();portrait_frame.name="OathPortrait41"
-	portrait_frame.size_flags_vertical=Control.SIZE_SHRINK_CENTER
-	var portrait_style := _style(Color("111416"),Palette.BRASS_DIM)
-	portrait_style.set_content_margin_all(12);portrait_style.border_width_top=1
-	portrait_frame.add_theme_stylebox_override("panel",portrait_style);left.add_child(portrait_frame)
-	# The host is a plain clipped Control of the old picture's size (2:3, the art's ratio); the living portrait is fitted to it.
-	var portrait := Control.new();portrait.name="PortraitHost41"
-	portrait.custom_minimum_size=Vector2(280,420);portrait.clip_contents=true
-	portrait.mouse_filter=Control.MOUSE_FILTER_IGNORE;portrait_frame.add_child(portrait)
-	_living_portrait=LivingPortrait.new();_living_portrait.name="LivingPortrait"
-	portrait.add_child(_living_portrait)
-	_living_portrait.set_seed(7+_menu_witch)
-	_living_portrait.set_motion_scale(_portrait_motion_scale())
-	_living_portrait.select_witch(WITCH_IDS[_menu_witch]);_portrait_witch=_menu_witch
-	portrait.resized.connect(_fit_menu_portrait)
-	_menu_portrait=portrait;_fit_menu_portrait()
-	_living_portrait.play_intro()
-	var body := VBoxContainer.new();body.name="StartChoices41"
-	body.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation",12);row.add_child(body)
-	title.reparent(body);title.add_theme_font_size_override("font_size",40)
-	title.add_theme_color_override("font_color",Palette.INK)
-	description.reparent(body);description.add_theme_font_size_override("font_size",19)
-	description.add_theme_color_override("font_color",Color("d0c7b6"))
-	controls.reparent(body);controls.add_theme_font_size_override("font_size",15)
-	controls.add_theme_color_override("font_color",Color("aeb5ab"))
-	body.add_child(_label("첫 기술을 선택하세요",17,Palette.INK_DIM))
-	var choices := VBoxContainer.new();choices.name="PrimarySkillChoices41"
-	choices.add_theme_constant_override("separation",8);body.add_child(choices)
-	var tints := [Palette.FIRE_TEXT,Palette.FROST_TEXT,Palette.ARC_TEXT]
-	# Rank1 base definitions: growth_quality37.json. Gear can modify these
-	# later; rank1 frost slows but has freeze_stacks=0, so no freeze claim.
-	var summaries := ["기본 피해 12 · 화염탄 1발","기본 피해 10 · 관통 2회 · 적 이동 속도 -20%","기본 피해 9 · 3대상 연쇄 · 짧은 기절"]
-	for i in starts.size():
-		var button := starts[i] as Button
-		# The portrait follows whichever start the player is looking at.
-		# Mouse-over and keyboard focus are one state: hovering takes the focus, and the focus selects the witch.
-		button.focus_entered.connect(menu_select_skill.bind(START_SKILLS[i]))
-		button.mouse_entered.connect(button.grab_focus)
-		button.reparent(choices);button.custom_minimum_size.y=88
-		_two_line_choice(button,String(button.text),summaries[i],tints[i])
-		button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	_menu_starts.clear()
-	for start_button in starts:_menu_starts.append(start_button as Button)
-	_build_witch_summary(left)
-	var space := Control.new();space.size_flags_vertical=Control.SIZE_EXPAND_FILL;body.add_child(space)
-	var preferences := HBoxContainer.new();preferences.add_theme_constant_override("separation",20)
-	body.add_child(preferences);motion.reparent(preferences)
-	motion.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	preferences.add_child(_button("음소거 전환 [M]",func():mute_toggle.emit()))
-	# Stash button, actual profile note, and any inherited production note keep
-	# their original order and callbacks. The old layout spacer is discarded.
-	for child in original_children:
-		if child in [title,description,controls,inherited_starts,old_spacer,motion,scope]:continue
-		child.reparent(body)
-	scope.reparent(body);scope.add_theme_font_size_override("font_size",14)
-	scope.add_theme_color_override("font_color",Palette.INK_FAINT)
-	original.queue_free()
-	modal.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	modal.offset_left=-680;modal.offset_right=680
-	modal.offset_top=-350;modal.offset_bottom=350
-
 # ---- chapter1/view/ui45/chapter_hud_quality45.gd ----
 ## Clarify enemy slow and keep pause controls compact; inherited callbacks stay.
 func _card_description(card: Dictionary,run: RefCounted) -> String:
 	var text: String=_card_description__q36(card,run)
 	if card.get("skill_id","")=="chapter1.skill.frost":text=text.replace("이동속도 -","적 이동 속도 -")
 	return text
-
-func _build_modal__q45(run: RefCounted) -> void:
-	_build_modal__q41(run)
-	if not overlay.visible or stash_open:return
-	if run.mode=="menu":
-		var buttons: Array[Control]=[];_collect_focus38(modal,buttons)
-		for control in buttons:
-			if control is Button:pass
 
 # ---- chapter1/view/ui46/chapter_hud_quality46.gd ----
 ## Presentation only; no gameplay, saving, timing, or input policy changes.
@@ -1258,10 +1084,13 @@ func _build_modal(run: RefCounted) -> void:
 		# the pause window is up and nothing about it changed: keep it (a rebuild would replay its opening)
 		if not (is_instance_valid(_pause_screen) and not _pause_screen.closing):_build_pause_screen()
 		return
+	# The first screen (T13): one screen for the whole menu; a stash window over the menu hides it (it comes back when the stash is closed).
+	if run.mode=="menu" and not stash_open:
+		_build_title_screen();return
+	if run.mode!="menu":_free_title_screen()
 	_free_grace_screen()
 	if run.mode!="paused":_grace_token_shown=""   # a pause keeps it: the same offer shown again after Esc has no second intro
-	_build_modal__q45(run)
-	_add_flow_buttons(run)
+	_build_modal__q40(run)
 
 # ---- the grace screen (A8 G6): the choice window is chapter1/view/hud/screens/growth_choice.gd on a contract ----
 ## The host's part only (T8 3): ask the adapter for the contract when the window is rebuilt, apply it, hand the signals on. Nothing here decides anything.
@@ -1336,6 +1165,115 @@ func _build_pause_screen() -> void:
 func _close_pause_screen() -> void:
 	if is_instance_valid(_pause_screen):_pause_screen.close()
 	_pause_screen=null
+
+# ---- the first screen (T13 R2): chapter1/view/hud/screens/title.gd on a contract ----
+## The host's part only, like the grace screen: ask the adapter for the contract when the menu is built or its words change, apply it, hand the signals on. Nothing here decides.
+## One screen lives for the whole menu: a rebuild (invalidate) only applies the contract again (the focus, the clock and the portraits stay), a new screen plays its intro.
+## The overlay stays (it stops clicks reaching the world and other layers read it as "a window is open", the refused-save notice reads it); the screen draws its own stage.
+const TitleScreen=preload("res://chapter1/view/hud/screens/title.gd")
+const TitleContract=preload("res://chapter1/view/contracts/title_contract.gd")
+const TITLE_TOAST_Z := 35
+const TITLE_WINDOW_Z := 40
+var _title_screen: Control
+var _title_menu: Control
+var _title_on := false
+## How often the contract of the first screen was made: when the menu is built or its words change, never per frame (a test reads it).
+var title_contract_builds := 0
+
+## What the adapter takes (title_contract.gd head). Public so that a capture tool can ask the adapter the same question.
+func title_app_state() -> Dictionary:
+	return {"focus_index":_menu_witch,"save":_save_mode(),"note":profile_note,"items":profile_state.get("items",[]).size(),"motion_on":motion_enabled,"character_views":character_views}
+
+func _build_title_screen() -> void:
+	if _overlay_base.a<0.0:_overlay_base=overlay.color
+	overlay.visible=true;overlay.color=Color(0,0,0,0);modal.visible=false
+	for child in modal.get_children():modal.remove_child(child);child.queue_free()
+	title_contract_builds+=1
+	var contract: Dictionary=TitleContract.build(null,title_app_state())
+	if is_instance_valid(_title_screen):
+		_title_screen.apply(contract)
+		return
+	var screen := TitleScreen.new()
+	screen.apply(contract)
+	screen.start.connect(_on_title_start)
+	screen.witch_focused.connect(_on_title_witch)
+	screen.stash.connect(func():stash_show.emit())
+	screen.skill_tree.connect(_request_tree)
+	screen.menu.connect(_open_title_menu)
+	root.add_child(screen)
+	_title_screen=screen;_title_on=true
+	screen.play_intro()
+
+func _free_title_screen() -> void:
+	_close_title_menu()
+	if is_instance_valid(_title_screen):_title_screen.queue_free()
+	_title_screen=null;_title_on=false
+	if is_instance_valid(toast) and toast.z_index!=0:toast.z_index=0
+
+## The start came out of the confirm beat. The app may refuse it (a full stash, a refused save): then the screen opens its doors again.
+func _on_title_start(skill_ref: String) -> void:
+	start.emit(skill_ref)
+	var app: Object=_app()
+	if is_instance_valid(_title_screen) and (app==null or String(app.run.mode)=="menu"):_title_screen.show_settled()
+
+func _on_title_witch(index: int) -> void:
+	_menu_witch=index
+
+func _open_title_menu() -> void:
+	if is_instance_valid(_title_menu):return
+	if is_instance_valid(_title_screen):_title_screen.set_interactive(false);_title_on=false
+	var window := PauseWindow.new()
+	window.z_index=TITLE_WINDOW_Z
+	window.apply(motion_enabled,not motion_enabled,"title")
+	window.resume.connect(_close_title_menu)
+	window.quit_game.connect(func():quit_request.emit())
+	window.motion_changed.connect(func(on: bool):motion_enabled=on;motion_toggle.emit(on);invalidate())
+	root.add_child(window)
+	root.move_child(window,root.get_child_count()-1)
+	_title_menu=window
+	window.open()
+	window.focus_default.call_deferred()
+
+func _close_title_menu() -> void:
+	if is_instance_valid(_title_menu):_title_menu.close()
+	_title_menu=null
+
+## Once per frame: the screen is shown in the menu (not over the stash window) and takes keys and mouse only when nothing is over it (the skill tree, a notice or
+## confirm window, its own Esc window). The notice band (toast) is lifted over it. The screen draws up to z 30 (its flash 25, its blackout 28, a few parts 30), the skill
+## tree sits at z 20: the band goes to z 35 and the windows that open over the screen (Esc window, notice and confirm windows) to z 40.
+func _sync_title(run: RefCounted) -> void:
+	if not is_instance_valid(_title_screen):return
+	var shown: bool=run.mode=="menu" and not stash_open
+	if _title_screen.visible!=shown:_title_screen.visible=shown
+	var want: bool=shown and not skill_tree_is_open() and not flow_dialog_open() and not is_instance_valid(_title_menu)
+	if want!=_title_on:
+		_title_screen.set_interactive(want);_title_on=want
+	var lift := TITLE_TOAST_Z if shown else 0
+	if is_instance_valid(toast) and toast.z_index!=lift:toast.z_index=lift
+
+## The witch the first screen looks at follows the start of this skill (the app's first focus, a capture tool). A screen that stands answers with its focus.
+func menu_select_skill(skill_id: String) -> void:
+	var index := START_SKILLS.find(skill_id)
+	if index<0:return
+	_menu_witch=index
+	if is_instance_valid(_title_screen):
+		_title_screen.set_focus(index)
+		_menu_witch=_title_screen.focused_index()
+
+func menu_witch_index() -> int:
+	return _menu_witch
+
+## The character the screen looks at ("" for an index outside the three).
+func menu_character_id() -> String:
+	if _menu_witch<0 or _menu_witch>=START_SKILLS.size():return ""
+	return _character_for_skill(START_SKILLS[_menu_witch])
+
+## The screen at once in its settled state, no intro (a capture or test tool; also the way back after the app refused a start).
+func title_settle() -> void:
+	if is_instance_valid(_title_screen):_title_screen.show_settled()
+
+func title_screen() -> Control:
+	return _title_screen if is_instance_valid(_title_screen) else null
 
 # ---- chapter1/view/ui50/chapter_hud_quality50.gd ----
 ## Share the unchanged heading font within this HUD. No gameplay or callback changes.
@@ -1434,7 +1372,7 @@ func _goal_text(goal: Dictionary) -> String:
 	return Loc.t("hud.objective.seal_kills",{"done":str(int(goal.done)),"total":str(int(goal.total))})
 
 func _sync_chrome(run: RefCounted) -> void:
-	_sync_portrait(run)
+	_sync_title(run)
 	var mark := 0
 	if run.seals.size()>2 and bool(run.seals[2].get("cleared",false)):mark=2
 	elif run._champion_id>0 and run.zone==2 and run.enemies.has(run._champion_id):mark=1
@@ -1749,7 +1687,7 @@ func _draw_route_marker() -> void:
 		_:
 			_route40.draw_polyline(diamond+PackedVector2Array([diamond[0]]),Palette.BRASS_DIM,2.0,true)
 
-# ---- G1 permanent growth (P4): menu summary, skill-tree screen host, result growth box ----
+# ---- G1 permanent growth (P4): skill-tree screen host, result growth box (the menu's summary is the first screen's: title.gd) ----
 ## Read-only toward the core. The screen asks through signals; chapter_one.gd answers with the profile's public
 ## functions (commit_tree, respec) and pushes the fresh data back with show_skill_tree / update_skill_tree.
 const SkillTreePanel=preload("res://chapter1/view/hud/skill_tree_panel.gd")
@@ -1757,7 +1695,6 @@ const ProfileData=preload("res://chapter1/core/chapter_profile.gd")
 const START_SKILLS=["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 const WITCH_KEYS=["ember","frost","arc"]  # po keys character.<key>.name / .class, same order as START_SKILLS
 static func _witch_name(index: int) -> String:return Loc.t("character.%s.name"%WITCH_KEYS[index])
-static func _witch_class(index: int) -> String:return Loc.t("character.%s.class"%WITCH_KEYS[index])
 const PORTRAIT_KEYS=["ember","frost","storm"]
 const GROWTH_FILL_SECONDS := 1.2
 signal skill_tree_open(character_id: String)
@@ -1768,18 +1705,8 @@ var character_views: Dictionary={}
 var growth_result: Dictionary={}
 var skill_panel: Control
 var _skill_character := ""
+## The witch the first screen looks at (the one that starts), by START_SKILLS index. The screen tells it through witch_focused; the app reads it through menu_character_id().
 var _menu_witch := 0
-var _menu_starts: Array[Button]=[]
-var _menu_portrait: Control
-var _living_portrait: Node2D
-var _portrait_witch := -1
-var _menu_tree_button: Button
-var _menu_badge: Label
-var _menu_name: Label
-var _menu_xp: Label
-var _menu_class: Label
-var _menu_bar: ProgressBar
-var _menu_points: Label
 var _growth_played := false
 
 func _character_for_skill(skill_id: String) -> String:
@@ -1793,61 +1720,6 @@ func _commas(n: int) -> String:
 		if i>0 and (text.length()-i)%3==0:out+=","
 		out+=text[i]
 	return ("-" if n<0 else "")+out
-
-## The witch the menu is looking at follows the start button that has focus or the mouse (same as the portrait).
-func menu_select_skill(skill_id: String) -> void:
-	var index := START_SKILLS.find(skill_id)
-	if index<0:return
-	_menu_witch=index
-	if is_instance_valid(_living_portrait) and index!=_portrait_witch:
-		_portrait_witch=index
-		_living_portrait.select_witch(WITCH_IDS[index]);_living_portrait.play_intro()
-	_refresh_witch_summary()
-
-func _build_witch_summary(column: VBoxContainer) -> void:
-	var panel := PanelContainer.new();panel.name="WitchGrowth";panel.size_flags_horizontal=Control.SIZE_FILL
-	var frame := _style(Color("111416"),Palette.BRASS_DIM);frame.set_content_margin_all(10);frame.border_width_top=1
-	panel.add_theme_stylebox_override("panel",frame);column.add_child(panel)
-	var box := VBoxContainer.new();box.add_theme_constant_override("separation",3);panel.add_child(box)
-	_menu_name=_label("",18,Palette.INK);_menu_name.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_name)
-	_menu_class=_label("",14,Palette.INK_DIM);_menu_class.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_class)
-	_menu_xp=_label("",14,Palette.INK_DIM);_menu_xp.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_xp)
-	_menu_bar=_bar(Palette.GROWTH,6);_menu_bar.max_value=1;box.add_child(_menu_bar)
-	_menu_points=_label("",15,Palette.GROWTH);_menu_points.autowrap_mode=TextServer.AUTOWRAP_OFF;box.add_child(_menu_points)
-	_menu_tree_button=_button("스킬 트리",func():_request_tree(_character_for_skill(START_SKILLS[_menu_witch])))
-	_menu_tree_button.name="SkillTreeButton";_menu_tree_button.custom_minimum_size.y=44
-	column.add_child(_menu_tree_button)
-	_menu_badge=_label("",18,Palette.GROWTH);_menu_badge.autowrap_mode=TextServer.AUTOWRAP_OFF
-	_menu_badge.mouse_filter=Control.MOUSE_FILTER_IGNORE;_menu_badge.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT
-	_menu_badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);_menu_badge.offset_right=-14;_menu_badge.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
-	_menu_tree_button.add_child(_menu_badge)
-	_refresh_witch_summary()
-
-## Fills the summary and the tree button from character_views. Disabled states say why, in words.
-func _refresh_witch_summary() -> void:
-	if not is_instance_valid(_menu_tree_button):return
-	var view: Dictionary=character_views.get(_character_for_skill(START_SKILLS[_menu_witch]),{})
-	_menu_name.text=_witch_name(_menu_witch);_menu_class.text=_witch_class(_menu_witch)
-	_menu_badge.text=""
-	if view.is_empty():
-		# Nothing to show: one line, no empty bar, no empty points row, no dead button.
-		_menu_xp.text="영구 성장 · 저장 비활성";_menu_bar.visible=false;_menu_points.text="";_menu_points.visible=false
-		_menu_tree_button.text="스킬 트리 · 저장 비활성";_menu_tree_button.disabled=true;_menu_tree_button.visible=false
-		return
-	_menu_points.visible=true;_menu_tree_button.visible=true
-	_menu_name.text="%s  Lv %d"%[_witch_name(_menu_witch),int(view.level)]
-	var capped := int(view.xp_to_next)<=0
-	_menu_xp.text="최대 레벨" if capped else "경험치 %s / %s"%[_commas(int(view.xp)),_commas(int(view.xp_for_next))]
-	_menu_bar.visible=true;_menu_bar.max_value=1.0
-	_menu_bar.value=1.0 if capped else clampf(float(int(view.xp)-int(view.xp_level_start))/maxf(1.0,float(int(view.xp_for_next)-int(view.xp_level_start))),0,1)
-	var free := int(view.points_free)
-	_menu_points.text="◆ 남은 포인트 %d"%free if free>0 else "남은 포인트 0"
-	_menu_points.add_theme_color_override("font_color",Palette.GROWTH if free>0 else Palette.INK_DIM)
-	if bool(view.has_tree):
-		_menu_tree_button.text="스킬 트리";_menu_tree_button.disabled=false
-		_menu_badge.text="◆ %d"%free if free>0 else ""
-	else:
-		_menu_tree_button.text="스킬 트리 · 준비 중";_menu_tree_button.disabled=true
 
 func _request_tree(character_id: String) -> void:
 	if not character_id.is_empty():skill_tree_open.emit(character_id)
@@ -2014,6 +1886,7 @@ func _reset_flow() -> void:
 	_result_reason="";result_unsaved=false;_defeat_age=0.0;_flow_prev_mode="";_notice_closed=false;_flow_focus=null
 	_close_dialog(false)
 	_close_pause_screen()
+	_close_title_menu()
 	_clear_big_band()
 
 ## "abandoned" after the player gave up the run; "" otherwise. Call before the core ends the run.
@@ -2077,6 +1950,7 @@ func _open_dialog(kind: String,spec: Dictionary) -> void:
 	dialog.setup(self,spec)
 	dialog.chosen.connect(_on_flow_chosen.bind(kind))
 	dialog.reduce_motion=not motion_enabled
+	if is_instance_valid(_title_screen):dialog.z_index=TITLE_WINDOW_Z   # the first screen draws up to z 30: a window over it has to sit above
 	root.add_child(dialog)
 	_flow_dialog=dialog;_flow_kind=kind
 	# a confirm window asked from the pause window takes its place (one window on the screen, not a window on a window)
@@ -2254,16 +2128,6 @@ func _add_flow_actions(run: RefCounted) -> void:
 	menu_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(menu_button)
 	var quit_button := _button(Loc.t("result.button.quit"),func():_leave("quit"));quit_button.name="QuitGame"
 	quit_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;second.add_child(quit_button)
-
-func _add_flow_buttons(run: RefCounted) -> void:
-	if not overlay.visible or stash_open:return
-	if run.mode=="menu":
-		var body := modal.find_child("StartChoices41",true,false) as VBoxContainer
-		if body==null:return
-		for child in body.get_children():
-			if child is HBoxContainer and child.get_child_count()>0 and child.get_child(0) is CheckButton:
-				var quit_button := _button(Loc.t("menu.quit"),func():quit_request.emit());quit_button.name="QuitGame"
-				child.add_child(quit_button);break
 
 # ---- refused save notice (D5-U) ----
 

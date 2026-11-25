@@ -1,9 +1,10 @@
 extends SceneTree
-## Captures the title menu's living portrait with the real input path (focus on a start button picks the witch).
+## Captures the first screen's living portraits with the real input path (the E key moves the focus to the next witch; T13 R2).
 ## Needs a real renderer (no --headless). Writes only under the directory given by --shots.
 ##   python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/portrait_select_shots.gd -- --chapter1-profile-off --chapter1-qa-ignore-focus --shots=_local/shots/portrait-select --tag=1080
 ##   --mode=video  saves every 2nd frame of a 12 s run (witch changes every 4 s) as PNG to --shots/frames; make the video with ffmpeg.
-## Prints PORTRAIT_STATE lines (is the portrait node in the tree, processing) at the menu and after the run starts.
+## Prints PORTRAIT_STATE lines (is the portrait node in the tree, processing) at the menu and after the run starts. The first screen carries one portrait per
+## witch (three nodes) while it is shown and processing; after the run starts the screen is gone (no portrait node).
 
 var view: Node
 var frame := 0
@@ -26,8 +27,19 @@ func _shot(name_: String) -> void:
 	var image := root.get_viewport().get_texture().get_image()
 	if image != null: image.save_png(shots_dir.path_join("%s-%s.png" % [name_, tag]))
 
+func _key(code: int) -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code as Key
+		event.pressed = pressed
+		view.get_window().push_input(event)
+
+## The witch is picked the way a player does: E steps to the next one (the first key press of the intro only skips it, so up to three presses).
 func _pick(index: int) -> void:
-	view.hud._menu_starts[index].grab_focus()
+	var guard := 0
+	while view.hud.menu_witch_index() != index and guard < 4:
+		_key(KEY_E)
+		guard += 1
 
 func _find(node: Node, out: Array) -> void:
 	var script: Script = node.get_script()
@@ -40,7 +52,7 @@ func _state(label: String) -> void:
 	var rows: Array = []
 	for n in found:
 		rows.append({"in_tree": n.is_inside_tree(), "active": n.active, "processing": n.can_process(), "is_processing": n.is_processing(), "witch": n.witch_id, "visible_in_tree": n.is_visible_in_tree(), "children": n.get_child_count()})
-	print("PORTRAIT_STATE ", JSON.stringify({"label": label, "mode": view.run.mode, "portrait_nodes": found.size(), "rows": rows, "hud_ref": view.hud._living_portrait != null and is_instance_valid(view.hud._living_portrait)}))
+	print("PORTRAIT_STATE ", JSON.stringify({"label": label, "mode": view.run.mode, "portrait_nodes": found.size(), "rows": rows, "hud_ref": view.hud.title_screen() != null, "witch": view.hud.menu_witch_index()}))
 
 func _process(_delta: float) -> bool:
 	if view == null or not view.is_inside_tree(): return false

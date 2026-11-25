@@ -59,6 +59,13 @@ extends SceneTree
 ##                                the witch's ring unlock > the main skill's damage axis > a ring's reach axis > the pilot's own
 ##                                scoring for everything else. Each pick prints a HUD_SPELLS_PICK line (tick, level, card, score).
 ##                                The choice-1 / choice-2 moments are dumped before the tool picks, as before.
+## T13 R2: the first screen is chapter1/view/hud/screens/title.gd. This tool reaches it only through the host's public calls (menu_select_skill, menu_witch_index,
+##   title_settle, title_screen, title_app_state) and the node names TitleStart / TitleTree / TitleStash / Door0..2 / TitleMenuButton, with real mouse and key events.
+##   A host without title_settle (the base commit of tools/dev/equiv.py, which gets a copy of this file) takes the old path: the default moments are the same ones.
+##   After a press on TitleStart the screen needs its confirm beat (1.2 s); the flows below wait for what that press leads to instead of 4 frames.
+##   --title-input=keys|pad       (T13 R2, needs --profile-fixture=l8; no run before the end) the first screen by the keyboard only / by the pad only, no mouse:
+##                                the witch keys (or d-pad), the handles, the skill tree, the stash window, the Esc window, M (the notice band over the screen) and the start.
+##                                One TITLE_INPUT line per step (witch, tree_open, stash_open, esc_window, mode, toast); moments title-input-tree / -stash / -esc-window / -muted.
 ## T8 S0-b (opt-in; without them the dump and the run are byte-for-byte what they were):
 ##   --dump-contracts=<folder under _local/>   at the moments below, also write what the screen ADAPTER makes from this very run
 ##                                (chapter1/view/contracts/<id>_contract.gd, build(run, app_state)) as <folder>/<id>.<moment>.json, for
@@ -120,12 +127,14 @@ const TOUR_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.sk
 var rj_stage := 0
 var rj_next := 0
 var rj_tabs := 0
+var rj_until := 0
 var rj_files_before: Dictionary = {}
 var rj_folder := ""
 var fl_stage := 0
 var fl_next := 0
 var fl_frame0 := 0
 var fl_before: Dictionary = {}
+var ti_log: Array = []
 const ProfileScript := preload("res://chapter1/core/chapter_profile.gd")
 const LayoutDump := preload("res://chapter1/tests/layout_dump.gd")
 const UsageProbe := preload("res://chapter1/tests/asset_usage_probe.gd")
@@ -134,6 +143,12 @@ const SpellsPick := preload("res://chapter1/tests/spells_pick.gd")
 const TrialDocs := preload("res://chapter1/tests/support/trial_docs.gd")
 const CONTRACT_MOMENTS := {"menu": "title", "choice-1": "growth_choice", "choice-2": "growth_choice"}
 var contract_dir := ""
+var title_input := ""
+var ti_steps: Array = []
+var ti_step := 0
+var ti_next := 0
+var ti_pending := ""
+var ti_deadline := 0
 const DescentPolicy := preload("res://chapter1/tests/descent_policy.gd")
 const FROST_ID := "chapter1.character.frost"
 const FIXTURE_RANKS := {"witch.frost.needle":3,"witch.frost.volley":1,"witch.frost.rime":2}
@@ -165,6 +180,7 @@ func _initialize() -> void:
 		elif arg.begins_with("--run-spells="): run_spells_arg = arg.trim_prefix("--run-spells=")
 		elif arg.begins_with("--spells-pick="): spells_pick = arg.trim_prefix("--spells-pick=")
 		elif arg.begins_with("--dump-contracts="): contract_dir = arg.trim_prefix("--dump-contracts=")
+		elif arg.begins_with("--title-input="): title_input = arg.trim_prefix("--title-input=")
 		elif arg.begins_with("--descent="): descent_arg = arg.trim_prefix("--descent=")
 	var args_error := _check_args()
 	if not args_error.is_empty():
@@ -235,6 +251,11 @@ func _check_args() -> String:
 	if not spells_pick.is_empty():
 		if spells_pick != "synergy": return "--spells-pick=%s is unknown (synergy)" % spells_pick
 		if run_spells_arg != "on": return "--spells-pick needs --run-spells=on"
+	if not title_input.is_empty():
+		if not title_input in ["keys","pad"]: return "--title-input=%s is unknown (keys or pad)" % title_input
+		if profile_fixture != "l8": return "--title-input needs --profile-fixture=l8 (the skill tree and the stash handle are part of the path)"
+		if tree_shots or result_mock or not flow_shots.is_empty() or menu_tour or notice_shots or not burst_arg.is_empty():
+			return "--title-input cannot be combined with --tree-shots, --result-mock, --flow-shots, --menu-tour, --notice-shots or --burst"
 	if not profile_fixture.is_empty() and not profile_fixture in ["empty","l8","rejected"]:
 		return "--profile-fixture=%s is unknown (empty, l8 or rejected)" % profile_fixture
 	if not profile_fixture.is_empty() and not "--chapter1-profile-off" in user_args:
@@ -462,10 +483,8 @@ func _dump_contract(label: String) -> void:
 	var adapter: GDScript = load(path)
 	var app_state := {}
 	if id_ == "title":
-		# The host's own state, read only (the shape T8 S2 fixes; the adapter takes what it needs).
-		for key in ["profile_state","character_views","temporary_art","motion_enabled","profile_note"]:
-			var value: Variant = view.hud.get(key)
-			if value != null: app_state[key] = value
+		# The host's own state, the shape title_contract.gd takes (read only).
+		app_state = view.hud.title_app_state()
 	var contract: Variant = adapter.call("build",view.run,app_state)
 	var file := FileAccess.open(contract_dir.path_join("%s.%s.json" % [id_,label]),FileAccess.WRITE)
 	if file == null or not contract is Dictionary:
@@ -502,6 +521,8 @@ func _process(_delta: float) -> bool:
 	if burst != null:
 		burst.poll(run,frame)
 		burst.process(run,frame,func(): return root.get_viewport().get_texture().get_image())
+	if not title_input.is_empty():
+		return _title_input_flow()
 	if menu_tour:
 		return _menu_tour()
 	if tree_shots:
@@ -515,7 +536,9 @@ func _process(_delta: float) -> bool:
 	if notice_shots and step >= 1 and run.mode == "playing" and view.hud._discovery.visible and view.hud._discovery.modulate.a > .95 and _mark("discovery-notice"): _dump("discovery-notice")
 	match step:
 		0:
-			if frame == 5:
+			if frame == 3:
+				_title_settle()
+			elif frame == 5:
 				_dump("menu")
 				view.hud.stash_open = true; view.hud.invalidate()
 			elif frame == 8:
@@ -650,6 +673,7 @@ func _finish() -> void:
 			if row.id.begins_with("unlock:") and row.id.ends_with("_ring"): ring_pick = {"level":row.level,"tick":row.tick,"id":row.id}; break
 		print("HUD_SPELLS ",JSON.stringify({"enabled":spells_view.get("enabled",false),"pick":spells_pick,"picks":spells_picks.size(),"ring":ring_pick,"owned_axes":owned,"builtin_pilot_selections":view.full_pilot.selections.size()}))
 	print("HUD_DUMP_RESULT ",JSON.stringify({"labels":order,"final_tick":view.run.tick,"mode":view.run.mode,"kills":view.run.kills}))
+	if "title_contract_builds" in view.hud: print("HUD_TITLE_CONTRACTS ",JSON.stringify({"builds":view.hud.title_contract_builds,"frames":frame}))
 	if burst != null: print("HUD_BURST_SUMMARY ",JSON.stringify(burst.summary()))
 
 ## The growth offer is on screen for a single frame in a pilot run (the pilot picks on the next physics step), and the
@@ -671,25 +695,114 @@ func _wait(frames: int) -> int:
 var flow_next := 0
 var flow_stage := 0
 
-func _press(button: Button) -> void:
+func _press(button: Control) -> void:
 	# Real GUI routing: a left click at the button centre, in window pixels.
+	if button == null:
+		push_error("hud_dump: nothing to press (the control is not on screen)")
+		return
 	var centre: Vector2 = view.get_window().get_final_transform()*button.get_global_rect().get_center()
+	# A player's pointer arrives before the click (the first screen reads the pointer for its hover and its handles).
+	var motion := InputEventMouseMotion.new()
+	motion.position = centre; motion.global_position = centre
+	view.get_window().push_input(motion)
 	for pressed in [true,false]:
 		var event := InputEventMouseButton.new()
 		event.position = centre; event.global_position = centre; event.button_index = MOUSE_BUTTON_LEFT; event.pressed = pressed
 		view.get_window().push_input(event)
 
-func _hover(button: Button) -> void:
+func _hover(button: Control) -> void:
+	if button == null: return
 	var centre: Vector2 = view.get_window().get_final_transform()*button.get_global_rect().get_center()
 	var event := InputEventMouseMotion.new()
 	event.position = centre; event.global_position = centre
 	view.get_window().push_input(event)
+
+## The first screen's own control by node name (the visible witch's handle has the plain name, the others carry a tail). null when it is not there.
+func _title_node(node_name: String) -> Control:
+	return view.hud.root.find_child(node_name, true, false) as Control
+
+## The first screen opens settled (no intro). A host without the call (the base commit of equiv.py) does nothing here.
+func _title_settle() -> void:
+	if view.hud.has_method("title_settle"): view.hud.title_settle()
 
 func _key(code: int) -> void:
 	for pressed in [true,false]:
 		var event := InputEventKey.new()
 		event.keycode = code as Key; event.pressed = pressed
 		view.get_window().push_input(event)
+
+func _joy(button: int) -> void:
+	for pressed in [true, false]:
+		var event := InputEventJoypadButton.new()
+		event.button_index = button as JoyButton; event.pressed = pressed
+		view.get_window().push_input(event)
+
+## [label, action, frames to wait]. The first screen by the keyboard (keys) or by the pad (pad) alone.
+func _title_input_steps() -> Array:
+	var out: Array = []
+	if title_input == "keys":
+		for item in [["E", KEY_E, 6], ["E", KEY_E, 6], ["E-wrap", KEY_E, 6], ["Q-wrap", KEY_Q, 6], ["2", KEY_2, 6], ["Tab", KEY_TAB, 4], ["Enter-tree", KEY_ENTER, 24], ["tree", -1, 2],
+				["Q-over-tree", KEY_Q, 4], ["Esc-closes-tree", KEY_ESCAPE, 24], ["Tab", KEY_TAB, 4], ["Enter-stash", KEY_ENTER, 10], ["stash", -1, 2], ["Esc-closes-stash", KEY_ESCAPE, 10],
+				["Esc-window", KEY_ESCAPE, 40], ["esc-window", -1, 2], ["M", KEY_M, 8], ["muted", -1, 2], ["Esc-closes-window", KEY_ESCAPE, 40], ["Tab", KEY_TAB, 4], ["Enter-start", KEY_ENTER, 10]]:
+			out.append([item[0], item[1], item[2]])
+	else:
+		# The d-pad is ui_left/right/up/down. Button A / B are ui_accept / ui_cancel only where the InputMap binds them (TITLE_INPUT_MAP says whether it does here):
+		# the A steps are tried either way, and the start is then given by the Enter key when A did nothing (code -3).
+		for item in [["pad-right", JOY_BUTTON_DPAD_RIGHT, 6], ["pad-right", JOY_BUTTON_DPAD_RIGHT, 6], ["pad-left", JOY_BUTTON_DPAD_LEFT, 6], ["pad-down", JOY_BUTTON_DPAD_DOWN, 4],
+				["pad-down", JOY_BUTTON_DPAD_DOWN, 4], ["pad-up", JOY_BUTTON_DPAD_UP, 4], ["pad-up", JOY_BUTTON_DPAD_UP, 4], ["pad-A", JOY_BUTTON_A, 10], ["Enter-start-if-A-did-nothing", -3, 10]]:
+			out.append([item[0], item[1], item[2]])
+	return out
+
+func _ti_snapshot(label: String) -> void:
+	var hud = view.hud
+	var resume := _title_node("TitleResume")
+	var screen: Control = hud.title_screen()
+	var row := {"after": label, "frame": frame, "witch": hud.menu_witch_index(), "tree_open": hud.skill_tree_is_open(), "stash_open": hud.stash_open,
+		"esc_window": resume != null and resume.is_visible_in_tree(), "mode": view.run.mode, "settled": screen != null and screen.is_settled(), "state": screen.state if screen != null else "", "ui_focus": screen.ui_focus if screen != null else -1, "toast": String(hud.toast.text) if hud.toast.visible else ""}
+	ti_log.append(row)
+	print("TITLE_INPUT ", JSON.stringify(row))
+	if label in ["tree", "stash", "esc-window", "muted"]: _dump("title-input-"+label)
+
+func _title_input_flow() -> bool:
+	if frame > 3000:
+		push_error("title input flow did not finish (step %d)" % ti_step)
+		quit(1)
+		return true
+	if frame < ti_next: return false
+	if ti_steps.is_empty():
+		if frame < 5: return false
+		_title_settle()
+		var pad_bound := []
+		for action in ["ui_accept", "ui_cancel"]:
+			var has_pad := false
+			for event in InputMap.action_get_events(action):
+				if event is InputEventJoypadButton: has_pad = true
+			pad_bound.append([action, has_pad])
+		print("TITLE_INPUT_MAP ", JSON.stringify(pad_bound))
+		ti_steps = _title_input_steps()
+		ti_next = frame+25   # settled + the pick lock
+		return false
+	if ti_pending != "":
+		_ti_snapshot(ti_pending); ti_pending = ""
+	if ti_step < ti_steps.size():
+		var entry: Array = ti_steps[ti_step]
+		ti_step += 1
+		var code := int(entry[1])
+		if code == -2: _key(KEY_ESCAPE)
+		elif code == -3:
+			if view.hud.title_screen() != null and view.hud.title_screen().state == "ready": _key(KEY_ENTER)
+		elif code >= 0:
+			if title_input == "keys": _key(code)
+			else: _joy(code)
+		ti_pending = String(entry[0])
+		ti_next = frame+int(entry[2])
+		if ti_step == ti_steps.size(): ti_deadline = frame+300
+		return false
+	if (view.run.mode == "playing" and view.run.tick >= 30) or frame > ti_deadline:
+		_ti_snapshot("started")
+		_finish()
+		return true
+	return false
 
 ## T7-0: menu -> each witch -> her skill tree -> back. Only samples the usage probe; writes nothing else.
 func _menu_tour() -> bool:
@@ -703,21 +816,25 @@ func _menu_tour() -> bool:
 	match mt_stage:
 		0:
 			if frame < 5: return false
+			_title_settle()
 			usage.sample(root,0,String(view.run.mode),"tour-menu-start")
 			mt_stage = 1
 		1:
+			# The pointer of the last click still lies over the previous witch's door and would take the focus back: it moves over this witch's door first.
+			_hover(_title_node("Door%d" % mt_index))
 			hud.menu_select_skill(id)
-			mt_next = frame+12; mt_stage = 2
+			mt_next = frame+26; mt_stage = 2   # the door takes 0.30 s (18 frames) to open and the text bundle comes with it
 		2:
 			usage.sample(root,0,String(view.run.mode),"tour-menu-"+id)
-			_press(hud._menu_tree_button)
+			_press(_title_node("TitleTree"))
 			mt_next = frame+14; mt_stage = 3
 		3:
 			OS.delay_msec(300)
 			usage.sample(root,0,String(view.run.mode),"tour-tree-"+id)
 			mt_log.append({"skill":id,"tree_visible":hud.skill_panel != null and hud.skill_panel.visible})
 			print("MENU_TOUR ",JSON.stringify(mt_log[mt_log.size()-1]))
-			_key(KEY_ESCAPE)
+			# Esc closes an open tree; with no tree open it would open the first screen's Esc window, so it is sent only to a tree.
+			if hud.skill_tree_is_open(): _key(KEY_ESCAPE)
 			mt_next = frame+8; mt_stage = 4
 		4:
 			mt_log[mt_log.size()-1]["tree_closed"] = hud.skill_panel == null or not hud.skill_panel.visible
@@ -739,18 +856,19 @@ func _tree_flow() -> bool:
 	match flow_stage:
 		0:
 			if frame < 5: return false
+			_title_settle(); flow_next = frame+3; flow_stage = 20
+		20:
 			_dump("menu")
-			# Mouse-over and keyboard focus are one state in the menu: hover the third start button, check where the focus went.
-			_hover(hud._menu_starts[2]); flow_next = frame+4; flow_stage = 10
+			# Mouse-over and focus are one state on the first screen: move the mouse over the third door, wait out its 0.12 s, check which witch the screen looks at.
+			_hover(_title_node("Door2")); flow_next = frame+14; flow_stage = 10
 		10:
-			var focused = hud.root.get_viewport().gui_get_focus_owner()
-			flow_log.append({"hover_takes_focus":focused == hud._menu_starts[2],"witch_after_hover":hud._menu_witch})
+			flow_log.append({"hover_takes_focus":hud.menu_witch_index() == 2,"witch_after_hover":hud.menu_witch_index()})
+			# The mouse stays where a player would leave it: over the second door (a pointer left over the third one would take the focus back).
+			_hover(_title_node("Door1"))
 			hud.menu_select_skill("chapter1.skill.frost")
-			# The focus moves with the portrait too (the capture tool used to leave it on the first button).
-			if hud._menu_starts.size() > 1 and is_instance_valid(hud._menu_starts[1]): hud._menu_starts[1].grab_focus()
-			flow_next = frame+4; flow_stage = 1
+			flow_next = frame+24; flow_stage = 1
 		1:
-			_dump("menu-frost"); _press(hud._menu_tree_button); flow_next = frame+10; flow_stage = 2
+			_dump("menu-frost"); _press(_title_node("TitleTree")); flow_next = frame+10; flow_stage = 2
 		2:
 			flow_log.append({"mouse_opens_tree":panel != null and panel.visible})
 			OS.delay_msec(300)
@@ -786,7 +904,7 @@ func _tree_flow() -> bool:
 			flow_next = frame+6; flow_stage = 8
 		8:
 			flow_log.append({"closed_visible":panel.visible})
-			_dump("menu-after"); _press(hud._menu_tree_button); flow_next = frame+10; flow_stage = 9
+			_dump("menu-after"); _press(_title_node("TitleTree")); flow_next = frame+10; flow_stage = 9
 		9:
 			OS.delay_msec(300)
 			_dump("tree-reopened")
@@ -823,8 +941,8 @@ func _focus_name() -> String:
 	if owner == null: return ""
 	return String(owner.name)+"|"+(String(owner.text) if owner is Button else "")
 
-func _find_button(button_name: String) -> Button:
-	return view.hud.root.find_child(button_name,true,false) as Button
+func _find_button(button_name: String) -> Control:
+	return view.hud.root.find_child(button_name,true,false) as Control
 
 func _flow_line(label: String) -> void:
 	var run = view.run
@@ -872,8 +990,14 @@ func _reject_flow() -> bool:
 		6:
 			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"esc-from-notice","dialog_open":hud.flow_dialog_open(),"mode":view.run.mode,"rejected":view.profile_rejected(),"focus":_focus_name()}))
 			_dump("profile-rejected-notice-closed")
-			_press(hud._menu_starts[0]); rj_next = frame+4; rj_stage = 7
+			# The screen waited under the notice (its clock stood still): open it settled, then press the start of the first witch.
+			hud.menu_select_skill("chapter1.skill.ember"); _title_settle()
+			rj_next = frame+30; rj_stage = 61
+		61:
+			_press(_title_node("TitleStart")); rj_next = frame+4; rj_until = frame+150; rj_stage = 7
 		7:
+			# The press starts the 1.2 s confirm beat; the app then refuses (the save file is refused) and the notice comes up again.
+			if not hud.flow_dialog_open() and view.run.mode != "playing" and frame < rj_until: return false
 			print("HUD_DUMP_REJECT ",JSON.stringify({"phase":"start-pressed","dialog_open":hud.flow_dialog_open(),"kind":hud._flow_kind,"focus":_focus_name(),"mode":view.run.mode}))
 			_key(KEY_ENTER); rj_next = frame+5; rj_stage = 8
 		8:
@@ -918,10 +1042,17 @@ func _run_flow() -> bool:
 	var run = view.run
 	if frame < fl_next: return false
 	if flow_shots == "quit":
-		if frame == 6:
+		# The Esc window of the first screen (T13): the screen opens settled, Esc opens the small window, its quit button ends the process.
+		if frame == 4:
+			_title_settle()
+		elif frame == 40:
+			_key(KEY_ESCAPE)
+		elif frame == 52:
+			_dump("title-menu")
+			_finish()   # the process ends on the next press: write the dump now
 			_press(_find_button("QuitGame"))
 			fl_next = frame+60
-		elif frame > 200:
+		elif frame > 300:
 			push_error("quit did not end the process"); _finish(); return true
 		return false
 	if flow_shots == "defeat":
@@ -961,7 +1092,11 @@ func _run_flow() -> bool:
 	match fl_stage:
 		0:
 			if frame < 5: return false
+			_title_settle(); fl_next = frame+3; fl_stage = 100
+		100:
 			_dump("menu"); _flow_line("menu")
+			# The witch the run starts with is the one the screen looks at (a player picked her there).
+			view.hud.menu_select_skill(primary)
 			view.start_run(primary); fl_stage = 1
 		1:
 			if run.tick >= 600 and run.mode == "playing":
@@ -994,7 +1129,16 @@ func _run_flow() -> bool:
 			_dump("flow-menu-returned"); _flow_line("flow-menu-returned")
 			print("FLOW_CHECK ",JSON.stringify({"focus":_focus_name(),"hero_empty":view.run.hero.is_empty(),"mode":view.run.mode}))
 			var other: int = 1 if primary == "chapter1.skill.ember" else 0
-			_press(hud._menu_starts[other]); fl_next = frame+4; fl_stage = 7
+			print("FLOW_CHECK ",JSON.stringify({"menu_witch_after_return":hud.menu_witch_index(),"title_screen":hud.title_screen() != null}))
+			# The doors open again by themselves (the intro); settle them, then start the other witch through the confirm beat.
+			hud.menu_select_skill(TOUR_SKILLS[other]); _title_settle()
+			fl_next = frame+30; fl_stage = 60
+		60:
+			_press(_title_node("TitleStart")); fl_next = frame+40; fl_stage = 61
+		61:
+			# Mid-way of the 1.2 s confirm beat: the other doors shut, the chosen one opens over the whole screen.
+			_dump("flow-confirm-beat"); _flow_line("flow-confirm-beat")
+			fl_next = frame+4; fl_stage = 7
 		7:
 			if view.run.tick >= 120 and view.run.mode == "playing":
 				_dump("flow-playing-after-return-120"); _flow_line("flow-playing-after-return-120")

@@ -77,16 +77,16 @@ func execute() -> void:
 	for index in 2:
 		menu.profile.record_run("arc-%d" % index, [], [], false, 1, {"character_id": ARC, "xp_gained": 1000, "first_kills": [], "sources": {}})
 	var spare = menu.profile.state.items[0].storage_id
-	menu.hud._menu_witch = 2
-	check(menu.menu_character_id() == ARC, "the menu witch is read from the screen's card index")
+	menu.hud.menu_select_skill("chapter1.skill.arc")
+	check(menu.menu_character_id() == ARC, "the menu witch is the host's answer (no screen is needed for it)")
 	menu._equip_from_stash(int(spare))
 	check(menu.profile.loadout(ARC).has("weapon") and int(menu.profile.loadout(ARC).weapon) == int(spare) and menu.profile.loadout(FROST).size() == 2, "equipping from the stash goes to the shown witch only")
 	check(menu.hud.profile_state.equipped == menu.profile.loadout(ARC), "the screen's copy shows the shown witch's kit")
-	# B2: a screen without the card index (or with another type) means "no witch", never a script error.
+	# B2: a host without the public function (or another kind of node) means "no witch", never a script error.
 	var bare_hud = App.new()
 	var real_hud = bare_hud.hud
 	bare_hud.hud = Node.new()
-	check(bare_hud.menu_character_id() == "", "a screen with no card index gives no witch")
+	check(bare_hud.menu_character_id() == "", "a host with no menu_character_id() gives no witch")
 	bare_hud.hud.free()
 	bare_hud.hud = real_hud
 	bare_hud.free()

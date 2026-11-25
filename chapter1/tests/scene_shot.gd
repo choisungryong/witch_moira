@@ -11,7 +11,7 @@ extends SceneTree
 ##   python tools/dev/godot.py --fixed-fps 60 --resolution 1280x720  --path . --script res://chapter1/tests/scene_shot.gd -- \
 ##       --chapter1-profile-off --scenes=all --shots=_local/shots/<name>
 ##   python tools/dev/godot.py --fixed-fps 60 --resolution 1920x1080 --path . --script res://chapter1/tests/scene_shot.gd -- \
-##       --chapter1-profile-off --scenes=title,boon --variants=long --shots=_local/shots/<name>
+##       --chapter1-profile-off --scenes=boon,stash --variants=long --shots=_local/shots/<name>
 ##
 ## Arguments: --scenes=<a,b|all>  --variants=<normal,long|all> (default all; a scene without that variant is skipped and
 ## printed)  --shots=<dir>  --list  (prints the scene names and exits).
@@ -23,7 +23,8 @@ extends SceneTree
 ## Output per scene and variant: <dir>/<scene>.<variant>.<W>x<H>.png and .json (hud_dump's {"order","dumps"} format plus a
 ## "meta" entry), and SCENE_SHOT lines. Exit code 2 for bad arguments, 1 if a scene could not be set up.
 ##
-## The scenes: title, skill_tree (over the title), boon (growth choice), boon_spells (growth choice of a run with the spell
+## The first screen is not a scene here any more (T13 R2: it is a screen of the new structure, shot with --contract=title --variant=all).
+## The scenes: skill_tree (over the first screen), boon (growth choice), boon_spells (growth choice of a run with the spell
 ## composition on, RS0 of docs/specs/A6-run-spells-screen: how the screen draws the cards of the composition NOW; the fixture
 ## names the state to give the run and the card ids to show, and the cards are the ones the core builds for that state), equipment (in-run compare), stash, result
 ## (victory window with the permanent-growth box), pause, abandon_confirm, combat_record (the battle record over the result
@@ -44,9 +45,8 @@ const ContractSchema := preload("res://chapter1/tests/support/contract_schema.gd
 const SkillTree := preload("res://chapter1/core/skill_tree.gd")
 const FIXTURE_DIR := "res://chapter1/tests/fixtures/ui/"
 const NOTE := "픽스처로 띄운 화면. 최종 확인은 실제 판 캡처(hud_dump)"
-const SCENES := ["title","skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record","quit_confirm","unsaved_confirm","notice_band","boss_band","notice_card","upgrade_card"]
+const SCENES := ["skill_tree","boon","boon_spells","equipment","stash","result","pause","abandon_confirm","combat_record","quit_confirm","unsaved_confirm","notice_band","boss_band","notice_card","upgrade_card"]
 const VARIANTS := ["normal","long","defeat","scrolled","arc","ember"]
-const START_SKILLS := ["chapter1.skill.ember","chapter1.skill.frost","chapter1.skill.arc"]
 
 ## The core with the two answers a fixture needs to control. Everything else is the real core.
 class FixtureRun extends "res://chapter1/core/chapter_core.gd":
@@ -258,20 +258,6 @@ func _records(fx: Dictionary) -> Array:
 	var out: Array = []
 	for record in fx.get("records",[]): out.append(record.duplicate(true))
 	return out
-
-func _scene_title(fx: Dictionary) -> bool:
-	for key in fx.get("strings",{}): hud.set(key,fx.strings[key])
-	hud.profile_note = String(fx.get("note",""))
-	var records: Array = []
-	for i in int(fx.get("stash_count",0)):
-		records.append({"storage_id":i+1,"item":{"slot":"weapon","quality":"common","name":"보관 장비 %d" % (i+1),"stats":{}}})
-	hud.profile_state = {"items":records,"equipped":{},"essence":0,"completed_runs":0}
-	hud.character_views = fx.get("views",{}).duplicate(true)
-	hud.invalidate()
-	await _frames(4)
-	hud.menu_select_skill(START_SKILLS[int(fx.get("witch",1))])
-	await _frames(30)
-	return true
 
 func _scene_skill_tree(fx: Dictionary) -> bool:
 	var trees: Dictionary = SkillTree.load_trees()
