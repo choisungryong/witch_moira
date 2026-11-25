@@ -444,7 +444,7 @@ func play(seed_: int, prim: String, tuning_copy: Dictionary = {}, descent_copy: 
 				var kit_offer: Dictionary = run.get_offer()
 				var hand: Array = kit_offer.cards
 				note_offer(run, offers, kit_offer)
-				var at := KitPolicies.pick(kit_policy, hand, String(prim).get_slice(".", 2), kit_rng)
+				var at := KitPolicies.pick(kit_policy, hand, String(prim).get_slice(".", 2), kit_rng, int(float(run.hero.hp_raw) * 10000.0 / maxf(1.0, float(run.hero.max_hp_raw))))
 				var hand_ids: Array = []
 				for c in hand: hand_ids.append(String(c.id))
 				kit_hands.append([int(run.tick), hand_ids])
