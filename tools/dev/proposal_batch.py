@@ -41,12 +41,16 @@ GODOT_PY = HERE / 'godot.py'
 SLOT = ['slot_frost_normal', 'slot_frost_scarce', 'slot_frost_fated', 'slot_frost_first', 'slot_ember_normal', 'slot_ember_scarce',
         'slot_ember_fated', 'slot_ember_pity', 'slot_arc_normal', 'slot_arc_scarce', 'slot_arc_fated', 'slot_long']
 SLOT_STRIP = ['slot_frost_fated', 'slot_ember_fated', 'slot_arc_fated', 'slot_ember_pity', 'slot_frost_normal', 'slot_ember_normal', 'slot_arc_normal', 'slot_frost_scarce']
+TITLE_FIX = ['normal', 'long', 'fresh', 'profile_off', 'points_many', 'focus_ember', 'focus_storm', 'reduced']
 RES = ['1920x1080', '1280x720']
 
 # proposal -> {prefix, fixtures for stills, fixtures for strips and input, kinds it supports}
 PROPOSALS = {
     'growth_choice/e_hand': {'prefix': None, 'still': SLOT, 'strip': ['slot_ember_fated', 'slot_frost_fated', 'slot_arc_fated', 'slot_frost_normal', 'slot_long'], 'input': ['slot_frost_normal', 'slot_frost_fated'], 'reduce': ['slot_ember_fated'],
                              'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'input', 'reduce'], 'strip_res': ['1920x1080']},
+    # the PRODUCT first screen (chapter1/view/hud/screens/title.gd) on chapter1/tests/fixtures/contracts/title.<variant>.json: proposal_shot.gd --screen=title
+    'title/screen': {'prefix': 'title', 'screen': 'title', 'still': TITLE_FIX, 'strip': ['normal', 'focus_ember', 'focus_storm'], 'input': ['normal'],
+                     'kinds': ['still', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'input'], 'strip_res': ['1920x1080']},
 }
 OLD = {}
 ALL_KINDS = ['still', 'still-title', 'strip', 'strip-intro', 'strip-focus', 'strip-confirm', 'strip-reduced', 'strip-title', 'input', 'reduce']
@@ -88,7 +92,7 @@ def jobs_for(name, spec, kinds, resolutions):
             elif kind == 'reduce':
                 extra = ['--reduce-motion']
                 files = ['%s.%s.png' % (f, r) for f in fixtures]
-            out.append({'proposal': name, 'short': short, 'kind': kind, 'res': r, 'fixtures': fixtures, 'extra': extra, 'files': files, 'prefix': spec['prefix']})
+            out.append({'proposal': name, 'short': short, 'kind': kind, 'res': r, 'fixtures': fixtures, 'extra': extra, 'files': files, 'prefix': spec['prefix'], 'screen': spec.get('screen', '')})
     return out
 
 
@@ -100,9 +104,10 @@ def shots_dir(out, job):
 
 def command(job, out, timeout):
     args = [sys.executable, str(GODOT_PY), '--timeout-s=%d' % timeout, '--fixed-fps', '60', '--resolution', job['res'], '--path', str(ROOT),
-            '--script', 'res://chapter1/tests/proposal_shot.gd', '--', '--chapter1-profile-off', '--proposal=' + job['proposal'],
+            '--script', 'res://chapter1/tests/proposal_shot.gd', '--', '--chapter1-profile-off',
+            ('--screen=' + job['screen']) if job.get('screen') else ('--proposal=' + job['proposal']),
             '--fixtures=' + ','.join(job['fixtures']), '--shots=' + shots_dir(out, job).resolve().as_posix()]
-    if job['prefix']:
+    if job['prefix'] and not job.get('screen'):
         args.append('--fixture-prefix=' + job['prefix'])
     return args + job['extra'] + job.get('game_args', [])
 

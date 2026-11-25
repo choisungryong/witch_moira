@@ -13,11 +13,18 @@ signal motion_changed(on: bool)
 var resume_button: Button
 var motion_toggle: Control
 
+var _title_kind := false
+
 ## motion_on: the "screen shake" setting as it is now. reduce: play the open as a plain fade.
-func apply(motion_on: bool, reduce := false) -> void:
+## kind "run" (default): the window of a run in progress, as before. kind "title": the small window of the first screen (T13): the way back (TitleResume, Esc), the
+## screen-shake switch (MotionToggle) and quitting the game (QuitGame); no gear, no give-up, no controls text.
+func apply(motion_on: bool, reduce := false, kind := "run") -> void:
 	reduce_motion = reduce
 	build_frame(Loc.t("hud.pause.title"), 500.0, 360.0, 30)
 	name = "PauseWindow"
+	if kind == "title":
+		_apply_title(motion_on)
+		return
 	body.add_theme_constant_override("separation", 14)
 	var keys := UiStyle.text_label(Loc.t("hud.pause.keys"), "t6")
 	keys.name = "Controls"
@@ -66,3 +73,36 @@ func apply(motion_on: bool, reduce := false) -> void:
 
 func focus_default() -> void:
 	if is_instance_valid(resume_button): resume_button.grab_focus()
+
+## The first screen's Esc window. Focus order: resume, switch, quit. Resume is the default, never the danger button. Esc is the way back.
+func _apply_title(motion_on: bool) -> void:
+	_title_kind = true
+	body.add_theme_constant_override("separation", 22)
+	resume_button = UiStyle.kit_button(Loc.t("hud.pause.resume"), func(): resume.emit(), "primary", true, "Esc")
+	resume_button.name = "TitleResume"
+	resume_button.custom_minimum_size.x = 300
+	resume_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(resume_button)
+	var toggle := Parts.toggle(body, Loc.t("hud.pause.shake"), motion_on, 300.0)
+	toggle.name = "MotionToggle"
+	toggle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	toggle.changed.connect(func(on: bool): motion_changed.emit(on))
+	motion_toggle = toggle
+	var quit_ := UiStyle.kit_button(Loc.t("hud.pause.quit"), func(): quit_game.emit(), "danger")
+	quit_.name = "QuitGame"
+	quit_.custom_minimum_size.x = 180
+	quit_.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	body.add_child(quit_)
+	var chain: Array[Control] = [resume_button, toggle, quit_]
+	for i in chain.size():
+		chain[i].focus_next = chain[i].get_path_to(chain[(i + 1) % chain.size()])
+		chain[i].focus_previous = chain[i].get_path_to(chain[(i + chain.size() - 1) % chain.size()])
+		chain[i].focus_neighbor_bottom = chain[i].focus_next
+		chain[i].focus_neighbor_top = chain[i].focus_previous
+
+func _unhandled_key_input(e: InputEvent) -> void:
+	if _title_kind and e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+		resume.emit()
+		var vp := get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()

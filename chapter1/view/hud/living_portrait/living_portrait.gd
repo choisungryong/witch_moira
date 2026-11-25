@@ -60,6 +60,7 @@ var motion_override := {}
 var cfg := {}
 var witch_id := ""
 var active := true
+var veil_on := true
 var manual_time := false
 
 var _canvas := Vector2(1024.0, 1536.0)
@@ -169,10 +170,35 @@ func set_active(on: bool) -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 
 
+## The entrance darkness over the picture box is drawn by default. A screen that darkens a larger area itself (the title's doors)
+## turns it off before play_intro(); the light-up of the figure is unchanged.
+func set_veil(on: bool) -> void:
+	veil_on = on
+
+
+## The witch's own far background layer (L0_background) as an Image, read through the same layer folder the portrait uses.
+## Null when the witch or the layer is unknown. Callers shrink and soften it; they never name the file.
+static func background_image(witch_id: String) -> Image:
+	if not WITCHES.has(witch_id):
+		return null
+	var f := FileAccess.open(CONFIG_DIR + witch_id + ".json", FileAccess.READ)
+	if f == null:
+		return null
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return null
+	var dir := String((parsed as Dictionary).get("layer_dir", ""))
+	for d in (parsed as Dictionary).get("layers", []):
+		if String((d as Dictionary).get("id", "")) == "L0_background":
+			var tex: Texture2D = load(dir + "L0_background.png")
+			return tex.get_image() if tex != null else null
+	return null
+
+
 func play_intro() -> void:
 	_intro_t0 = _t
 	_make_schedule()
-	if _veil == null:
+	if _veil == null and veil_on:
 		_veil = ColorRect.new()
 		_veil.z_index = 7
 		_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
