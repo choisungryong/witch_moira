@@ -66,6 +66,7 @@
   "loot_flow": {"enabled": false, "keep_min_quality": "rare", "gate_sweep_min_quality": "rare", "boss_spray": {"enabled": false, "guardian_pull_ticks": 120, "boss_pull_ticks": 150, "arrive_ticks": 30, "ring_min_cm": 200, "ring_max_cm": 350}},
   "boss_finale": {
     "enabled": false,
+    "descent_pierces_break": true,
     "hp": 15000,
     "entrance_ticks": 120,
     "phases": [

@@ -86,7 +86,7 @@ var kit_loot = null
 var rhythm_on := false
 ## --stop-s=N: end every run after N seconds (a short look at the first minutes, e.g. the run opening with --bin=10).
 var stop_s := 0.0
-## --descent=off|now|hold|panic|crest|boss (D24: crest = call when the screen is full, boss = call when the boss is on the screen): switch the descent on in memory (descent.json stays off) and let the bot use it by that rule (D15 A6.5).
+## --descent=off|now|hold|panic|crest|boss|boss_break|boss_phase (D24: crest = call when the screen is full, boss = call when the boss is on the screen; BF-C: boss_break = in the finale's first break that finds it ready, boss_phase = in the finale's first phase): switch the descent on in memory (descent.json stays off) and let the bot use it by that rule (D15 A6.5).
 ## "off" counts the gauge but never calls. --spells-on: the in-run spell composition on in memory (the pilot picks its own cards).
 var descent_policy := ""
 var spells_on := false
@@ -610,8 +610,8 @@ func rc_tick(run) -> void:
 ## hurt_break {index: damage taken raw}, hurt_phase {phase: damage taken raw}, hits_break {index: hero hits}, boss_dealt {skill_id: life taken off the boss, raw},
 ## other_dealt (life taken off everything else after the boss came, raw), last_hit {tick, source_kind, attack_id, damage_raw, hp_after_raw, telegraphed},
 ## hit_by {attack_id or "src_"+source_kind: [hits, damage_raw, grazes]}}.
-const RC_FINALE := ["boss_entrance", "boss_phase", "boss_break_started", "boss_break_ended", "boss_chip", "boss_potion"]
-const RC_FINALE_TAG := {"boss_entrance": "be", "boss_phase": "bp", "boss_break_started": "bs", "boss_break_ended": "bx", "boss_chip": "bc", "boss_potion": "bo"}
+const RC_FINALE := ["boss_entrance", "boss_phase", "boss_break_started", "boss_break_ended", "boss_chip", "boss_potion", "boss_break_struck"]
+const RC_FINALE_TAG := {"boss_entrance": "be", "boss_phase": "bp", "boss_break_started": "bs", "boss_break_ended": "bx", "boss_chip": "bc", "boss_potion": "bo", "boss_break_struck": "bk"}
 
 func rc_finale(ev: Dictionary) -> void:
 	var t := String(ev.type)
@@ -632,6 +632,12 @@ func rc_finale(ev: Dictionary) -> void:
 			rc.ev.append([int(ev.tick), "bx", int(ev.get("index", -1))])
 		"boss_chip": rc.ev.append([int(ev.tick), "bc", int(ev.get("bps", 0)), int(ev.get("total_bps", 0))])
 		"boss_potion": rc.ev.append([int(ev.tick), "bo"])
+		"boss_break_struck":
+			# BF-C: the descent's blow on the boss in a break, raw per break index (struck_break), and one row [tick, "bk", index, damage_raw].
+			var sb: Dictionary = fin.get("struck_break", {})
+			sb[str(int(ev.get("index", -1)))] = int(sb.get(str(int(ev.get("index", -1))), 0)) + int(ev.get("damage", 0))
+			fin["struck_break"] = sb
+			rc.ev.append([int(ev.tick), "bk", int(ev.get("index", -1)), int(ev.get("damage", 0))])
 		"death":
 			if int(fin.brk) >= 0 and String(ev.get("role", "")) == "normal":
 				var k := str(int(fin.brk))
