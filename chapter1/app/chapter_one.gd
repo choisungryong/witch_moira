@@ -112,6 +112,7 @@ func _ready__chapter() -> void:
 	get_window().focus_exited.connect(func():
 		if not _qa_ignore_focus and run.mode not in ["menu","victory","defeat"]:run.set_paused(true))
 	var autostart := false
+	var primary_given := false
 	var input_log_path := ""
 	var frame_probe_dir := ""
 	var probe_arg_count := 0
@@ -123,7 +124,7 @@ func _ready__chapter() -> void:
 			probe_arg_count+=1;frame_probe_dir=arg.trim_prefix("--chapter1-frame-probe-dir=")
 		elif arg=="--chapter1-frame-probe-quit":_probe_quit_after_complete=true
 		elif arg.begins_with("--chapter1-qa-input-log="):input_log_path=arg.trim_prefix("--chapter1-qa-input-log=")
-		elif arg.begins_with("--chapter1-primary="):primary=arg.trim_prefix("--chapter1-primary=")
+		elif arg.begins_with("--chapter1-primary="):primary=arg.trim_prefix("--chapter1-primary=");primary_given=true
 		elif arg.begins_with("--chapter1-quit-after="):_quit_after=float(arg.trim_prefix("--chapter1-quit-after="))
 		elif arg.begins_with("--chapter1-capture-dir="):_capture_dir=arg.trim_prefix("--chapter1-capture-dir=")
 		elif arg.begins_with("--chapter1-seed="):seed_=int(arg.trim_prefix("--chapter1-seed="))
@@ -142,6 +143,7 @@ func _ready__chapter() -> void:
 		if not _frame_probe.configure(frame_probe_dir,self,{"pilot":_pilot,"qa_ignore_focus":_qa_ignore_focus,"captures_enabled":not _capture_dir.is_empty(),"input_log_enabled":not input_log_path.is_empty(),"wall_quit_enabled":_quit_after>0,"seed":seed_,"primary":primary}):
 			get_tree().quit(1);return
 	if autostart:start_run(primary)
+	elif primary_given:hud.menu_select_skill(primary)   # the first screen starts on that witch (without it: the first door)
 	hud.sync(run,0)
 	var actor_states: Dictionary={}
 	for kind in actors.sprite_definitions:actor_states[kind]=Array(actors.sprite_definitions[kind].frames.get_animation_names())
@@ -536,16 +538,10 @@ func _profile_error_text() -> String:
 	if profile.error_code.is_empty():return profile.error
 	return Loc.t("profile.error."+profile.error_code,profile.error_args)
 
-## The witch the title menu is showing. The screen's own answer when it has one; until it gets a public function this
-## reads its card index (a temporary read of the screen's private value) and maps it through the start skills.
+## The witch the first screen is showing: the host's own answer ("" when the screen has no such function).
 func menu_character_id() -> String:
 	if hud.has_method("menu_character_id"):return String(hud.call("menu_character_id"))
-	var raw: Variant=hud.get("_menu_witch")
-	if not raw is int:return ""
-	var index: int=raw
-	var skills: Array=ChapterHUD.START_SKILLS
-	if index<0 or index>=skills.size():return ""
-	return _character_for(String(skills[index]))
+	return ""
 
 ## Opens the save folder in the file manager. Opening only.
 func open_profile_folder() -> void:
@@ -685,7 +681,7 @@ func _unhandled_key_input__chapterx(event: InputEvent) -> void:
 		var key: int=event.keycode if event.keycode!=0 else event.physical_keycode
 		if key==KEY_ESCAPE and hud.stash_open:
 			hud.stash_open=false;hud.invalidate();get_viewport().set_input_as_handled();return
-		if key==KEY_Q:
+		if key==KEY_Q and run.mode!="menu":
 			if run.drink_potion():_consume_events();hud.invalidate()
 			get_viewport().set_input_as_handled();return
 		if key==KEY_F and hud.upgrade_uid>=0:
@@ -693,7 +689,7 @@ func _unhandled_key_input__chapterx(event: InputEvent) -> void:
 			if run.quick_equip(worn_uid):
 				_consume_events();hud.clear_upgrade();hud.invalidate();hud.notify("장비 효과를 적용했습니다");audio.play_ui("equip",run.tick)
 			get_viewport().set_input_as_handled();return
-		if key==KEY_E:
+		if key==KEY_E and run.mode!="menu":
 			for def in run.RITUALS:
 				if run.activate_ritual(def.id):_consume_events();hud.invalidate();break
 			get_viewport().set_input_as_handled();return
